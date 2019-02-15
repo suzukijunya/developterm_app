@@ -1,0 +1,6 @@
+<%= form_for @shop_accident,url: "/" do |f| %>
+<%= f.text_field :name %>
+<%= f.select :repair_shop_id, @repair_shops.map{|t| [t.name, t.id]} %>
+<%= f.select :accident_id, @accidents.map{|t| [t.case, t.id]} %>
+<%= f.submit "登録完了" %>
+<% end %>

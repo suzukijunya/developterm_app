@@ -1,0 +1,29 @@
+<p id="notice"><%= notice %></p>
+
+<p>
+  <strong>Name:</strong>
+  <%= @repair_shop.name %>
+</p>
+
+<p>
+  <strong>Mail:</strong>
+  <%= @repair_shop.mail %>
+</p>
+
+<p>
+  <strong>Address:</strong>
+  <%= @repair_shop.address %>
+</p>
+
+<p>
+  <strong>Phone number:</strong>
+  <%= @repair_shop.phone_number %>
+</p>
+
+<p>
+  <strong>Password:</strong>
+  <%= @repair_shop.password_digest %>
+</p>
+
+<%= link_to 'Edit', edit_repair_shop_path(@repair_shop) %> |
+<%= link_to 'Back', repair_shops_path %> 

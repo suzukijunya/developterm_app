@@ -1,0 +1,62 @@
+<p id="notice"><%= notice %></p>
+
+
+<div class="top-hero-wrapper text-center">
+  <div class="container top-hero-container">
+    <h1 class="text-title">ショップ一覧</h1>
+    <h2 class="text-subtitle">エアコンクリーニングのサービス 1~20件</h2>
+    <div class="row">
+      <div class="col-md-3">
+        <%= link_to 'ランキング', '#', class: 'btn btn-block btn-white' %>
+      </div>
+      <div class="col-md-3">
+        <%= link_to '今すぐ対応可能', '#',class: 'btn btn-block btn-white' %>
+      </div>
+      <div class="col-md-3">
+        <%= link_to '料金の安い順', '#',class: 'btn btn-block btn-white' %>
+      </div>
+      <div class="col-md-3">
+        <%= link_to '口コミ評価の高い順', '#',class: 'btn btn-block btn-white' %>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+<table>
+  <thead>
+    <div class="col-md-2">
+    <tr>
+      <th>お店の名前</th>
+      <th>メールアドレス</th>
+      <th>住所</th>
+      <th>電話番号</th>
+      <th>評価</th>
+    </tr>
+    </div>
+  </thead>
+
+  <tbody>
+    <% @repair_shops.each do |repair_shop| %>
+      <tr>
+        <td><%= repair_shop.name %></td>
+        <td><%= repair_shop.mail %></td>
+        <td><%= repair_shop.address %></td>
+        <td><%= repair_shop.phone_number %></td>
+        <td><%= repair_shop.password %></td>
+        <td><%= repair_shop.password_confirmation %></td>
+        <td><%= link_to 'ショップページに行く', repair_shop %></td>
+        <td><%= link_to '編集する', edit_repair_shop_path(repair_shop) %></td>
+        <td><%= link_to '削除する', repair_shop, method: :delete, data: { confirm: '本当に削除していいですか？' } %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<div class="col-md-2">
+  <%= link_to '新しいショップを登録する', new_repair_shop_path %>
+  <%= link_to 'ログインする', login_path,class: 'text-white' %>
+</div>

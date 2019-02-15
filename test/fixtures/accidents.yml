@@ -1,0 +1,15 @@
+# Read about fixtures at http://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  case: MyString
+  time: 2019-01-03 17:14:52
+  address: MyString
+  content: MyText
+  repair_request_schedule: 2019-01-03 17:14:52
+
+two:
+  case: MyString
+  time: 2019-01-03 17:14:52
+  address: MyString
+  content: MyText
+  repair_request_schedule: 2019-01-03 17:14:52

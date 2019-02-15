@@ -1,0 +1,40 @@
+<p id="notice"><%= notice %></p>
+
+<h1>Tenants</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Email</th>
+      <th>Phone number</th>
+      <th>Password</th>
+      <th>Password confirmation</th>
+      <th colspan="3"></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @tenants.each do |tenant| %>
+      <tr>
+        <td><%= tenant.name %></td>
+        <td><%= tenant.email %></td>
+        <td><%= tenant.phone_number %></td>
+        <td><%= tenant.password %></td>
+        <td><%= tenant.password_confirmation %></td>
+        <td><%= link_to 'Show', tenant %></td>
+        <td><%= link_to 'Edit', edit_tenant_path(tenant) %></td>
+        <td><%= link_to 'Destroy', tenant, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<div class="col-md-2">
+  <%= link_to 'ログインする', log_in_path,class: 'text-white' %>
+  <%= link_to '新しいテナントを登録する', new_tenant_path %>
+  <%= link_to '事故を登録する', new_accident_path,class: 'text-white' %>
+
+</div>

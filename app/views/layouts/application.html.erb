@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>DeveloptermApp</title>
+    <%= csrf_meta_tags %>
+
+    <%= stylesheet_link_tag    'application', media: 'all', 'data-turbolinks-track': 'reload' %>
+    <%= javascript_include_tag 'application', 'data-turbolinks-track': 'reload' %>
+    <link href="https://use.fontawesome.com/releases/v5.6.1/css/all.css" rel="stylesheet">
+  </head>
+
+  <body>
+    <% flash.each do |key, value| %>
+      <div class="alert alert-<%= key %>" role="alert"><%= value %></div>
+    <% end %>
+
+    <nav class="navbar navbar-default navbar-fixed-top navbar-transparent">
+      <div class="container">
+        <%#= link_to 'top-page' ,current_repair_shop do %>
+          <!-- <i class="fas fa-home fa-2x" ></i> -->
+        <%# end %>
+
+        <ul class="nav navbar-nav navbar-right">
+
+          <% if repair_shop_logged_in? %>
+            <li>
+              <%= link_to "#" do %>
+                <%#= image_tag "icons/heart.png" %>
+              <% end %>
+            </li>
+            <li>
+              <%= link_to new_accident_path do %>
+                <i class="fas fa-tools　fa-2x"></i>
+              <% end %>
+            </li>
+            <li>
+              <%#= link_to logout_path, method: :delete do %>
+                <%#= image_tag "icons/logout.png" %>
+              <%# end %>
+            </li>
+          <% else %>
+            <li>
+              <%= link_to new_repair_shop_path do %>
+                <i class="fas fa-user-plus fa-2x"></i>
+              <% end %>
+            </li>
+            <li>
+              <%= link_to login_path do %>
+                <i class="fas fa-sign-in-alt fa-2x"></i>
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    </nav>
+
+    <%= yield %>
+    <script>
+      $(function(){
+        $(".alert").fadeOut(5000);
+      });
+    </script>
+  </body>
+</html>

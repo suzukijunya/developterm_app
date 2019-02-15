@@ -1,0 +1,58 @@
+<%= form_with(model: accident, local: true) do |form| %>
+  <% if accident.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(accident.errors.count, "error") %> prohibited this accident from being saved:</h2>
+
+      <ul>
+      <% accident.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="field">
+    <%= form.label :テナント番号 %>
+    <%= form.select :tenant_id, @tenants.map{|t| [t.name, t.id]} %>
+  </div>
+
+  <div class="field">
+    <%= form.label :リペアショップ番号 %>
+    <%= form.select :repair_shop_id, @repair_shops.map{|t| [t.name, t.id]} %>
+  </div>
+
+
+  <div class="field">
+    <%= form.label :case %>
+    <%= form.text_field :case, id: :accident_case %>
+  </div>
+
+  <div class="field">
+    <%= form.label :time %>
+    <%= form.datetime_select :time, id: :accident_time %>
+  </div>
+
+  <div class="field">
+    <%= form.label :address %>
+    <%= form.text_field :address, id: :accident_address %>
+  </div>
+
+  <div class="field">
+    <%= form.label :content %>
+    <%= form.text_area :content, id: :accident_content %>
+  </div>
+
+  <div class="field">
+    <%= form.label :repair_request_schedule %>
+    <%= form.datetime_select :repair_request_schedule, id: :accident_repair_request_schedule %>
+  </div>
+
+  <div class="field">
+    <%= form.label :image %>
+    <%= form.file_field :image%>
+  </div>
+
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>

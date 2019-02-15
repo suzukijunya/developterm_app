@@ -1,0 +1,47 @@
+<%= form_with(model: repair_shop, local: true) do |form| %>
+  <% if repair_shop.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(repair_shop.errors.count, "error") %> prohibited this repair_shop from being saved:</h2>
+
+      <ul>
+      <% repair_shop.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="field">
+    <%= form.label :ショップの名前 %>
+    <%= form.text_field :name, id: :repair_shop_name %>
+  </div>
+
+  <div class="field">
+    <%= form.label :メールアドレス %>
+    <%= form.text_field :mail, id: :repair_shop_mail %>
+  </div>
+
+  <div class="field">
+    <%= form.label :店舗住所 %>
+    <%= form.text_field :address, id: :repair_shop_address %>
+  </div>
+
+  <div class="field">
+    <%= form.label :電話番号 %>
+    <%= form.text_field :phone_number, id: :repair_shop_phone_number %>
+  </div>
+
+  <div class="field">
+    <%= form.label :パスワード %>
+    <%= form.password_field :password, id: :repair_shop_password %>
+  </div>
+
+  <div class="field">
+    <%= form.label :パスワード（確認） %>
+    <%= form.password_field :password, id: :repair_shop_password_confirmation %>
+  </div>
+
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>
