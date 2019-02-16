@@ -8,14 +8,13 @@ gem 'coffee-rails', '4.2.2'
 gem 'jquery-rails', '4.3.1'
 gem 'turbolinks',   '5.0.1'
 gem 'jbuilder',     '2.7.0'
-gem 'mysql2', group: [:development, :test]
+# gem 'mysql2'
 gem "bcrypt"
 gem 'bootstrap-sass', '~> 3.3.7'
 gem "carrierwave"
-gem 'pg', group: :production
 
 group :development, :test do
-
+  gem 'mysql2'
   gem 'byebug',  '9.0.6', platform: :mri
 end
 
