@@ -1,0 +1,52 @@
+<header class="navbar navbar-fixed-top navbar-inverse">
+  <div class="container">
+    <% flash.each do |key, value| %>
+      <div class="alert alert-<%= key %>" role="alert"><%= value %></div>
+    <% end %>
+
+    <nav class="navbar navbar-default navbar-fixed-top navbar-transparent">
+      <div class="container">
+        <%= link_to home_path do %>
+          <i class="fas fa-home fa-2x" ></i>
+        <% end %>
+
+        <ul class="nav navbar-nav navbar-right">
+
+          <% if repair_shop_logged_in? %>
+            <li>
+              <%= link_to new_estimate_path do %>
+                <i class="far fa-file-alt fa-2x"></i>
+              <% end %>
+            </li>
+            <li>
+              <%= link_to new_accident_path do %>
+                <i class="fas fa-tools fa-2x"></i>
+              <% end %>
+            </li>
+            <li>
+              <%= link_to logout_path, method: :delete do %>
+                <i class="fas fa-sign-out-alt fa-2x"></i>
+              <% end %>
+            </li>
+          <% else %>
+            <li>
+              <%= link_to new_repair_shop_path do %>
+                <i class="fas fa-user-plus fa-2x"></i>
+              <% end %>
+            </li>
+            <li>
+              <%= link_to login_path do %>
+                <i class="fas fa-sign-in-alt fa-2x"></i>
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+      <ul class="nav navbar-nav navbar-right">
+        <li><%= link_to "Home",   '#' %></li>
+        <li><%= link_to "Help",   '#' %></li>
+        <li><%= link_to "Log in", '#' %></li>
+      </ul>
+    </nav>
+  </div>
+</header>

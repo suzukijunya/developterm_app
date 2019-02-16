@@ -11,5 +11,13 @@ class ApplicationController < ActionController::Base
     !current_repair_shop.nil?
   end
 
-  
+  def current_tenant
+    @current_tenant ||= Tenant.find_by(id: session[:tenant_id])
+  end
+
+  def tenant_logged_in?
+    !current_tenant.nil?
+  end
+
+
 end

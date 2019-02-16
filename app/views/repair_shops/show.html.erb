@@ -2,6 +2,7 @@
 
 <p>
   <strong>Name:</strong>
+  <%= gravatar_for @repair_shop %>
   <%= @repair_shop.name %>
 </p>
 
@@ -26,4 +27,4 @@
 </p>
 
 <%= link_to 'Edit', edit_repair_shop_path(@repair_shop) %> |
-<%= link_to 'Back', repair_shops_path %> 
+<%= link_to 'Back', repair_shops_path %>
