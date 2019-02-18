@@ -1,6 +1,6 @@
 Rails.application.routes.draw do
   resources :repairs
-  
+
   get 'repair_shops_sessions/new'
   get    '/login',   to: 'repair_shops_sessions#new'
   post   '/login',   to: 'repair_shops_sessions#create'
@@ -20,6 +20,7 @@ Rails.application.routes.draw do
   post '/' => 'estimates#new'
 
   get '/home', to: 'top_page#home'
+  root to: 'top_page#home'
 
   # For details on the DSL available within this file, see http://guides.rubyonrails.org/routing.html
 end

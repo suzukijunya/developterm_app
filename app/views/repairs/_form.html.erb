@@ -13,7 +13,7 @@
 
   <div class="field">
     <%= form.label :見積もり番号 %>
-    <%= form.search_field :estimate, id: :repair_estimate %>
+    <%= form.collection_select :estimate, Repair::CATEGORY.to_a, :first, :last, { prompt: Repair.human_attribute_name(:estimate) }, { class: "form-control", rows: 2 } %>
   </div>
 
   <div class="field">

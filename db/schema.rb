@@ -36,6 +36,7 @@ ActiveRecord::Schema.define(version: 20190217090203) do
   end
 
   create_table "repairs", force: :cascade, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8" do |t|
+    t.integer "estimate_id", null: false
     t.string "case"
     t.datetime "time"
     t.string "content"
