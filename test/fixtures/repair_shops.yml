@@ -13,3 +13,8 @@ two:
   address: MyString
   phone_number: MyString
   password: MyString
+
+michael:
+  name: Michael Example
+  email: michael@example.com
+  password_digest: <%= Tenant.digest('password') %>

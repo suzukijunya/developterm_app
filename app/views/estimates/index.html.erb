@@ -1,6 +1,6 @@
 <p id="notice"><%= notice %></p>
 
-<h1>Estimates</h1>
+<h1>作成済み 見積もり一覧</h1>
 
 <table>
   <thead>
@@ -12,9 +12,9 @@
   <tbody>
     <% @estimates.each do |estimate| %>
       <tr>
-        <td><%= link_to 'Show', estimate %></td>
-        <td><%= link_to 'Edit', edit_estimate_path(estimate) %></td>
-        <td><%= link_to 'Destroy', estimate, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+        <td><%= link_to '詳細ページ', estimate %></td>
+        <td><%= link_to '編集する', edit_estimate_path(estimate) %></td>
+        <td><%= link_to '見積もりを削除する', estimate, method: :delete, data: { confirm: '本当に削除していいですか？' } %></td>
       </tr>
     <% end %>
   </tbody>
@@ -22,4 +22,4 @@
 
 <br>
 
-<%= link_to 'New Estimate', new_estimate_path %>
+<%= link_to '新しい見積もりを作成する', new_estimate_path %>

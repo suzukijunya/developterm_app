@@ -1,0 +1,47 @@
+<%= form_with(model: repair, local: true) do |form| %>
+  <% if repair.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(repair.errors.count, "error") %> prohibited this repair from being saved:</h2>
+
+      <ul>
+      <% repair.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="field">
+    <%= form.label :見積もり番号 %>
+    <%= form.search_field :estimate, id: :repair_estimate %>
+  </div>
+
+  <div class="field">
+    <%= form.label :項目 %>
+    <%= form.text_field :case, id: :repair_case %>
+  </div>
+
+  <div class="field">
+    <%= form.label :修理時間 %>
+    <%= form.datetime_select :time, id: :repair_time %>
+  </div>
+
+  <div class="field">
+    <%= form.label :修理の詳細 %>
+    <%= form.text_field :content, id: :repair_content %>
+  </div>
+
+  <div class="field">
+    <%= form.label :"修理完了 1 or 0" %>
+    <%= form.text_field :complete, id: :repair_complete %>
+  </div>
+
+  <div class="field">
+    <%= form.label :修繕状況 %>
+    <%= form.text_field :status, id: :repair_status %>
+  </div>
+
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>

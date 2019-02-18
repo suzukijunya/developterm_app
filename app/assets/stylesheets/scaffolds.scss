@@ -7,10 +7,6 @@ body {
   line-height: 18px;
 }
 
-row {
-  padding: 20px;
-}
-
 p, ol, ul, td {
   font-family: verdana, arial, helvetica, sans-serif;
   font-size: 13px;
@@ -38,15 +34,10 @@ a {
 
 th {
   padding-bottom: 5px;
-  padding-right: : 50px;
 }
 
 td {
   padding: 0 5px 7px;
-}
-
-tr {
-  padding: 10 5px 7px;
 }
 
 div {
@@ -90,8 +81,4 @@ div {
 
 label {
   display: block;
-}
-
-strong {
-  font-size: 30px;
 }

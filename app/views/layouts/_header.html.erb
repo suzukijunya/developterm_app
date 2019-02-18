@@ -28,6 +28,11 @@
                 <i class="fas fa-sign-out-alt fa-2x"></i>
               <% end %>
             </li>
+            <li>
+              <%= link_to current_repair_shop do %>
+                <i class="fas fa-user fa-2x"></i>
+              <% end %>
+            </li>
           <% else %>
             <li>
               <%= link_to new_repair_shop_path do %>
@@ -42,11 +47,6 @@
           <% end %>
         </ul>
       </div>
-      <ul class="nav navbar-nav navbar-right">
-        <li><%= link_to "Home",   '#' %></li>
-        <li><%= link_to "Help",   '#' %></li>
-        <li><%= link_to "Log in", '#' %></li>
-      </ul>
     </nav>
   </div>
 </header>

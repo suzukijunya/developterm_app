@@ -28,6 +28,7 @@ class RepairShopsController < ApplicationController
 
     respond_to do |format|
       if @repair_shop.save
+        login @repair_shop
         format.html { redirect_to @repair_shop, success: '登録が完了しました'}
         format.json { render :show, status: :created, location: @repair_shop }
       else

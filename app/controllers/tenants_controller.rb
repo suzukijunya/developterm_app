@@ -30,6 +30,7 @@ class TenantsController < ApplicationController
 
     respond_to do |format|
       if @tenant.save
+        log_in @tenant
         format.html { redirect_to @tenant, notice: 'Tenant was successfully created.' }
         format.json { render :show, status: :created, location: @tenant }
       else

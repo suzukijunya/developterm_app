@@ -1,4 +1,6 @@
 Rails.application.routes.draw do
+  resources :repairs
+  
   get 'repair_shops_sessions/new'
   get    '/login',   to: 'repair_shops_sessions#new'
   post   '/login',   to: 'repair_shops_sessions#create'

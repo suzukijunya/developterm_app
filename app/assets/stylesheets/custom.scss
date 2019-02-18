@@ -9,11 +9,31 @@
   height: 45px;
 }
 
-.users-new-wrapper {
+.rs-new-wrapper {
   width: 100vw;
   height: 100vh;
   color: white;
   background-image: image-url('top-image.jpg');
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-size: cover;
+  background-color: #464646;
+
+  .users-new-container {
+    padding-top: 220px;
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+  }
+}
+
+.t-new-wrapper {
+  width: 100vw;
+  height: 100vh;
+  color: white;
+  background-image: image-url('image_2.png');
   background-position: center center;
   background-repeat: no-repeat;
   background-attachment: fixed;

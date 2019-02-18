@@ -1,0 +1,15 @@
+# Read about fixtures at http://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  case: MyString
+  time: 2019-02-17 18:02:03
+  content: MyString
+  complete: 
+  status: MyString
+
+two:
+  case: MyString
+  time: 2019-02-17 18:02:03
+  content: MyString
+  complete: 
+  status: MyString
