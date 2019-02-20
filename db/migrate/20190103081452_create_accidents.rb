@@ -1,6 +1,7 @@
 class CreateAccidents < ActiveRecord::Migration[5.1]
   def change
     create_table :accidents do |t|
+      
       t.string :case
       t.datetime :time
       t.string :address

@@ -21,8 +21,8 @@ ActiveRecord::Schema.define(version: 20190217090203) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "image"
-    t.integer "tenant_id"
-    t.integer "repair_shop_id"
+    t.bigint "tenant_id", null: false
+    t.bigint "repair_shop_id", null: false
   end
 
   create_table "repair_shops", force: :cascade, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8" do |t|

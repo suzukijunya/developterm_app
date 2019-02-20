@@ -13,12 +13,12 @@
 
   <div class="field">
     <%= form.label :見積もり番号 %>
-    <%= form.collection_select :estimate, Repair::CATEGORY.to_a, :first, :last, { prompt: Repair.human_attribute_name(:estimate) }, { class: "form-control", rows: 2 } %>
+    <%= form.number_field :estimate, id: :repair_estimate %>
   </div>
 
   <div class="field">
     <%= form.label :項目 %>
-    <%= form.text_field :case, id: :repair_case %>
+    <%= form.collection_select :case, Repair::CATEGORY.to_a, :first, :last, { prompt: Repair.human_attribute_name(:case) }, { class: "form-control", rows: 2 } %>
   </div>
 
   <div class="field">
@@ -28,7 +28,7 @@
 
   <div class="field">
     <%= form.label :修理の詳細 %>
-    <%= form.text_field :content, id: :repair_content %>
+    <%= form.text_area :content, id: :repair_content %>
   </div>
 
   <div class="field">
@@ -38,7 +38,7 @@
 
   <div class="field">
     <%= form.label :修繕状況 %>
-    <%= form.text_field :status, id: :repair_status %>
+    <%= form.collection_select :status, Repair::STATUS.to_a, :first, :last, { prompt: Repair.human_attribute_name(:status) }, { class: "form-control", rows: 2 } %>
   </div>
 
   <div class="actions">
