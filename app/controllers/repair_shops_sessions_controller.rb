@@ -7,6 +7,7 @@ class RepairShopsSessionsController < ApplicationController
     repair_shop = RepairShop.find_by(mail: rsparams[:mail])
     if repair_shop && repair_shop.authenticate(rsparams[:password_digest])
       login repair_shop
+      remenber_repair_shop_ repair_shop
       redirect_to repair_shops_path, success: 'ログインに成功しました'
     else
       flash.now[:danger] = 'ログインに失敗しました'
@@ -24,6 +25,13 @@ class RepairShopsSessionsController < ApplicationController
     session[:repair_shop_id] = repair_shop.id
   end
 
+  # 現在ログインしているユーザーを返す (いる場合)
+  def current_repair_shop
+    if session[:repair_shop_id]
+      @current_user ||= User.find_by(id: session[:user_id])
+    end
+  end
+
   def repair_shop_params
     params.require(:repair_shop).permit(:mail, :password_digest)
   end
@@ -32,4 +40,6 @@ class RepairShopsSessionsController < ApplicationController
     session(:repair_shop_id)
     @current_repair_shop = nil
   end
+
+
 end

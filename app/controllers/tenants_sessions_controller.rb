@@ -5,10 +5,9 @@ class TenantsSessionsController < ApplicationController
   def create
     tparams = tenant_params
     tenant = Tenant.find_by(email: tparams[:email])
-
-
     if tenant && tenant.authenticate(tparams[:password_digest])
       log_in tenant
+      tenant_remember tenant
       redirect_to tenants_path, success: 'ログインに成功しました'
     else
       flash.now[:danger] = 'ログインに失敗しました'
