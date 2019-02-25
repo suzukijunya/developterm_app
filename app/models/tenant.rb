@@ -1,5 +1,6 @@
 class Tenant < ApplicationRecord
   attr_accessor :remenber_token
+
   validates :name, presence: true, length: {maximum: 30}
   validates :email, presence: true, uniqueness: true, format: { with: /\A[\w+\-.]+@[a-z\d\-.]+\.[a-z]+\z/i }
   validates :password, presence: true, format: {with: /\A(?=.*?[a-z])(?=.*?\d)[a-z\d]{8,32}+\z/i}
@@ -20,7 +21,8 @@ class Tenant < ApplicationRecord
     SecureRandom.urlsafe_base64
   end
 
-  def tenant_remember
+  # 永続セッションのためにユーザーをデータベースに記憶する
+  def remember_of_tenant
     self.remember_token = Tenant.new_token
     update_attribute(:remember_digest, Tenant.digest(remember_token))
   end
