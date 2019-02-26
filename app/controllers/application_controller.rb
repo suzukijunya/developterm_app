@@ -3,7 +3,7 @@ class ApplicationController < ActionController::Base
 
   add_flash_types :success, :info, :warning, :danger
 
-  # =====================<ここからテナント>=============================
+  # ====================<ここからテナント>=============================
 
   # 渡されたユーザーでログインする
   def log_in(tenant)
