@@ -19,6 +19,7 @@ class RepairShopsController < ApplicationController
 
   # GET /repair_shops/1/edit
   def edit
+    @repair_shop = RepairShop.find(params[:id])
   end
 
   # POST /repair_shops
@@ -44,7 +45,7 @@ class RepairShopsController < ApplicationController
   def update
     respond_to do |format|
       if @repair_shop.update(repair_shop_params)
-        format.html { redirect_to @repair_shop, notice: 'Repair shop was successfully updated.' }
+        format.html { redirect_to @repair_shop, notice: 'プロフィールが更新できました' }
         format.json { render :show, status: :ok, location: @repair_shop }
       else
         format.html { render :edit }
@@ -58,7 +59,7 @@ class RepairShopsController < ApplicationController
   def destroy
     @repair_shop.destroy
     respond_to do |format|
-      format.html { redirect_to repair_shops_url, notice: 'Repair shop was successfully destroyed.' }
+      format.html { redirect_to repair_shops_url, notice: 'アカウントを削除しました' }
       format.json { head :no_content }
     end
   end
@@ -74,7 +75,7 @@ class RepairShopsController < ApplicationController
 
     # Never trust parameters from the scary internet, only allow the white list through.
     def repair_shop_params
-      params.require(:repair_shop).permit(:name, :mail, :address, :phone_number, :password, :password_confirmation)
+      params.require(:repair_shop).permit(:name, :mail, :address, :phone_number, :password, :password_confirmation ,:remember_me)
     end
 
 end

@@ -29,6 +29,15 @@ class Tenant < ApplicationRecord
 
   # 渡されたトークンがダイジェストと一致したらtrueを返す
   def authenticated?(remember_token)
-    BCrypt::Password.new(remember_digest).is_password?(remember_token)
+    if remember_digest.nil?
+      false
+    else
+      BCrypt::Password.new(remember_digest).is_password?(remember_token)
+    end
   end
+
+  # テナントのログイン情報を破棄する
+   def forget
+     update_attribute(:remember_digest, nil)
+   end
 end

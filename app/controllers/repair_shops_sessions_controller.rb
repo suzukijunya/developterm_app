@@ -7,6 +7,15 @@ class RepairShopsSessionsController < ApplicationController
     repair_shop = RepairShop.find_by(mail: rsparams[:mail])
     if repair_shop && repair_shop.authenticate(rsparams[:password_digest])
       login repair_shop
+
+      
+
+      # if params[:session][:remember_me] == '1'
+      #   remember(repair_shop)
+      # else
+      #   forget(repair_shop)
+      # end
+
       # remenber_of_repair_shop repair_shop
       redirect_to repair_shops_path, success: 'ログインに成功しました'
     else
@@ -16,8 +25,8 @@ class RepairShopsSessionsController < ApplicationController
   end
 
   def destroy
-    logout
-    redirect_to repair_shop_url, info: 'ログアウトしました'
+    logout if repair_shop_logged_in?
+    redirect_to repair_shops_path, info: 'ログアウトしました'
   end
 
 end

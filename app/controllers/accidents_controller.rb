@@ -28,14 +28,14 @@ class AccidentsController < ApplicationController
   # POST /accidents
   # POST /accidents.json
   def create
-    
+
     @repair_shops = RepairShop.all
     @tenants = Tenant.all
     @accident = Accident.new(accident_params)
 
     respond_to do |format|
       if @accident.save
-        format.html { redirect_to @accident, notice: 'Accident was successfully created.' }
+        format.html { redirect_to @accident, notice: '事故を登録しました' }
         format.json { render :show, status: :created, location: @accident }
       else
         format.html { render :new }
@@ -49,7 +49,7 @@ class AccidentsController < ApplicationController
   def update
     respond_to do |format|
       if @accident.update(accident_params)
-        format.html { redirect_to @accident, notice: 'Accident was successfully updated.' }
+        format.html { redirect_to @accident, notice: '事故内容を更新しました' }
         format.json { render :show, status: :ok, location: @accident }
       else
         format.html { render :edit }
@@ -76,7 +76,7 @@ class AccidentsController < ApplicationController
 
     # Never trust parameters from the scary internet, only allow the white list through.
     def accident_params
-      params.require(:accident).permit(:tenant_id, :repair_shop_id, :case, :time, :address, :content, :repair_request_schedule, :image, :description)
+      params.require(:accident).permit(:tenant_id, :repair_shop_id, :case, :time, :address, :content, :repair_request_schedule, :image)
     end
 
     def topic_params

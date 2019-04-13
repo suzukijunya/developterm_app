@@ -41,8 +41,16 @@ class ApplicationController < ActionController::Base
     params.require(:tenant).permit(:email, :password_digest)
   end
 
+  # 永続的セッションを破棄する
+  def forget(tenant)
+    tenant.forget
+    cookies.delete(:tenant_id)
+    cookies.delete(:remember_token)
+  end
+
   # 現在のユーザーをログアウトする
   def log_out
+    forget(current_tenant)
     session(:tenant_id)
     @current_tenant = nil
   end
@@ -73,32 +81,26 @@ class ApplicationController < ActionController::Base
     cookies.permanent[:remember_token] = repair_shop.remember_token
   end
 
-
-
-  # テナントのセッションを永続的にする
-  def remember(tenant)
-    tenant.remember
-    cookies.permanent.signed[:tenant_id] = tenant.id
-    cookies.permanent[:remember_token] = tenant.remember_token
-  end
-
+  # リペアショップがログインしていればtrue、その他ならfalseを返す
   def repair_shop_logged_in?
     !current_repair_shop.nil?
-  end
-
-  # 現在ログインしているユーザーを返す (いる場合)
-  def current_repair_shop
-    if session[:repair_shop_id]
-      @current_user ||= User.find_by(id: session[:user_id])
-    end
   end
 
   def repair_shop_params
     params.require(:repair_shop).permit(:mail, :password_digest)
   end
 
+  # 永続的セッションを破棄する
+  def forget(repair_shop)
+    repair_shop.forget
+    cookies.delete(:repair_shop_id)
+    cookies.delete(:remember_token)
+  end
+
+  # 現在のリペアショップをログアウトする
   def logout
-    session(:repair_shop_id)
+    forget(current_repair_shop)
+    session.delete(:repair_shop_id)
     @current_repair_shop = nil
   end
 
