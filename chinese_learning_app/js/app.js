@@ -82,6 +82,10 @@
   }
 
   // エクササイズから代表的な単語・フレーズを抽出する(語彙数の概算に使用)
+  function flashcardKey(deckId, index) {
+    return `${deckId}#${index}`;
+  }
+
   function extractVocabTerms(exercise) {
     switch (exercise.type) {
       case "listening_choice":
@@ -97,13 +101,18 @@
     }
   }
 
-  // 完了したレッスンだけを対象に、実際に practice した語彙・フレーズの
-  // 異なり数を数える(完全なHSK語彙カウントではなく概算)
+  // 完了したレッスン + マスターした単語カードを対象に、実際に practice した
+  // 語彙・フレーズの異なり数を数える(完全なHSK語彙カウントではなく概算)
   function getVocabLearnedCount() {
     const set = new Set();
     FLAT_LESSONS.forEach(({ lesson }) => {
       if (!AppState.isLessonCompleted(lesson.id)) return;
       lesson.exercises.forEach((ex) => extractVocabTerms(ex).forEach((t) => set.add(t)));
+    });
+    VOCAB_DECKS.forEach((deck) => {
+      deck.words.forEach((w, i) => {
+        if (AppState.getFlashcardEntry(flashcardKey(deck.id, i)).mastered) set.add(w.hanzi);
+      });
     });
     return set.size;
   }
@@ -113,6 +122,7 @@
     FLAT_LESSONS.forEach(({ lesson }) => {
       lesson.exercises.forEach((ex) => extractVocabTerms(ex).forEach((t) => set.add(t)));
     });
+    VOCAB_DECKS.forEach((deck) => deck.words.forEach((w) => set.add(w.hanzi)));
     return set.size;
   }
 
@@ -412,18 +422,25 @@
     });
 
     screen.appendChild(path);
-
-    const nav = el("div", "bottom-nav");
-    const homeTab = el("button", "nav-tab nav-tab--active", "🏠 ホーム");
-    homeTab.type = "button";
-    const profileTab = el("button", "nav-tab", "👤 マイページ");
-    profileTab.type = "button";
-    profileTab.addEventListener("click", renderProfile);
-    nav.appendChild(homeTab);
-    nav.appendChild(profileTab);
-    screen.appendChild(nav);
+    screen.appendChild(renderBottomNav("home"));
 
     appRoot.appendChild(screen);
+  }
+
+  function renderBottomNav(activeId) {
+    const nav = el("div", "bottom-nav");
+    const tabs = [
+      { id: "home", label: "🏠 ホーム", onClick: renderHome },
+      { id: "flashcards", label: "🎴 単語帳", onClick: renderFlashcardHome },
+      { id: "profile", label: "👤 マイページ", onClick: renderProfile },
+    ];
+    tabs.forEach((tab) => {
+      const btn = el("button", "nav-tab" + (tab.id === activeId ? " nav-tab--active" : ""), tab.label);
+      btn.type = "button";
+      btn.addEventListener("click", tab.onClick);
+      nav.appendChild(btn);
+    });
+    return nav;
   }
 
   function getBadgeDefs(state, completedLessons, totalLessons) {
@@ -487,6 +504,224 @@
       }
     });
     card.appendChild(resetBtn);
+
+    screen.appendChild(card);
+    appRoot.appendChild(screen);
+  }
+
+  // ---------------- 単語カード(フラッシュカード) ----------------
+  const FLASHCARD_SESSION_SIZE = 15;
+
+  function getDeckStats(deck) {
+    let mastered = 0;
+    let due = 0;
+    const today = todayStrForFlashcards();
+    deck.words.forEach((w, i) => {
+      const entry = AppState.getFlashcardEntry(flashcardKey(deck.id, i));
+      if (entry.mastered) mastered++;
+      if (!entry.dueDate || entry.dueDate <= today) due++;
+    });
+    return { total: deck.words.length, mastered, due };
+  }
+
+  function todayStrForFlashcards() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  function renderFlashcardHome() {
+    clear(appRoot);
+    const screen = el("div", "screen screen--flashcards");
+    renderTopBar(screen);
+
+    const intro = el("div", "flashcard-intro");
+    intro.appendChild(el("h1", "flashcard-intro-title", "🎴 単語帳"));
+    intro.appendChild(
+      el("p", "flashcard-intro-sub", "電車移動中など、すきま時間にタップだけでサクサク復習できます。")
+    );
+    screen.appendChild(intro);
+
+    const list = el("div", "deck-list");
+    VOCAB_DECKS.forEach((deck) => {
+      const stats = getDeckStats(deck);
+      const card = el("button", "deck-card");
+      card.type = "button";
+      const top = el("div", "deck-card-top");
+      top.appendChild(el("div", "deck-card-icon", deck.icon));
+      const texts = el("div");
+      texts.appendChild(el("div", "deck-card-title", deck.label));
+      texts.appendChild(el("div", "deck-card-desc", deck.description));
+      top.appendChild(texts);
+      card.appendChild(top);
+
+      const barOuter = el("div", "deck-card-bar-outer");
+      const barInner = el("div", "deck-card-bar-inner");
+      barInner.style.width = `${(stats.mastered / stats.total) * 100}%`;
+      barOuter.appendChild(barInner);
+      card.appendChild(barOuter);
+
+      const statsRow = el("div", "deck-card-stats");
+      statsRow.appendChild(el("span", null, `習得 ${stats.mastered}/${stats.total}語`));
+      if (stats.due > 0) {
+        statsRow.appendChild(el("span", "deck-card-due", `復習 ${stats.due}語`));
+      }
+      card.appendChild(statsRow);
+
+      card.addEventListener("click", () => startFlashcardSession(deck.id));
+      list.appendChild(card);
+    });
+    screen.appendChild(list);
+
+    screen.appendChild(renderBottomNav("flashcards"));
+    appRoot.appendChild(screen);
+  }
+
+  function startFlashcardSession(deckId) {
+    const deck = VOCAB_DECKS.find((d) => d.id === deckId);
+    if (!deck) return;
+    const today = todayStrForFlashcards();
+
+    const withEntries = deck.words.map((w, i) => ({
+      word: w,
+      key: flashcardKey(deckId, i),
+      entry: AppState.getFlashcardEntry(flashcardKey(deckId, i)),
+    }));
+
+    const due = withEntries
+      .filter((x) => x.entry.dueDate && x.entry.dueDate <= today)
+      .sort((a, b) => a.entry.box - b.entry.box);
+    const fresh = withEntries.filter((x) => !x.entry.dueDate);
+
+    const queue = due.concat(fresh).slice(0, FLASHCARD_SESSION_SIZE);
+
+    if (queue.length === 0) {
+      alert("このデッキは今復習する単語がありません。また後で来てください!");
+      return;
+    }
+
+    runFlashcardSession(deck, queue);
+  }
+
+  function runFlashcardSession(deck, queue) {
+    let index = 0;
+    let revealed = false;
+    let reviewedCount = 0;
+    const startedAt = Date.now();
+    let timeCommitted = false;
+
+    function commitSessionTime() {
+      if (timeCommitted) return;
+      timeCommitted = true;
+      AppState.addStudySeconds((Date.now() - startedAt) / 1000);
+      if (reviewedCount > 0) AppState.markStudiedToday();
+    }
+
+    function exitToDecks() {
+      commitSessionTime();
+      renderFlashcardHome();
+    }
+
+    function renderCardScreen() {
+      clear(appRoot);
+      const screen = el("div", "screen screen--flashcard-session");
+
+      const header = el("div", "lesson-header");
+      const closeBtn = el("button", "icon-btn", "✕");
+      closeBtn.type = "button";
+      closeBtn.addEventListener("click", exitToDecks);
+      header.appendChild(closeBtn);
+
+      const progressOuter = el("div", "progress-outer");
+      const progressInner = el("div", "progress-inner");
+      progressInner.style.width = `${(index / queue.length) * 100}%`;
+      progressOuter.appendChild(progressInner);
+      header.appendChild(progressOuter);
+      header.appendChild(el("div", "hearts-display", `${index + 1}/${queue.length}`));
+      screen.appendChild(header);
+
+      const { word } = queue[index];
+      revealed = false;
+
+      const cardWrap = el("div", "flashcard-wrap");
+      const card = el("div", "flashcard");
+      card.appendChild(el("div", "flashcard-hanzi", word.hanzi));
+      card.appendChild(el("div", "flashcard-pinyin", word.pinyin));
+
+      const meaningEl = el("div", "flashcard-meaning hidden", word.meaning);
+      card.appendChild(meaningEl);
+
+      const playBtn = el("button", "play-btn", "🔊");
+      playBtn.type = "button";
+      playBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        Speech.speak(word.hanzi).catch(() => {});
+      });
+      card.appendChild(playBtn);
+
+      const tapHint = el("div", "flashcard-hint", "タップして意味を見る");
+      card.appendChild(tapHint);
+
+      cardWrap.appendChild(card);
+      screen.appendChild(cardWrap);
+
+      const footer = el("div", "lesson-footer flashcard-footer");
+      const revealBtn = el("button", "primary-btn", "意味を見る");
+      revealBtn.type = "button";
+      footer.appendChild(revealBtn);
+      screen.appendChild(footer);
+
+      function reveal() {
+        if (revealed) return;
+        revealed = true;
+        meaningEl.classList.remove("hidden");
+        tapHint.classList.add("hidden");
+        clear(footer);
+
+        const dontKnowBtn = el("button", "flashcard-btn flashcard-btn--no", "❌ もう一度");
+        dontKnowBtn.type = "button";
+        const knowBtn = el("button", "flashcard-btn flashcard-btn--yes", "✅ 覚えた");
+        knowBtn.type = "button";
+
+        dontKnowBtn.addEventListener("click", () => answer(false));
+        knowBtn.addEventListener("click", () => answer(true));
+
+        footer.appendChild(dontKnowBtn);
+        footer.appendChild(knowBtn);
+      }
+
+      function answer(knew) {
+        AppState.reviewFlashcard(queue[index].key, knew);
+        AppState.addXp(2);
+        reviewedCount++;
+        index++;
+        if (index >= queue.length) {
+          commitSessionTime();
+          renderFlashcardSummary(deck, reviewedCount);
+        } else {
+          renderCardScreen();
+        }
+      }
+
+      card.addEventListener("click", reveal);
+      revealBtn.addEventListener("click", reveal);
+
+      appRoot.appendChild(screen);
+    }
+
+    renderCardScreen();
+  }
+
+  function renderFlashcardSummary(deck, reviewedCount) {
+    clear(appRoot);
+    const screen = el("div", "screen screen--summary");
+    const card = el("div", "summary-card");
+    card.appendChild(el("div", "summary-emoji", "🎴"));
+    card.appendChild(el("h1", "summary-title", "お疲れさまでした!"));
+    card.appendChild(el("p", "summary-sub", `${deck.label} を ${reviewedCount}語 復習しました`));
+
+    const continueBtn = el("button", "primary-btn", "単語帳に戻る");
+    continueBtn.type = "button";
+    continueBtn.addEventListener("click", renderFlashcardHome);
+    card.appendChild(continueBtn);
 
     screen.appendChild(card);
     appRoot.appendChild(screen);

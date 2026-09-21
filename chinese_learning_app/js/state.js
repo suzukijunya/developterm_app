@@ -23,8 +23,13 @@ function defaultState() {
     studyDates: [], // 直近の学習日('YYYY-MM-DD')。連続学習カレンダー表示に使う
     mistakes: {}, // { [exerciseKey]: { wrongCount: number, correctStreak: number, lastSeen: string } }
     totalStudySeconds: 0, // 実際に学習画面を開いていた累計秒数(ロードマップの目安時間に使う)
+    flashcards: {}, // { [deckId#wordIndex]: { box: 1-5, dueDate: string, mastered: bool } } 単語カード(Leitner式)
   };
 }
+
+// 単語カードの復習間隔(Leitner式)。インデックス=box番号(1〜5)、値=次回復習までの日数
+const FLASHCARD_BOX_INTERVAL_DAYS = [0, 0, 1, 3, 7, 14];
+const FLASHCARD_MAX_BOX = 5;
 
 const AppState = (() => {
   let state = load();
@@ -166,6 +171,28 @@ const AppState = (() => {
     return Object.keys(state.mistakes).length;
   }
 
+  function getFlashcardEntry(key) {
+    return state.flashcards[key] || { box: 1, dueDate: null, mastered: false };
+  }
+
+  // knew=true なら box を1つ進める(最大5=マスター)、false なら box1に戻す
+  function reviewFlashcard(key, knew) {
+    const entry = state.flashcards[key] ? { ...state.flashcards[key] } : { box: 1 };
+    if (knew) {
+      entry.box = Math.min(FLASHCARD_MAX_BOX, entry.box + 1);
+      entry.mastered = entry.box >= FLASHCARD_MAX_BOX;
+    } else {
+      entry.box = 1;
+      entry.mastered = false;
+    }
+    const days = FLASHCARD_BOX_INTERVAL_DAYS[entry.box] ?? 14;
+    const due = new Date();
+    due.setDate(due.getDate() + days);
+    entry.dueDate = due.toISOString().slice(0, 10);
+    state.flashcards[key] = entry;
+    save();
+  }
+
   function addStudySeconds(sec) {
     if (!sec || sec <= 0) return;
     // 離席・非アクティブタブなどで異常値が入らないよう1レッスン分の上限を設ける
@@ -189,6 +216,8 @@ const AppState = (() => {
     getWeakKeys,
     weakCount,
     addStudySeconds,
+    getFlashcardEntry,
+    reviewFlashcard,
     MAX_HEARTS,
     DAILY_GOAL_XP,
   };
