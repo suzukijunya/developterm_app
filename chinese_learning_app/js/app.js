@@ -957,6 +957,7 @@
     const total = lesson.exercises.length;
     let currentCheck = null;
     let currentPlayRecording = null;
+    let currentReveal = null;
     let answered = false;
 
     // 実際に画面を開いていた時間を記録し、ロードマップの学習時間の目安に使う
@@ -998,13 +999,14 @@
       const body = el("div", "lesson-body");
       answered = false;
 
-      const { element, check, playRecording } = Exercises.render(exercise, {
+      const { element, check, playRecording, reveal } = Exercises.render(exercise, {
         onChange: (canCheck) => {
           checkBtn.disabled = !canCheck;
         },
       });
       currentCheck = check;
       currentPlayRecording = playRecording || null;
+      currentReveal = reveal || null;
       body.appendChild(element);
       screen.appendChild(body);
 
@@ -1041,6 +1043,7 @@
       const result = currentCheck();
       answered = true;
       feedback.classList.remove("hidden");
+      if (currentReveal) currentReveal();
 
       const wasWrong = exercise.type === "speaking" ? result.bonus === false : !result.correct;
       AppState.recordAnswer(keys[index], wasWrong);

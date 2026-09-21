@@ -16,6 +16,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "你好",
+            pinyin: "nǐ hǎo",
             prompt: "今聞こえた言葉の意味はどれ?",
             choices: [
               { text: "こんにちは", correct: true },
@@ -44,6 +45,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "再见",
+            pinyin: "zàijiàn",
             prompt: "今聞こえた言葉の意味はどれ?",
             choices: [
               { text: "さようなら", correct: true },
@@ -77,6 +79,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "我叫田中",
+            pinyin: "wǒ jiào Tiánzhōng",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "私は田中といいます", correct: true },
@@ -135,6 +138,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "你叫什么名字",
+            pinyin: "nǐ jiào shénme míngzi",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "あなたの名前は何ですか", correct: true },
@@ -180,6 +184,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "我很好",
+            pinyin: "wǒ hěn hǎo",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "私は元気です", correct: true },
@@ -204,6 +209,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "三",
+            pinyin: "sān",
             prompt: "今聞こえた数字はどれ?",
             choices: [
               { text: "3", correct: true },
@@ -238,6 +244,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "九",
+            pinyin: "jiǔ",
             prompt: "今聞こえた数字はどれ?",
             choices: [
               { text: "9", correct: true },
@@ -261,6 +268,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "你多大了",
+            pinyin: "nǐ duō dà le",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "あなたは何歳ですか", correct: true },
@@ -306,6 +314,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "二十八",
+            pinyin: "èrshíbā",
             prompt: "今聞こえた数字はどれ?",
             choices: [
               { text: "28", correct: true },
@@ -322,6 +331,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "现在几点",
+            pinyin: "xiànzài jǐ diǎn",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "今何時ですか", correct: true },
@@ -388,6 +398,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "爸爸",
+            pinyin: "bàba",
             prompt: "今聞こえた言葉の意味はどれ?",
             choices: [
               { text: "お父さん", correct: true },
@@ -422,6 +433,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "姐姐",
+            pinyin: "jiějie",
             prompt: "今聞こえた言葉の意味はどれ?",
             choices: [
               { text: "お姉さん", correct: true },
@@ -445,6 +457,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "你家有几口人",
+            pinyin: "nǐ jiā yǒu jǐ kǒu rén",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "あなたの家族は何人ですか", correct: true },
@@ -490,6 +503,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "这是我的妈妈",
+            pinyin: "zhè shì wǒ de māma",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "これは私の母です", correct: true },
@@ -506,6 +520,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "这是我的朋友",
+            pinyin: "zhè shì wǒ de péngyou",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "これは私の友達です", correct: true },
@@ -572,6 +587,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "我想吃米饭",
+            pinyin: "wǒ xiǎng chī mǐfàn",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "私はご飯が食べたいです", correct: true },
@@ -617,6 +633,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "你喜欢吃什么",
+            pinyin: "nǐ xǐhuan chī shénme",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "何を食べるのが好きですか", correct: true },
@@ -633,6 +650,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "这个多少钱",
+            pinyin: "zhège duōshao qián",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "これはいくらですか", correct: true },
@@ -691,6 +709,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "地铁站在哪儿",
+            pinyin: "dìtiě zhàn zài nǎr",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "地下鉄の駅はどこですか", correct: true },
@@ -736,6 +755,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "往右转",
+            pinyin: "wǎng yòu zhuǎn",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "右に曲がる", correct: true },
@@ -760,6 +780,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "你做什么工作",
+            pinyin: "nǐ zuò shénme gōngzuò",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "お仕事は何ですか", correct: true },
@@ -805,6 +826,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "请多关照",
+            pinyin: "qǐng duō guānzhào",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "どうぞよろしくお願いします", correct: true },
@@ -821,6 +843,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "很荣幸认识您",
+            pinyin: "hěn róngxìng rènshi nín",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "お会いできて光栄です", correct: true },
@@ -879,6 +902,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "明天你有空吗",
+            pinyin: "míngtiān nǐ yǒu kòng ma",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "明日お時間ありますか", correct: true },
@@ -924,6 +948,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "我们改天再约",
+            pinyin: "wǒmen gǎitiān zài yuē",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "また日を改めて約束しましょう", correct: true },
@@ -948,6 +973,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "喂,请问王经理在吗",
+            pinyin: "wéi, qǐngwèn Wáng jīnglǐ zài ma",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "もしもし、王マネージャーはいらっしゃいますか", correct: true },
@@ -993,6 +1019,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "电话占线",
+            pinyin: "diànhuà zhànxiàn",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "電話は話し中です", correct: true },
@@ -1009,6 +1036,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "他现在不在",
+            pinyin: "tā xiànzài bú zài",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "彼は今席を外しています", correct: true },
@@ -1067,6 +1095,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "谢谢您的邮件",
+            pinyin: "xièxie nín de yóujiàn",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "メールをありがとうございます", correct: true },
@@ -1112,6 +1141,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "如有问题请随时联系我",
+            pinyin: "rú yǒu wèntí qǐng suíshí liánxì wǒ",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "何か問題があればいつでもご連絡ください", correct: true },
@@ -1136,6 +1166,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "我们开始吧",
+            pinyin: "wǒmen kāishǐ ba",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "それでは始めましょう", correct: true },
@@ -1181,6 +1212,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "会议到这里结束",
+            pinyin: "huìyì dào zhèlǐ jiéshù",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "会議はここまでとします", correct: true },
@@ -1197,6 +1229,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "我认为这个方案不错",
+            pinyin: "wǒ rènwéi zhège fāng'àn búcuò",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "この案は良いと思います", correct: true },
@@ -1255,6 +1288,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "价格可以再商量吗",
+            pinyin: "jiàgé kěyǐ zài shāngliang ma",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "価格はもう少し相談できますか", correct: true },
@@ -1300,6 +1334,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "我们合作愉快",
+            pinyin: "wǒmen hézuò yúkuài",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "良いお取引ができました", correct: true },
@@ -1324,6 +1359,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "我要办理入住",
+            pinyin: "wǒ yào bànlǐ rùzhù",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "チェックインをお願いします", correct: true },
@@ -1369,6 +1405,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "退房时间是几点",
+            pinyin: "tuìfáng shíjiān shì jǐ diǎn",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "チェックアウトの時間は何時ですか", correct: true },
@@ -1385,6 +1422,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "今天我请客",
+            pinyin: "jīntiān wǒ qǐngkè",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "今日は私がおごります", correct: true },
@@ -1443,6 +1481,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "谢谢您的款待",
+            pinyin: "xièxie nín de kuǎndài",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "おもてなしありがとうございました", correct: true },
@@ -1488,6 +1527,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "一路平安",
+            pinyin: "yílù píng'ān",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "道中お気をつけて", correct: true },
@@ -1512,6 +1552,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "今天我想跟大家介绍一下新产品",
+            pinyin: "jīntiān wǒ xiǎng gēn dàjiā jièshào yíxià xīn chǎnpǐn",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "今日は新商品についてご紹介します", correct: true },
@@ -1557,6 +1598,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "接下来我们看下一页",
+            pinyin: "jiē xiàlái wǒmen kàn xià yí yè",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "続いて次のページを見てみましょう", correct: true },
@@ -1573,6 +1615,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "与去年相比增长了百分之二十",
+            pinyin: "yǔ qùnián xiāngbǐ zēngzhǎng le bǎi fēn zhī èrshí",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "去年と比べて20%増加しました", correct: true },
@@ -1631,6 +1674,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "大家有什么问题吗",
+            pinyin: "dàjiā yǒu shénme wèntí ma",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "皆さん何か質問はありますか", correct: true },
@@ -1676,6 +1720,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "这个问题我需要确认一下",
+            pinyin: "zhège wèntí wǒ xūyào quèrèn yíxià",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "この質問は確認させてください", correct: true },
@@ -1700,6 +1745,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "非常抱歉给您带来不便",
+            pinyin: "fēicháng bàoqiàn gěi nín dàilái búbiàn",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "ご不便をおかけして大変申し訳ございません", correct: true },
@@ -1745,6 +1791,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "给您添麻烦了",
+            pinyin: "gěi nín tiān máfan le",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "ご面倒をおかけしました", correct: true },
@@ -1761,6 +1808,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "产品出现了质量问题",
+            pinyin: "chǎnpǐn chūxiàn le zhìliàng wèntí",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "製品に品質の問題が発生しました", correct: true },
@@ -1819,6 +1867,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "我们可以退款",
+            pinyin: "wǒmen kěyǐ tuìkuǎn",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "返金することができます", correct: true },
@@ -1864,6 +1913,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "以后一定会改进",
+            pinyin: "yǐhòu yídìng huì gǎijìn",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "今後は必ず改善いたします", correct: true },
@@ -1888,6 +1938,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "请做一下自我介绍",
+            pinyin: "qǐng zuò yíxià zìwǒ jièshào",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "自己紹介をしてください", correct: true },
@@ -1933,6 +1984,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "您有什么想问我们的吗",
+            pinyin: "nín yǒu shénme xiǎng wèn wǒmen de ma",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "私たちに何か質問はありますか", correct: true },
@@ -1949,6 +2001,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "我们部门有十个人",
+            pinyin: "wǒmen bùmén yǒu shí ge rén",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "私たちの部署は10人です", correct: true },
@@ -2007,6 +2060,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "我想升职",
+            pinyin: "wǒ xiǎng shēngzhí",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "昇進したいです", correct: true },
@@ -2052,6 +2106,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "祝贺你升职",
+            pinyin: "zhùhè nǐ shēngzhí",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "昇進おめでとうございます", correct: true },
@@ -2076,6 +2131,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "请在这里签字",
+            pinyin: "qǐng zài zhèlǐ qiānzì",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "こちらにご署名ください", correct: true },
@@ -2121,6 +2177,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "这份合同可以修改吗",
+            pinyin: "zhè fèn hétong kěyǐ xiūgǎi ma",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "この契約書は修正できますか", correct: true },
@@ -2137,6 +2194,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "付款方式是什么",
+            pinyin: "fùkuǎn fāngshì shì shénme",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "お支払い方法は何ですか", correct: true },
@@ -2195,6 +2253,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "麻烦您确认一下",
+            pinyin: "máfan nín quèrèn yíxià",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "ご確認をお願いいたします", correct: true },
@@ -2240,6 +2299,7 @@ const UNITS = [
           {
             type: "listening_choice",
             audioText: "感谢您一直以来的支持",
+            pinyin: "gǎnxiè nín yìzhí yǐlái de zhīchí",
             prompt: "今聞こえた文の意味はどれ?",
             choices: [
               { text: "いつもご支援いただきありがとうございます", correct: true },

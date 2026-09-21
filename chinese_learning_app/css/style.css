@@ -15,6 +15,8 @@
   --locked: #cfcfcf;
   --radius: 16px;
   --max-width: 520px;
+  --shadow-neutral: rgba(0, 0, 0, 0.12);
+  --press-offset: 3px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -25,7 +27,14 @@
     --text-light: #a3a3a3;
     --border: #2b3940;
     --locked: #3a4a52;
+    --shadow-neutral: rgba(0, 0, 0, 0.45);
   }
+}
+
+/* ボタン/カード共通の凹凸(浮き上がり⇄押し込み)。box-shadowで「凸=オフ」
+   「凹(押した瞬間・選択中)=オン」を統一的に表現する */
+button {
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
 }
 
 * {
@@ -107,6 +116,12 @@ button {
   color: var(--text-light);
   cursor: pointer;
   padding: 4px 8px;
+  border-radius: 8px;
+}
+
+.icon-btn:active {
+  background: var(--shadow-neutral);
+  transform: scale(0.92);
 }
 
 /* ---------- レベルバナー / ロードマップ ---------- */
@@ -123,6 +138,12 @@ button {
   cursor: pointer;
   text-align: left;
   color: #fff;
+  box-shadow: 0 4px 0 #0d7cb8;
+}
+
+.level-banner:active {
+  box-shadow: 0 1px 0 #0d7cb8;
+  transform: translateY(3px);
 }
 
 .level-banner-current {
@@ -437,6 +458,12 @@ button {
   padding: 14px 16px;
   cursor: pointer;
   text-align: left;
+  box-shadow: 0 3px 0 var(--purple);
+}
+
+.weak-review-card:active {
+  box-shadow: 0 0 0 var(--purple);
+  transform: translateY(3px);
 }
 
 .weak-review-title {
@@ -589,6 +616,11 @@ button {
   color: #7a5900;
 }
 
+.lesson-node--completed .lesson-circle:active {
+  box-shadow: 0 2px 0 #d1a300;
+  transform: translateY(3px);
+}
+
 .lesson-node--locked .lesson-circle {
   background: var(--locked);
   box-shadow: 0 5px 0 #b5b5b5;
@@ -644,10 +676,16 @@ button {
   white-space: nowrap;
   color: var(--text-light);
   cursor: pointer;
+  box-shadow: inset 0 0 0 transparent;
+}
+
+.nav-tab:active {
+  box-shadow: inset 0 3px 6px var(--shadow-neutral);
 }
 
 .nav-tab--active {
   color: var(--green-dark);
+  box-shadow: inset 0 3px 6px var(--shadow-neutral);
 }
 
 /* ---------- 単語帳(フラッシュカード) ---------- */
@@ -680,6 +718,12 @@ button {
   padding: 16px;
   text-align: left;
   cursor: pointer;
+  box-shadow: 0 3px 0 var(--shadow-neutral);
+}
+
+.deck-card:active {
+  box-shadow: 0 0 0 var(--shadow-neutral);
+  transform: translateY(3px);
 }
 
 .deck-card-top {
@@ -803,9 +847,19 @@ button {
   box-shadow: 0 4px 0 #c53d3d;
 }
 
+.flashcard-btn--no:active {
+  box-shadow: 0 1px 0 #c53d3d;
+  transform: translateY(3px);
+}
+
 .flashcard-btn--yes {
   background: var(--green);
   box-shadow: 0 4px 0 var(--green-dark);
+}
+
+.flashcard-btn--yes:active {
+  box-shadow: 0 1px 0 var(--green-dark);
+  transform: translateY(3px);
 }
 
 /* ---------- 今日のニュース ---------- */
@@ -823,6 +877,12 @@ button {
   padding: 16px;
   text-align: left;
   cursor: pointer;
+  box-shadow: 0 3px 0 var(--shadow-neutral);
+}
+
+.news-card:active {
+  box-shadow: 0 0 0 var(--shadow-neutral);
+  transform: translateY(3px);
 }
 
 .news-card--read {
@@ -908,6 +968,12 @@ button {
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
+  box-shadow: 0 2px 0 var(--shadow-neutral);
+}
+
+.article-toggle-btn:active {
+  box-shadow: inset 0 2px 4px var(--shadow-neutral);
+  transform: translateY(2px);
 }
 
 .article-sentence-ja {
@@ -1018,6 +1084,12 @@ button {
   font-weight: 800;
   font-size: 14px;
   cursor: pointer;
+  box-shadow: 0 3px 0 var(--shadow-neutral);
+}
+
+.secondary-btn:active {
+  box-shadow: 0 0 0 var(--shadow-neutral);
+  transform: translateY(3px);
 }
 
 /* ---------- レッスン画面 ---------- */
@@ -1136,6 +1208,12 @@ button {
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
+  box-shadow: 0 2px 0 var(--shadow-neutral);
+}
+
+.pinyin-toggle:active {
+  box-shadow: inset 0 2px 4px var(--shadow-neutral);
+  transform: translateY(2px);
 }
 
 .passage-pinyin {
@@ -1156,17 +1234,28 @@ button {
   font-size: 18px;
   cursor: pointer;
   flex-shrink: 0;
+  box-shadow: 0 3px 0 #0d7cb8;
+}
+
+.play-btn:active {
+  box-shadow: 0 0 0 #0d7cb8;
+  transform: translateY(3px);
 }
 
 .play-btn--big {
   width: 72px;
   height: 72px;
   font-size: 30px;
+  box-shadow: 0 4px 0 #0d7cb8;
+}
+
+.play-btn--big:active {
+  box-shadow: 0 1px 0 #0d7cb8;
+  transform: translateY(3px);
 }
 
 .play-btn--active {
   filter: brightness(1.15);
-  transform: scale(0.96);
 }
 
 .listening-play-area {
@@ -1180,6 +1269,27 @@ button {
 .listening-hint {
   color: var(--text-light);
   font-size: 13px;
+}
+
+.listening-answer-reveal {
+  text-align: center;
+  background: var(--card-bg);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.listening-answer-ruby {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 2.4;
+}
+
+.listening-answer-ruby rt {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-light);
 }
 
 /* 選択肢 */
@@ -1199,11 +1309,19 @@ button {
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
+  box-shadow: 0 3px 0 var(--shadow-neutral);
+}
+
+.choice-btn:active {
+  box-shadow: inset 0 2px 5px var(--shadow-neutral);
+  transform: translateY(3px);
 }
 
 .choice-btn--selected {
   border-color: var(--blue);
   background: color-mix(in srgb, var(--blue) 12%, var(--card-bg));
+  box-shadow: inset 0 2px 5px color-mix(in srgb, var(--blue) 30%, transparent);
+  transform: translateY(3px);
 }
 
 /* テキスト入力 */
@@ -1241,6 +1359,11 @@ button {
   font-size: 34px;
   cursor: pointer;
   box-shadow: 0 5px 0 #c53d3d;
+}
+
+.mic-btn:active:not(:disabled) {
+  box-shadow: 0 2px 0 #c53d3d;
+  transform: translateY(3px);
 }
 
 .mic-btn--recording {
@@ -1290,10 +1413,17 @@ button {
   color: #fff;
   font-weight: 800;
   cursor: pointer;
+  box-shadow: 0 3px 0 var(--green-dark);
+}
+
+.self-rate-btn:active:not(:disabled) {
+  box-shadow: 0 0 0 var(--green-dark);
+  transform: translateY(3px);
 }
 
 .self-rate-btn:disabled {
   opacity: 0.6;
+  box-shadow: none;
 }
 
 /* フィードバック */
@@ -1350,6 +1480,11 @@ button {
   cursor: pointer;
 }
 
+.primary-btn:not(:disabled):active {
+  box-shadow: 0 1px 0 var(--green-dark);
+  transform: translateY(3px);
+}
+
 .primary-btn:disabled {
   cursor: not-allowed;
 }
@@ -1362,6 +1497,11 @@ button {
 .primary-btn--wrong {
   background: var(--red) !important;
   box-shadow: 0 4px 0 #c53d3d !important;
+}
+
+.primary-btn--wrong:active {
+  box-shadow: 0 1px 0 #c53d3d !important;
+  transform: translateY(3px);
 }
 
 /* ---------- サマリー / 失敗画面 ---------- */

@@ -11,6 +11,10 @@ const Exercises = (() => {
     return node;
   }
 
+  function clear(node) {
+    while (node.firstChild) node.removeChild(node.firstChild);
+  }
+
   function playButton(text, { big = false } = {}) {
     const btn = el("button", "play-btn" + (big ? " play-btn--big" : ""));
     btn.type = "button";
@@ -23,6 +27,17 @@ const Exercises = (() => {
     return btn;
   }
 
+  // ピンインをルビ(ふりがな)として中国語の上に表示する
+  function rubyText(hanzi, pinyin, className) {
+    const ruby = document.createElement("ruby");
+    if (className) ruby.className = className;
+    ruby.appendChild(document.createTextNode(hanzi));
+    const rt = document.createElement("rt");
+    rt.textContent = pinyin;
+    ruby.appendChild(rt);
+    return ruby;
+  }
+
   // ---------- リスニング: 音声を聞いて選択肢から選ぶ ----------
   function renderListeningChoice(exercise, { onChange }) {
     const wrap = el("div", "exercise exercise--listening");
@@ -33,6 +48,10 @@ const Exercises = (() => {
     playArea.appendChild(playButton(exercise.audioText, { big: true }));
     playArea.appendChild(el("div", "listening-hint", "タップして音声を聞いてください"));
     wrap.appendChild(playArea);
+
+    // 回答確認後に中国語の答え文をルビ(ピンイン)付きで表示するエリア
+    const answerReveal = el("div", "listening-answer-reveal hidden");
+    wrap.appendChild(answerReveal);
 
     const choicesWrap = el("div", "choices");
     let selected = null;
@@ -61,6 +80,11 @@ const Exercises = (() => {
           correctText: correct.text,
           userText: selected ? selected.text : "(未回答)",
         };
+      },
+      reveal() {
+        answerReveal.classList.remove("hidden");
+        clear(answerReveal);
+        answerReveal.appendChild(rubyText(exercise.audioText, exercise.pinyin, "listening-answer-ruby"));
       },
     };
   }
