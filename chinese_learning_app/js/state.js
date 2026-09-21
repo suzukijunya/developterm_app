@@ -24,6 +24,7 @@ function defaultState() {
     mistakes: {}, // { [exerciseKey]: { wrongCount: number, correctStreak: number, lastSeen: string } }
     totalStudySeconds: 0, // 実際に学習画面を開いていた累計秒数(ロードマップの目安時間に使う)
     flashcards: {}, // { [deckId#wordIndex]: { box: 1-5, dueDate: string, mastered: bool } } 単語カード(Leitner式)
+    readArticles: {}, // { [articleId]: { readDate: string } } 今日のニュースで読み終えた記事
   };
 }
 
@@ -193,6 +194,16 @@ const AppState = (() => {
     save();
   }
 
+  function isArticleRead(id) {
+    return !!state.readArticles[id];
+  }
+
+  function markArticleRead(id) {
+    if (state.readArticles[id]) return;
+    state.readArticles[id] = { readDate: todayStr() };
+    save();
+  }
+
   function addStudySeconds(sec) {
     if (!sec || sec <= 0) return;
     // 離席・非アクティブタブなどで異常値が入らないよう1レッスン分の上限を設ける
@@ -218,6 +229,8 @@ const AppState = (() => {
     addStudySeconds,
     getFlashcardEntry,
     reviewFlashcard,
+    isArticleRead,
+    markArticleRead,
     MAX_HEARTS,
     DAILY_GOAL_XP,
   };

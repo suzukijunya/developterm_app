@@ -114,6 +114,10 @@
         if (AppState.getFlashcardEntry(flashcardKey(deck.id, i)).mastered) set.add(w.hanzi);
       });
     });
+    NEWS_ARTICLES.forEach((article) => {
+      if (!AppState.isArticleRead(article.id)) return;
+      article.vocab.forEach((w) => set.add(w.hanzi));
+    });
     return set.size;
   }
 
@@ -123,6 +127,7 @@
       lesson.exercises.forEach((ex) => extractVocabTerms(ex).forEach((t) => set.add(t)));
     });
     VOCAB_DECKS.forEach((deck) => deck.words.forEach((w) => set.add(w.hanzi)));
+    NEWS_ARTICLES.forEach((article) => article.vocab.forEach((w) => set.add(w.hanzi)));
     return set.size;
   }
 
@@ -431,6 +436,7 @@
     const nav = el("div", "bottom-nav");
     const tabs = [
       { id: "home", label: "🏠 ホーム", onClick: renderHome },
+      { id: "news", label: "📰 ニュース", onClick: renderNewsHome },
       { id: "flashcards", label: "🎴 単語帳", onClick: renderFlashcardHome },
       { id: "profile", label: "👤 マイページ", onClick: renderProfile },
     ];
@@ -724,6 +730,138 @@
     card.appendChild(continueBtn);
 
     screen.appendChild(card);
+    appRoot.appendChild(screen);
+  }
+
+  // ---------------- 今日のニュース ----------------
+  // 静的サイトのためライブ配信のニュースを直接取得することはできず、また
+  // 有料記事の無断転載も避けたいので、実在のビジネストレンドを題材に学習用
+  // に書き下ろしたオリジナル記事(news.js)を日付でローテーション表示する
+  function getTodaysArticles() {
+    const dayIndex = Math.floor(Date.now() / 86400000);
+    const n = NEWS_ARTICLES.length;
+    const startIdx = (dayIndex * 3) % n;
+    const picks = [];
+    for (let i = 0; i < 3; i++) {
+      picks.push(NEWS_ARTICLES[(startIdx + i) % n]);
+    }
+    return picks;
+  }
+
+  function renderNewsHome() {
+    clear(appRoot);
+    const screen = el("div", "screen screen--news");
+    renderTopBar(screen);
+
+    const intro = el("div", "flashcard-intro");
+    intro.appendChild(el("h1", "flashcard-intro-title", "📰 今日のニュース"));
+    intro.appendChild(
+      el("p", "flashcard-intro-sub", "ビジネストレンドの記事を中国語→日本語で読みながら学習できます。毎日3本入れ替わります。")
+    );
+    screen.appendChild(intro);
+
+    const list = el("div", "news-list");
+    getTodaysArticles().forEach((article) => {
+      const read = AppState.isArticleRead(article.id);
+      const card = el("button", "news-card" + (read ? " news-card--read" : ""));
+      card.type = "button";
+      const top = el("div", "news-card-top");
+      top.appendChild(el("span", "news-card-category", article.category));
+      if (read) top.appendChild(el("span", "news-card-read-badge", "✅ 既読"));
+      card.appendChild(top);
+      card.appendChild(el("div", "news-card-title-zh", article.titleZh));
+      card.appendChild(el("div", "news-card-title-ja", article.titleJa));
+      card.addEventListener("click", () => renderArticleReader(article));
+      list.appendChild(card);
+    });
+    screen.appendChild(list);
+
+    screen.appendChild(renderBottomNav("news"));
+    appRoot.appendChild(screen);
+  }
+
+  function renderArticleReader(article) {
+    clear(appRoot);
+    const screen = el("div", "screen screen--article");
+
+    const startedAt = Date.now();
+    let timeCommitted = false;
+    function commitTime() {
+      if (timeCommitted) return;
+      timeCommitted = true;
+      AppState.addStudySeconds((Date.now() - startedAt) / 1000);
+    }
+
+    const header = el("div", "lesson-header");
+    const closeBtn = el("button", "icon-btn", "✕");
+    closeBtn.type = "button";
+    closeBtn.addEventListener("click", () => {
+      commitTime();
+      renderNewsHome();
+    });
+    header.appendChild(closeBtn);
+    header.appendChild(el("div", "news-card-category", article.category));
+    screen.appendChild(header);
+
+    const body = el("div", "article-body");
+    body.appendChild(el("h1", "article-title-zh", article.titleZh));
+    body.appendChild(el("div", "article-title-ja", article.titleJa));
+
+    article.sentences.forEach((s) => {
+      const row = el("div", "article-sentence");
+      const zhRow = el("div", "article-sentence-zh-row");
+      zhRow.appendChild(el("div", "article-sentence-zh", s.zh));
+      const playBtn = el("button", "play-btn", "🔊");
+      playBtn.type = "button";
+      playBtn.addEventListener("click", () => Speech.speak(s.zh).catch(() => {}));
+      zhRow.appendChild(playBtn);
+      row.appendChild(zhRow);
+
+      const jaText = el("div", "article-sentence-ja hidden", s.ja);
+      const toggleBtn = el("button", "article-toggle-btn", "日本語訳を見る");
+      toggleBtn.type = "button";
+      toggleBtn.addEventListener("click", () => {
+        const hiding = !jaText.classList.contains("hidden");
+        jaText.classList.toggle("hidden");
+        toggleBtn.textContent = hiding ? "日本語訳を見る" : "訳を隠す";
+      });
+      row.appendChild(toggleBtn);
+      row.appendChild(jaText);
+      body.appendChild(row);
+    });
+
+    const vocabSection = el("div", "article-vocab-section");
+    vocabSection.appendChild(el("div", "article-vocab-heading", "この記事のキーワード"));
+    const vocabList = el("div", "article-vocab-list");
+    article.vocab.forEach((w) => {
+      const chip = el("div", "article-vocab-chip");
+      chip.appendChild(el("span", "article-vocab-hanzi", w.hanzi));
+      chip.appendChild(el("span", "article-vocab-pinyin", w.pinyin));
+      chip.appendChild(el("span", "article-vocab-meaning", w.meaning));
+      vocabList.appendChild(chip);
+    });
+    vocabSection.appendChild(vocabList);
+    body.appendChild(vocabSection);
+
+    screen.appendChild(body);
+
+    const footer = el("div", "lesson-footer");
+    const alreadyRead = AppState.isArticleRead(article.id);
+    const doneBtn = el("button", "primary-btn", alreadyRead ? "読み終えた(既読)" : "読み終えた");
+    doneBtn.type = "button";
+    doneBtn.addEventListener("click", () => {
+      const wasNew = !AppState.isArticleRead(article.id);
+      AppState.markArticleRead(article.id);
+      if (wasNew) {
+        AppState.addXp(15);
+        AppState.markStudiedToday();
+      }
+      commitTime();
+      renderNewsHome();
+    });
+    footer.appendChild(doneBtn);
+    screen.appendChild(footer);
+
     appRoot.appendChild(screen);
   }
 

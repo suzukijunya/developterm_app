@@ -636,11 +636,12 @@ button {
 
 .nav-tab {
   flex: 1;
-  padding: 14px 0;
+  padding: 12px 2px;
   background: none;
   border: none;
   font-weight: 700;
-  font-size: 13px;
+  font-size: 11px;
+  white-space: nowrap;
   color: var(--text-light);
   cursor: pointer;
 }
@@ -805,6 +806,158 @@ button {
 .flashcard-btn--yes {
   background: var(--green);
   box-shadow: 0 4px 0 var(--green-dark);
+}
+
+/* ---------- 今日のニュース ---------- */
+.news-list {
+  padding: 12px 16px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.news-card {
+  background: var(--card-bg);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.news-card--read {
+  opacity: 0.7;
+}
+
+.news-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.news-card-category {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--blue);
+  background: color-mix(in srgb, var(--blue) 12%, var(--card-bg));
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+.news-card-read-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--green-dark);
+}
+
+.news-card-title-zh {
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.news-card-title-ja {
+  font-size: 13px;
+  color: var(--text-light);
+  margin-top: 4px;
+}
+
+.article-body {
+  flex: 1;
+  padding: 8px 20px 24px;
+  overflow-y: auto;
+}
+
+.article-title-zh {
+  font-size: 22px;
+  margin: 4px 0 2px;
+  line-height: 1.4;
+}
+
+.article-title-ja {
+  font-size: 14px;
+  color: var(--text-light);
+  margin-bottom: 20px;
+}
+
+.article-sentence {
+  border-bottom: 1px solid var(--border);
+  padding: 14px 0;
+}
+
+.article-sentence-zh-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.article-sentence-zh {
+  font-size: 16px;
+  line-height: 1.7;
+  flex: 1;
+}
+
+.article-toggle-btn {
+  margin-top: 8px;
+  background: none;
+  border: 1px dashed var(--blue);
+  color: var(--blue);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.article-sentence-ja {
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--text-light);
+  line-height: 1.6;
+}
+
+.article-vocab-section {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 2px solid var(--border);
+}
+
+.article-vocab-heading {
+  font-weight: 800;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.article-vocab-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.article-vocab-chip {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+
+.article-vocab-hanzi {
+  font-weight: 800;
+}
+
+.article-vocab-pinyin {
+  color: var(--text-light);
+  font-size: 12px;
+}
+
+.article-vocab-meaning {
+  color: var(--blue);
+  font-weight: 700;
 }
 
 /* ---------- プロフィール ---------- */
