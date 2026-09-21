@@ -188,6 +188,7 @@ const Exercises = (() => {
     let attempted = false;
     let matched = false;
     let recognizedText = "";
+    let recordedAudioUrl = null;
     const supported = Speech.isRecognitionSupported();
 
     if (!supported) {
@@ -211,6 +212,16 @@ const Exercises = (() => {
       micBtn.classList.add("mic-btn--recording");
       micStatus.textContent = "聞き取り中... 中国語で発音してください";
       resultBox.classList.add("hidden");
+
+      let recorder = null;
+      if (Speech.isRecordingSupported()) {
+        try {
+          recorder = await Speech.startRecording();
+        } catch (e) {
+          recorder = null; // 録音できなくても音声認識自体は続行する
+        }
+      }
+
       try {
         const alternatives = await Speech.recognizeOnce();
         recognizedText = alternatives[0] || "";
@@ -238,6 +249,17 @@ const Exercises = (() => {
       } finally {
         micBtn.disabled = false;
         micBtn.classList.remove("mic-btn--recording");
+        if (recorder) {
+          try {
+            const blob = await recorder.stop();
+            if (blob && blob.size > 0) {
+              if (recordedAudioUrl) URL.revokeObjectURL(recordedAudioUrl);
+              recordedAudioUrl = URL.createObjectURL(blob);
+            }
+          } catch (e) {
+            // 録音の保存に失敗しても学習フロー自体は継続する
+          }
+        }
       }
     });
 
@@ -250,6 +272,11 @@ const Exercises = (() => {
           correctText: exercise.hanzi + "(" + exercise.pinyin + ")",
           userText: recognizedText ? `あなたの発音:「${recognizedText}」` : "発音に挑戦しました",
         };
+      },
+      playRecording() {
+        if (!recordedAudioUrl) return;
+        const audio = new Audio(recordedAudioUrl);
+        audio.play().catch(() => {});
       },
     };
   }

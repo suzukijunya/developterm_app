@@ -38,6 +38,41 @@ const Speech = (() => {
     return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
   }
 
+  // マイクの使用許可を1回取得したら使い回し、毎回ブラウザの許可ダイアログが
+  // 出ないようにする(取得済みかつ有効なストリームがあれば再利用)
+  let cachedMicStream = null;
+  async function getMicStream() {
+    if (cachedMicStream && cachedMicStream.active) return cachedMicStream;
+    cachedMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    return cachedMicStream;
+  }
+
+  function isRecordingSupported() {
+    return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+  }
+
+  // 発音練習の録音。stop()を呼ぶと録音したBlobを返す(あとで再生するため)
+  async function startRecording() {
+    if (!isRecordingSupported()) throw new Error("no-recording");
+    const stream = await getMicStream();
+    const recorder = new MediaRecorder(stream);
+    const chunks = [];
+    recorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) chunks.push(e.data);
+    };
+    const stopped = new Promise((resolve) => {
+      recorder.onstop = () => resolve(new Blob(chunks, { type: recorder.mimeType || "audio/webm" }));
+    });
+    recorder.start();
+    return {
+      stop: async () => {
+        if (recorder.state !== "inactive") recorder.stop();
+        else return new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+        return stopped;
+      },
+    };
+  }
+
   function recognizeOnce({ timeout = 6000 } = {}) {
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!Recognition) return Promise.reject(new Error("no-stt"));
@@ -94,5 +129,12 @@ const Speech = (() => {
       .replace(/[^a-z]/g, ""); // スペース・数字・記号を除去
   }
 
-  return { speak, isRecognitionSupported, recognizeOnce, normalizePinyin };
+  return {
+    speak,
+    isRecognitionSupported,
+    recognizeOnce,
+    normalizePinyin,
+    isRecordingSupported,
+    startRecording,
+  };
 })();

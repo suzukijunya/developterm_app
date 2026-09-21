@@ -872,6 +872,104 @@
     runLesson(entry.lesson);
   }
 
+  // そのレッスンに出てくる単語・フレーズを重複なく抽出する(事前学習ステップ用)
+  function getLessonVocabPreview(lesson) {
+    const seen = new Set();
+    const items = [];
+    lesson.exercises.forEach((exercise) => {
+      let hanzi = null;
+      let pinyin = null;
+      let meaning = null;
+      switch (exercise.type) {
+        case "listening_choice":
+          hanzi = exercise.audioText;
+          meaning = (exercise.choices.find((c) => c.correct) || {}).text;
+          break;
+        case "translate_choice":
+          hanzi = exercise.hanzi;
+          pinyin = exercise.pinyin;
+          meaning = (exercise.choices.find((c) => c.correct) || {}).text;
+          break;
+        case "speaking":
+          hanzi = exercise.hanzi;
+          pinyin = exercise.pinyin;
+          meaning = exercise.meaning;
+          break;
+        case "writing_cn":
+          hanzi = exercise.answer;
+          pinyin = exercise.pinyinHint;
+          meaning = exercise.meaning;
+          break;
+        case "writing_pinyin":
+          hanzi = exercise.hanzi;
+          pinyin = exercise.answerToned || exercise.answer;
+          meaning = exercise.meaningHint;
+          break;
+        default:
+          return; // reading(長文)は単語プレビューの対象外
+      }
+      if (!hanzi || seen.has(hanzi)) return;
+      seen.add(hanzi);
+      items.push({ hanzi, pinyin, meaning });
+    });
+    return items;
+  }
+
+  function renderVocabPreviewScreen(lesson, items, index, onDone) {
+    clear(appRoot);
+    const screen = el("div", "screen screen--lesson");
+
+    const header = el("div", "lesson-header");
+    const closeBtn = el("button", "icon-btn", "✕");
+    closeBtn.type = "button";
+    closeBtn.addEventListener("click", () => {
+      if (confirm("レッスンを中断してホームに戻りますか?")) renderHome();
+    });
+    header.appendChild(closeBtn);
+    const progressOuter = el("div", "progress-outer");
+    const progressInner = el("div", "progress-inner");
+    progressInner.style.width = `${(index / items.length) * 100}%`;
+    progressOuter.appendChild(progressInner);
+    header.appendChild(progressOuter);
+    screen.appendChild(header);
+
+    const body = el("div", "lesson-body");
+    body.appendChild(el("div", "exercise-label", "📚 この課で学ぶ単語"));
+    body.appendChild(el("h2", "exercise-prompt", `覚えてから始めましょう (${index + 1}/${items.length})`));
+
+    const item = items[index];
+    const card = el("div", "hanzi-card");
+    const hanziRow = el("div", "hanzi-row");
+    hanziRow.appendChild(el("span", "hanzi-text", item.hanzi));
+    const playBtn = el("button", "play-btn");
+    playBtn.type = "button";
+    playBtn.innerHTML = "🔊";
+    playBtn.addEventListener("click", () => Speech.speak(item.hanzi).catch(() => {}));
+    hanziRow.appendChild(playBtn);
+    card.appendChild(hanziRow);
+    if (item.pinyin) card.appendChild(el("div", "pinyin-text", item.pinyin));
+    if (item.meaning) card.appendChild(el("div", "meaning-text meaning-text--big", item.meaning));
+    body.appendChild(card);
+    screen.appendChild(body);
+
+    setTimeout(() => Speech.speak(item.hanzi).catch(() => {}), 300);
+
+    const footer = el("div", "lesson-footer");
+    const nextBtn = el("button", "primary-btn", index + 1 < items.length ? "次へ" : "レッスンを始める");
+    nextBtn.type = "button";
+    nextBtn.addEventListener("click", () => {
+      if (index + 1 < items.length) {
+        renderVocabPreviewScreen(lesson, items, index + 1, onDone);
+      } else {
+        onDone();
+      }
+    });
+    footer.appendChild(nextBtn);
+    screen.appendChild(footer);
+
+    appRoot.appendChild(screen);
+  }
+
   function runLesson(lesson, options = {}) {
     const isReview = !!options.isReview;
     const keys = options.keys || lesson.exercises.map((_, i) => lesson.id + "#" + i);
@@ -880,6 +978,7 @@
     let sessionXp = 0;
     const total = lesson.exercises.length;
     let currentCheck = null;
+    let currentPlayRecording = null;
     let answered = false;
 
     // 実際に画面を開いていた時間を記録し、ロードマップの学習時間の目安に使う
@@ -921,12 +1020,13 @@
       const body = el("div", "lesson-body");
       answered = false;
 
-      const { element, check } = Exercises.render(exercise, {
+      const { element, check, playRecording } = Exercises.render(exercise, {
         onChange: (canCheck) => {
           checkBtn.disabled = !canCheck;
         },
       });
       currentCheck = check;
+      currentPlayRecording = playRecording || null;
       body.appendChild(element);
       screen.appendChild(body);
 
@@ -951,6 +1051,7 @@
           commitStudyTime();
           renderFailScreen(lesson, { keys, isReview });
         } else {
+          if (currentPlayRecording) currentPlayRecording();
           advance();
         }
       });
@@ -971,6 +1072,7 @@
         feedback.className = "feedback feedback--correct";
         const title = el("div", "feedback-title", result.bonus === false ? "👍 挑戦を記録しました!" : "✅ 正解!");
         feedback.appendChild(title);
+        feedback.appendChild(el("div", "feedback-sub", `正解: ${result.correctText}`));
         if (exercise.type === "speaking") {
           feedback.appendChild(el("div", "feedback-sub", result.userText));
         }
@@ -1017,6 +1119,13 @@
       }
     }
 
+    if (!isReview) {
+      const previewItems = getLessonVocabPreview(lesson);
+      if (previewItems.length > 0) {
+        renderVocabPreviewScreen(lesson, previewItems, 0, renderExerciseScreen);
+        return;
+      }
+    }
     renderExerciseScreen();
   }
 
