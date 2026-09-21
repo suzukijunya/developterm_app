@@ -22,6 +22,7 @@ function defaultState() {
     dailyXpDate: todayStr(),
     studyDates: [], // 直近の学習日('YYYY-MM-DD')。連続学習カレンダー表示に使う
     mistakes: {}, // { [exerciseKey]: { wrongCount: number, correctStreak: number, lastSeen: string } }
+    totalStudySeconds: 0, // 実際に学習画面を開いていた累計秒数(ロードマップの目安時間に使う)
   };
 }
 
@@ -165,6 +166,13 @@ const AppState = (() => {
     return Object.keys(state.mistakes).length;
   }
 
+  function addStudySeconds(sec) {
+    if (!sec || sec <= 0) return;
+    // 離席・非アクティブタブなどで異常値が入らないよう1レッスン分の上限を設ける
+    state.totalStudySeconds += Math.min(sec, 30 * 60);
+    save();
+  }
+
   return {
     get,
     reset,
@@ -180,6 +188,7 @@ const AppState = (() => {
     recordAnswer,
     getWeakKeys,
     weakCount,
+    addStudySeconds,
     MAX_HEARTS,
     DAILY_GOAL_XP,
   };

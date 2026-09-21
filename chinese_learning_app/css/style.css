@@ -254,6 +254,82 @@ button {
   font-weight: 800;
 }
 
+.roadmap-level-benchmark {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-light);
+  background: var(--bg);
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 8px;
+}
+
+.goal-distance-card {
+  margin: 16px 16px 4px;
+  background: color-mix(in srgb, var(--purple) 8%, var(--card-bg));
+  border: 2px solid var(--purple);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.goal-distance-title {
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--purple);
+  margin-bottom: 12px;
+}
+
+.goal-distance-block {
+  margin-bottom: 12px;
+}
+
+.goal-distance-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.goal-distance-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.goal-distance-value {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-light);
+}
+
+.goal-distance-bar-outer {
+  height: 8px;
+  background: var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.goal-distance-bar-inner {
+  height: 100%;
+  background: var(--purple);
+}
+
+.goal-distance-app-note {
+  font-size: 11px;
+  color: var(--text-light);
+  line-height: 1.5;
+  margin-top: 4px;
+}
+
+.goal-distance-disclaimer {
+  font-size: 10px;
+  color: var(--text-light);
+  line-height: 1.5;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+
 /* ---------- デイリーゴール / 連続学習カレンダー ---------- */
 .daily-goal {
   margin: 16px 16px 0;

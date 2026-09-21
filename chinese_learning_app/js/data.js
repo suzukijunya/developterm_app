@@ -1499,10 +1499,767 @@ const UNITS = [
       },
     ],
   },
+  {
+    id: "u9",
+    title: "プレゼンと報告",
+    description: "プレゼン導入・データ説明・質疑応答の表現",
+    icon: "📊",
+    lessons: [
+      {
+        id: "u9l1",
+        title: "プレゼンを始める",
+        exercises: [
+          {
+            type: "listening_choice",
+            audioText: "今天我想跟大家介绍一下新产品",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "今日は新商品についてご紹介します", correct: true },
+              { text: "今日は会議を終わります", correct: false },
+              { text: "今日は質問を受け付けます", correct: false },
+            ],
+          },
+          {
+            type: "translate_choice",
+            hanzi: "请看这张图表",
+            pinyin: "qǐng kàn zhè zhāng túbiǎo",
+            prompt: "この文の意味は?",
+            choices: [
+              { text: "こちらの図表をご覧ください", correct: true },
+              { text: "こちらの資料をお配りします", correct: false },
+              { text: "こちらの契約書にサインしてください", correct: false },
+            ],
+          },
+          {
+            type: "speaking",
+            hanzi: "首先,我先说明一下背景",
+            pinyin: "shǒuxiān, wǒ xiān shuōmíng yíxià bèijǐng",
+            meaning: "まず、背景についてご説明します",
+            prompt: "声に出して発音してみましょう",
+          },
+          {
+            type: "writing_cn",
+            meaning: "図表",
+            pinyinHint: "túbiǎo",
+            answer: "图表",
+          },
+          {
+            type: "reading",
+            passage: "大家好,今天我想跟大家介绍一下我们的新产品。首先,请看这张图表。",
+            passagePinyin: "Dàjiā hǎo, jīntiān wǒ xiǎng gēn dàjiā jièshào yíxià wǒmen de xīn chǎnpǐn. Shǒuxiān, qǐng kàn zhè zhāng túbiǎo.",
+            question: "今日紹介するのは何ですか?",
+            choices: [
+              { text: "新商品", correct: true },
+              { text: "新入社員", correct: false },
+              { text: "来年の予算", correct: false },
+            ],
+          },
+          {
+            type: "listening_choice",
+            audioText: "接下来我们看下一页",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "続いて次のページを見てみましょう", correct: true },
+              { text: "これでプレゼンを終わります", correct: false },
+              { text: "質問はありますか", correct: false },
+            ],
+          },
+        ],
+      },
+      {
+        id: "u9l2",
+        title: "データを説明する",
+        exercises: [
+          {
+            type: "listening_choice",
+            audioText: "与去年相比增长了百分之二十",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "去年と比べて20%増加しました", correct: true },
+              { text: "去年と比べて20%減少しました", correct: false },
+              { text: "去年と同じ水準です", correct: false },
+            ],
+          },
+          {
+            type: "translate_choice",
+            hanzi: "销售额比预期高",
+            pinyin: "xiāoshòu é bǐ yùqī gāo",
+            prompt: "この文の意味は?",
+            choices: [
+              { text: "売上は予想より高いです", correct: true },
+              { text: "売上は予想より低いです", correct: false },
+              { text: "売上はまだ発表されていません", correct: false },
+            ],
+          },
+          {
+            type: "speaking",
+            hanzi: "这是我们的市场占有率",
+            pinyin: "zhè shì wǒmen de shìchǎng zhànyǒulǜ",
+            meaning: "これが私たちの市場シェアです",
+            prompt: "声に出して発音してみましょう",
+          },
+          {
+            type: "writing_pinyin",
+            hanzi: "增长",
+            meaningHint: "増加する・伸びる",
+            answer: "zengzhang",
+            answerToned: "zēngzhǎng",
+          },
+          {
+            type: "reading",
+            passage: "今年的销售额与去年相比增长了百分之二十,比我们预期的还要高。",
+            passagePinyin: "Jīnnián de xiāoshòu é yǔ qùnián xiāngbǐ zēngzhǎng le bǎi fēn zhī èrshí, bǐ wǒmen yùqī de hái yào gāo.",
+            question: "今年の売上はどうでしたか?",
+            choices: [
+              { text: "予想より20%増加した", correct: true },
+              { text: "予想通りだった", correct: false },
+              { text: "去年より減少した", correct: false },
+            ],
+          },
+          {
+            type: "writing_cn",
+            meaning: "市場シェア",
+            pinyinHint: "shìchǎng zhànyǒulǜ",
+            answer: "市场占有率",
+          },
+        ],
+      },
+      {
+        id: "u9l3",
+        title: "質疑応答",
+        exercises: [
+          {
+            type: "listening_choice",
+            audioText: "大家有什么问题吗",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "皆さん何か質問はありますか", correct: true },
+              { text: "皆さん賛成ですか", correct: false },
+              { text: "皆さん資料は届きましたか", correct: false },
+            ],
+          },
+          {
+            type: "translate_choice",
+            hanzi: "关于这一点我再补充一下",
+            pinyin: "guānyú zhè yìdiǎn wǒ zài bǔchōng yíxià",
+            prompt: "この文の意味は?",
+            choices: [
+              { text: "この点について補足させてください", correct: true },
+              { text: "この点についてはわかりません", correct: false },
+              { text: "この点は後日回答します", correct: false },
+            ],
+          },
+          {
+            type: "speaking",
+            hanzi: "谢谢大家的提问",
+            pinyin: "xièxie dàjiā de tíwèn",
+            meaning: "ご質問ありがとうございます",
+            prompt: "声に出して発音してみましょう",
+          },
+          {
+            type: "writing_cn",
+            meaning: "補足する",
+            pinyinHint: "bǔchōng",
+            answer: "补充",
+          },
+          {
+            type: "reading",
+            passage: "A: 请问这个产品什么时候上市? B: 关于这一点我再补充一下,预计下个月上市。",
+            passagePinyin: "A: Qǐngwèn zhège chǎnpǐn shénme shíhou shàngshì? B: Guānyú zhè yìdiǎn wǒ zài bǔchōng yíxià, yùjì xià ge yuè shàngshì.",
+            question: "商品はいつ発売される予定ですか?",
+            choices: [
+              { text: "来月", correct: true },
+              { text: "今月", correct: false },
+              { text: "来年", correct: false },
+            ],
+          },
+          {
+            type: "listening_choice",
+            audioText: "这个问题我需要确认一下",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "この質問は確認させてください", correct: true },
+              { text: "この質問には答えられません", correct: false },
+              { text: "この質問はもう回答しました", correct: false },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "u10",
+    title: "クレーム対応とトラブル",
+    description: "謝罪・問題説明・解決策の提示",
+    icon: "🛠️",
+    lessons: [
+      {
+        id: "u10l1",
+        title: "謝罪する",
+        exercises: [
+          {
+            type: "listening_choice",
+            audioText: "非常抱歉给您带来不便",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "ご不便をおかけして大変申し訳ございません", correct: true },
+              { text: "ご連絡ありがとうございます", correct: false },
+              { text: "少々お待ちください", correct: false },
+            ],
+          },
+          {
+            type: "translate_choice",
+            hanzi: "这是我们的失误",
+            pinyin: "zhè shì wǒmen de shīwù",
+            prompt: "この文の意味は?",
+            choices: [
+              { text: "これは私たちのミスです", correct: true },
+              { text: "これはお客様の勘違いです", correct: false },
+              { text: "これはよくあることです", correct: false },
+            ],
+          },
+          {
+            type: "speaking",
+            hanzi: "我们会尽快处理",
+            pinyin: "wǒmen huì jǐnkuài chǔlǐ",
+            meaning: "至急対応いたします",
+            prompt: "声に出して発音してみましょう",
+          },
+          {
+            type: "writing_cn",
+            meaning: "ミス・失策",
+            pinyinHint: "shīwù",
+            answer: "失误",
+          },
+          {
+            type: "reading",
+            passage: "非常抱歉给您带来不便,这是我们的失误,我们会尽快处理。",
+            passagePinyin: "Fēicháng bàoqiàn gěi nín dàilái búbiàn, zhè shì wǒmen de shīwù, wǒmen huì jǐnkuài chǔlǐ.",
+            question: "話し手はこの問題を誰の責任だと言っていますか?",
+            choices: [
+              { text: "自分たち(自社)", correct: true },
+              { text: "お客様", correct: false },
+              { text: "配送業者", correct: false },
+            ],
+          },
+          {
+            type: "listening_choice",
+            audioText: "给您添麻烦了",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "ご面倒をおかけしました", correct: true },
+              { text: "ありがとうございました", correct: false },
+              { text: "お待たせしました", correct: false },
+            ],
+          },
+        ],
+      },
+      {
+        id: "u10l2",
+        title: "問題を説明する",
+        exercises: [
+          {
+            type: "listening_choice",
+            audioText: "产品出现了质量问题",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "製品に品質の問題が発生しました", correct: true },
+              { text: "製品は問題なく届きました", correct: false },
+              { text: "製品の在庫がありません", correct: false },
+            ],
+          },
+          {
+            type: "translate_choice",
+            hanzi: "交货延迟了三天",
+            pinyin: "jiāohuò yánchí le sān tiān",
+            prompt: "この文の意味は?",
+            choices: [
+              { text: "納品が3日遅れました", correct: true },
+              { text: "納品が3日早まりました", correct: false },
+              { text: "納品は3日後の予定です", correct: false },
+            ],
+          },
+          {
+            type: "speaking",
+            hanzi: "我们需要更换零件",
+            pinyin: "wǒmen xūyào gēnghuàn língjiàn",
+            meaning: "部品を交換する必要があります",
+            prompt: "声に出して発音してみましょう",
+          },
+          {
+            type: "writing_pinyin",
+            hanzi: "延迟",
+            meaningHint: "遅延する",
+            answer: "yanchi",
+            answerToned: "yánchí",
+          },
+          {
+            type: "reading",
+            passage: "很抱歉,这次交货延迟了三天,原因是产品出现了质量问题,我们需要更换零件。",
+            passagePinyin: "Hěn bàoqiàn, zhè cì jiāohuò yánchí le sān tiān, yuányīn shì chǎnpǐn chūxiàn le zhìliàng wèntí, wǒmen xūyào gēnghuàn língjiàn.",
+            question: "納品が遅れた原因は何ですか?",
+            choices: [
+              { text: "品質問題で部品交換が必要になったから", correct: true },
+              { text: "注文数が多すぎたから", correct: false },
+              { text: "配送業者の休業", correct: false },
+            ],
+          },
+          {
+            type: "writing_cn",
+            meaning: "部品",
+            pinyinHint: "língjiàn",
+            answer: "零件",
+          },
+        ],
+      },
+      {
+        id: "u10l3",
+        title: "解決策を提示する",
+        exercises: [
+          {
+            type: "listening_choice",
+            audioText: "我们可以退款",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "返金することができます", correct: true },
+              { text: "返品はできません", correct: false },
+              { text: "交換は可能です", correct: false },
+            ],
+          },
+          {
+            type: "translate_choice",
+            hanzi: "我们会重新发货",
+            pinyin: "wǒmen huì chóngxīn fāhuò",
+            prompt: "この文の意味は?",
+            choices: [
+              { text: "改めて発送いたします", correct: true },
+              { text: "注文をキャンセルします", correct: false },
+              { text: "在庫を確認します", correct: false },
+            ],
+          },
+          {
+            type: "speaking",
+            hanzi: "请给我们一次机会",
+            pinyin: "qǐng gěi wǒmen yí cì jīhuì",
+            meaning: "もう一度機会をいただけますでしょうか",
+            prompt: "声に出して発音してみましょう",
+          },
+          {
+            type: "writing_cn",
+            meaning: "返金する",
+            pinyinHint: "tuìkuǎn",
+            answer: "退款",
+          },
+          {
+            type: "reading",
+            passage: "对于这次的问题,我们会重新发货,或者为您退款。请给我们一次机会,以后一定会改进。",
+            passagePinyin: "Duìyú zhè cì de wèntí, wǒmen huì chóngxīn fāhuò, huòzhě wèi nín tuìkuǎn. Qǐng gěi wǒmen yí cì jīhuì, yǐhòu yídìng huì gǎijìn.",
+            question: "会社が提示している解決策は?",
+            choices: [
+              { text: "再発送または返金", correct: true },
+              { text: "値引きのみ", correct: false },
+              { text: "何もしない", correct: false },
+            ],
+          },
+          {
+            type: "listening_choice",
+            audioText: "以后一定会改进",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "今後は必ず改善いたします", correct: true },
+              { text: "今後もこのままです", correct: false },
+              { text: "改善する予定はありません", correct: false },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "u11",
+    title: "人事と採用",
+    description: "面接・職場の人間関係・キャリアの表現",
+    icon: "🧑‍💼",
+    lessons: [
+      {
+        id: "u11l1",
+        title: "面接を受ける",
+        exercises: [
+          {
+            type: "listening_choice",
+            audioText: "请做一下自我介绍",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "自己紹介をしてください", correct: true },
+              { text: "名刺をください", correct: false },
+              { text: "履歴書を提出してください", correct: false },
+            ],
+          },
+          {
+            type: "translate_choice",
+            hanzi: "您的优点是什么",
+            pinyin: "nín de yōudiǎn shì shénme",
+            prompt: "この文の意味は?",
+            choices: [
+              { text: "あなたの長所は何ですか", correct: true },
+              { text: "あなたの欠点は何ですか", correct: false },
+              { text: "あなたの経験は何ですか", correct: false },
+            ],
+          },
+          {
+            type: "speaking",
+            hanzi: "为什么想加入我们公司",
+            pinyin: "wèishénme xiǎng jiārù wǒmen gōngsī",
+            meaning: "なぜ弊社に入社したいのですか",
+            prompt: "声に出して発音してみましょう",
+          },
+          {
+            type: "writing_cn",
+            meaning: "長所",
+            pinyinHint: "yōudiǎn",
+            answer: "优点",
+          },
+          {
+            type: "reading",
+            passage: "请做一下自我介绍,并说说您的优点是什么,为什么想加入我们公司。",
+            passagePinyin: "Qǐng zuò yíxià zìwǒ jièshào, bìng shuōshuo nín de yōudiǎn shì shénme, wèishénme xiǎng jiārù wǒmen gōngsī.",
+            question: "この文章は何の場面ですか?",
+            choices: [
+              { text: "採用面接", correct: true },
+              { text: "顧客訪問", correct: false },
+              { text: "取引先との会議", correct: false },
+            ],
+          },
+          {
+            type: "listening_choice",
+            audioText: "您有什么想问我们的吗",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "私たちに何か質問はありますか", correct: true },
+              { text: "いつから働けますか", correct: false },
+              { text: "給料はいくら希望ですか", correct: false },
+            ],
+          },
+        ],
+      },
+      {
+        id: "u11l2",
+        title: "職場の人間関係",
+        exercises: [
+          {
+            type: "listening_choice",
+            audioText: "我们部门有十个人",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "私たちの部署は10人です", correct: true },
+              { text: "私たちの会社は10人です", correct: false },
+              { text: "会議には10人来ます", correct: false },
+            ],
+          },
+          {
+            type: "translate_choice",
+            hanzi: "我的上司很严格",
+            pinyin: "wǒ de shàngsi hěn yángé",
+            prompt: "この文の意味は?",
+            choices: [
+              { text: "私の上司はとても厳しいです", correct: true },
+              { text: "私の上司はとても優しいです", correct: false },
+              { text: "私には上司がいません", correct: false },
+            ],
+          },
+          {
+            type: "speaking",
+            hanzi: "同事之间关系很好",
+            pinyin: "tóngshì zhījiān guānxi hěn hǎo",
+            meaning: "同僚同士の関係は良好です",
+            prompt: "声に出して発音してみましょう",
+          },
+          {
+            type: "writing_pinyin",
+            hanzi: "上司",
+            meaningHint: "上司",
+            answer: "shangsi",
+            answerToned: "shàngsi",
+          },
+          {
+            type: "reading",
+            passage: "我们部门有十个人,我的上司很严格,不过同事之间关系很好,大家互相帮助。",
+            passagePinyin: "Wǒmen bùmén yǒu shí ge rén, wǒ de shàngsi hěn yángé, búguò tóngshì zhījiān guānxi hěn hǎo, dàjiā hùxiāng bāngzhù.",
+            question: "同僚同士の関係はどうですか?",
+            choices: [
+              { text: "良好", correct: true },
+              { text: "悪い", correct: false },
+              { text: "文章からはわからない", correct: false },
+            ],
+          },
+          {
+            type: "writing_cn",
+            meaning: "同僚",
+            pinyinHint: "tóngshì",
+            answer: "同事",
+          },
+        ],
+      },
+      {
+        id: "u11l3",
+        title: "キャリアについて話す",
+        exercises: [
+          {
+            type: "listening_choice",
+            audioText: "我想升职",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "昇進したいです", correct: true },
+              { text: "転職したいです", correct: false },
+              { text: "退職したいです", correct: false },
+            ],
+          },
+          {
+            type: "translate_choice",
+            hanzi: "这是一个很好的机会",
+            pinyin: "zhè shì yí gè hěn hǎo de jīhuì",
+            prompt: "この文の意味は?",
+            choices: [
+              { text: "これはとても良い機会です", correct: true },
+              { text: "これは難しい問題です", correct: false },
+              { text: "これは重要な会議です", correct: false },
+            ],
+          },
+          {
+            type: "speaking",
+            hanzi: "我打算换工作",
+            pinyin: "wǒ dǎsuàn huàn gōngzuò",
+            meaning: "転職しようと思っています",
+            prompt: "声に出して発音してみましょう",
+          },
+          {
+            type: "writing_cn",
+            meaning: "昇進する",
+            pinyinHint: "shēngzhí",
+            answer: "升职",
+          },
+          {
+            type: "reading",
+            passage: "我在这家公司工作了五年,现在我想升职,或者考虑换工作,这对我来说是一个很好的机会。",
+            passagePinyin: "Wǒ zài zhè jiā gōngsī gōngzuò le wǔ nián, xiànzài wǒ xiǎng shēngzhí, huòzhě kǎolǜ huàn gōngzuò, zhè duì wǒ lái shuō shì yí gè hěn hǎo de jīhuì.",
+            question: "この人はどれくらいこの会社で働いていますか?",
+            choices: [
+              { text: "5年", correct: true },
+              { text: "1年", correct: false },
+              { text: "10年", correct: false },
+            ],
+          },
+          {
+            type: "listening_choice",
+            audioText: "祝贺你升职",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "昇進おめでとうございます", correct: true },
+              { text: "退職おめでとうございます", correct: false },
+              { text: "入社おめでとうございます", correct: false },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "u12",
+    title: "契約とビジネス文書",
+    description: "契約の基本・支払い納期・正式な依頼の表現",
+    icon: "📄",
+    lessons: [
+      {
+        id: "u12l1",
+        title: "契約の基本",
+        exercises: [
+          {
+            type: "listening_choice",
+            audioText: "请在这里签字",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "こちらにご署名ください", correct: true },
+              { text: "こちらにご記入ください", correct: false },
+              { text: "こちらをご確認ください", correct: false },
+            ],
+          },
+          {
+            type: "translate_choice",
+            hanzi: "合同有效期是一年",
+            pinyin: "hétong yǒuxiàoqī shì yì nián",
+            prompt: "この文の意味は?",
+            choices: [
+              { text: "契約の有効期間は1年です", correct: true },
+              { text: "契約はまだ締結していません", correct: false },
+              { text: "契約は今月で終了します", correct: false },
+            ],
+          },
+          {
+            type: "speaking",
+            hanzi: "请仔细阅读条款",
+            pinyin: "qǐng zǐxì yuèdú tiáokuǎn",
+            meaning: "条項をよくお読みください",
+            prompt: "声に出して発音してみましょう",
+          },
+          {
+            type: "writing_cn",
+            meaning: "契約書",
+            pinyinHint: "hétong",
+            answer: "合同",
+          },
+          {
+            type: "reading",
+            passage: "这是我们的合同,有效期是一年。请仔细阅读条款,如果没有问题,请在这里签字。",
+            passagePinyin: "Zhè shì wǒmen de hétong, yǒuxiàoqī shì yì nián. Qǐng zǐxì yuèdú tiáokuǎn, rúguǒ méiyǒu wèntí, qǐng zài zhèlǐ qiānzì.",
+            question: "契約の有効期間はどれくらいですか?",
+            choices: [
+              { text: "1年", correct: true },
+              { text: "半年", correct: false },
+              { text: "3年", correct: false },
+            ],
+          },
+          {
+            type: "listening_choice",
+            audioText: "这份合同可以修改吗",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "この契約書は修正できますか", correct: true },
+              { text: "この契約書はもう無効です", correct: false },
+              { text: "この契約書はコピーできますか", correct: false },
+            ],
+          },
+        ],
+      },
+      {
+        id: "u12l2",
+        title: "支払いと納期",
+        exercises: [
+          {
+            type: "listening_choice",
+            audioText: "付款方式是什么",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "お支払い方法は何ですか", correct: true },
+              { text: "納期はいつですか", correct: false },
+              { text: "金額はいくらですか", correct: false },
+            ],
+          },
+          {
+            type: "translate_choice",
+            hanzi: "我们分期付款",
+            pinyin: "wǒmen fēnqī fùkuǎn",
+            prompt: "この文の意味は?",
+            choices: [
+              { text: "分割払いにします", correct: true },
+              { text: "一括払いにします", correct: false },
+              { text: "前払いにします", correct: false },
+            ],
+          },
+          {
+            type: "speaking",
+            hanzi: "交货日期是几号",
+            pinyin: "jiāohuò rìqī shì jǐ hào",
+            meaning: "納品日は何日ですか",
+            prompt: "声に出して発音してみましょう",
+          },
+          {
+            type: "writing_pinyin",
+            hanzi: "付款",
+            meaningHint: "支払う",
+            answer: "fukuan",
+            answerToned: "fùkuǎn",
+          },
+          {
+            type: "reading",
+            passage: "A: 付款方式是什么? B: 我们分期付款,分三次支付。 A: 好的,那交货日期是几号?",
+            passagePinyin: "A: Fùkuǎn fāngshì shì shénme? B: Wǒmen fēnqī fùkuǎn, fēn sān cì zhīfù. A: Hǎo de, nà jiāohuò rìqī shì jǐ hào?",
+            question: "支払いは何回に分けますか?",
+            choices: [
+              { text: "3回", correct: true },
+              { text: "1回", correct: false },
+              { text: "5回", correct: false },
+            ],
+          },
+          {
+            type: "writing_cn",
+            meaning: "納品日",
+            pinyinHint: "jiāohuò rìqī",
+            answer: "交货日期",
+          },
+        ],
+      },
+      {
+        id: "u12l3",
+        title: "正式な依頼・確認",
+        exercises: [
+          {
+            type: "listening_choice",
+            audioText: "麻烦您确认一下",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "ご確認をお願いいたします", correct: true },
+              { text: "少々お待ちください", correct: false },
+              { text: "ご迷惑をおかけしました", correct: false },
+            ],
+          },
+          {
+            type: "translate_choice",
+            hanzi: "请尽快回复我们",
+            pinyin: "qǐng jǐnkuài huífù wǒmen",
+            prompt: "この文の意味は?",
+            choices: [
+              { text: "至急ご返信ください", correct: true },
+              { text: "ゆっくりご検討ください", correct: false },
+              { text: "返信は不要です", correct: false },
+            ],
+          },
+          {
+            type: "speaking",
+            hanzi: "如有任何问题请联系我们",
+            pinyin: "rú yǒu rènhé wèntí qǐng liánxì wǒmen",
+            meaning: "何かご不明な点がございましたらご連絡ください",
+            prompt: "声に出して発音してみましょう",
+          },
+          {
+            type: "writing_cn",
+            meaning: "至急・できるだけ早く",
+            pinyinHint: "jǐnkuài",
+            answer: "尽快",
+          },
+          {
+            type: "reading",
+            passage: "麻烦您确认一下附件中的报价单,如有任何问题请联系我们,并请尽快回复。",
+            passagePinyin: "Máfan nín quèrèn yíxià fùjiàn zhōng de bàojiàdān, rú yǒu rènhé wèntí qǐng liánxì wǒmen, bìng qǐng jǐnkuài huífù.",
+            question: "相手に依頼している内容は?",
+            choices: [
+              { text: "見積書の確認と早めの返信", correct: true },
+              { text: "契約書へのサイン", correct: false },
+              { text: "会議日程の調整", correct: false },
+            ],
+          },
+          {
+            type: "listening_choice",
+            audioText: "感谢您一直以来的支持",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "いつもご支援いただきありがとうございます", correct: true },
+              { text: "初めまして、よろしくお願いします", correct: false },
+              { text: "契約解除のご連絡です", correct: false },
+            ],
+          },
+        ],
+      },
+    ],
+  },
 ];
 
 // レベルロードマップ: ユニットをHSKに対応する段階にまとめ、
-// 「ビジネス中国語が話せる」ゴールまでの距離を可視化する
+// 「ビジネス中国語が話せる」ゴールまでの距離を可視化する。
+// targetVocab / targetHours は旧HSK1〜6の公表語彙数(累計150/300/600/
+// 1200/2500/5000語)と、FSIなど言語難易度研究で目安とされる英語話者の
+// 中国語習得時間(カテゴリー最難関言語で累計2,000〜2,500時間程度)を
+// もとにした概算。あくまで目安であり、アプリ内の学習だけで到達できる
+// 数字ではない点をUI上で明示する。
 const LEVELS = [
   {
     id: "lv1",
@@ -1511,6 +2268,8 @@ const LEVELS = [
     unitIds: ["u1", "u2"],
     description: "あいさつ・数字など基本のフレーズが言える",
     implemented: true,
+    targetVocab: 150,
+    targetHours: 100,
   },
   {
     id: "lv2",
@@ -1519,6 +2278,8 @@ const LEVELS = [
     unitIds: ["u3", "u4"],
     description: "家族・日常生活について簡単な会話ができる",
     implemented: true,
+    targetVocab: 300,
+    targetHours: 250,
   },
   {
     id: "lv3",
@@ -1527,6 +2288,8 @@ const LEVELS = [
     unitIds: ["u5", "u6"],
     description: "職業紹介・電話やメールなど仕事の基本連絡ができる",
     implemented: true,
+    targetVocab: 600,
+    targetHours: 500,
   },
   {
     id: "lv4",
@@ -1535,26 +2298,36 @@ const LEVELS = [
     unitIds: ["u7", "u8"],
     description: "会議・交渉・接待などビジネスの基本場面に対応できる",
     implemented: true,
+    targetVocab: 1200,
+    targetHours: 900,
   },
   {
     id: "lv5",
     label: "Lv.5 上級",
     hskLabel: "HSK5相当",
-    unitIds: [],
-    description: "プレゼン・契約交渉など複雑な議論ができる(レッスン追加予定)",
-    implemented: false,
+    unitIds: ["u9", "u10"],
+    description: "プレゼン・報告・クレーム対応など複雑な議論ができる",
+    implemented: true,
+    targetVocab: 2500,
+    targetHours: 1500,
   },
   {
     id: "lv6",
     label: "Lv.6 ビジネス実務",
     hskLabel: "HSK6相当",
-    unitIds: [],
-    description: "ゴール: 通訳なしでビジネス商談・交渉を主導できる(レッスン追加予定)",
-    implemented: false,
+    unitIds: ["u11", "u12"],
+    description: "ゴール: 採用面接・契約書対応など通訳なしでビジネス実務を主導できる",
+    implemented: true,
+    targetVocab: 5000,
+    targetHours: 2500,
   },
 ];
 
 const GOAL_LEVEL_ID = "lv6";
+
+// ロードマップ画面に表示する、目安数値の根拠に関する注記
+const LEVEL_BENCHMARK_NOTE =
+  "語彙数は旧HSK1〜6の公表基準(累計150/300/600/1200/2500/5000語)、学習時間は言語難易度研究(FSI等)で中国語の目安とされる累計時間を参考にした概算です。個人差が大きく、アプリ内の学習だけで到達できる数字ではありません。";
 
 // スキル(4技能)のメタ情報
 const SKILLS = {

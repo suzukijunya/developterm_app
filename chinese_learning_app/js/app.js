@@ -81,6 +81,41 @@
     return statuses.find((s) => s.status === "current") || statuses[statuses.length - 1];
   }
 
+  // エクササイズから代表的な単語・フレーズを抽出する(語彙数の概算に使用)
+  function extractVocabTerms(exercise) {
+    switch (exercise.type) {
+      case "listening_choice":
+        return [exercise.audioText];
+      case "translate_choice":
+      case "speaking":
+      case "writing_pinyin":
+        return [exercise.hanzi];
+      case "writing_cn":
+        return [exercise.answer];
+      default:
+        return [];
+    }
+  }
+
+  // 完了したレッスンだけを対象に、実際に practice した語彙・フレーズの
+  // 異なり数を数える(完全なHSK語彙カウントではなく概算)
+  function getVocabLearnedCount() {
+    const set = new Set();
+    FLAT_LESSONS.forEach(({ lesson }) => {
+      if (!AppState.isLessonCompleted(lesson.id)) return;
+      lesson.exercises.forEach((ex) => extractVocabTerms(ex).forEach((t) => set.add(t)));
+    });
+    return set.size;
+  }
+
+  function getVocabTotalInApp() {
+    const set = new Set();
+    FLAT_LESSONS.forEach(({ lesson }) => {
+      lesson.exercises.forEach((ex) => extractVocabTerms(ex).forEach((t) => set.add(t)));
+    });
+    return set.size;
+  }
+
   function renderLevelBanner(container) {
     const current = getCurrentLevel();
     const goal = LEVELS.find((l) => l.id === GOAL_LEVEL_ID);
@@ -97,6 +132,58 @@
     container.appendChild(banner);
   }
 
+  function formatHours(hours) {
+    return hours >= 100 ? Math.round(hours).toLocaleString() : hours.toFixed(1);
+  }
+
+  // 「ビジネス中国語ゴール」までの現実的な距離を、レッスン完了率ではなく
+  // 学習時間・語彙数という実数で示す(アプリ内進捗の水増しを避けるため)
+  function renderGoalDistanceCard() {
+    const state = AppState.get();
+    const goal = LEVELS.find((l) => l.id === GOAL_LEVEL_ID);
+    const hoursStudied = state.totalStudySeconds / 3600;
+    const vocabLearned = getVocabLearnedCount();
+    const vocabInApp = getVocabTotalInApp();
+
+    const card = el("div", "goal-distance-card");
+    card.appendChild(el("div", "goal-distance-title", "🎯 ゴールまでの現在地(実数ベース)"));
+
+    const block1 = el("div", "goal-distance-block");
+    const head1 = el("div", "goal-distance-row");
+    head1.appendChild(el("div", "goal-distance-label", "学習時間"));
+    head1.appendChild(el("div", "goal-distance-value", `${formatHours(hoursStudied)}h / ${goal.targetHours.toLocaleString()}h`));
+    block1.appendChild(head1);
+    block1.appendChild(barOuterInner(Math.min(1, hoursStudied / goal.targetHours)));
+    card.appendChild(block1);
+
+    const block2 = el("div", "goal-distance-block");
+    const head2 = el("div", "goal-distance-row");
+    head2.appendChild(el("div", "goal-distance-label", "学習した語彙・フレーズ"));
+    head2.appendChild(el("div", "goal-distance-value", `${vocabLearned} / ${goal.targetVocab.toLocaleString()}語`));
+    block2.appendChild(head2);
+    block2.appendChild(barOuterInner(Math.min(1, vocabLearned / goal.targetVocab)));
+    card.appendChild(block2);
+
+    card.appendChild(
+      el(
+        "div",
+        "goal-distance-app-note",
+        `現在アプリに収録済みの語彙: ${vocabInApp}語(全12ユニット分)。アプリの学習だけでゴールの語彙量に届くことはありません。`
+      )
+    );
+    card.appendChild(el("div", "goal-distance-disclaimer", LEVEL_BENCHMARK_NOTE));
+
+    return card;
+  }
+
+  function barOuterInner(ratio) {
+    const outer = el("div", "goal-distance-bar-outer");
+    const inner = el("div", "goal-distance-bar-inner");
+    inner.style.width = `${ratio * 100}%`;
+    outer.appendChild(inner);
+    return outer;
+  }
+
   function renderRoadmap() {
     clear(appRoot);
     const screen = el("div", "screen screen--roadmap");
@@ -108,6 +195,7 @@
       el("p", "roadmap-sub", "ゴールは「ビジネス中国語が話せる」レベル(HSK6相当)。今の自分の立ち位置を確認しよう。")
     );
     screen.appendChild(intro);
+    screen.appendChild(renderGoalDistanceCard());
 
     const STATUS_LABELS = { cleared: "✅ クリア", current: "📍 今ここ", upcoming: "これから", future: "近日追加予定" };
 
@@ -128,11 +216,18 @@
         barInner.style.width = `${lv.stats.percent * 100}%`;
         barOuter.appendChild(barInner);
         card.appendChild(barOuter);
-        card.appendChild(el("div", "roadmap-level-progress-text", `${lv.stats.completed}/${lv.stats.total} レッスン完了`));
+        card.appendChild(el("div", "roadmap-level-progress-text", `アプリ内進捗: ${lv.stats.completed}/${lv.stats.total} レッスン完了`));
       } else {
         card.appendChild(el("div", "roadmap-level-future-badge", "レッスン追加予定"));
       }
 
+      card.appendChild(
+        el(
+          "div",
+          "roadmap-level-benchmark",
+          `目安(累計): 語彙${lv.targetVocab.toLocaleString()}語・学習時間${lv.targetHours.toLocaleString()}h`
+        )
+      );
       card.appendChild(el("div", "roadmap-level-status", STATUS_LABELS[lv.status]));
       list.appendChild(card);
     });
@@ -414,8 +509,18 @@
     let currentCheck = null;
     let answered = false;
 
+    // 実際に画面を開いていた時間を記録し、ロードマップの学習時間の目安に使う
+    const startedAt = Date.now();
+    let timeCommitted = false;
+    function commitStudyTime() {
+      if (timeCommitted) return;
+      timeCommitted = true;
+      AppState.addStudySeconds((Date.now() - startedAt) / 1000);
+    }
+
     function exitToHome() {
       if (confirm("レッスンを中断してホームに戻りますか?ここまでの進捗は保存されません。")) {
+        commitStudyTime();
         renderHome();
       }
     }
@@ -470,6 +575,7 @@
             failed = true;
           });
         } else if (failed) {
+          commitStudyTime();
           renderFailScreen(lesson, { keys, isReview });
         } else {
           advance();
@@ -531,6 +637,7 @@
         }
         AppState.addXp(20); // レッスン完了ボーナス
         sessionXp += 20;
+        commitStudyTime();
         renderSummaryScreen(lesson, correctCount, total, sessionXp, isReview);
       } else {
         renderExerciseScreen();
