@@ -2,6 +2,8 @@
 
 const STORAGE_KEY = "zh_app_state_v1";
 const MAX_HEARTS = 5;
+const DAILY_GOAL_XP = 30;
+const STUDY_DATES_LIMIT = 60;
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -11,10 +13,15 @@ function defaultState() {
   return {
     xp: 0,
     streak: 0,
+    bestStreak: 0,
     lastStudyDate: null,
     hearts: MAX_HEARTS,
     heartsRefillDate: todayStr(),
     lessonProgress: {}, // { [lessonId]: { completed: bool, stars: number, bestAccuracy: number } }
+    dailyXp: 0,
+    dailyXpDate: todayStr(),
+    studyDates: [], // 直近の学習日('YYYY-MM-DD')。連続学習カレンダー表示に使う
+    mistakes: {}, // { [exerciseKey]: { wrongCount: number, correctStreak: number, lastSeen: string } }
   };
 }
 
@@ -49,12 +56,16 @@ const AppState = (() => {
     save();
   }
 
-  // 日をまたいだらハートを回復し、連続学習日数(streak)を更新する
+  // 日をまたいだらハート/デイリー目標をリセットする
   function refreshDaily() {
     const today = todayStr();
     if (state.heartsRefillDate !== today) {
       state.hearts = MAX_HEARTS;
       state.heartsRefillDate = today;
+    }
+    if (state.dailyXpDate !== today) {
+      state.dailyXp = 0;
+      state.dailyXpDate = today;
     }
     save();
   }
@@ -70,12 +81,20 @@ const AppState = (() => {
     } else {
       state.streak = 1;
     }
+    state.bestStreak = Math.max(state.bestStreak || 0, state.streak);
     state.lastStudyDate = today;
+
+    if (!state.studyDates.includes(today)) {
+      state.studyDates.push(today);
+      if (state.studyDates.length > STUDY_DATES_LIMIT) state.studyDates.shift();
+    }
     save();
   }
 
   function addXp(amount) {
+    refreshDaily();
     state.xp += amount;
+    state.dailyXp += amount;
     save();
   }
 
@@ -114,6 +133,38 @@ const AppState = (() => {
     return state.lessonProgress[lessonId]?.stars || 0;
   }
 
+  // 問題単位の正誤を記録する。連続2回正解したら「苦手」から卒業する
+  function recordAnswer(key, wasWrong) {
+    if (!key) return;
+    const entry = state.mistakes[key] || { wrongCount: 0, correctStreak: 0 };
+    if (wasWrong) {
+      entry.wrongCount += 1;
+      entry.correctStreak = 0;
+      entry.lastSeen = todayStr();
+      state.mistakes[key] = entry;
+    } else if (state.mistakes[key]) {
+      entry.correctStreak += 1;
+      entry.lastSeen = todayStr();
+      if (entry.correctStreak >= 2) {
+        delete state.mistakes[key];
+      } else {
+        state.mistakes[key] = entry;
+      }
+    }
+    save();
+  }
+
+  function getWeakKeys(limit) {
+    const keys = Object.entries(state.mistakes)
+      .sort((a, b) => b[1].wrongCount - a[1].wrongCount || (b[1].lastSeen || "").localeCompare(a[1].lastSeen || ""))
+      .map(([key]) => key);
+    return limit ? keys.slice(0, limit) : keys;
+  }
+
+  function weakCount() {
+    return Object.keys(state.mistakes).length;
+  }
+
   return {
     get,
     reset,
@@ -126,6 +177,10 @@ const AppState = (() => {
     completeLesson,
     isLessonCompleted,
     getLessonStars,
+    recordAnswer,
+    getWeakKeys,
+    weakCount,
     MAX_HEARTS,
+    DAILY_GOAL_XP,
   };
 })();

@@ -22,6 +22,21 @@
     return AppState.isLessonCompleted(prevLesson.id);
   }
 
+  const LESSON_BY_ID = {};
+  FLAT_LESSONS.forEach((x) => {
+    LESSON_BY_ID[x.lesson.id] = x.lesson;
+  });
+
+  // key は "lessonId#exerciseIndex" 形式。苦手問題の記録/復元に使う
+  function exerciseByKey(key) {
+    const [lessonId, idxStr] = key.split("#");
+    const lesson = LESSON_BY_ID[lessonId];
+    if (!lesson) return null;
+    const exercise = lesson.exercises[Number(idxStr)];
+    if (!exercise) return null;
+    return { exercise, lessonTitle: lesson.title };
+  }
+
   function el(tag, className, text) {
     const node = document.createElement(tag);
     if (className) node.className = className;
@@ -59,12 +74,97 @@
     container.appendChild(bar);
   }
 
+  // ---------------- デイリーゴール ----------------
+  function renderDailyGoal(container) {
+    const state = AppState.get();
+    const goal = AppState.DAILY_GOAL_XP;
+    const progress = Math.min(1, state.dailyXp / goal);
+
+    const box = el("div", "daily-goal");
+    const header = el("div", "daily-goal-header");
+    header.appendChild(el("div", "daily-goal-label", "🎯 今日の目標"));
+    header.appendChild(el("div", "daily-goal-value", `${Math.min(state.dailyXp, goal)} / ${goal} XP`));
+    box.appendChild(header);
+
+    const barOuter = el("div", "daily-goal-bar-outer");
+    const barInner = el("div", "daily-goal-bar-inner");
+    barInner.style.width = `${progress * 100}%`;
+    barOuter.appendChild(barInner);
+    box.appendChild(barOuter);
+
+    let message;
+    if (state.dailyXp >= goal) {
+      message = "✅ 今日の目標達成!お見事です";
+    } else if (state.dailyXp === 0) {
+      message = state.streak > 0 ? `🔥 継続${state.streak}日目!今日も1レッスン進めよう` : "今日から中国語学習をはじめよう!";
+    } else {
+      message = `あと${goal - state.dailyXp}XPで今日の目標達成!`;
+    }
+    box.appendChild(el("div", "daily-goal-message", message));
+
+    box.appendChild(renderStreakCalendar(state));
+
+    container.appendChild(box);
+  }
+
+  const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
+
+  function renderStreakCalendar(state) {
+    const row = el("div", "streak-calendar");
+    const studySet = new Set(state.studyDates);
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      const studied = studySet.has(key);
+      const isToday = i === 0;
+
+      const cell = el("div", "streak-cell" + (isToday ? " streak-cell--today" : ""));
+      cell.appendChild(el("div", "streak-cell-day", WEEKDAY_LABELS[d.getDay()]));
+      cell.appendChild(el("div", "streak-cell-dot" + (studied ? " streak-cell-dot--on" : ""), studied ? "🔥" : ""));
+      row.appendChild(cell);
+    }
+    return row;
+  }
+
+  // ---------------- 苦手復習カード ----------------
+  function renderWeakReviewCard(container) {
+    const count = AppState.weakCount();
+    if (count === 0) return;
+
+    const card = el("button", "weak-review-card");
+    card.type = "button";
+    const textWrap = el("div");
+    textWrap.appendChild(el("div", "weak-review-title", "🔁 苦手を復習する"));
+    textWrap.appendChild(el("div", "weak-review-sub", `間違えた問題が ${count} 問あります`));
+    card.appendChild(textWrap);
+    card.appendChild(el("div", "weak-review-arrow", "›"));
+    card.addEventListener("click", startWeakReview);
+
+    container.appendChild(card);
+  }
+
+  function startWeakReview() {
+    const keys = AppState.getWeakKeys(10);
+    const items = keys.map((key) => ({ key, found: exerciseByKey(key) })).filter((x) => x.found);
+    if (items.length === 0) return;
+
+    const lesson = {
+      id: "weak_review",
+      title: "苦手復習",
+      exercises: items.map((x) => x.found.exercise),
+    };
+    runLesson(lesson, { keys: items.map((x) => x.key), isReview: true });
+  }
+
   // ---------------- ホーム画面(スキルツリー) ----------------
   function renderHome() {
     AppState.refreshDaily();
     clear(appRoot);
     const screen = el("div", "screen screen--home");
     renderTopBar(screen);
+    renderDailyGoal(screen);
+    renderWeakReviewCard(screen);
 
     const path = el("div", "skill-path");
 
@@ -126,6 +226,19 @@
     appRoot.appendChild(screen);
   }
 
+  function getBadgeDefs(state, completedLessons, totalLessons) {
+    const best = Math.max(state.bestStreak || 0, state.streak || 0);
+    return [
+      { icon: "🎓", label: "はじめの一歩", unlocked: completedLessons >= 1 },
+      { icon: "🔥", label: "3日連続", unlocked: best >= 3 },
+      { icon: "🚀", label: "7日連続", unlocked: best >= 7 },
+      { icon: "🏆", label: "30日連続", unlocked: best >= 30 },
+      { icon: "🏅", label: "5レッスン修了", unlocked: completedLessons >= 5 },
+      { icon: "👑", label: "全レッスン制覇", unlocked: totalLessons > 0 && completedLessons >= totalLessons },
+      { icon: "💎", label: "500XP達成", unlocked: state.xp >= 500 },
+    ];
+  }
+
   // ---------------- プロフィール画面 ----------------
   function renderProfile() {
     clear(appRoot);
@@ -155,6 +268,16 @@
     });
     card.appendChild(grid);
 
+    card.appendChild(el("h2", "badges-heading", "実績"));
+    const badgesGrid = el("div", "badges-grid");
+    getBadgeDefs(state, completedLessons, totalLessons).forEach((badge) => {
+      const b = el("div", "badge" + (badge.unlocked ? " badge--unlocked" : ""));
+      b.appendChild(el("div", "badge-icon", badge.icon));
+      b.appendChild(el("div", "badge-label", badge.label));
+      badgesGrid.appendChild(b);
+    });
+    card.appendChild(badgesGrid);
+
     const resetBtn = el("button", "secondary-btn", "学習データをリセットする");
     resetBtn.type = "button";
     resetBtn.addEventListener("click", () => {
@@ -176,7 +299,9 @@
     runLesson(entry.lesson);
   }
 
-  function runLesson(lesson) {
+  function runLesson(lesson, options = {}) {
+    const isReview = !!options.isReview;
+    const keys = options.keys || lesson.exercises.map((_, i) => lesson.id + "#" + i);
     let index = 0;
     let correctCount = 0;
     let sessionXp = 0;
@@ -240,7 +365,7 @@
             failed = true;
           });
         } else if (failed) {
-          renderFailScreen(lesson);
+          renderFailScreen(lesson, { keys, isReview });
         } else {
           advance();
         }
@@ -253,6 +378,9 @@
       const result = currentCheck();
       answered = true;
       feedback.classList.remove("hidden");
+
+      const wasWrong = exercise.type === "speaking" ? result.bonus === false : !result.correct;
+      AppState.recordAnswer(keys[index], wasWrong);
 
       if (result.correct) {
         correctCount++;
@@ -291,10 +419,14 @@
       index++;
       if (index >= total) {
         const accuracy = correctCount / total;
-        AppState.completeLesson(lesson.id, accuracy);
+        if (isReview) {
+          AppState.markStudiedToday();
+        } else {
+          AppState.completeLesson(lesson.id, accuracy);
+        }
         AppState.addXp(20); // レッスン完了ボーナス
         sessionXp += 20;
-        renderSummaryScreen(lesson, correctCount, total, sessionXp);
+        renderSummaryScreen(lesson, correctCount, total, sessionXp, isReview);
       } else {
         renderExerciseScreen();
       }
@@ -303,7 +435,7 @@
     renderExerciseScreen();
   }
 
-  function renderFailScreen(lesson) {
+  function renderFailScreen(lesson, options) {
     clear(appRoot);
     const screen = el("div", "screen screen--summary screen--fail");
     const card = el("div", "summary-card");
@@ -315,7 +447,7 @@
     retryBtn.type = "button";
     retryBtn.addEventListener("click", () => {
       AppState.refillHearts(); // 練習を続けられるよう即時回復
-      runLesson(lesson);
+      runLesson(lesson, options);
     });
     card.appendChild(retryBtn);
 
@@ -328,16 +460,16 @@
     appRoot.appendChild(screen);
   }
 
-  function renderSummaryScreen(lesson, correctCount, total, sessionXp) {
+  function renderSummaryScreen(lesson, correctCount, total, sessionXp, isReview) {
     clear(appRoot);
     const accuracy = correctCount / total;
     const stars = accuracy >= 0.9 ? 3 : accuracy >= 0.7 ? 2 : 1;
 
     const screen = el("div", "screen screen--summary");
     const card = el("div", "summary-card");
-    card.appendChild(el("div", "summary-emoji", "🎉"));
-    card.appendChild(el("h1", "summary-title", "レッスン完了!"));
-    card.appendChild(el("p", "summary-sub", lesson.title));
+    card.appendChild(el("div", "summary-emoji", isReview ? "🔁" : "🎉"));
+    card.appendChild(el("h1", "summary-title", isReview ? "苦手復習 完了!" : "レッスン完了!"));
+    card.appendChild(el("p", "summary-sub", isReview ? "弱点を克服しました" : lesson.title));
 
     const starsRow = el("div", "summary-stars");
     for (let i = 0; i < 3; i++) {
