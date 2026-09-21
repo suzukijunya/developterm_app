@@ -609,7 +609,6 @@
 
   function runFlashcardSession(deck, queue) {
     let index = 0;
-    let revealed = false;
     let reviewedCount = 0;
     const startedAt = Date.now();
     let timeCommitted = false;
@@ -645,15 +644,12 @@
       screen.appendChild(header);
 
       const { word } = queue[index];
-      revealed = false;
 
       const cardWrap = el("div", "flashcard-wrap");
       const card = el("div", "flashcard");
       card.appendChild(el("div", "flashcard-hanzi", word.hanzi));
       card.appendChild(el("div", "flashcard-pinyin", word.pinyin));
-
-      const meaningEl = el("div", "flashcard-meaning hidden", word.meaning);
-      card.appendChild(meaningEl);
+      card.appendChild(el("div", "flashcard-meaning", word.meaning));
 
       const playBtn = el("button", "play-btn", "🔊");
       playBtn.type = "button";
@@ -663,36 +659,21 @@
       });
       card.appendChild(playBtn);
 
-      const tapHint = el("div", "flashcard-hint", "タップして意味を見る");
-      card.appendChild(tapHint);
-
       cardWrap.appendChild(card);
       screen.appendChild(cardWrap);
 
+      setTimeout(() => Speech.speak(word.hanzi).catch(() => {}), 250);
+
       const footer = el("div", "lesson-footer flashcard-footer");
-      const revealBtn = el("button", "primary-btn", "意味を見る");
-      revealBtn.type = "button";
-      footer.appendChild(revealBtn);
+      const dontKnowBtn = el("button", "flashcard-btn flashcard-btn--no", "❌ もう一度");
+      dontKnowBtn.type = "button";
+      const knowBtn = el("button", "flashcard-btn flashcard-btn--yes", "✅ 覚えた");
+      knowBtn.type = "button";
+      dontKnowBtn.addEventListener("click", () => answer(false));
+      knowBtn.addEventListener("click", () => answer(true));
+      footer.appendChild(dontKnowBtn);
+      footer.appendChild(knowBtn);
       screen.appendChild(footer);
-
-      function reveal() {
-        if (revealed) return;
-        revealed = true;
-        meaningEl.classList.remove("hidden");
-        tapHint.classList.add("hidden");
-        clear(footer);
-
-        const dontKnowBtn = el("button", "flashcard-btn flashcard-btn--no", "❌ もう一度");
-        dontKnowBtn.type = "button";
-        const knowBtn = el("button", "flashcard-btn flashcard-btn--yes", "✅ 覚えた");
-        knowBtn.type = "button";
-
-        dontKnowBtn.addEventListener("click", () => answer(false));
-        knowBtn.addEventListener("click", () => answer(true));
-
-        footer.appendChild(dontKnowBtn);
-        footer.appendChild(knowBtn);
-      }
 
       function answer(knew) {
         AppState.reviewFlashcard(queue[index].key, knew);
@@ -706,9 +687,6 @@
           renderCardScreen();
         }
       }
-
-      card.addEventListener("click", reveal);
-      revealBtn.addEventListener("click", reveal);
 
       appRoot.appendChild(screen);
     }
