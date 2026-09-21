@@ -37,6 +37,110 @@
     return { exercise, lessonTitle: lesson.title };
   }
 
+  // ---------------- レベル/ロードマップ ----------------
+  function getLevelLessons(levelDef) {
+    const lessons = [];
+    levelDef.unitIds.forEach((uid) => {
+      const unit = UNITS.find((u) => u.id === uid);
+      if (unit) lessons.push(...unit.lessons);
+    });
+    return lessons;
+  }
+
+  function getLevelStats(levelDef) {
+    const lessons = getLevelLessons(levelDef);
+    const total = lessons.length;
+    const completed = lessons.filter((l) => AppState.isLessonCompleted(l.id)).length;
+    const percent = total > 0 ? completed / total : 0;
+    return { total, completed, percent };
+  }
+
+  // レベルごとの状態(cleared/current/upcoming/future)を判定する。
+  // 実装済みレベルのうち最初に未クリアのものを「current」とする
+  function getLevelStatuses() {
+    let currentAssigned = false;
+    return LEVELS.map((lv) => {
+      const stats = getLevelStats(lv);
+      let status;
+      if (!lv.implemented) {
+        status = "future";
+      } else if (stats.total > 0 && stats.percent >= 1) {
+        status = "cleared";
+      } else if (!currentAssigned) {
+        status = "current";
+        currentAssigned = true;
+      } else {
+        status = "upcoming";
+      }
+      return Object.assign({}, lv, { stats, status });
+    });
+  }
+
+  function getCurrentLevel() {
+    const statuses = getLevelStatuses();
+    return statuses.find((s) => s.status === "current") || statuses[statuses.length - 1];
+  }
+
+  function renderLevelBanner(container) {
+    const current = getCurrentLevel();
+    const goal = LEVELS.find((l) => l.id === GOAL_LEVEL_ID);
+
+    const banner = el("button", "level-banner");
+    banner.type = "button";
+    const left = el("div", "level-banner-text");
+    left.appendChild(el("div", "level-banner-current", `📍 現在のレベル: ${current.label}(${current.hskLabel})`));
+    left.appendChild(el("div", "level-banner-goal", `🎯 ゴール: ${goal.label}・${goal.hskLabel}(ビジネス中国語)`));
+    banner.appendChild(left);
+    banner.appendChild(el("div", "level-banner-arrow", "›"));
+    banner.addEventListener("click", renderRoadmap);
+
+    container.appendChild(banner);
+  }
+
+  function renderRoadmap() {
+    clear(appRoot);
+    const screen = el("div", "screen screen--roadmap");
+    renderTopBar(screen, { showBack: true, onBack: renderHome });
+
+    const intro = el("div", "roadmap-intro");
+    intro.appendChild(el("h1", "roadmap-title", "ロードマップ"));
+    intro.appendChild(
+      el("p", "roadmap-sub", "ゴールは「ビジネス中国語が話せる」レベル(HSK6相当)。今の自分の立ち位置を確認しよう。")
+    );
+    screen.appendChild(intro);
+
+    const STATUS_LABELS = { cleared: "✅ クリア", current: "📍 今ここ", upcoming: "これから", future: "近日追加予定" };
+
+    const list = el("div", "roadmap-list");
+    getLevelStatuses().forEach((lv) => {
+      const card = el("div", `roadmap-level roadmap-level--${lv.status}`);
+      if (lv.id === GOAL_LEVEL_ID) card.classList.add("roadmap-level--goal");
+
+      const header = el("div", "roadmap-level-header");
+      header.appendChild(el("div", "roadmap-level-label", lv.label + (lv.id === GOAL_LEVEL_ID ? " 🎯" : "")));
+      header.appendChild(el("div", "roadmap-level-hsk", lv.hskLabel));
+      card.appendChild(header);
+      card.appendChild(el("div", "roadmap-level-desc", lv.description));
+
+      if (lv.implemented) {
+        const barOuter = el("div", "roadmap-level-bar-outer");
+        const barInner = el("div", "roadmap-level-bar-inner");
+        barInner.style.width = `${lv.stats.percent * 100}%`;
+        barOuter.appendChild(barInner);
+        card.appendChild(barOuter);
+        card.appendChild(el("div", "roadmap-level-progress-text", `${lv.stats.completed}/${lv.stats.total} レッスン完了`));
+      } else {
+        card.appendChild(el("div", "roadmap-level-future-badge", "レッスン追加予定"));
+      }
+
+      card.appendChild(el("div", "roadmap-level-status", STATUS_LABELS[lv.status]));
+      list.appendChild(card);
+    });
+    screen.appendChild(list);
+
+    appRoot.appendChild(screen);
+  }
+
   function el(tag, className, text) {
     const node = document.createElement(tag);
     if (className) node.className = className;
@@ -163,6 +267,7 @@
     clear(appRoot);
     const screen = el("div", "screen screen--home");
     renderTopBar(screen);
+    renderLevelBanner(screen);
     renderDailyGoal(screen);
     renderWeakReviewCard(screen);
 

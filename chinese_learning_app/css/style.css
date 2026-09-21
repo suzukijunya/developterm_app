@@ -109,6 +109,151 @@ button {
   padding: 4px 8px;
 }
 
+/* ---------- レベルバナー / ロードマップ ---------- */
+.level-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: calc(100% - 32px);
+  margin: 16px 16px 0;
+  background: linear-gradient(135deg, var(--blue), #0d8fd6);
+  border: none;
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  cursor: pointer;
+  text-align: left;
+  color: #fff;
+}
+
+.level-banner-current {
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.level-banner-goal {
+  font-size: 12px;
+  opacity: 0.9;
+  margin-top: 4px;
+}
+
+.level-banner-arrow {
+  font-size: 22px;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.roadmap-intro {
+  padding: 16px 20px 4px;
+}
+
+.roadmap-title {
+  font-size: 22px;
+  margin: 0 0 6px;
+}
+
+.roadmap-sub {
+  color: var(--text-light);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.roadmap-list {
+  padding: 8px 16px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.roadmap-level {
+  background: var(--card-bg);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  opacity: 0.6;
+}
+
+.roadmap-level--cleared {
+  opacity: 1;
+  border-color: var(--green);
+}
+
+.roadmap-level--current {
+  opacity: 1;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 18%, transparent);
+}
+
+.roadmap-level--future {
+  border-style: dashed;
+}
+
+.roadmap-level--goal {
+  border-color: var(--yellow);
+}
+
+.roadmap-level-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.roadmap-level-label {
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.roadmap-level-hsk {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-light);
+  background: var(--bg);
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.roadmap-level-desc {
+  font-size: 12px;
+  color: var(--text-light);
+  margin: 6px 0 10px;
+  line-height: 1.5;
+}
+
+.roadmap-level-bar-outer {
+  height: 8px;
+  background: var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.roadmap-level-bar-inner {
+  height: 100%;
+  background: var(--green);
+}
+
+.roadmap-level-progress-text {
+  font-size: 11px;
+  color: var(--text-light);
+  margin-top: 6px;
+  font-weight: 700;
+}
+
+.roadmap-level-future-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-light);
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.roadmap-level-status {
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 /* ---------- デイリーゴール / 連続学習カレンダー ---------- */
 .daily-goal {
   margin: 16px 16px 0;

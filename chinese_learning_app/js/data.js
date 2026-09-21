@@ -747,7 +747,814 @@ const UNITS = [
       },
     ],
   },
+  {
+    id: "u5",
+    title: "仕事の基本",
+    description: "職業・自己紹介・予定調整などビジネスの基本表現",
+    icon: "💼",
+    lessons: [
+      {
+        id: "u5l1",
+        title: "職業と会社",
+        exercises: [
+          {
+            type: "listening_choice",
+            audioText: "你做什么工作",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "お仕事は何ですか", correct: true },
+              { text: "どこの会社ですか", correct: false },
+              { text: "何歳ですか", correct: false },
+            ],
+          },
+          {
+            type: "translate_choice",
+            hanzi: "我在贸易公司工作",
+            pinyin: "wǒ zài màoyì gōngsī gōngzuò",
+            prompt: "この文の意味は?",
+            choices: [
+              { text: "貿易会社で働いています", correct: true },
+              { text: "貿易会社を経営しています", correct: false },
+              { text: "貿易の勉強をしています", correct: false },
+            ],
+          },
+          {
+            type: "speaking",
+            hanzi: "这是我的名片",
+            pinyin: "zhè shì wǒ de míngpiàn",
+            meaning: "これは私の名刺です",
+            prompt: "声に出して発音してみましょう",
+          },
+          {
+            type: "writing_cn",
+            meaning: "名刺",
+            pinyinHint: "míngpiàn",
+            answer: "名片",
+          },
+          {
+            type: "reading",
+            passage: "您好,这是我的名片。我在一家贸易公司工作,负责销售。",
+            passagePinyin: "Nín hǎo, zhè shì wǒ de míngpiàn. Wǒ zài yì jiā màoyì gōngsī gōngzuò, fùzé xiāoshòu.",
+            question: "この人は何を担当していますか?",
+            choices: [
+              { text: "営業(販売)", correct: true },
+              { text: "経理", correct: false },
+              { text: "人事", correct: false },
+            ],
+          },
+          {
+            type: "listening_choice",
+            audioText: "请多关照",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "どうぞよろしくお願いします", correct: true },
+              { text: "ありがとうございます", correct: false },
+              { text: "お疲れ様です", correct: false },
+            ],
+          },
+        ],
+      },
+      {
+        id: "u5l2",
+        title: "自己紹介(ビジネス)",
+        exercises: [
+          {
+            type: "listening_choice",
+            audioText: "很荣幸认识您",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "お会いできて光栄です", correct: true },
+              { text: "はじめまして", correct: false },
+              { text: "お元気ですか", correct: false },
+            ],
+          },
+          {
+            type: "translate_choice",
+            hanzi: "我负责市场部",
+            pinyin: "wǒ fùzé shìchǎng bù",
+            prompt: "この文の意味は?",
+            choices: [
+              { text: "マーケティング部を担当しています", correct: true },
+              { text: "営業部で働いています", correct: false },
+              { text: "人事部の部長です", correct: false },
+            ],
+          },
+          {
+            type: "speaking",
+            hanzi: "请多指教",
+            pinyin: "qǐng duō zhǐjiào",
+            meaning: "ご指導よろしくお願いします",
+            prompt: "声に出して発音してみましょう",
+          },
+          {
+            type: "writing_pinyin",
+            hanzi: "荣幸",
+            meaningHint: "光栄",
+            answer: "rongxing",
+            answerToned: "róngxìng",
+          },
+          {
+            type: "reading",
+            passage: "我姓王,是这次项目的负责人。请多多关照。",
+            passagePinyin: "Wǒ xìng Wáng, shì zhè cì xiàngmù de fùzé rén. Qǐng duōduō guānzhào.",
+            question: "この人はプロジェクトの何ですか?",
+            choices: [
+              { text: "責任者", correct: true },
+              { text: "アシスタント", correct: false },
+              { text: "新人", correct: false },
+            ],
+          },
+          {
+            type: "writing_cn",
+            meaning: "よろしくお願いします",
+            pinyinHint: "qǐng duō guānzhào",
+            answer: "请多关照",
+          },
+        ],
+      },
+      {
+        id: "u5l3",
+        title: "時間・予定を調整する",
+        exercises: [
+          {
+            type: "listening_choice",
+            audioText: "明天你有空吗",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "明日お時間ありますか", correct: true },
+              { text: "今日は忙しいですか", correct: false },
+              { text: "何時に会いますか", correct: false },
+            ],
+          },
+          {
+            type: "translate_choice",
+            hanzi: "我们约在下午三点",
+            pinyin: "wǒmen yuē zài xiàwǔ sān diǎn",
+            prompt: "この文の意味は?",
+            choices: [
+              { text: "午後3時に約束しましょう", correct: true },
+              { text: "午前3時に会議です", correct: false },
+              { text: "3日後に会いましょう", correct: false },
+            ],
+          },
+          {
+            type: "speaking",
+            hanzi: "几点方便",
+            pinyin: "jǐ diǎn fāngbiàn",
+            meaning: "何時が都合いいですか",
+            prompt: "声に出して発音してみましょう",
+          },
+          {
+            type: "writing_cn",
+            meaning: "都合がいい",
+            pinyinHint: "fāngbiàn",
+            answer: "方便",
+          },
+          {
+            type: "reading",
+            passage: "A: 明天下午你有空吗? B: 有,几点方便? A: 三点怎么样? B: 可以,我们三点见。",
+            passagePinyin: "A: Míngtiān xiàwǔ nǐ yǒu kòng ma? B: Yǒu, jǐ diǎn fāngbiàn? A: Sān diǎn zěnmeyàng? B: Kěyǐ, wǒmen sān diǎn jiàn.",
+            question: "二人は何時に会う約束をしましたか?",
+            choices: [
+              { text: "3時", correct: true },
+              { text: "2時", correct: false },
+              { text: "4時", correct: false },
+            ],
+          },
+          {
+            type: "listening_choice",
+            audioText: "我们改天再约",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "また日を改めて約束しましょう", correct: true },
+              { text: "今すぐ会いましょう", correct: false },
+              { text: "約束はキャンセルです", correct: false },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "u6",
+    title: "電話とメール",
+    description: "電話応対・伝言・メールの基本表現",
+    icon: "📞",
+    lessons: [
+      {
+        id: "u6l1",
+        title: "電話に出る・かける",
+        exercises: [
+          {
+            type: "listening_choice",
+            audioText: "喂,请问王经理在吗",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "もしもし、王マネージャーはいらっしゃいますか", correct: true },
+              { text: "もしもし、どちら様ですか", correct: false },
+              { text: "もしもし、聞こえますか", correct: false },
+            ],
+          },
+          {
+            type: "translate_choice",
+            hanzi: "请稍等",
+            pinyin: "qǐng shāo děng",
+            prompt: "この文の意味は?",
+            choices: [
+              { text: "少々お待ちください", correct: true },
+              { text: "もう一度お願いします", correct: false },
+              { text: "またかけ直します", correct: false },
+            ],
+          },
+          {
+            type: "speaking",
+            hanzi: "我马上帮您转接",
+            pinyin: "wǒ mǎshàng bāng nín zhuǎnjiē",
+            meaning: "すぐにおつなぎします",
+            prompt: "声に出して発音してみましょう",
+          },
+          {
+            type: "writing_cn",
+            meaning: "少々お待ちください",
+            pinyinHint: "qǐng shāo děng",
+            answer: "请稍等",
+          },
+          {
+            type: "reading",
+            passage: "喂,您好,这里是ABC公司。请问您找哪位?请稍等,我帮您转接。",
+            passagePinyin: "Wéi, nín hǎo, zhèlǐ shì ABC gōngsī. Qǐngwèn nín zhǎo nǎ wèi? Qǐng shāo děng, wǒ bāng nín zhuǎnjiē.",
+            question: "この会話はどこでの場面ですか?",
+            choices: [
+              { text: "電話対応", correct: true },
+              { text: "レストラン", correct: false },
+              { text: "会議", correct: false },
+            ],
+          },
+          {
+            type: "listening_choice",
+            audioText: "电话占线",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "電話は話し中です", correct: true },
+              { text: "電話番号が違います", correct: false },
+              { text: "電話が切れました", correct: false },
+            ],
+          },
+        ],
+      },
+      {
+        id: "u6l2",
+        title: "伝言を残す",
+        exercises: [
+          {
+            type: "listening_choice",
+            audioText: "他现在不在",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "彼は今席を外しています", correct: true },
+              { text: "彼はもう帰りました", correct: false },
+              { text: "彼は会議中です", correct: false },
+            ],
+          },
+          {
+            type: "translate_choice",
+            hanzi: "我可以留言吗",
+            pinyin: "wǒ kěyǐ liúyán ma",
+            prompt: "この文の意味は?",
+            choices: [
+              { text: "伝言をお願いできますか", correct: true },
+              { text: "また電話します", correct: false },
+              { text: "メールを送ってもいいですか", correct: false },
+            ],
+          },
+          {
+            type: "speaking",
+            hanzi: "请他给我回电话",
+            pinyin: "qǐng tā gěi wǒ huí diànhuà",
+            meaning: "折り返しお電話くださいとお伝えください",
+            prompt: "声に出して発音してみましょう",
+          },
+          {
+            type: "writing_pinyin",
+            hanzi: "留言",
+            meaningHint: "伝言",
+            answer: "liuyan",
+            answerToned: "liúyán",
+          },
+          {
+            type: "reading",
+            passage: "对不起,他现在开会,不在座位上。您要留言吗?好的,请转告他给我回电话。",
+            passagePinyin: "Duìbuqǐ, tā xiànzài kāihuì, bú zài zuòwèi shàng. Nín yào liúyán ma? Hǎo de, qǐng zhuǎngào tā gěi wǒ huí diànhuà.",
+            question: "相手はなぜ電話に出られませんか?",
+            choices: [
+              { text: "会議中だから", correct: true },
+              { text: "外出しているから", correct: false },
+              { text: "体調が悪いから", correct: false },
+            ],
+          },
+          {
+            type: "writing_cn",
+            meaning: "折り返し電話する",
+            pinyinHint: "huí diànhuà",
+            answer: "回电话",
+          },
+        ],
+      },
+      {
+        id: "u6l3",
+        title: "メールの基本表現",
+        exercises: [
+          {
+            type: "listening_choice",
+            audioText: "谢谢您的邮件",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "メールをありがとうございます", correct: true },
+              { text: "お電話ありがとうございます", correct: false },
+              { text: "ご来社ありがとうございます", correct: false },
+            ],
+          },
+          {
+            type: "translate_choice",
+            hanzi: "请查收附件",
+            pinyin: "qǐng chá shōu fùjiàn",
+            prompt: "この文の意味は?",
+            choices: [
+              { text: "添付ファイルをご確認ください", correct: true },
+              { text: "お電話お待ちしております", correct: false },
+              { text: "資料を送ってください", correct: false },
+            ],
+          },
+          {
+            type: "speaking",
+            hanzi: "期待您的回复",
+            pinyin: "qídài nín de huífù",
+            meaning: "お返事をお待ちしております",
+            prompt: "声に出して発音してみましょう",
+          },
+          {
+            type: "writing_cn",
+            meaning: "添付ファイル",
+            pinyinHint: "fùjiàn",
+            answer: "附件",
+          },
+          {
+            type: "reading",
+            passage: "王经理,您好。附件是本次会议的资料,请查收。如有问题请随时联系我。期待您的回复。",
+            passagePinyin: "Wáng jīnglǐ, nín hǎo. Fùjiàn shì běn cì huìyì de zīliào, qǐng chá shōu. Rú yǒu wèntí qǐng suíshí liánxì wǒ. Qídài nín de huífù.",
+            question: "このメールに添付されているものは何ですか?",
+            choices: [
+              { text: "会議資料", correct: true },
+              { text: "契約書", correct: false },
+              { text: "請求書", correct: false },
+            ],
+          },
+          {
+            type: "listening_choice",
+            audioText: "如有问题请随时联系我",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "何か問題があればいつでもご連絡ください", correct: true },
+              { text: "問題は今のところありません", correct: false },
+              { text: "すぐに返信します", correct: false },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "u7",
+    title: "会議と商談",
+    description: "会議の進行・意見交換・価格交渉の表現",
+    icon: "🤝",
+    lessons: [
+      {
+        id: "u7l1",
+        title: "会議を始める",
+        exercises: [
+          {
+            type: "listening_choice",
+            audioText: "我们开始吧",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "それでは始めましょう", correct: true },
+              { text: "もう終わりました", correct: false },
+              { text: "少し待ちましょう", correct: false },
+            ],
+          },
+          {
+            type: "translate_choice",
+            hanzi: "今天的议题是什么",
+            pinyin: "jīntiān de yìtí shì shénme",
+            prompt: "この文の意味は?",
+            choices: [
+              { text: "今日の議題は何ですか", correct: true },
+              { text: "今日は誰が来ますか", correct: false },
+              { text: "会議はいつ終わりますか", correct: false },
+            ],
+          },
+          {
+            type: "speaking",
+            hanzi: "请大家看一下资料",
+            pinyin: "qǐng dàjiā kàn yíxià zīliào",
+            meaning: "皆さん資料をご覧ください",
+            prompt: "声に出して発音してみましょう",
+          },
+          {
+            type: "writing_cn",
+            meaning: "議題",
+            pinyinHint: "yìtí",
+            answer: "议题",
+          },
+          {
+            type: "reading",
+            passage: "大家好,今天的会议主要讨论新产品的销售计划。我们先看一下资料。",
+            passagePinyin: "Dàjiā hǎo, jīntiān de huìyì zhǔyào tǎolùn xīn chǎnpǐn de xiāoshòu jìhuà. Wǒmen xiān kàn yíxià zīliào.",
+            question: "今日の会議で主に話し合う内容は?",
+            choices: [
+              { text: "新商品の販売計画", correct: true },
+              { text: "人事異動", correct: false },
+              { text: "来期の予算", correct: false },
+            ],
+          },
+          {
+            type: "listening_choice",
+            audioText: "会议到这里结束",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "会議はここまでとします", correct: true },
+              { text: "会議はまだ続きます", correct: false },
+              { text: "会議は延期します", correct: false },
+            ],
+          },
+        ],
+      },
+      {
+        id: "u7l2",
+        title: "意見を言う",
+        exercises: [
+          {
+            type: "listening_choice",
+            audioText: "我认为这个方案不错",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "この案は良いと思います", correct: true },
+              { text: "この案には反対です", correct: false },
+              { text: "考え直しましょう", correct: false },
+            ],
+          },
+          {
+            type: "translate_choice",
+            hanzi: "我有不同的看法",
+            pinyin: "wǒ yǒu bùtóng de kànfǎ",
+            prompt: "この文の意味は?",
+            choices: [
+              { text: "私は違う意見を持っています", correct: true },
+              { text: "私も賛成です", correct: false },
+              { text: "よくわかりません", correct: false },
+            ],
+          },
+          {
+            type: "speaking",
+            hanzi: "我同意你的意见",
+            pinyin: "wǒ tóngyì nǐ de yìjiàn",
+            meaning: "あなたの意見に賛成です",
+            prompt: "声に出して発音してみましょう",
+          },
+          {
+            type: "writing_pinyin",
+            hanzi: "看法",
+            meaningHint: "意見・見方",
+            answer: "kanfa",
+            answerToned: "kànfǎ",
+          },
+          {
+            type: "reading",
+            passage: "A: 我认为应该先降低成本。 B: 我有不同的看法,我觉得应该先提高质量。",
+            passagePinyin: "A: Wǒ rènwéi yīnggāi xiān jiàngdī chéngběn. B: Wǒ yǒu bùtóng de kànfǎ, wǒ juéde yīnggāi xiān tígāo zhìliàng.",
+            question: "Bさんの考えは?",
+            choices: [
+              { text: "品質向上を優先すべき", correct: true },
+              { text: "コスト削減を優先すべき", correct: false },
+              { text: "両方とも不要", correct: false },
+            ],
+          },
+          {
+            type: "writing_cn",
+            meaning: "賛成です",
+            pinyinHint: "wǒ tóngyì",
+            answer: "我同意",
+          },
+        ],
+      },
+      {
+        id: "u7l3",
+        title: "交渉する",
+        exercises: [
+          {
+            type: "listening_choice",
+            audioText: "价格可以再商量吗",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "価格はもう少し相談できますか", correct: true },
+              { text: "品質はいかがですか", correct: false },
+              { text: "納期はいつですか", correct: false },
+            ],
+          },
+          {
+            type: "translate_choice",
+            hanzi: "这是我们的最终报价",
+            pinyin: "zhè shì wǒmen de zuìzhōng bàojià",
+            prompt: "この文の意味は?",
+            choices: [
+              { text: "これが弊社の最終見積もりです", correct: true },
+              { text: "これが今回の契約書です", correct: false },
+              { text: "これが最新のカタログです", correct: false },
+            ],
+          },
+          {
+            type: "speaking",
+            hanzi: "我们需要再考虑一下",
+            pinyin: "wǒmen xūyào zài kǎolǜ yíxià",
+            meaning: "もう少し検討させてください",
+            prompt: "声に出して発音してみましょう",
+          },
+          {
+            type: "writing_cn",
+            meaning: "見積もり",
+            pinyinHint: "bàojià",
+            answer: "报价",
+          },
+          {
+            type: "reading",
+            passage: "A: 这个价格能不能再便宜一点? B: 这已经是最优惠的价格了。 A: 好的,那我们需要再考虑一下。",
+            passagePinyin: "A: Zhège jiàgé néng bùnéng zài piányi yìdiǎn? B: Zhè yǐjīng shì zuì yōuhuì de jiàgé le. A: Hǎo de, nà wǒmen xūyào zài kǎolǜ yíxià.",
+            question: "Aさんはどうすると言っていますか?",
+            choices: [
+              { text: "検討する", correct: true },
+              { text: "すぐに契約する", correct: false },
+              { text: "取引をやめる", correct: false },
+            ],
+          },
+          {
+            type: "listening_choice",
+            audioText: "我们合作愉快",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "良いお取引ができました", correct: true },
+              { text: "また今度会いましょう", correct: false },
+              { text: "契約は失敗しました", correct: false },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "u8",
+    title: "出張と接待",
+    description: "ホテル・レストラン接待・ビジネスマナーの表現",
+    icon: "✈️",
+    lessons: [
+      {
+        id: "u8l1",
+        title: "空港とホテル",
+        exercises: [
+          {
+            type: "listening_choice",
+            audioText: "我要办理入住",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "チェックインをお願いします", correct: true },
+              { text: "チェックアウトをお願いします", correct: false },
+              { text: "部屋を予約したいです", correct: false },
+            ],
+          },
+          {
+            type: "translate_choice",
+            hanzi: "我预订了一个房间",
+            pinyin: "wǒ yùdìng le yí gè fángjiān",
+            prompt: "この文の意味は?",
+            choices: [
+              { text: "部屋を一室予約しています", correct: true },
+              { text: "部屋を変更したいです", correct: false },
+              { text: "部屋は満室です", correct: false },
+            ],
+          },
+          {
+            type: "speaking",
+            hanzi: "请问机场怎么走",
+            pinyin: "qǐngwèn jīchǎng zěnme zǒu",
+            meaning: "空港へはどう行けばいいですか",
+            prompt: "声に出して発音してみましょう",
+          },
+          {
+            type: "writing_cn",
+            meaning: "チェックインする",
+            pinyinHint: "bànlǐ rùzhù",
+            answer: "办理入住",
+          },
+          {
+            type: "reading",
+            passage: "您好,我姓铃木,预订了一间单人房,今晚入住三晚。",
+            passagePinyin: "Nín hǎo, wǒ xìng Língmù, yùdìng le yì jiān dānrénfáng, jīnwǎn rùzhù sān wǎn.",
+            question: "何泊予約していますか?",
+            choices: [
+              { text: "3泊", correct: true },
+              { text: "1泊", correct: false },
+              { text: "1週間", correct: false },
+            ],
+          },
+          {
+            type: "listening_choice",
+            audioText: "退房时间是几点",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "チェックアウトの時間は何時ですか", correct: true },
+              { text: "朝食は何時からですか", correct: false },
+              { text: "部屋代はいくらですか", correct: false },
+            ],
+          },
+        ],
+      },
+      {
+        id: "u8l2",
+        title: "レストランで接待する",
+        exercises: [
+          {
+            type: "listening_choice",
+            audioText: "今天我请客",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "今日は私がおごります", correct: true },
+              { text: "割り勘にしましょう", correct: false },
+              { text: "お腹がすきました", correct: false },
+            ],
+          },
+          {
+            type: "translate_choice",
+            hanzi: "请随便点",
+            pinyin: "qǐng suíbiàn diǎn",
+            prompt: "この文の意味は?",
+            choices: [
+              { text: "ご自由にご注文ください", correct: true },
+              { text: "少々お待ちください", correct: false },
+              { text: "辛いものは大丈夫ですか", correct: false },
+            ],
+          },
+          {
+            type: "speaking",
+            hanzi: "为我们的合作干杯",
+            pinyin: "wèi wǒmen de hézuò gānbēi",
+            meaning: "私たちの協力に乾杯しましょう",
+            prompt: "声に出して発音してみましょう",
+          },
+          {
+            type: "writing_cn",
+            meaning: "乾杯",
+            pinyinHint: "gānbēi",
+            answer: "干杯",
+          },
+          {
+            type: "reading",
+            passage: "今天晚上我请客,大家想吃什么随便点。为我们的合作干杯!",
+            passagePinyin: "Jīntiān wǎnshàng wǒ qǐngkè, dàjiā xiǎng chī shénme suíbiàn diǎn. Wèi wǒmen de hézuò gānbēi!",
+            question: "誰がおごりますか?",
+            choices: [
+              { text: "話している本人", correct: true },
+              { text: "部下", correct: false },
+              { text: "お客様", correct: false },
+            ],
+          },
+          {
+            type: "writing_pinyin",
+            hanzi: "合作",
+            meaningHint: "協力・提携",
+            answer: "hezuo",
+            answerToned: "hézuò",
+          },
+        ],
+      },
+      {
+        id: "u8l3",
+        title: "ビジネスマナー",
+        exercises: [
+          {
+            type: "listening_choice",
+            audioText: "谢谢您的款待",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "おもてなしありがとうございました", correct: true },
+              { text: "ごちそうさまでした", correct: false },
+              { text: "また会いましょう", correct: false },
+            ],
+          },
+          {
+            type: "translate_choice",
+            hanzi: "有机会再来北京",
+            pinyin: "yǒu jīhuì zài lái Běijīng",
+            prompt: "この文の意味は?",
+            choices: [
+              { text: "機会があればまた北京に来ます", correct: true },
+              { text: "また会議をしましょう", correct: false },
+              { text: "次は上海に行きます", correct: false },
+            ],
+          },
+          {
+            type: "speaking",
+            hanzi: "保持联系",
+            pinyin: "bǎochí liánxì",
+            meaning: "連絡を取り合いましょう",
+            prompt: "声に出して発音してみましょう",
+          },
+          {
+            type: "writing_cn",
+            meaning: "連絡を取り合う",
+            pinyinHint: "bǎochí liánxì",
+            answer: "保持联系",
+          },
+          {
+            type: "reading",
+            passage: "这次真的很感谢您的款待。合作很愉快,以后我们保持联系,有机会再来拜访。",
+            passagePinyin: "Zhè cì zhēn de hěn gǎnxiè nín de kuǎndài. Hézuò hěn yúkuài, yǐhòu wǒmen bǎochí liánxì, yǒu jīhuì zài lái bàifǎng.",
+            question: "この人は今後どうしたいと言っていますか?",
+            choices: [
+              { text: "連絡を取り続けたい", correct: true },
+              { text: "二度と会いたくない", correct: false },
+              { text: "契約を終了したい", correct: false },
+            ],
+          },
+          {
+            type: "listening_choice",
+            audioText: "一路平安",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "道中お気をつけて", correct: true },
+              { text: "おめでとうございます", correct: false },
+              { text: "お先に失礼します", correct: false },
+            ],
+          },
+        ],
+      },
+    ],
+  },
 ];
+
+// レベルロードマップ: ユニットをHSKに対応する段階にまとめ、
+// 「ビジネス中国語が話せる」ゴールまでの距離を可視化する
+const LEVELS = [
+  {
+    id: "lv1",
+    label: "Lv.1 入門",
+    hskLabel: "HSK1相当",
+    unitIds: ["u1", "u2"],
+    description: "あいさつ・数字など基本のフレーズが言える",
+    implemented: true,
+  },
+  {
+    id: "lv2",
+    label: "Lv.2 初級",
+    hskLabel: "HSK2相当",
+    unitIds: ["u3", "u4"],
+    description: "家族・日常生活について簡単な会話ができる",
+    implemented: true,
+  },
+  {
+    id: "lv3",
+    label: "Lv.3 中級",
+    hskLabel: "HSK3相当",
+    unitIds: ["u5", "u6"],
+    description: "職業紹介・電話やメールなど仕事の基本連絡ができる",
+    implemented: true,
+  },
+  {
+    id: "lv4",
+    label: "Lv.4 中級上",
+    hskLabel: "HSK4相当",
+    unitIds: ["u7", "u8"],
+    description: "会議・交渉・接待などビジネスの基本場面に対応できる",
+    implemented: true,
+  },
+  {
+    id: "lv5",
+    label: "Lv.5 上級",
+    hskLabel: "HSK5相当",
+    unitIds: [],
+    description: "プレゼン・契約交渉など複雑な議論ができる(レッスン追加予定)",
+    implemented: false,
+  },
+  {
+    id: "lv6",
+    label: "Lv.6 ビジネス実務",
+    hskLabel: "HSK6相当",
+    unitIds: [],
+    description: "ゴール: 通訳なしでビジネス商談・交渉を主導できる(レッスン追加予定)",
+    implemented: false,
+  },
+];
+
+const GOAL_LEVEL_ID = "lv6";
 
 // スキル(4技能)のメタ情報
 const SKILLS = {
