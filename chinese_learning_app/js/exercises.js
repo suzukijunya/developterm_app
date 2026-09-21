@@ -233,6 +233,7 @@ const Exercises = (() => {
         resultBox.classList.remove("hidden");
         resultBox.className = "mic-result mic-result--retry";
         resultBox.textContent = "⚠️ 音声を認識できませんでした。もう一度試すか、そのまま次へ進めます";
+        micStatus.textContent = "もう一度発音するか、次へ進みましょう";
         onChange(true);
       } finally {
         micBtn.disabled = false;
