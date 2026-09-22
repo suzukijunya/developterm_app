@@ -142,7 +142,7 @@
     left.appendChild(el("div", "level-banner-goal", `🎯 ゴール: ${goal.label}・${goal.hskLabel}(ビジネス中国語)`));
     banner.appendChild(left);
     banner.appendChild(el("div", "level-banner-arrow", "›"));
-    banner.addEventListener("click", renderRoadmap);
+    banner.addEventListener("click", () => renderRoadmap(renderHome));
 
     container.appendChild(banner);
   }
@@ -199,10 +199,10 @@
     return outer;
   }
 
-  function renderRoadmap() {
+  function renderRoadmap(onBack = renderHome) {
     clear(appRoot);
     const screen = el("div", "screen screen--roadmap");
-    renderTopBar(screen, { showBack: true, onBack: renderHome });
+    renderTopBar(screen, { showBack: true, onBack });
 
     const intro = el("div", "roadmap-intro");
     intro.appendChild(el("h1", "roadmap-title", "ロードマップ"));
@@ -289,7 +289,7 @@
   // ---------------- デイリーゴール ----------------
   function renderDailyGoal(container) {
     const state = AppState.get();
-    const goal = AppState.DAILY_GOAL_XP;
+    const goal = AppState.getDailyGoal();
     const progress = Math.min(1, state.dailyXp / goal);
 
     const box = el("div", "daily-goal");
@@ -425,23 +425,29 @@
     });
 
     screen.appendChild(path);
-    screen.appendChild(renderBottomNav("home"));
+    screen.appendChild(renderBottomNav("study"));
 
     appRoot.appendChild(screen);
   }
 
+  // 下部タブ(学習・練習・発見・トーク・マイページ)
   function renderBottomNav(activeId) {
     const nav = el("div", "bottom-nav");
     const tabs = [
-      { id: "home", label: "🏠 ホーム", onClick: renderHome },
-      { id: "news", label: "📰 ニュース", onClick: renderNewsHome },
-      { id: "flashcards", label: "🎴 単語帳", onClick: renderFlashcardHome },
-      { id: "profile", label: "👤 マイページ", onClick: renderProfile },
+      { id: "study", label: "学習", icon: Icons.navStudy, route: "home" },
+      { id: "practice", label: "練習", icon: Icons.navPractice, route: "practice" },
+      { id: "discover", label: "発見", icon: Icons.navDiscover, route: "discover" },
+      { id: "talk", label: "トーク", icon: Icons.navTalk, route: "talk" },
+      { id: "mypage", label: "マイページ", icon: Icons.navMe, route: "mypage" },
     ];
     tabs.forEach((tab) => {
-      const btn = el("button", "nav-tab" + (tab.id === activeId ? " nav-tab--active" : ""), tab.label);
+      const btn = el("button", "nav-tab" + (tab.id === activeId ? " nav-tab--active" : ""));
       btn.type = "button";
-      btn.addEventListener("click", tab.onClick);
+      const icon = el("span", "nav-tab-icon");
+      icon.innerHTML = tab.icon;
+      btn.appendChild(icon);
+      btn.appendChild(el("span", "nav-tab-label", tab.label));
+      btn.addEventListener("click", () => go(tab.route));
       nav.appendChild(btn);
     });
     return nav;
@@ -460,57 +466,9 @@
     ];
   }
 
-  // ---------------- プロフィール画面 ----------------
-  function renderProfile() {
-    clear(appRoot);
-    const state = AppState.get();
-    const screen = el("div", "screen screen--profile");
-    renderTopBar(screen, { showBack: true, onBack: renderHome });
-
-    const card = el("div", "profile-card");
-    card.appendChild(el("div", "profile-emoji", "🐼"));
-    card.appendChild(el("h1", "profile-name", "学習者"));
-
-    const grid = el("div", "profile-grid");
-    const totalLessons = FLAT_LESSONS.length;
-    const completedLessons = FLAT_LESSONS.filter((x) => AppState.isLessonCompleted(x.lesson.id)).length;
-
-    const statsData = [
-      ["🔥", `${state.streak}日`, "連続学習"],
-      ["💎", `${state.xp}`, "累計XP"],
-      ["✅", `${completedLessons}/${totalLessons}`, "完了レッスン"],
-    ];
-    statsData.forEach(([icon, value, label]) => {
-      const box = el("div", "profile-stat-box");
-      box.appendChild(el("div", "profile-stat-icon", icon));
-      box.appendChild(el("div", "profile-stat-value", value));
-      box.appendChild(el("div", "profile-stat-label", label));
-      grid.appendChild(box);
-    });
-    card.appendChild(grid);
-
-    card.appendChild(el("h2", "badges-heading", "実績"));
-    const badgesGrid = el("div", "badges-grid");
-    getBadgeDefs(state, completedLessons, totalLessons).forEach((badge) => {
-      const b = el("div", "badge" + (badge.unlocked ? " badge--unlocked" : ""));
-      b.appendChild(el("div", "badge-icon", badge.icon));
-      b.appendChild(el("div", "badge-label", badge.label));
-      badgesGrid.appendChild(b);
-    });
-    card.appendChild(badgesGrid);
-
-    const resetBtn = el("button", "secondary-btn", "学習データをリセットする");
-    resetBtn.type = "button";
-    resetBtn.addEventListener("click", () => {
-      if (confirm("学習の進捗をすべてリセットします。よろしいですか?")) {
-        AppState.reset();
-        renderHome();
-      }
-    });
-    card.appendChild(resetBtn);
-
-    screen.appendChild(card);
-    appRoot.appendChild(screen);
+  function getBadges() {
+    const completed = FLAT_LESSONS.filter((x) => AppState.isLessonCompleted(x.lesson.id)).length;
+    return getBadgeDefs(AppState.get(), completed, FLAT_LESSONS.length);
   }
 
   // ---------------- 単語カード(フラッシュカード) ----------------
@@ -535,7 +493,7 @@
   function renderFlashcardHome() {
     clear(appRoot);
     const screen = el("div", "screen screen--flashcards");
-    renderTopBar(screen);
+    renderTopBar(screen, { showBack: true, onBack: () => go("discover") });
 
     const intro = el("div", "flashcard-intro");
     intro.appendChild(el("h1", "flashcard-intro-title", "🎴 単語帳"));
@@ -575,7 +533,7 @@
     });
     screen.appendChild(list);
 
-    screen.appendChild(renderBottomNav("flashcards"));
+    screen.appendChild(renderBottomNav("discover"));
     appRoot.appendChild(screen);
   }
 
@@ -727,7 +685,7 @@
   function renderNewsHome() {
     clear(appRoot);
     const screen = el("div", "screen screen--news");
-    renderTopBar(screen);
+    renderTopBar(screen, { showBack: true, onBack: () => go("discover") });
 
     const intro = el("div", "flashcard-intro");
     intro.appendChild(el("h1", "flashcard-intro-title", "📰 今日のニュース"));
@@ -752,7 +710,7 @@
     });
     screen.appendChild(list);
 
-    screen.appendChild(renderBottomNav("news"));
+    screen.appendChild(renderBottomNav("discover"));
     appRoot.appendChild(screen);
   }
 
@@ -877,7 +835,29 @@
 
   applyDisplay();
 
-  function buildLessonTop({ progress, fire = false, onPause, onSkip = null }) {
+  // レッスン中の問題の中国語をブックマークするための情報
+  function bookmarkItemFor(exercise, lessonTitle) {
+    const correct = ((exercise.choices || []).find((c) => c.correct) || {}).text || "";
+    const source = lessonTitle || "レッスン";
+    switch (exercise.type) {
+      case "listening_choice":
+        return { hanzi: exercise.audioText, pinyin: exercise.pinyin, meaning: correct, source };
+      case "translate_choice":
+        return { hanzi: exercise.hanzi, pinyin: exercise.pinyin, meaning: correct, source };
+      case "writing_cn":
+        return { hanzi: exercise.answer, pinyin: exercise.pinyinHint, meaning: exercise.meaning, source };
+      case "writing_pinyin":
+        return { hanzi: exercise.hanzi, pinyin: exercise.answerToned || exercise.answer, meaning: exercise.meaningHint, source };
+      case "speaking":
+      case "fill_blank":
+      case "sentence_build":
+        return { hanzi: exercise.hanzi, pinyin: exercise.pinyin, meaning: exercise.meaning, source };
+      default:
+        return null;
+    }
+  }
+
+  function buildLessonTop({ progress, fire = false, onPause, onSkip = null, bookmark = null }) {
     const top = el("div", "cs-top");
     const bar = el("div", "cs-progress");
     const fill = el("div", "cs-progress-fill" + (fire ? " is-fire" : ""));
@@ -897,6 +877,11 @@
     skip.type = "button";
     if (onSkip) skip.addEventListener("click", onSkip);
     right.appendChild(skip);
+    if (bookmark && bookmark.hanzi) {
+      const star = UI.bookmarkButton(bookmark);
+      star.classList.add("cs-star");
+      right.appendChild(star);
+    }
 
     const pyBtn = el("button", "cs-toggle" + (display.pinyin ? " is-on" : ""), "拼");
     pyBtn.type = "button";
@@ -1049,6 +1034,8 @@
     let maxCombo = 0;
     let progressShown = 0;
     let current = null;
+    // レベルチェックテスト用: 問題ごとの正誤(options.onFinish に渡す)
+    const results = [];
 
     // 実際に画面を開いていた時間を記録し、ロードマップの学習時間の目安に使う
     const startedAt = Date.now();
@@ -1089,6 +1076,7 @@
         progress: progressShown,
         fire: combo >= 3,
         onPause: () => showPauseSheet(screen, quit, "ここまでの進捗は保存されません"),
+        bookmark: bookmarkItemFor(exercise, lesson.title),
       });
       screen.appendChild(top.el);
       const instruction = el("div", "cs-instruction");
@@ -1126,6 +1114,7 @@
           if (answered) return;
           answered = true;
           skippedCount++;
+          results[index] = false;
           combo = 0;
           progressShown = (index + 1) / total;
           advance();
@@ -1150,6 +1139,7 @@
         AppState.recordAnswer(keys[index], wasWrong);
 
         if (result.correct) correctCount++;
+        results[index] = !!result.correct;
         if (!wasWrong) {
           combo++;
           maxCombo = Math.max(maxCombo, combo);
@@ -1213,6 +1203,12 @@
     function advance() {
       leaveExercise();
       index++;
+      if (index >= total && options.onFinish) {
+        commitStudyTime();
+        AppState.markStudiedToday();
+        options.onFinish(results);
+        return;
+      }
       if (index >= total) {
         const answeredCount = total - skippedCount;
         const accuracy = answeredCount > 0 ? correctCount / answeredCount : 0;
@@ -1230,7 +1226,7 @@
       }
     }
 
-    if (!isReview) {
+    if (!isReview && !options.isTest) {
       const previewItems = LessonExtras.vocabItems(lesson);
       if (previewItems.length > 0) {
         renderVocabPreviewScreen(lesson, previewItems, 0, renderExerciseScreen);
@@ -1293,6 +1289,37 @@
     screen.appendChild(footer);
     appRoot.appendChild(screen);
   }
+
+  // ---------------- 画面遷移(新しいタブのモジュールからも使う) ----------------
+  const ROUTES = {
+    home: () => renderHome(),
+    practice: () => Practice.home(),
+    discover: () => Discover.home(),
+    talk: () => Talk.home(),
+    mypage: () => MyPage.home(),
+    settings: () => MyPage.settings(),
+    news: () => renderNewsHome(),
+    flashcards: () => renderFlashcardHome(),
+    roadmap: () => renderRoadmap(() => MyPage.home()),
+  };
+
+  function go(name) {
+    (ROUTES[name] || ROUTES.home)();
+    window.scrollTo(0, 0);
+  }
+
+  window.App = {
+    go,
+    bottomNav: renderBottomNav,
+    getCurrentLevel,
+    getTodaysArticles,
+    openArticle: renderArticleReader,
+    startLesson,
+    runLesson,
+    getBadges,
+    getDisplay: () => Object.assign({}, display),
+    toggleDisplay,
+  };
 
   // 起動
   renderHome();

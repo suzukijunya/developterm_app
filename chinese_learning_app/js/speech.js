@@ -18,7 +18,7 @@ const Speech = (() => {
     window.speechSynthesis.onvoiceschanged = pickVoice;
   }
 
-  function speak(text, { rate = 0.9 } = {}) {
+  function speak(text, { rate = 0.9, pitch = 1 } = {}) {
     if (!("speechSynthesis" in window)) {
       return Promise.reject(new Error("no-tts"));
     }
@@ -28,6 +28,7 @@ const Speech = (() => {
       utter.lang = "zh-CN";
       if (zhVoice) utter.voice = zhVoice;
       utter.rate = rate;
+      utter.pitch = pitch;
       utter.onend = () => resolve();
       utter.onerror = (e) => reject(e);
       window.speechSynthesis.speak(utter);

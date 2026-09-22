@@ -22,6 +22,12 @@ function defaultState() {
     totalStudySeconds: 0, // 実際に学習画面を開いていた累計秒数(ロードマップの目安時間に使う)
     flashcards: {}, // { [deckId#wordIndex]: { box: 1-5, dueDate: string, mastered: bool } } 単語カード(Leitner式)
     readArticles: {}, // { [articleId]: { readDate: string } } 今日のニュースで読み終えた記事
+    totalStudyDays: 0, // 累計の学習日数(studyDates は直近60日分しか持たないため別に数える)
+    dailyGoalXp: DAILY_GOAL_XP,
+    nickname: "",
+    bookmarks: {}, // { [hanzi]: { hanzi, pinyin, meaning, source, addedAt } }
+    levelTests: [], // レベルチェックテストの結果(新しい順、最大10件)
+    prefs: {}, // ゲームのベストスコアなど、細かい記録
   };
 }
 
@@ -85,9 +91,78 @@ const AppState = (() => {
     state.lastStudyDate = today;
 
     if (!state.studyDates.includes(today)) {
+      state.totalStudyDays = getTotalStudyDays() + 1;
       state.studyDates.push(today);
       if (state.studyDates.length > STUDY_DATES_LIMIT) state.studyDates.shift();
     }
+    save();
+  }
+
+  // 以前のバージョンでは累計日数を持っていなかったので、studyDates の件数も考慮する
+  function getTotalStudyDays() {
+    return Math.max(state.totalStudyDays || 0, state.studyDates.length);
+  }
+
+  function getDailyGoal() {
+    return state.dailyGoalXp || DAILY_GOAL_XP;
+  }
+
+  function setDailyGoal(xp) {
+    state.dailyGoalXp = xp;
+    save();
+  }
+
+  function getNickname() {
+    return state.nickname || "学習者";
+  }
+
+  function setNickname(name) {
+    state.nickname = (name || "").trim().slice(0, 20);
+    save();
+  }
+
+  function isBookmarked(hanzi) {
+    return !!state.bookmarks[hanzi];
+  }
+
+  // 同じ中国語はひとつにまとめる。追加したら true、外したら false を返す
+  function toggleBookmark(item) {
+    if (!item || !item.hanzi) return false;
+    if (state.bookmarks[item.hanzi]) {
+      delete state.bookmarks[item.hanzi];
+      save();
+      return false;
+    }
+    state.bookmarks[item.hanzi] = {
+      hanzi: item.hanzi,
+      pinyin: item.pinyin || "",
+      meaning: item.meaning || "",
+      source: item.source || "",
+      addedAt: Date.now(),
+    };
+    save();
+    return true;
+  }
+
+  function getBookmarks() {
+    return Object.values(state.bookmarks).sort((a, b) => b.addedAt - a.addedAt);
+  }
+
+  function saveLevelTest(result) {
+    state.levelTests = [Object.assign({ date: todayStr() }, result)].concat(state.levelTests || []).slice(0, 10);
+    save();
+  }
+
+  function getLevelTests() {
+    return state.levelTests || [];
+  }
+
+  function getPref(key, fallback) {
+    return key in state.prefs ? state.prefs[key] : fallback;
+  }
+
+  function setPref(key, value) {
+    state.prefs[key] = value;
     save();
   }
 
@@ -206,6 +281,17 @@ const AppState = (() => {
     reviewFlashcard,
     isArticleRead,
     markArticleRead,
-    DAILY_GOAL_XP,
+    getTotalStudyDays,
+    getDailyGoal,
+    setDailyGoal,
+    getNickname,
+    setNickname,
+    isBookmarked,
+    toggleBookmark,
+    getBookmarks,
+    saveLevelTest,
+    getLevelTests,
+    getPref,
+    setPref,
   };
 })();
