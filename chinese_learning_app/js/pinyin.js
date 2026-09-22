@@ -27,4 +27,14 @@ window.PinyinConv = {
       return null;
     }
   },
+  // 1文字ずつの声調なしピンイン配列(発音採点で同音異字を正解扱いにするため)
+  async toSyllables(text) {
+    const pinyinFn = await loadPinyinLib();
+    if (!pinyinFn || !text) return null;
+    try {
+      return pinyinFn(text, { toneType: "none", type: "array" });
+    } catch (err) {
+      return null;
+    }
+  },
 };

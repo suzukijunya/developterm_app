@@ -848,115 +848,207 @@
     runLesson(entry.lesson);
   }
 
-  // そのレッスンに出てくる単語・フレーズを重複なく抽出する(事前学習ステップ用)
-  function getLessonVocabPreview(lesson) {
-    const seen = new Set();
-    const items = [];
-    lesson.exercises.forEach((exercise) => {
-      let hanzi = null;
-      let pinyin = null;
-      let meaning = null;
-      switch (exercise.type) {
-        case "listening_choice":
-          hanzi = exercise.audioText;
-          meaning = (exercise.choices.find((c) => c.correct) || {}).text;
-          break;
-        case "translate_choice":
-          hanzi = exercise.hanzi;
-          pinyin = exercise.pinyin;
-          meaning = (exercise.choices.find((c) => c.correct) || {}).text;
-          break;
-        case "speaking":
-          hanzi = exercise.hanzi;
-          pinyin = exercise.pinyin;
-          meaning = exercise.meaning;
-          break;
-        case "writing_cn":
-          hanzi = exercise.answer;
-          pinyin = exercise.pinyinHint;
-          meaning = exercise.meaning;
-          break;
-        case "writing_pinyin":
-          hanzi = exercise.hanzi;
-          pinyin = exercise.answerToned || exercise.answer;
-          meaning = exercise.meaningHint;
-          break;
-        default:
-          return; // reading(長文)は単語プレビューの対象外
-      }
-      if (!hanzi || seen.has(hanzi)) return;
-      seen.add(hanzi);
-      items.push({ hanzi, pinyin, meaning });
-    });
-    return items;
+  // ---------------- レッスン共通UI(ChineseSkill風) ----------------
+  // ピンイン・日本語訳の表示ON/OFF(画面右上のトグル)。端末ごとの表示設定なので
+  // 学習データとは分けて保存する
+  const DISPLAY_KEY = "zh_app_display_v1";
+  const display = (() => {
+    try {
+      return Object.assign({ pinyin: true, translation: true }, JSON.parse(localStorage.getItem(DISPLAY_KEY) || "{}"));
+    } catch (e) {
+      return { pinyin: true, translation: true };
+    }
+  })();
+
+  function applyDisplay() {
+    document.body.classList.toggle("hide-pinyin", !display.pinyin);
+    document.body.classList.toggle("hide-translation", !display.translation);
   }
 
+  function toggleDisplay(key) {
+    display[key] = !display[key];
+    try {
+      localStorage.setItem(DISPLAY_KEY, JSON.stringify(display));
+    } catch (e) {
+      // 保存できなくても表示の切り替え自体は行う
+    }
+    applyDisplay();
+  }
+
+  applyDisplay();
+
+  function buildLessonTop({ progress, fire = false, onPause, onSkip = null }) {
+    const top = el("div", "cs-top");
+    const bar = el("div", "cs-progress");
+    const fill = el("div", "cs-progress-fill" + (fire ? " is-fire" : ""));
+    fill.style.width = `${Math.max(2, progress * 100)}%`;
+    bar.appendChild(fill);
+    top.appendChild(bar);
+
+    const row = el("div", "cs-top-row");
+    const pause = Exercises.iconButton("cs-icon-btn", Icons.pause, "一時停止");
+    pause.addEventListener("click", onPause);
+    row.appendChild(pause);
+
+    const right = el("div", "cs-top-right");
+    const xpPop = el("div", "cs-xp-pop");
+    right.appendChild(xpPop);
+    const skip = el("button", "cs-skip-pill" + (onSkip ? "" : " hidden"), "スキップ");
+    skip.type = "button";
+    if (onSkip) skip.addEventListener("click", onSkip);
+    right.appendChild(skip);
+
+    const pyBtn = el("button", "cs-toggle" + (display.pinyin ? " is-on" : ""), "拼");
+    pyBtn.type = "button";
+    pyBtn.setAttribute("aria-label", "ピンインの表示切り替え");
+    pyBtn.addEventListener("click", () => {
+      toggleDisplay("pinyin");
+      pyBtn.classList.toggle("is-on", display.pinyin);
+    });
+    const trBtn = Exercises.iconButton("cs-toggle" + (display.translation ? " is-on" : ""), Icons.translate, "日本語訳の表示切り替え");
+    trBtn.addEventListener("click", () => {
+      toggleDisplay("translation");
+      trBtn.classList.toggle("is-on", display.translation);
+    });
+    right.append(pyBtn, trBtn);
+    row.appendChild(right);
+    top.appendChild(row);
+
+    return {
+      el: top,
+      setProgress(value, isFire) {
+        fill.style.width = `${Math.max(2, value * 100)}%`;
+        fill.classList.toggle("is-fire", !!isFire);
+      },
+      showSkip(handler) {
+        skip.classList.remove("hidden");
+        skip.onclick = handler;
+      },
+      hideSkip() {
+        skip.classList.add("hidden");
+      },
+      popXp(amount) {
+        xpPop.textContent = `+${amount}`;
+        xpPop.classList.remove("is-shown");
+        void xpPop.offsetWidth; // アニメーションを毎回最初から再生する
+        xpPop.classList.add("is-shown");
+      },
+    };
+  }
+
+  function showPauseSheet(screen, onQuit, quitNote) {
+    const overlay = el("div", "cs-overlay");
+    const card = el("div", "cs-pause-card");
+    card.appendChild(el("div", "cs-pause-title", "一時停止中"));
+    if (quitNote) card.appendChild(el("div", "cs-pause-note", quitNote));
+    const resume = el("button", "primary-btn", "再開する");
+    resume.type = "button";
+    resume.addEventListener("click", () => overlay.remove());
+    const quit = el("button", "cs-text-btn", "レッスンを終了する");
+    quit.type = "button";
+    quit.addEventListener("click", () => {
+      overlay.remove();
+      onQuit();
+    });
+    card.append(resume, quit);
+    overlay.appendChild(card);
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) overlay.remove();
+    });
+    screen.appendChild(overlay);
+  }
+
+  function comboLabel(combo) {
+    return el("div", "cs-combo", `Combo x${combo}`);
+  }
+
+  // 単語を含むレッスン内の例文を探す(単語カードに添えて表示する)
+  function findExampleSentence(lesson, item) {
+    return (
+      LessonExtras.sentenceCandidates(lesson).find(
+        (s) => s.hanzi !== item.hanzi && s.hanzi.includes(item.hanzi)
+      ) || null
+    );
+  }
+
+  // ---------------- レッスン前の単語カード ----------------
   function renderVocabPreviewScreen(lesson, items, index, onDone) {
     clear(appRoot);
-    const screen = el("div", "screen screen--lesson");
-
-    const header = el("div", "lesson-header");
-    const closeBtn = el("button", "icon-btn", "✕");
-    closeBtn.type = "button";
-    closeBtn.addEventListener("click", () => {
-      if (confirm("レッスンを中断してホームに戻りますか?")) renderHome();
-    });
-    header.appendChild(closeBtn);
-    const progressOuter = el("div", "progress-outer");
-    const progressInner = el("div", "progress-inner");
-    progressInner.style.width = `${(index / items.length) * 100}%`;
-    progressOuter.appendChild(progressInner);
-    header.appendChild(progressOuter);
-    screen.appendChild(header);
-
-    const body = el("div", "lesson-body");
-    body.appendChild(el("div", "exercise-label", "📚 この課で学ぶ単語"));
-    body.appendChild(el("h2", "exercise-prompt", `覚えてから始めましょう (${index + 1}/${items.length})`));
-
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    const screen = el("div", "screen screen--lesson cs-screen");
     const item = items[index];
-    const card = el("div", "hanzi-card");
-    const hanziRow = el("div", "hanzi-row");
-    hanziRow.appendChild(el("span", "hanzi-text", item.hanzi));
-    const playBtn = el("button", "play-btn");
-    playBtn.type = "button";
-    playBtn.innerHTML = "🔊";
-    playBtn.addEventListener("click", () => Speech.speak(item.hanzi).catch(() => {}));
-    hanziRow.appendChild(playBtn);
-    card.appendChild(hanziRow);
-    if (item.pinyin) card.appendChild(el("div", "pinyin-text", item.pinyin));
-    if (item.meaning) card.appendChild(el("div", "meaning-text meaning-text--big", item.meaning));
+
+    const top = buildLessonTop({
+      progress: index / items.length,
+      onPause: () => showPauseSheet(screen, renderHome),
+      onSkip: onDone,
+    });
+    screen.appendChild(top.el);
+    screen.appendChild(el("div", "cs-instruction", `この課の単語 ${index + 1}/${items.length}`));
+
+    const body = el("div", "cs-body");
+    const card = el("div", "cs-intro-card");
+    const len = Array.from(item.hanzi).length;
+    const sizeClass = len > 6 ? " cs-intro-ruby--long" : len > 3 ? " cs-intro-ruby--mid" : "";
+    card.appendChild(Ruby.render(item.hanzi, item.pinyin, { className: "cs-intro-ruby" + sizeClass }));
+    if (item.meaning) card.appendChild(el("div", "cs-intro-meaning", item.meaning));
     body.appendChild(card);
+
+    const example = findExampleSentence(lesson, item);
+    if (example) {
+      const exCard = el("div", "cs-intro-example");
+      exCard.appendChild(el("div", "cs-intro-example-label", "例文"));
+      exCard.appendChild(
+        Exercises.sentenceBlock({
+          hanzi: example.hanzi,
+          pinyin: example.pinyin,
+          meaning: example.meaning,
+          highlight: item.hanzi,
+        })
+      );
+      const exPlay = Exercises.iconButton("cs-mini-speaker", Icons.speaker, "例文を再生");
+      exPlay.addEventListener("click", () => Speech.speak(example.hanzi).catch(() => {}));
+      exCard.appendChild(exPlay);
+      body.appendChild(exCard);
+    }
     screen.appendChild(body);
 
-    setTimeout(() => Speech.speak(item.hanzi).catch(() => {}), 300);
-
-    const footer = el("div", "lesson-footer");
-    const nextBtn = el("button", "primary-btn", index + 1 < items.length ? "次へ" : "レッスンを始める");
-    nextBtn.type = "button";
-    nextBtn.addEventListener("click", () => {
-      if (index + 1 < items.length) {
-        renderVocabPreviewScreen(lesson, items, index + 1, onDone);
-      } else {
-        onDone();
-      }
+    const toolbar = el("div", "cs-toolbar");
+    const prev = Exercises.iconButton("cs-tool-btn", Icons.prev, "前の単語");
+    prev.disabled = index === 0;
+    prev.addEventListener("click", () => renderVocabPreviewScreen(lesson, items, index - 1, onDone));
+    const speak = Exercises.iconButton("cs-tool-btn", Icons.speaker, "音声を再生");
+    speak.addEventListener("click", () => Speech.speak(item.hanzi).catch(() => {}));
+    const slow = Exercises.iconButton("cs-tool-btn", Icons.slow, "ゆっくり再生");
+    slow.addEventListener("click", () => Speech.speak(item.hanzi, { rate: 0.55 }).catch(() => {}));
+    const next = Exercises.iconButton("cs-tool-btn cs-tool-btn--next", Icons.next, index + 1 < items.length ? "次の単語" : "レッスンを始める");
+    next.addEventListener("click", () => {
+      if (index + 1 < items.length) renderVocabPreviewScreen(lesson, items, index + 1, onDone);
+      else onDone();
     });
-    footer.appendChild(nextBtn);
-    screen.appendChild(footer);
+    toolbar.append(prev, speak, slow, next);
+    screen.appendChild(toolbar);
 
     appRoot.appendChild(screen);
+    setTimeout(() => {
+      if (screen.isConnected) Speech.speak(item.hanzi).catch(() => {});
+    }, 300);
   }
 
+  // ---------------- レッスン本体 ----------------
   function runLesson(lesson, options = {}) {
     const isReview = !!options.isReview;
-    const keys = options.keys || lesson.exercises.map((_, i) => lesson.id + "#" + i);
+    const exercises = lesson.exercises;
+    const keys = options.keys || exercises.map((_, i) => lesson.id + "#" + i);
+    const total = exercises.length;
     let index = 0;
     let correctCount = 0;
+    let skippedCount = 0;
     let sessionXp = 0;
-    const total = lesson.exercises.length;
-    let currentCheck = null;
-    let currentPlayRecording = null;
-    let currentReveal = null;
-    let answered = false;
+    let combo = 0;
+    let maxCombo = 0;
+    let progressShown = 0;
+    let current = null;
 
     // 実際に画面を開いていた時間を記録し、ロードマップの学習時間の目安に使う
     const startedAt = Date.now();
@@ -969,123 +1061,161 @@
 
     // スピーキング問題があるレッスンでは、問題に着く前に先にマイク許可を
     // 済ませておく(毎回の問題ごとに許可を求められるのを減らすため)
-    if (lesson.exercises.some((ex) => ex.type === "speaking")) {
+    if (exercises.some((ex) => ex.type === "speaking")) {
       Speech.ensureMicPermission();
     }
 
-    function exitToHome() {
-      if (confirm("レッスンを中断してホームに戻りますか?ここまでの進捗は保存されません。")) {
-        commitStudyTime();
-        renderHome();
-      }
+    function leaveExercise() {
+      if (current && current.dispose) current.dispose();
+      current = null;
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+    }
+
+    function quit() {
+      leaveExercise();
+      commitStudyTime();
+      renderHome();
     }
 
     function renderExerciseScreen() {
       clear(appRoot);
-      const screen = el("div", "screen screen--lesson");
+      const exercise = exercises[index];
+      const screen = el("div", "screen screen--lesson cs-screen");
+      const nextLabel = index + 1 < total ? "続ける" : "結果を見る";
+      let answered = false;
+      let continueBtn = null;
 
-      const header = el("div", "lesson-header");
-      const closeBtn = el("button", "icon-btn", "✕");
-      closeBtn.type = "button";
-      closeBtn.addEventListener("click", exitToHome);
-      header.appendChild(closeBtn);
-
-      const progressOuter = el("div", "progress-outer");
-      const progressInner = el("div", "progress-inner");
-      progressInner.style.width = `${(index / total) * 100}%`;
-      progressOuter.appendChild(progressInner);
-      header.appendChild(progressOuter);
-
-      screen.appendChild(header);
-
-      const exercise = lesson.exercises[index];
-      const body = el("div", "lesson-body");
-      answered = false;
-
-      const { element, check, playRecording, reveal } = Exercises.render(exercise, {
-        onChange: (canCheck) => {
-          // 確認済みの後にWhisperの遅延認識結果などが届いても、
-          // 再生ブロック中のボタン状態を上書きしないようにする
-          if (answered) return;
-          checkBtn.disabled = !canCheck;
-        },
+      const top = buildLessonTop({
+        progress: progressShown,
+        fire: combo >= 3,
+        onPause: () => showPauseSheet(screen, quit, "ここまでの進捗は保存されません"),
       });
-      currentCheck = check;
-      currentPlayRecording = playRecording || null;
-      currentReveal = reveal || null;
-      body.appendChild(element);
+      screen.appendChild(top.el);
+      const instruction = el("div", "cs-instruction");
+      screen.appendChild(instruction);
+      const body = el("div", "cs-body");
       screen.appendChild(body);
+      const footer = el("div", "cs-footer");
+      const submitBtn = el("button", "primary-btn cs-submit", "提出する");
+      submitBtn.type = "button";
+      submitBtn.disabled = true;
 
-      const feedback = el("div", "feedback hidden");
-      screen.appendChild(feedback);
+      const api = {
+        onChange: (canSubmit) => {
+          // 確定後にWhisperの遅延認識結果などが届いても、
+          // 「続ける」ボタンの状態を上書きしないようにする
+          if (answered) return;
+          submitBtn.disabled = !canSubmit;
+        },
+        submit: () => {
+          if (!answered) handleCheck();
+        },
+        setBusy: (busy) => {
+          if (!continueBtn) return;
+          continueBtn.disabled = busy;
+          continueBtn.textContent = busy ? "🔊 録音を再生中..." : nextLabel;
+        },
+      };
 
-      const footer = el("div", "lesson-footer");
-      const checkBtn = el("button", "primary-btn", "確認する");
-      checkBtn.type = "button";
-      checkBtn.disabled = true;
-      footer.appendChild(checkBtn);
-      screen.appendChild(footer);
-
-      checkBtn.addEventListener("click", () => {
-        if (!answered) {
-          handleCheck(feedback, footer, checkBtn, exercise);
-        } else {
+      const r = Exercises.render(exercise, api);
+      current = r;
+      instruction.textContent = r.instruction || "";
+      body.appendChild(r.element);
+      if (r.skippable) {
+        top.showSkip(() => {
+          if (answered) return;
+          answered = true;
+          skippedCount++;
+          combo = 0;
+          progressShown = (index + 1) / total;
           advance();
-        }
-      });
-
-      appRoot.appendChild(screen);
-    }
-
-    function handleCheck(feedback, footer, checkBtn, exercise) {
-      const result = currentCheck();
-      answered = true;
-      feedback.classList.remove("hidden");
-      if (currentReveal) currentReveal();
-
-      const wasWrong = exercise.type === "speaking" ? result.bonus === false : !result.correct;
-      AppState.recordAnswer(keys[index], wasWrong);
-
-      if (result.correct) {
-        correctCount++;
-        feedback.className = "feedback feedback--correct";
-        const title = el("div", "feedback-title", result.bonus === false ? "👍 挑戦を記録しました!" : "✅ 正解!");
-        feedback.appendChild(title);
-        feedback.appendChild(el("div", "feedback-sub", `正解: ${result.correctText}`));
-        if (exercise.type === "speaking") {
-          feedback.appendChild(el("div", "feedback-sub", result.userText));
-        }
-        const gained = result.bonus === false ? 5 : 10;
-        AppState.addXp(gained);
-        sessionXp += gained;
-      } else {
-        feedback.className = "feedback feedback--wrong";
-        feedback.appendChild(el("div", "feedback-title", "❌ 不正解"));
-        feedback.appendChild(el("div", "feedback-sub", `正解: ${result.correctText}`));
-        feedback.appendChild(el("div", "feedback-sub", `あなたの回答: ${result.userText}`));
-      }
-
-      const nextLabel = index + 1 < total ? "続ける" : "レッスン完了";
-      checkBtn.classList.add(result.correct ? "primary-btn--correct" : "primary-btn--wrong");
-
-      if (currentPlayRecording) {
-        // 自分の発音の再生が終わるまでは次に進めないようにする
-        checkBtn.textContent = "🔊 録音を再生中...";
-        checkBtn.disabled = true;
-        currentPlayRecording().then(() => {
-          checkBtn.textContent = nextLabel;
-          checkBtn.disabled = false;
         });
-      } else {
-        checkBtn.textContent = nextLabel;
-        checkBtn.disabled = false;
+      }
+      if (r.submitMode === "button") {
+        submitBtn.addEventListener("click", () => api.submit());
+        footer.appendChild(submitBtn);
+      }
+      screen.appendChild(footer);
+      appRoot.appendChild(screen);
+
+      function handleCheck() {
+        answered = true;
+        submitBtn.disabled = true;
+        top.hideSkip();
+        const result = r.check();
+        if (r.reveal) r.reveal(result);
+
+        const isSpeaking = exercise.type === "speaking";
+        const wasWrong = isSpeaking ? result.bonus === false : !result.correct;
+        AppState.recordAnswer(keys[index], wasWrong);
+
+        if (result.correct) correctCount++;
+        if (!wasWrong) {
+          combo++;
+          maxCombo = Math.max(maxCombo, combo);
+        } else {
+          combo = 0;
+        }
+        if (result.correct) {
+          const gained = isSpeaking && result.bonus === false ? 5 : 10;
+          AppState.addXp(gained);
+          sessionXp += gained;
+          top.popXp(gained);
+        }
+        progressShown = (index + 1) / total;
+        top.setProgress(progressShown, combo >= 3);
+
+        if (result.autoAdvance) {
+          if (combo >= 2) screen.appendChild(comboLabel(combo));
+          setTimeout(advance, 700);
+          return;
+        }
+
+        continueBtn = el("button", "primary-btn cs-continue " + (wasWrong ? "cs-continue--bad" : "cs-continue--good"), nextLabel);
+        continueBtn.type = "button";
+        continueBtn.addEventListener("click", advance);
+
+        if (isSpeaking) {
+          // 自分の発音の再生が終わるまでは次に進めないようにする
+          clear(footer);
+          if (combo >= 2) screen.appendChild(comboLabel(combo));
+          footer.appendChild(continueBtn);
+          if (r.playRecording) {
+            api.setBusy(true);
+            r.playRecording().then(() => api.setBusy(false));
+          }
+          return;
+        }
+
+        footer.classList.add("hidden");
+        const sheet = el("div", "cs-sheet " + (result.correct ? "cs-sheet--good" : "cs-sheet--bad"));
+        if (combo >= 2) sheet.appendChild(comboLabel(combo));
+        const head = el("div", "cs-sheet-head");
+        head.appendChild(el("span", "cs-sheet-label", result.correct ? "正解! 正しい回答:" : "正しい回答:"));
+        const tools = el("div", "cs-sheet-tools");
+        tools.appendChild(el("span", "cs-mascot", result.correct ? "🐼" : "🙈"));
+        if (result.audio) {
+          const speak = Exercises.iconButton("cs-mini-speaker", Icons.speaker, "正解を再生");
+          speak.addEventListener("click", () => Speech.speak(result.audio).catch(() => {}));
+          tools.appendChild(speak);
+        }
+        head.appendChild(tools);
+        sheet.appendChild(head);
+        const content = el("div", "cs-sheet-body");
+        content.appendChild(result.sheet ? result.sheet() : el("div", "cs-sheet-answer-text", result.correctText));
+        if (!result.correct) content.appendChild(el("div", "cs-sheet-yours", `あなたの回答: ${result.userText}`));
+        sheet.appendChild(content);
+        sheet.appendChild(continueBtn);
+        screen.appendChild(sheet);
       }
     }
 
     function advance() {
+      leaveExercise();
       index++;
       if (index >= total) {
-        const accuracy = correctCount / total;
+        const answeredCount = total - skippedCount;
+        const accuracy = answeredCount > 0 ? correctCount / answeredCount : 0;
         if (isReview) {
           AppState.markStudiedToday();
         } else {
@@ -1094,14 +1224,14 @@
         AppState.addXp(20); // レッスン完了ボーナス
         sessionXp += 20;
         commitStudyTime();
-        renderSummaryScreen(lesson, correctCount, total, sessionXp, isReview);
+        renderSummaryScreen(lesson, { accuracy, sessionXp, isReview, maxCombo });
       } else {
         renderExerciseScreen();
       }
     }
 
     if (!isReview) {
-      const previewItems = getLessonVocabPreview(lesson);
+      const previewItems = LessonExtras.vocabItems(lesson);
       if (previewItems.length > 0) {
         renderVocabPreviewScreen(lesson, previewItems, 0, renderExerciseScreen);
         return;
@@ -1110,40 +1240,57 @@
     renderExerciseScreen();
   }
 
-  function renderSummaryScreen(lesson, correctCount, total, sessionXp, isReview) {
+  function renderSummaryScreen(lesson, { accuracy, sessionXp, isReview, maxCombo }) {
     clear(appRoot);
-    const accuracy = correctCount / total;
+    const pct = Math.round(accuracy * 100);
+    const [zh, ja] =
+      pct >= 90 ? ["极好", "すばらしい"] : pct >= 70 ? ["很好", "よくできました"] : pct >= 40 ? ["不错", "いい調子"] : ["加油", "がんばろう"];
     const stars = accuracy >= 0.9 ? 3 : accuracy >= 0.7 ? 2 : 1;
 
-    const screen = el("div", "screen screen--summary");
-    const card = el("div", "summary-card");
-    card.appendChild(el("div", "summary-emoji", isReview ? "🔁" : "🎉"));
-    card.appendChild(el("h1", "summary-title", isReview ? "苦手復習 完了!" : "レッスン完了!"));
-    card.appendChild(el("p", "summary-sub", isReview ? "弱点を克服しました" : lesson.title));
-
-    const starsRow = el("div", "summary-stars");
-    for (let i = 0; i < 3; i++) {
-      starsRow.appendChild(el("span", i < stars ? "star star--big star--on" : "star star--big", "★"));
+    const screen = el("div", "screen cs-result");
+    const confetti = el("div", "cs-confetti");
+    const colors = ["#ff9f1a", "#ff5a7a", "#ffd23f", "#4cc76a", "#5aa9ff"];
+    for (let i = 0; i < 26; i++) {
+      const piece = el("span", "cs-confetti-piece" + (i % 3 === 0 ? " is-star" : ""));
+      piece.style.left = `${Math.random() * 100}%`;
+      piece.style.animationDelay = `${(Math.random() * 1.2).toFixed(2)}s`;
+      piece.style.animationDuration = `${(2.4 + Math.random() * 1.8).toFixed(2)}s`;
+      piece.style.setProperty("--c", colors[i % colors.length]);
+      piece.style.setProperty("--r", `${Math.round(Math.random() * 360)}deg`);
+      confetti.appendChild(piece);
     }
-    card.appendChild(starsRow);
+    screen.appendChild(confetti);
 
-    const statsRow = el("div", "summary-stats");
-    const acc = el("div", "summary-stat-box");
-    acc.appendChild(el("div", "summary-stat-value", `${Math.round(accuracy * 100)}%`));
-    acc.appendChild(el("div", "summary-stat-label", "正解率"));
-    const xpBox = el("div", "summary-stat-box");
-    xpBox.appendChild(el("div", "summary-stat-value", `+${sessionXp}`));
-    xpBox.appendChild(el("div", "summary-stat-label", "獲得XP"));
-    statsRow.appendChild(acc);
-    statsRow.appendChild(xpBox);
-    card.appendChild(statsRow);
+    const hero = el("div", "cs-result-hero");
+    hero.appendChild(el("div", "cs-result-zh", zh));
+    hero.appendChild(el("div", "cs-result-ja", ja));
+    hero.appendChild(el("div", "cs-result-sub", isReview ? "苦手復習 完了" : lesson.title));
+    const starsRow = el("div", "cs-result-stars");
+    for (let i = 0; i < 3; i++) {
+      starsRow.appendChild(el("span", "cs-result-star" + (i < stars ? " is-on" : ""), "★"));
+    }
+    hero.appendChild(starsRow);
+    screen.appendChild(hero);
 
+    const stats = el("div", "cs-result-stats");
+    [
+      [`${pct}%`, "正解率"],
+      [`+${sessionXp}`, "XP"],
+      [`x${maxCombo}`, "最大コンボ"],
+    ].forEach(([value, label]) => {
+      const box = el("div", "cs-result-stat");
+      box.appendChild(el("div", "cs-result-stat-value", value));
+      box.appendChild(el("div", "cs-result-stat-label", label));
+      stats.appendChild(box);
+    });
+    screen.appendChild(stats);
+
+    const footer = el("div", "cs-footer cs-result-footer");
     const continueBtn = el("button", "primary-btn", "続ける");
     continueBtn.type = "button";
     continueBtn.addEventListener("click", renderHome);
-    card.appendChild(continueBtn);
-
-    screen.appendChild(card);
+    footer.appendChild(continueBtn);
+    screen.appendChild(footer);
     appRoot.appendChild(screen);
   }
 

@@ -83,23 +83,21 @@ const Speech = (() => {
     };
   }
 
-  function recognizeOnce({ timeout = 6000 } = {}) {
+  // 音声認識を開始し、{ result: Promise<string[]>, stop() } を返す。
+  // stop() で「タップして終了」でき、その時点までの発話で結果が確定する
+  function startRecognition({ timeout = 12000 } = {}) {
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!Recognition) return Promise.reject(new Error("no-stt"));
+    if (!Recognition) return { result: Promise.reject(new Error("no-stt")), stop() {} };
 
-    return new Promise((resolve, reject) => {
-      const recognition = new Recognition();
-      recognition.lang = "zh-CN";
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 3;
+    const recognition = new Recognition();
+    recognition.lang = "zh-CN";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 3;
 
+    const result = new Promise((resolve, reject) => {
       let done = false;
       const timer = setTimeout(() => {
-        if (!done) {
-          done = true;
-          recognition.stop();
-          reject(new Error("timeout"));
-        }
+        if (!done) recognition.stop();
       }, timeout);
 
       recognition.onresult = (event) => {
@@ -127,6 +125,49 @@ const Speech = (() => {
 
       recognition.start();
     });
+
+    return {
+      result,
+      stop() {
+        try {
+          recognition.stop();
+        } catch (e) {
+          // 既に終了している場合は何もしない
+        }
+      },
+    };
+  }
+
+  function recognizeOnce(options) {
+    return startRecognition(options).result;
+  }
+
+  // 録音中の波形表示用に、マイク入力の音量(0〜1)を読み取れるメーターを作る
+  async function createLevelMeter() {
+    const stream = await getMicStream();
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) throw new Error("no-audio-context");
+    const ctx = new Ctx();
+    const source = ctx.createMediaStreamSource(stream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 512;
+    source.connect(analyser);
+    const data = new Uint8Array(analyser.fftSize);
+    return {
+      read() {
+        analyser.getByteTimeDomainData(data);
+        let sum = 0;
+        for (let i = 0; i < data.length; i++) {
+          const v = (data[i] - 128) / 128;
+          sum += v * v;
+        }
+        return Math.min(1, Math.sqrt(sum / data.length) * 4);
+      },
+      close() {
+        source.disconnect();
+        ctx.close().catch(() => {});
+      },
+    };
   }
 
   // 声調記号やスペースを取り除いた比較用文字列を作る
@@ -143,6 +184,8 @@ const Speech = (() => {
     speak,
     isRecognitionSupported,
     recognizeOnce,
+    startRecognition,
+    createLevelMeter,
     normalizePinyin,
     isRecordingSupported,
     startRecording,
