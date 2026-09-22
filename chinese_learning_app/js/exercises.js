@@ -57,6 +57,39 @@ const Exercises = (() => {
     return shuffle(source).slice(0, count);
   }
 
+  // 全レッスン・単語帳から声調付きピンインの候補プールを集める
+  // (ライティング問題の選択肢のダミーに使う)
+  let _pinyinPool = null;
+  function getPinyinPool() {
+    if (_pinyinPool) return _pinyinPool;
+    const set = new Set();
+    if (typeof UNITS !== "undefined") {
+      UNITS.forEach((u) =>
+        u.lessons.forEach((l) =>
+          l.exercises.forEach((ex) => {
+            if (ex.type === "writing_pinyin" && ex.answerToned) set.add(ex.answerToned);
+            if (ex.type === "translate_choice" && ex.pinyin) set.add(ex.pinyin);
+            if (ex.type === "speaking" && ex.pinyin) set.add(ex.pinyin);
+            if (ex.type === "listening_choice" && ex.pinyin) set.add(ex.pinyin);
+          })
+        )
+      );
+    }
+    if (typeof VOCAB_DECKS !== "undefined") {
+      VOCAB_DECKS.forEach((d) => d.words.forEach((w) => { if (w.pinyin) set.add(w.pinyin); }));
+    }
+    _pinyinPool = Array.from(set);
+    return _pinyinPool;
+  }
+
+  // 正解と長さの近いダミーを優先しつつ、足りなければプール全体から補う
+  function pickPinyinDistractors(correct, count) {
+    const pool = getPinyinPool().filter((p) => p !== correct);
+    const close = pool.filter((p) => Math.abs(p.length - correct.length) <= 2);
+    const source = close.length >= count ? close : pool;
+    return shuffle(source).slice(0, count);
+  }
+
   function playButton(text, { big = false } = {}) {
     const btn = el("button", "play-btn" + (big ? " play-btn--big" : ""));
     btn.type = "button";
@@ -434,11 +467,11 @@ const Exercises = (() => {
     };
   }
 
-  // ---------- ライティング: 漢字からピンインを入力 ----------
+  // ---------- ライティング: 漢字に合うピンインを選ぶ ----------
   function renderWritingPinyin(exercise, { onChange }) {
     const wrap = el("div", "exercise exercise--writing");
     wrap.appendChild(el("div", "exercise-label", "✍️ ライティング"));
-    wrap.appendChild(el("h2", "exercise-prompt", "次の漢字のピンインをアルファベットで入力してください"));
+    wrap.appendChild(el("h2", "exercise-prompt", "次の漢字のピンインを選んでください"));
 
     const card = el("div", "hanzi-card hanzi-card--writing");
     const hanziRow = el("div", "hanzi-row");
@@ -450,21 +483,31 @@ const Exercises = (() => {
     }
     wrap.appendChild(card);
 
-    const input = el("input", "text-input");
-    input.type = "text";
-    input.placeholder = "例: ni hao (声調記号なしでOK)";
-    input.addEventListener("input", () => onChange(input.value.trim().length > 0));
-    wrap.appendChild(input);
+    const correctText = exercise.answerToned || exercise.answer;
+    const options = shuffle([correctText, ...pickPinyinDistractors(correctText, 3)]);
+
+    const choicesWrap = el("div", "choices");
+    let selected = null;
+    options.forEach((optionText) => {
+      const btn = el("button", "choice-btn", optionText);
+      btn.type = "button";
+      btn.addEventListener("click", () => {
+        choicesWrap.querySelectorAll(".choice-btn").forEach((b) => b.classList.remove("choice-btn--selected"));
+        btn.classList.add("choice-btn--selected");
+        selected = optionText;
+        onChange(true);
+      });
+      choicesWrap.appendChild(btn);
+    });
+    wrap.appendChild(choicesWrap);
 
     return {
       element: wrap,
       check() {
-        const userText = input.value.trim();
-        const correct = Speech.normalizePinyin(userText) === Speech.normalizePinyin(exercise.answer);
         return {
-          correct,
-          correctText: exercise.answerToned || exercise.answer,
-          userText: userText || "(未回答)",
+          correct: selected === correctText,
+          correctText,
+          userText: selected || "(未回答)",
         };
       },
     };
