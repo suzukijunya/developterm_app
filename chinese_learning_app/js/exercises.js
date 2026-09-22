@@ -511,9 +511,24 @@ const Exercises = (() => {
       return bars;
     }
 
-    function renderProcessing() {
+    function renderProcessing(message) {
       clear(panel);
-      panel.appendChild(el("div", "cs-processing", "判定中…"));
+      panel.appendChild(el("div", "cs-processing", message || "判定中…"));
+    }
+
+    // 原因が分かるよう、認識エンジンのエラーコードも添えて表示する
+    function recognitionErrorMessage(code) {
+      const reasons = {
+        "no-speech": "声が聞き取れませんでした。少し大きめの声で、ゆっくり読み上げてみよう",
+        "not-allowed": "音声認識が許可されていません。端末の設定でこのブラウザの「マイク」と「音声認識」を許可してください",
+        "service-not-allowed": "このブラウザでは音声認識が使えない設定になっています。端末の設定で「音声認識」を許可するか、Safariで開いてみてください",
+        "audio-capture": "マイクを音声認識に使えませんでした。他のアプリがマイクを使っていないか確認してください",
+        network: "音声認識サーバーに接続できませんでした。通信状況を確認してください",
+        aborted: "音声認識が中断されました。もう一度タップしてください",
+        "language-not-supported": "この端末は中国語の音声認識に対応していません",
+      };
+      const base = reasons[code] || "うまく聞き取れませんでした。もう一度タップして読み上げてみよう";
+      return code ? `${base}(${code})` : base;
     }
 
     function renderResult() {
@@ -629,8 +644,12 @@ const Exercises = (() => {
       };
 
       let alternatives = [];
+      let recogError = null;
       if (recog) {
-        alternatives = await recog.result.catch(() => []);
+        alternatives = await recog.result.catch((err) => {
+          recogError = (err && err.message) || String(err);
+          return [];
+        });
       } else {
         await manualStop; // 音声認識なし: タップされるまで録音だけ行う
       }
@@ -642,15 +661,30 @@ const Exercises = (() => {
 
       let blob = null;
       if (recorder) blob = await recorder.stop().catch(() => null);
-      if (blob && blob.size > 0) {
+      const hasBlob = !!(blob && blob.size > 0);
+      if (hasBlob) {
         if (recordedAudioUrl) URL.revokeObjectURL(recordedAudioUrl);
         recordedAudioUrl = URL.createObjectURL(blob);
+      }
+
+      // ブラウザの音声認識が何も返さなかったときは、録音をWhisperで認識する
+      let usedWhisper = false;
+      if (alternatives.length === 0 && hasBlob && window.WhisperASR && window.WhisperASR.isSupported()) {
+        renderProcessing(
+          window.WhisperASR.loaded ? "高精度認識で判定中…" : "高精度認識で判定中…(初回はモデルの読み込みに時間がかかります)"
+        );
+        const text = await window.WhisperASR.transcribe(blob).catch(() => null);
+        if (disposed) return;
+        if (text && text.trim()) {
+          alternatives = [text];
+          usedWhisper = true;
+        }
       }
 
       if (recog && alternatives.length === 0) {
         busy = false;
         if (submitted) api.setBusy(false);
-        renderIdle("うまく聞き取れませんでした。もう一度タップして読み上げてみよう");
+        renderIdle(recognitionErrorMessage(recogError));
         return;
       }
 
@@ -667,7 +701,7 @@ const Exercises = (() => {
       }
       renderResult();
       busy = false;
-      if (blob && blob.size > 0) refineWithWhisper(blob);
+      if (hasBlob && !usedWhisper) refineWithWhisper(blob);
       finishAttempt();
     }
 

@@ -84,46 +84,73 @@ const Speech = (() => {
   }
 
   // 音声認識を開始し、{ result: Promise<string[]>, stop() } を返す。
-  // stop() で「タップして終了」でき、その時点までの発話で結果が確定する
+  // stop() で「タップして終了」できる。iOS(Safari/Chrome)は途中で stop() すると
+  // 確定結果を返さずに終わることがあるため、途中経過(interim)も保持しておき、
+  // 確定結果がなければ最後の途中経過を結果として使う。
+  // 失敗時は Error.message に認識エンジンのエラーコード(no-speech など)が入る
   function startRecognition({ timeout = 12000 } = {}) {
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!Recognition) return { result: Promise.reject(new Error("no-stt")), stop() {} };
 
     const recognition = new Recognition();
     recognition.lang = "zh-CN";
-    recognition.interimResults = false;
+    recognition.interimResults = true;
+    recognition.continuous = false;
     recognition.maxAlternatives = 3;
+
+    let finalAlternatives = null;
+    let latestText = "";
+    let lastError = null;
+    let settle = () => {};
 
     const result = new Promise((resolve, reject) => {
       let done = false;
-      const timer = setTimeout(() => {
-        if (!done) recognition.stop();
-      }, timeout);
+      const timers = [];
+      settle = () => {
+        if (done) return;
+        done = true;
+        timers.forEach(clearTimeout);
+        if (finalAlternatives && finalAlternatives.some((t) => t.trim())) resolve(finalAlternatives);
+        else if (latestText.trim()) resolve([latestText]);
+        else reject(new Error(lastError || "no-speech"));
+      };
+      timers.push(
+        setTimeout(() => {
+          try {
+            recognition.stop();
+          } catch (e) {
+            // 既に終了している
+          }
+        }, timeout)
+      );
+      // onend が来ない実装への保険
+      timers.push(setTimeout(() => settle(), timeout + 3000));
 
       recognition.onresult = (event) => {
-        if (done) return;
-        done = true;
-        clearTimeout(timer);
-        const alternatives = Array.from(event.results[0]).map((r) => r.transcript);
-        resolve(alternatives);
-      };
-
-      recognition.onerror = (event) => {
-        if (done) return;
-        done = true;
-        clearTimeout(timer);
-        reject(event.error || new Error("recognition-error"));
-      };
-
-      recognition.onend = () => {
-        if (!done) {
-          done = true;
-          clearTimeout(timer);
-          reject(new Error("no-speech"));
+        const results = Array.from(event.results);
+        latestText = results.map((r) => r[0].transcript).join("");
+        const finals = results.filter((r) => r.isFinal);
+        if (finals.length === 1 && finals.length === results.length) {
+          finalAlternatives = Array.from(finals[0]).map((a) => a.transcript);
+        } else if (finals.length > 0 && finals.length === results.length) {
+          finalAlternatives = [finals.map((r) => r[0].transcript).join("")];
         }
       };
 
-      recognition.start();
+      recognition.onerror = (event) => {
+        lastError = event.error || "recognition-error";
+        // 多くの実装では error の後に end が来るが、来ない場合に備えて少し待って確定
+        timers.push(setTimeout(() => settle(), 1000));
+      };
+
+      recognition.onend = () => settle();
+
+      try {
+        recognition.start();
+      } catch (e) {
+        lastError = (e && e.name) || "start-failed";
+        settle();
+      }
     });
 
     return {
@@ -134,6 +161,8 @@ const Speech = (() => {
         } catch (e) {
           // 既に終了している場合は何もしない
         }
+        // stop() 後に end が返ってこない端末があるので、途中経過で確定させる
+        setTimeout(() => settle(), 1500);
       },
     };
   }
