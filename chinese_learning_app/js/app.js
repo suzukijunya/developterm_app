@@ -969,6 +969,12 @@
       AppState.addStudySeconds((Date.now() - startedAt) / 1000);
     }
 
+    // スピーキング問題があるレッスンでは、問題に着く前に先にマイク許可を
+    // 済ませておく(毎回の問題ごとに許可を求められるのを減らすため)
+    if (lesson.exercises.some((ex) => ex.type === "speaking")) {
+      Speech.ensureMicPermission();
+    }
+
     function exitToHome() {
       if (confirm("レッスンを中断してホームに戻りますか?ここまでの進捗は保存されません。")) {
         commitStudyTime();

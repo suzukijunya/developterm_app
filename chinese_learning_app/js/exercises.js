@@ -15,6 +15,48 @@ const Exercises = (() => {
     while (node.firstChild) node.removeChild(node.firstChild);
   }
 
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  // 全レッスン・単語帳から中国語の漢字候補プールを集める
+  // (ライティング問題の選択肢のダミーに使う)
+  let _hanziPool = null;
+  function getHanziPool() {
+    if (_hanziPool) return _hanziPool;
+    const set = new Set();
+    if (typeof UNITS !== "undefined") {
+      UNITS.forEach((u) =>
+        u.lessons.forEach((l) =>
+          l.exercises.forEach((ex) => {
+            if (ex.type === "writing_cn" && ex.answer) set.add(ex.answer);
+            if (ex.type === "writing_pinyin" && ex.hanzi) set.add(ex.hanzi);
+            if (ex.type === "translate_choice" && ex.hanzi) set.add(ex.hanzi);
+            if (ex.type === "speaking" && ex.hanzi) set.add(ex.hanzi);
+          })
+        )
+      );
+    }
+    if (typeof VOCAB_DECKS !== "undefined") {
+      VOCAB_DECKS.forEach((d) => d.words.forEach((w) => set.add(w.hanzi)));
+    }
+    _hanziPool = Array.from(set);
+    return _hanziPool;
+  }
+
+  // 正解と長さの近いダミーを優先しつつ、足りなければプール全体から補う
+  function pickDistractors(correct, count) {
+    const pool = getHanziPool().filter((h) => h !== correct);
+    const close = pool.filter((h) => Math.abs(h.length - correct.length) <= 2);
+    const source = close.length >= count ? close : pool;
+    return shuffle(source).slice(0, count);
+  }
+
   function playButton(text, { big = false } = {}) {
     const btn = el("button", "play-btn" + (big ? " play-btn--big" : ""));
     btn.type = "button";
@@ -305,11 +347,11 @@ const Exercises = (() => {
     };
   }
 
-  // ---------- ライティング: 日本語の意味から中国語を入力 ----------
+  // ---------- ライティング: 日本語の意味に合う中国語(漢字)を選ぶ ----------
   function renderWritingCn(exercise, { onChange }) {
     const wrap = el("div", "exercise exercise--writing");
     wrap.appendChild(el("div", "exercise-label", "✍️ ライティング"));
-    wrap.appendChild(el("h2", "exercise-prompt", `次の意味を中国語(漢字)で書いてください`));
+    wrap.appendChild(el("h2", "exercise-prompt", "次の意味に合う中国語(漢字)を選んでください"));
 
     const card = el("div", "hanzi-card hanzi-card--writing");
     card.appendChild(el("div", "meaning-text meaning-text--big", exercise.meaning));
@@ -318,21 +360,30 @@ const Exercises = (() => {
     }
     wrap.appendChild(card);
 
-    const input = el("input", "text-input");
-    input.type = "text";
-    input.placeholder = "ここに中国語を入力...";
-    input.addEventListener("input", () => onChange(input.value.trim().length > 0));
-    wrap.appendChild(input);
+    const options = shuffle([exercise.answer, ...pickDistractors(exercise.answer, 3)]);
+
+    const choicesWrap = el("div", "choices");
+    let selected = null;
+    options.forEach((optionText) => {
+      const btn = el("button", "choice-btn", optionText);
+      btn.type = "button";
+      btn.addEventListener("click", () => {
+        choicesWrap.querySelectorAll(".choice-btn").forEach((b) => b.classList.remove("choice-btn--selected"));
+        btn.classList.add("choice-btn--selected");
+        selected = optionText;
+        onChange(true);
+      });
+      choicesWrap.appendChild(btn);
+    });
+    wrap.appendChild(choicesWrap);
 
     return {
       element: wrap,
       check() {
-        const userText = input.value.trim();
-        const correct = userText.replace(/\s/g, "") === exercise.answer.replace(/\s/g, "");
         return {
-          correct,
+          correct: selected === exercise.answer,
           correctText: exercise.answer,
-          userText: userText || "(未回答)",
+          userText: selected || "(未回答)",
         };
       },
     };

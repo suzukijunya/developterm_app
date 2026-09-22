@@ -51,6 +51,16 @@ const Speech = (() => {
     return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
   }
 
+  // スピーキング問題に入る前に先にマイク許可を取っておく(失敗しても無視。
+  // 実際の許可ダイアログの表示回数はブラウザ側の設定に依存するため、
+  // ここではアプリ側から不要に何度も要求しないことだけを保証する)
+  function ensureMicPermission() {
+    if (!isRecordingSupported()) return Promise.resolve(false);
+    return getMicStream()
+      .then(() => true)
+      .catch(() => false);
+  }
+
   // 発音練習の録音。stop()を呼ぶと録音したBlobを返す(あとで再生するため)
   async function startRecording() {
     if (!isRecordingSupported()) throw new Error("no-recording");
@@ -136,5 +146,6 @@ const Speech = (() => {
     normalizePinyin,
     isRecordingSupported,
     startRecording,
+    ensureMicPermission,
   };
 })();
