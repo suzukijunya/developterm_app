@@ -1004,6 +1004,9 @@
 
       const { element, check, playRecording, reveal } = Exercises.render(exercise, {
         onChange: (canCheck) => {
+          // 確認済みの後にWhisperの遅延認識結果などが届いても、
+          // 再生ブロック中のボタン状態を上書きしないようにする
+          if (answered) return;
           checkBtn.disabled = !canCheck;
         },
       });
