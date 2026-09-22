@@ -378,10 +378,16 @@ const Exercises = (() => {
           userText: recognizedText ? `あなたの発音:「${recognizedText}」` : "発音に挑戦しました",
         };
       },
+      // 録音した自分の発音を再生する。再生が終わる(または録音がない/
+      // 再生に失敗する)まで待てるようPromiseを返す
       playRecording() {
-        if (!recordedAudioUrl) return;
-        const audio = new Audio(recordedAudioUrl);
-        audio.play().catch(() => {});
+        if (!recordedAudioUrl) return Promise.resolve();
+        return new Promise((resolve) => {
+          const audio = new Audio(recordedAudioUrl);
+          audio.addEventListener("ended", resolve);
+          audio.addEventListener("error", resolve);
+          audio.play().catch(resolve);
+        });
       },
     };
   }

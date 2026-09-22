@@ -1027,7 +1027,6 @@
         if (!answered) {
           handleCheck(feedback, footer, checkBtn, exercise);
         } else {
-          if (currentPlayRecording) currentPlayRecording();
           advance();
         }
       });
@@ -1063,9 +1062,21 @@
         feedback.appendChild(el("div", "feedback-sub", `あなたの回答: ${result.userText}`));
       }
 
-      checkBtn.textContent = index + 1 < total ? "続ける" : "レッスン完了";
+      const nextLabel = index + 1 < total ? "続ける" : "レッスン完了";
       checkBtn.classList.add(result.correct ? "primary-btn--correct" : "primary-btn--wrong");
-      checkBtn.disabled = false;
+
+      if (currentPlayRecording) {
+        // 自分の発音の再生が終わるまでは次に進めないようにする
+        checkBtn.textContent = "🔊 録音を再生中...";
+        checkBtn.disabled = true;
+        currentPlayRecording().then(() => {
+          checkBtn.textContent = nextLabel;
+          checkBtn.disabled = false;
+        });
+      } else {
+        checkBtn.textContent = nextLabel;
+        checkBtn.disabled = false;
+      }
     }
 
     function advance() {
