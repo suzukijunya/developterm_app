@@ -2311,6 +2311,199 @@ const UNITS = [
       },
     ],
   },
+  {
+    id: "u13",
+    title: "契約書とコンプライアンス",
+    description: "業務委託契約書の読み方・報酬・解除条項の表現",
+    icon: "⚖️",
+    lessons: [
+      {
+        id: "u13l1",
+        title: "契約の基本条項",
+        exercises: [
+          {
+            type: "listening_choice",
+            audioText: "甲方委托乙方开发系统",
+            pinyin: "jiǎfāng wěituō yǐfāng kāifā xìtǒng",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "甲は乙にシステム開発を委託する", correct: true },
+              { text: "甲は乙からシステムを購入する", correct: false },
+              { text: "甲と乙は共同でシステムを開発する", correct: false },
+            ],
+          },
+          {
+            type: "translate_choice",
+            hanzi: "这是一份准委任合同",
+            pinyin: "zhè shì yí fèn zhǔn wěirèn hétong",
+            prompt: "この文の意味は?",
+            choices: [
+              { text: "これは準委任契約です", correct: true },
+              { text: "これは雇用契約です", correct: false },
+              { text: "これは売買契約です", correct: false },
+            ],
+          },
+          {
+            type: "speaking",
+            hanzi: "乙方需要遵守善良管理人的注意义务",
+            pinyin: "yǐfāng xūyào zūnshǒu shànliáng guǎnlǐrén de zhùyì yìwù",
+            meaning: "乙は善管注意義務を遵守する必要があります",
+            prompt: "声に出して発音してみましょう",
+          },
+          {
+            type: "writing_cn",
+            meaning: "知的財産権",
+            pinyinHint: "zhīshi chǎnquán",
+            answer: "知识产权",
+          },
+          {
+            type: "reading",
+            passage: "本合同的目的是甲方委托乙方进行系统开发业务。双方确认本合同为准委任合同。",
+            passagePinyin: "Běn hétong de mùdì shì jiǎfāng wěituō yǐfāng jìnxíng xìtǒng kāifā yèwù. Shuāngfāng quèrèn běn hétong wéi zhǔn wěirèn hétong.",
+            question: "この契約の性質は何ですか?",
+            choices: [
+              { text: "準委任契約", correct: true },
+              { text: "雇用契約", correct: false },
+              { text: "売買契約", correct: false },
+            ],
+          },
+          {
+            type: "listening_choice",
+            audioText: "乙方享有业务执行的自由裁量权",
+            pinyin: "yǐfāng xiǎngyǒu yèwù zhíxíng de zìyóu cáiliàngquán",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "乙は業務遂行について裁量権を持つ", correct: true },
+              { text: "甲は乙の業務時間を管理する", correct: false },
+              { text: "乙は毎日出社する必要がある", correct: false },
+            ],
+          },
+        ],
+      },
+      {
+        id: "u13l2",
+        title: "報酬と支払い",
+        exercises: [
+          {
+            type: "listening_choice",
+            audioText: "月度业务委托费为一百万日元",
+            pinyin: "yuèdù yèwù wěituō fèi wéi yìbǎiwàn rìyuán",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "月額の業務委託料は100万円です", correct: true },
+              { text: "年収は100万円です", correct: false },
+              { text: "契約金は10万円です", correct: false },
+            ],
+          },
+          {
+            type: "translate_choice",
+            hanzi: "费用按日计算",
+            pinyin: "fèiyòng àn rì jìsuàn",
+            prompt: "この文の意味は?",
+            choices: [
+              { text: "費用は日割りで計算されます", correct: true },
+              { text: "費用は月末に一括請求されます", correct: false },
+              { text: "費用は前払いです", correct: false },
+            ],
+          },
+          {
+            type: "speaking",
+            hanzi: "乙方需要每月提交业务报告书",
+            pinyin: "yǐfāng xūyào měi yuè tíjiāo yèwù bàogàoshū",
+            meaning: "乙は毎月業務報告書を提出する必要があります",
+            prompt: "声に出して発音してみましょう",
+          },
+          {
+            type: "writing_pinyin",
+            hanzi: "请求书",
+            meaningHint: "請求書",
+            answer: "qingqiushu",
+            answerToned: "qǐngqiúshū",
+          },
+          {
+            type: "reading",
+            passage: "乙方每月提交业务报告书及请求书,甲方确认后于次月末支付费用。汇款手续费由甲方承担。",
+            passagePinyin: "Yǐfāng měi yuè tíjiāo yèwù bàogàoshū jí qǐngqiúshū, jiǎfāng quèrèn hòu yú cì yuè mò zhīfù fèiyòng. Huìkuǎn shǒuxùfèi yóu jiǎfāng chéngdān.",
+            question: "振込手数料は誰が負担しますか?",
+            choices: [
+              { text: "甲(発注者)", correct: true },
+              { text: "乙(受注者)", correct: false },
+              { text: "双方で折半", correct: false },
+            ],
+          },
+          {
+            type: "writing_cn",
+            meaning: "減額する",
+            pinyinHint: "jiǎn'é",
+            answer: "减额",
+          },
+        ],
+      },
+      {
+        id: "u13l3",
+        title: "契約解除・競業避止",
+        exercises: [
+          {
+            type: "listening_choice",
+            audioText: "任何一方均可提前三十天书面通知解除合同",
+            pinyin: "rènhé yì fāng jūn kě tíqián sānshí tiān shūmiàn tōngzhī jiěchú hétong",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "どちらの当事者も30日前の書面通知で解約できる", correct: true },
+              { text: "契約は途中解約できない", correct: false },
+              { text: "契約解除には裁判所の許可が必要", correct: false },
+            ],
+          },
+          {
+            type: "translate_choice",
+            hanzi: "乙方负有竞业避止义务",
+            pinyin: "yǐfāng fùyǒu jìngyè bìzhǐ yìwù",
+            prompt: "この文の意味は?",
+            choices: [
+              { text: "乙は競業避止義務を負います", correct: true },
+              { text: "乙は秘密保持義務を負いません", correct: false },
+              { text: "乙は自由に転職できます", correct: false },
+            ],
+          },
+          {
+            type: "speaking",
+            hanzi: "损害赔偿的上限为业务委托费的总额",
+            pinyin: "sǔnhài péicháng de shàngxiàn wéi yèwù wěituō fèi de zǒng'é",
+            meaning: "損害賠償の上限は業務委託料の総額です",
+            prompt: "声に出して発音してみましょう",
+          },
+          {
+            type: "writing_cn",
+            meaning: "反社会的勢力",
+            pinyinHint: "fǎnshèhuì shìlì",
+            answer: "反社会势力",
+          },
+          {
+            type: "reading",
+            passage: "如果乙方违反竞业避止义务或保密义务,损害赔偿金额不受上限限制。",
+            passagePinyin: "Rúguǒ yǐfāng wéifǎn jìngyè bìzhǐ yìwù huò bǎomì yìwù, sǔnhài péicháng jīn'é bú shòu shàngxiàn xiànzhì.",
+            question: "上限が適用されないケースはどれですか?",
+            choices: [
+              { text: "競業避止義務・秘密保持義務違反", correct: true },
+              { text: "軽微な報告遅延", correct: false },
+              { text: "すべての違反に上限が適用される", correct: false },
+            ],
+          },
+          {
+            type: "listening_choice",
+            audioText: "本合同可因故意或重大过失而解除",
+            pinyin: "běn hétong kě yīn gùyì huò zhòngdà guòshī ér jiěchú",
+            prompt: "今聞こえた文の意味はどれ?",
+            choices: [
+              { text: "故意または重大な過失により契約を解除できる", correct: true },
+              { text: "過失があっても契約は解除できない", correct: false },
+              { text: "合意がなければ解除できない", correct: false },
+            ],
+          },
+        ],
+      },
+    ],
+  },
 ];
 
 // レベルロードマップ: ユニットをHSKに対応する段階にまとめ、
@@ -2375,7 +2568,7 @@ const LEVELS = [
     id: "lv6",
     label: "Lv.6 ビジネス実務",
     hskLabel: "HSK6相当",
-    unitIds: ["u11", "u12"],
+    unitIds: ["u11", "u12", "u13"],
     description: "ゴール: 採用面接・契約書対応など通訳なしでビジネス実務を主導できる",
     implemented: true,
     targetVocab: 5000,
