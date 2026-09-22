@@ -249,6 +249,8 @@ const Exercises = (() => {
     micArea.appendChild(micStatus);
     const resultBox = el("div", "mic-result hidden");
     micArea.appendChild(resultBox);
+    const whisperBox = el("div", "whisper-result hidden");
+    micArea.appendChild(whisperBox);
     wrap.appendChild(micArea);
 
     let attempted = false;
@@ -321,6 +323,7 @@ const Exercises = (() => {
             if (blob && blob.size > 0) {
               if (recordedAudioUrl) URL.revokeObjectURL(recordedAudioUrl);
               recordedAudioUrl = URL.createObjectURL(blob);
+              refineWithWhisper(blob);
             }
           } catch (e) {
             // 録音の保存に失敗しても学習フロー自体は継続する
@@ -328,6 +331,42 @@ const Exercises = (() => {
         }
       }
     });
+
+    // 録音した音声をWhisper(ブラウザ内で動く高精度モデル)で追加認識し、
+    // Web Speech APIより精度の高い結果が得られたら表示・判定を更新する。
+    // 失敗しても既存の認識結果はそのまま使えるので学習の妨げにはならない。
+    async function refineWithWhisper(blob) {
+      if (!window.WhisperASR || !window.WhisperASR.isSupported()) return;
+      whisperBox.classList.remove("hidden");
+      whisperBox.className = "whisper-result";
+      whisperBox.textContent = window.WhisperASR.loaded
+        ? "🔍 詳しく確認中..."
+        : "🔍 詳しく確認中...(初回は認識モデルの読み込みに時間がかかります)";
+
+      const text = await window.WhisperASR.transcribe(blob).catch(() => null);
+      if (!text) {
+        whisperBox.classList.add("hidden");
+        return;
+      }
+
+      recognizedText = text;
+      const targetNorm = exercise.hanzi.replace(/[,、。\s]/g, "");
+      const cleaned = text.replace(/[,、。\s]/g, "");
+      matched = cleaned.includes(targetNorm) || targetNorm.includes(cleaned);
+      attempted = true;
+      onChange(true);
+
+      const pinyinReading = window.PinyinConv ? await window.PinyinConv.convert(text).catch(() => null) : null;
+
+      whisperBox.className = "whisper-result " + (matched ? "whisper-result--ok" : "whisper-result--retry");
+      clear(whisperBox);
+      whisperBox.appendChild(el("div", "whisper-result-label", matched ? "✅ 詳細認識(高精度)" : "🔁 詳細認識(高精度)"));
+      if (pinyinReading) {
+        whisperBox.appendChild(rubyText(text, pinyinReading, "whisper-result-ruby"));
+      } else {
+        whisperBox.appendChild(el("div", "whisper-result-ruby", text));
+      }
+    }
 
     return {
       element: wrap,
