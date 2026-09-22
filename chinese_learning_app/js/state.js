@@ -1,7 +1,6 @@
 // 学習の進捗状態を localStorage に保存・復元する
 
 const STORAGE_KEY = "zh_app_state_v1";
-const MAX_HEARTS = 5;
 const DAILY_GOAL_XP = 30;
 const STUDY_DATES_LIMIT = 60;
 
@@ -15,8 +14,6 @@ function defaultState() {
     streak: 0,
     bestStreak: 0,
     lastStudyDate: null,
-    hearts: MAX_HEARTS,
-    heartsRefillDate: todayStr(),
     lessonProgress: {}, // { [lessonId]: { completed: bool, stars: number, bestAccuracy: number } }
     dailyXp: 0,
     dailyXpDate: todayStr(),
@@ -63,13 +60,9 @@ const AppState = (() => {
     save();
   }
 
-  // 日をまたいだらハート/デイリー目標をリセットする
+  // 日をまたいだらデイリー目標をリセットする
   function refreshDaily() {
     const today = todayStr();
-    if (state.heartsRefillDate !== today) {
-      state.hearts = MAX_HEARTS;
-      state.heartsRefillDate = today;
-    }
     if (state.dailyXpDate !== today) {
       state.dailyXp = 0;
       state.dailyXpDate = today;
@@ -102,21 +95,6 @@ const AppState = (() => {
     refreshDaily();
     state.xp += amount;
     state.dailyXp += amount;
-    save();
-  }
-
-  function loseHeart() {
-    state.hearts = Math.max(0, state.hearts - 1);
-    save();
-    return state.hearts;
-  }
-
-  function hasHearts() {
-    return state.hearts > 0;
-  }
-
-  function refillHearts() {
-    state.hearts = MAX_HEARTS;
     save();
   }
 
@@ -217,9 +195,6 @@ const AppState = (() => {
     refreshDaily,
     markStudiedToday,
     addXp,
-    loseHeart,
-    hasHearts,
-    refillHearts,
     completeLesson,
     isLessonCompleted,
     getLessonStars,
@@ -231,7 +206,6 @@ const AppState = (() => {
     reviewFlashcard,
     isArticleRead,
     markArticleRead,
-    MAX_HEARTS,
     DAILY_GOAL_XP,
   };
 })();

@@ -279,10 +279,8 @@
     const stats = el("div", "topbar-stats");
     const streak = el("div", "stat-pill stat-pill--streak", `🔥 ${state.streak}`);
     const xp = el("div", "stat-pill stat-pill--xp", `💎 ${state.xp}`);
-    const hearts = el("div", "stat-pill stat-pill--hearts", `❤️ ${state.hearts}`);
     stats.appendChild(streak);
     stats.appendChild(xp);
-    stats.appendChild(hearts);
     bar.appendChild(stats);
 
     container.appendChild(bar);
@@ -998,7 +996,6 @@
       progressOuter.appendChild(progressInner);
       header.appendChild(progressOuter);
 
-      header.appendChild(el("div", "hearts-display", "❤️ " + AppState.get().hearts));
       screen.appendChild(header);
 
       const exercise = lesson.exercises[index];
@@ -1026,16 +1023,9 @@
       footer.appendChild(checkBtn);
       screen.appendChild(footer);
 
-      let failed = false;
-
       checkBtn.addEventListener("click", () => {
         if (!answered) {
-          handleCheck(feedback, footer, checkBtn, exercise, () => {
-            failed = true;
-          });
-        } else if (failed) {
-          commitStudyTime();
-          renderFailScreen(lesson, { keys, isReview });
+          handleCheck(feedback, footer, checkBtn, exercise);
         } else {
           if (currentPlayRecording) currentPlayRecording();
           advance();
@@ -1045,7 +1035,7 @@
       appRoot.appendChild(screen);
     }
 
-    function handleCheck(feedback, footer, checkBtn, exercise, onFail) {
+    function handleCheck(feedback, footer, checkBtn, exercise) {
       const result = currentCheck();
       answered = true;
       feedback.classList.remove("hidden");
@@ -1067,20 +1057,10 @@
         AppState.addXp(gained);
         sessionXp += gained;
       } else {
-        const heartsLeft = AppState.loseHeart();
         feedback.className = "feedback feedback--wrong";
         feedback.appendChild(el("div", "feedback-title", "❌ 不正解"));
         feedback.appendChild(el("div", "feedback-sub", `正解: ${result.correctText}`));
         feedback.appendChild(el("div", "feedback-sub", `あなたの回答: ${result.userText}`));
-
-        if (heartsLeft <= 0) {
-          checkBtn.textContent = "結果を見る";
-          checkBtn.classList.remove("primary-btn--correct");
-          checkBtn.classList.add("primary-btn--wrong");
-          checkBtn.disabled = false;
-          onFail();
-          return;
-        }
       }
 
       checkBtn.textContent = index + 1 < total ? "続ける" : "レッスン完了";
@@ -1114,31 +1094,6 @@
       }
     }
     renderExerciseScreen();
-  }
-
-  function renderFailScreen(lesson, options) {
-    clear(appRoot);
-    const screen = el("div", "screen screen--summary screen--fail");
-    const card = el("div", "summary-card");
-    card.appendChild(el("div", "summary-emoji", "💔"));
-    card.appendChild(el("h1", "summary-title", "ハートがなくなりました"));
-    card.appendChild(el("p", "summary-sub", "少し休んでからもう一度挑戦しましょう。ハートは翌日に回復します。"));
-
-    const retryBtn = el("button", "primary-btn", "レッスンをやり直す");
-    retryBtn.type = "button";
-    retryBtn.addEventListener("click", () => {
-      AppState.refillHearts(); // 練習を続けられるよう即時回復
-      runLesson(lesson, options);
-    });
-    card.appendChild(retryBtn);
-
-    const homeBtn = el("button", "secondary-btn", "ホームに戻る");
-    homeBtn.type = "button";
-    homeBtn.addEventListener("click", renderHome);
-    card.appendChild(homeBtn);
-
-    screen.appendChild(card);
-    appRoot.appendChild(screen);
   }
 
   function renderSummaryScreen(lesson, correctCount, total, sessionXp, isReview) {
