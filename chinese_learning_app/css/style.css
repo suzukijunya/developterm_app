@@ -5678,3 +5678,1367 @@ body.hide-translation .tr-text {
     color: var(--text);
   }
 }
+
+/* ===== ピンイン: コースマップ・レッスン・ピンイン表・テスト ===== */
+.screen--pymap {
+  --sky-1: #5fbdf7;
+  --sky-2: #9fd8fb;
+  --sky-3: #dff3ff;
+  --mt-far: #8fc3e6;
+  --mt-near: #6fb38a;
+  --tree: #3fa464;
+  min-height: 100vh;
+  background: linear-gradient(180deg, var(--sky-1) 0, var(--sky-2) 260px, var(--sky-3) 900px, var(--sky-3) 100%);
+}
+
+@media (prefers-color-scheme: dark) {
+  .screen--pymap {
+    --sky-1: #0f2d4a;
+    --sky-2: #16405e;
+    --sky-3: #14262f;
+    --mt-far: #24506e;
+    --mt-near: #25543f;
+    --tree: #2b7a4b;
+  }
+}
+
+.pymap-head {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  background: linear-gradient(180deg, var(--sky-1) 70%, transparent);
+}
+
+.pymap-back {
+  width: 40px;
+  height: 40px;
+  padding: 9px;
+  border: none;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+  cursor: pointer;
+}
+
+.pymap-back svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pymap-title {
+  font-size: 20px;
+  font-weight: 900;
+  color: #fff;
+  text-align: center;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.12);
+}
+
+.pymap-count {
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #1f7fc0;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.pymap-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 4px 16px 0;
+  position: relative;
+  z-index: 5;
+}
+
+.pymap-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 10px;
+  border: none;
+  border-radius: 16px;
+  background: #fff;
+  color: #2b3a44;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 4px 0 rgba(20, 90, 140, 0.25);
+}
+
+.pymap-action:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 rgba(20, 90, 140, 0.25);
+}
+
+.pymap-action-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.pymap-action-icon--chart {
+  background: var(--orange);
+}
+
+.pymap-action-icon--test {
+  background: #34b36b;
+}
+
+.pymap-scene {
+  position: relative;
+  margin-top: -44px;
+  overflow: hidden;
+}
+
+.pymap-mountains {
+  position: absolute;
+  top: 40px;
+  left: 0;
+  width: 100%;
+  height: 150px;
+}
+
+.pymap-mountains svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pymap-mt--far {
+  fill: var(--mt-far);
+}
+
+.pymap-mt--near {
+  fill: var(--mt-near);
+}
+
+.pymap-snow {
+  fill: #fff;
+  opacity: 0.9;
+}
+
+.pymap-cloud {
+  position: absolute;
+  width: 74px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+  transform-origin: left center;
+}
+
+.pymap-cloud::before,
+.pymap-cloud::after {
+  content: "";
+  position: absolute;
+  bottom: 6px;
+  border-radius: 50%;
+  background: inherit;
+}
+
+.pymap-cloud::before {
+  left: 12px;
+  width: 30px;
+  height: 30px;
+}
+
+.pymap-cloud::after {
+  left: 34px;
+  width: 24px;
+  height: 24px;
+}
+
+.pymap-dot {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  transform: translate(-50%, -50%);
+}
+
+.pymap-tree {
+  position: absolute;
+  width: 34px;
+  color: var(--tree);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.pymap-tree--small {
+  width: 24px;
+}
+
+.pymap-tree svg {
+  display: block;
+  width: 100%;
+}
+
+.pymap-ribbon {
+  position: absolute;
+  left: 50%;
+  z-index: 2;
+  padding: 7px 20px;
+  border-radius: 12px;
+  background: #fff;
+  color: #1f7fc0;
+  font-size: 14px;
+  font-weight: 900;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  box-shadow: 0 4px 0 rgba(20, 90, 140, 0.2);
+}
+
+.pymap-node {
+  --c: var(--orange);
+  --c-dark: var(--orange-dark);
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 130px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  transform: translateX(-50%);
+}
+
+.pymap-node--pink {
+  --c: #ff6f9c;
+  --c-dark: #e04d7c;
+}
+
+.pymap-node--blue {
+  --c: #3a9cf5;
+  --c-dark: #1f7fd6;
+}
+
+.pymap-node--green {
+  --c: #3fc275;
+  --c-dark: #25a15a;
+}
+
+.pymap-node--purple {
+  --c: #a77bf3;
+  --c-dark: #8558d8;
+}
+
+.pymap-node--teal {
+  --c: #1fbcb4;
+  --c-dark: #109a93;
+}
+
+.pymap-disc {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 88px;
+  height: 88px;
+  border: 5px solid #fff;
+  border-radius: 50%;
+  background: var(--c);
+  box-shadow: 0 6px 0 var(--c-dark), 0 12px 20px rgba(0, 0, 0, 0.16);
+  transition: transform 0.1s ease;
+}
+
+.pymap-node:active .pymap-disc {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 var(--c-dark), 0 6px 10px rgba(0, 0, 0, 0.16);
+}
+
+.pymap-node.is-next .pymap-disc {
+  animation: pymap-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes pymap-pulse {
+  0%, 100% {
+    box-shadow: 0 6px 0 var(--c-dark), 0 0 0 0 rgba(255, 255, 255, 0.8);
+  }
+  50% {
+    box-shadow: 0 6px 0 var(--c-dark), 0 0 0 12px rgba(255, 255, 255, 0);
+  }
+}
+
+/* 黒板アイコン */
+.pymap-board {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  min-height: 40px;
+  padding: 3px 6px;
+  border: 3px solid #c98b4a;
+  border-radius: 6px;
+  background: #2f5d4a;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.pymap-check {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 5px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--good);
+  color: #fff;
+}
+
+.pymap-check svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pymap-start {
+  position: absolute;
+  top: -30px;
+  padding: 4px 12px;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--orange-dark);
+  font-size: 12px;
+  font-weight: 900;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+  animation: pymap-bob 1.6s ease-in-out infinite;
+}
+
+.pymap-start::after {
+  content: "";
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  border: 6px solid transparent;
+  border-bottom: none;
+  border-top-color: #fff;
+  transform: translateX(-50%);
+}
+
+@keyframes pymap-bob {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.pymap-label {
+  margin-top: 10px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--card-bg);
+  font-size: 13px;
+  font-weight: 900;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.pymap-node.is-done .pymap-label {
+  color: var(--good-dark);
+}
+
+/* レッスン */
+.pyl-hero {
+  --c: var(--orange);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--c) 14%, var(--card-bg));
+}
+
+.pyl-hero--pink {
+  --c: #ff6f9c;
+}
+
+.pyl-hero--blue {
+  --c: #3a9cf5;
+}
+
+.pyl-hero--green {
+  --c: #3fc275;
+}
+
+.pyl-hero--purple {
+  --c: #a77bf3;
+}
+
+.pyl-hero--teal {
+  --c: #1fbcb4;
+}
+
+.pyl-hero-board {
+  flex-shrink: 0;
+  min-width: 78px;
+  min-height: 58px;
+  font-size: 16px;
+}
+
+.pyl-hero-lead {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.pyl-card {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  background: var(--card-bg);
+}
+
+.pyl-sym {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.pyl-card-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.pyl-tip {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.py-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.py-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: 0 2px 0 var(--border);
+}
+
+.py-chip:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+.py-chip.is-playing {
+  border-color: var(--orange);
+  background: var(--orange-soft);
+}
+
+.py-chip-py {
+  font-size: 17px;
+  font-weight: 900;
+  color: var(--orange-dark);
+}
+
+.py-chip-ch {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.py-chip--none {
+  color: var(--locked);
+  font-size: 17px;
+  font-weight: 800;
+  cursor: default;
+  box-shadow: none;
+  border-style: dashed;
+}
+
+.py-chip--big {
+  align-self: center;
+  padding: 10px 18px;
+}
+
+.py-chip--big .py-chip-py {
+  font-size: 24px;
+}
+
+.pyl-anatomy {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 20px;
+  background: var(--card-bg);
+}
+
+.pyl-anatomy-word {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  font-size: 54px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.pyl-part {
+  padding: 6px 12px;
+  border-radius: 14px;
+}
+
+.pyl-part--ini {
+  background: rgba(58, 156, 245, 0.16);
+  color: #1f7fd6;
+}
+
+.pyl-part--fin {
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+}
+
+.pyl-part--tone {
+  background: rgba(255, 111, 156, 0.16);
+  color: #e04d7c;
+}
+
+.pyl-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.pyl-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pyl-legend-tag {
+  flex-shrink: 0;
+  width: 52px;
+  padding: 3px 0;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.pyl-toneset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pyl-toneset {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: var(--card-bg);
+}
+
+.pyl-toneset .py-chips {
+  margin-top: 0;
+  gap: 6px;
+}
+
+.pyl-toneset .py-chip {
+  padding: 5px 8px;
+}
+
+.pyl-toneset-play {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  padding: 10px;
+  border: none;
+  border-radius: 50%;
+  background: var(--orange);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--orange-dark);
+}
+
+.pyl-toneset-play svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pyl-rule {
+  padding: 14px;
+  border-radius: 18px;
+  background: var(--card-bg);
+}
+
+.pyl-rule-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.pyl-rule-ex {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 12px;
+  background: var(--lesson-bg);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.pyl-rule-hz {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.pyl-rule-py {
+  color: var(--text-light);
+  font-weight: 700;
+}
+
+.pyl-rule-arrow {
+  color: var(--text-light);
+}
+
+.pyl-rule-actual {
+  color: var(--orange-dark);
+  font-weight: 900;
+}
+
+.pyl-rule-spk {
+  width: 20px;
+  height: 20px;
+  margin-left: auto;
+  color: var(--orange);
+}
+
+.pyl-rule-spk svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pyl-dock {
+  position: sticky;
+  bottom: 0;
+  margin: 6px -18px -40px;
+  padding: 12px 18px calc(16px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, transparent, var(--lesson-bg) 30%);
+}
+
+.pyl-start {
+  background: var(--orange);
+  box-shadow: 0 4px 0 var(--orange-dark);
+}
+
+.pyl-start:not(:disabled) {
+  background: var(--orange);
+  box-shadow: 0 4px 0 var(--orange-dark);
+}
+
+/* 練習問題・テスト */
+.screen--pq {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--lesson-bg);
+}
+
+.pq-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.pq-close {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  color: var(--text-light);
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.pq-bar {
+  flex: 1;
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--track);
+}
+
+.pq-bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--orange);
+  transition: width 0.3s ease;
+}
+
+.pq-count {
+  min-width: 48px;
+  color: var(--text-light);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: right;
+}
+
+.pq-stage {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  padding: 18px 20px 180px;
+}
+
+.pq-prompt {
+  align-self: flex-start;
+  font-size: 19px;
+  font-weight: 900;
+}
+
+.pq-display {
+  padding: 14px 26px;
+  border-radius: 20px;
+  background: var(--card-bg);
+  color: var(--orange-dark);
+  font-size: 40px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.pq-display--long {
+  font-size: 28px;
+}
+
+.pq-audio {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+.pq-play,
+.pq-slow {
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: var(--orange);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 4px 0 var(--orange-dark), 0 8px 18px rgba(255, 140, 0, 0.25);
+}
+
+.pq-play {
+  width: 88px;
+  height: 88px;
+  padding: 24px;
+}
+
+.pq-slow {
+  width: 48px;
+  height: 48px;
+  padding: 12px;
+}
+
+.pq-play:active,
+.pq-slow:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--orange-dark);
+}
+
+.pq-play svg,
+.pq-slow svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pq-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+}
+
+.pq-options--list {
+  grid-template-columns: 1fr;
+}
+
+.pq-opt {
+  padding: 18px 10px;
+  border: 2px solid var(--border);
+  border-radius: 16px;
+  background: var(--card-bg);
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 0 var(--border);
+}
+
+.pq-opt:not(:disabled):active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--border);
+}
+
+.pq-opt.is-correct {
+  border-color: var(--good);
+  background: var(--good);
+  color: #fff;
+  box-shadow: 0 4px 0 var(--good-dark);
+}
+
+.pq-opt.is-wrong {
+  border-color: var(--bad);
+  background: var(--bad);
+  color: #fff;
+  box-shadow: 0 4px 0 var(--bad-dark);
+}
+
+.pq-opt:disabled:not(.is-correct):not(.is-wrong) {
+  opacity: 0.55;
+}
+
+.pq-foot {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 30;
+  max-width: var(--max-width);
+  margin: 0 auto;
+}
+
+.pq-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 20px calc(18px + env(safe-area-inset-bottom));
+  border-radius: 22px 22px 0 0;
+  animation: pq-up 0.2s ease-out;
+}
+
+@keyframes pq-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.pq-sheet.is-good {
+  background: color-mix(in srgb, var(--good) 18%, var(--card-bg));
+  color: var(--good-dark);
+}
+
+.pq-sheet.is-bad {
+  background: color-mix(in srgb, var(--bad) 16%, var(--card-bg));
+  color: var(--bad-dark);
+}
+
+.pq-sheet-title {
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.pq-sheet-text {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.pq-continue {
+  margin-top: 8px;
+  padding: 14px;
+  border: none;
+  border-radius: 14px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.is-good .pq-continue {
+  background: var(--good);
+  box-shadow: 0 4px 0 var(--good-dark);
+}
+
+.is-bad .pq-continue {
+  background: var(--bad);
+  box-shadow: 0 4px 0 var(--bad-dark);
+}
+
+.pq-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 26px 16px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, var(--result-top), var(--result-mid));
+}
+
+.pq-result-emoji {
+  font-size: 54px;
+}
+
+.pq-result-score {
+  color: var(--text-light);
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.pq-result-score strong {
+  color: var(--orange);
+  font-size: 56px;
+}
+
+.pq-result-text {
+  font-weight: 800;
+  text-align: center;
+}
+
+.pq-result-xp {
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: var(--yellow);
+  color: #6b4e00;
+  font-weight: 900;
+}
+
+.pq-missed {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pq-missed-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: none;
+  border-radius: 14px;
+  background: var(--card-bg);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.pq-missed-py {
+  color: var(--orange-dark);
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.pq-missed-ch {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.pq-missed-spk {
+  width: 22px;
+  height: 22px;
+  margin-left: auto;
+  color: var(--orange);
+}
+
+.pq-missed-spk svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pq-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.pq-actions .primary-btn {
+  background: var(--orange);
+  box-shadow: 0 4px 0 var(--orange-dark);
+}
+
+/* ピンイン表 */
+.screen--pychart {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-bottom: 0;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.pyc-tones {
+  display: flex;
+  gap: 8px;
+  padding: 0 16px 10px;
+}
+
+.pyc-tone {
+  flex: 1;
+  padding: 8px 0;
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  background: var(--card-bg);
+  color: var(--text-light);
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1.1;
+  cursor: pointer;
+}
+
+.pyc-tone:last-child {
+  flex: 1.4;
+  font-size: 14px;
+}
+
+.pyc-tone.is-on {
+  border-color: var(--orange);
+  background: var(--orange);
+  color: #fff;
+}
+
+.pyc-wrap {
+  flex: 1;
+  min-height: 0;
+  margin: 0 8px;
+  overflow: auto;
+  border-radius: 14px;
+  background: var(--card-bg);
+  -webkit-overflow-scrolling: touch;
+}
+
+.pyc-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 14px;
+}
+
+.pyc-table th,
+.pyc-table td {
+  min-width: 58px;
+  height: 42px;
+  padding: 0;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+}
+
+.pyc-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+  font-weight: 900;
+}
+
+@supports (background: color-mix(in srgb, red, blue)) {
+  .pyc-table thead th {
+    background: color-mix(in srgb, var(--orange) 14%, var(--card-bg));
+  }
+}
+
+.pyc-table th.pyc-row {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 44px;
+  background: var(--card-bg);
+  color: var(--text);
+  font-weight: 900;
+}
+
+.pyc-table th.pyc-corner {
+  left: 0;
+  z-index: 3;
+  min-width: 44px;
+  font-size: 9px;
+  line-height: 1.2;
+}
+
+.pyc-cell {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 41px;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  color: var(--orange-dark);
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.pyc-cell.is-none {
+  color: var(--locked);
+  font-weight: 600;
+}
+
+.pyc-cell.is-sel {
+  background: var(--orange);
+  color: #fff;
+}
+
+.pyc-panel {
+  min-height: 118px;
+  margin: 10px 8px calc(10px + env(safe-area-inset-bottom));
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: var(--card-bg);
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.pyc-panel-hint {
+  display: grid;
+  place-items: center;
+  min-height: 94px;
+  color: var(--text-light);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.pyc-panel-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.pyc-panel-syl {
+  font-size: 26px;
+  font-weight: 900;
+}
+
+.pyc-panel-parts {
+  color: var(--text-light);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.pyc-panel-chips {
+  flex-wrap: nowrap;
+  margin-top: 8px;
+}
+
+.pyc-panel-chips .py-chip {
+  flex: 1;
+  justify-content: center;
+  padding: 7px 4px;
+}
+
+/* ピンインテスト */
+.pyt-banner {
+  position: relative;
+  overflow: hidden;
+  padding: 28px 20px 24px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #ff9a1f 0%, #ff6f9c 55%, #a77bf3 100%);
+  color: #fff;
+  text-align: center;
+}
+
+.pyt-banner-zh {
+  position: relative;
+  font-size: 40px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.12);
+}
+
+.pyt-banner-en {
+  position: relative;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  opacity: 0.95;
+}
+
+.pyt-banner-sub {
+  position: relative;
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  opacity: 0.95;
+}
+
+.pyt-float {
+  position: absolute;
+  font-size: 34px;
+  font-weight: 900;
+  opacity: 0.22;
+}
+
+.pyt-float--0 {
+  top: 6px;
+  left: 14px;
+}
+
+.pyt-float--1 {
+  top: 12px;
+  right: 22px;
+  font-size: 44px;
+}
+
+.pyt-float--2 {
+  bottom: 4px;
+  left: 30%;
+}
+
+.pyt-float--3 {
+  bottom: 10px;
+  right: 12%;
+  font-size: 28px;
+}
+
+.pyt-float--4 {
+  top: 44%;
+  left: 4%;
+  font-size: 26px;
+}
+
+.pyt-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border: none;
+  border-radius: 20px;
+  background: var(--card-bg);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--shadow-neutral);
+}
+
+.pyt-card:active {
+  transform: translateY(3px);
+  box-shadow: none;
+}
+
+.pyt-card-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  color: #fff;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.pyt-card-icon--pink {
+  background: #ff6f9c;
+}
+
+.pyt-card-icon--blue {
+  background: #3a9cf5;
+}
+
+.pyt-card-icon--green {
+  background: #3fc275;
+}
+
+.pyt-card-icon--orange {
+  background: var(--orange);
+}
+
+.pyt-card-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.pyt-card-title {
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.pyt-card-desc {
+  color: var(--text-light);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.pyt-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.pyt-pill {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--lesson-bg);
+  color: var(--text-light);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.pyt-pill--best {
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+}
+
+.pyt-card-arrow {
+  color: var(--text-light);
+  font-size: 28px;
+}
