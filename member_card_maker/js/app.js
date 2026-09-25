@@ -325,6 +325,27 @@
     }
   }
 
+  // 既存のトレカ画像(縦長のカード全体)を入れたとき、イラスト枠の部分だけが見えるように拡大・位置合わせする。
+  // 比率は一般的なカードのイラスト枠の位置(左11%・右88.5%・上16.5%・下65%)。
+  const CARD_ART_REGION = { left: 0.11, right: 0.885, top: 0.165, bottom: 0.65 };
+
+  async function cropFromCardImage() {
+    const img = await CardRenderer.loadImage(current.art.image);
+    if (!img) return toast("先に「写真・イラスト」にトレカ画像を入れてください。");
+    const a = CardRenderer.LAYOUT.art;
+    const r = CARD_ART_REGION;
+    const rw = (r.right - r.left) * img.width;
+    const rh = (r.bottom - r.top) * img.height;
+    const s = Math.max(a.w / rw, a.h / rh);
+    const s0 = Math.max(a.w / img.width, a.h / img.height);
+    current.art.zoom = Math.min(4, s / s0);
+    current.art.x = Math.max(-1, Math.min(1, (s * (img.width / 2 - ((r.left + r.right) / 2) * img.width)) / a.w));
+    current.art.y = Math.max(-1, Math.min(1, (s * (img.height / 2 - ((r.top + r.bottom) / 2) * img.height)) / a.h));
+    syncArtInputs();
+    changed();
+    toast("イラスト部分だけを切り出しました。ずれていればドラッグで微調整してください。");
+  }
+
   // ---------------- イラストのドラッグ・ズーム ----------------
 
   function toCardCoords(e) {
@@ -436,6 +457,7 @@
       }
       e.target.value = "";
     });
+    $("btnCropCard").addEventListener("click", cropFromCardImage);
     $("btnClearArt").addEventListener("click", () => {
       current.art.image = null;
       changed();

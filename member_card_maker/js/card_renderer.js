@@ -13,7 +13,7 @@ const CardRenderer = (() => {
     attr: { cx: 880, cy: 110, r: 44 },
     stars: { y: 208, r: 26, gap: 58, right: 912 },
     artFrame: { x: 100, y: 246, w: 800, h: 800 },
-    art: { x: 113, y: 259, w: 774, h: 774 },
+    art: { x: 117, y: 263, w: 766, h: 766 },
     code: { x: 886, y: 1082 },
     textBox: { x: 58, y: 1096, w: 884, h: 296 },
     copyright: { x: 880, y: 1418 },
@@ -117,24 +117,154 @@ const CardRenderer = (() => {
     ctx.drawImage(mottled(w, h, base, seed, strength, scale), x, y, w, h);
   }
 
-  // くぼんだ(または盛り上がった)枠線
-  function bevel(ctx, x, y, w, h, base, depth, inset) {
-    const light = shade(base, 0.45);
-    const dark = shade(base, -0.55);
-    ctx.lineWidth = depth;
-    const o = depth / 2;
-    ctx.strokeStyle = inset ? dark : light;
+  // ---- 金属フレーム ----
+
+  const GOLD = [
+    [0, "#6e4a0e"],
+    [0.14, "#e9c768"],
+    [0.3, "#fff2bf"],
+    [0.44, "#b88627"],
+    [0.58, "#f6dc85"],
+    [0.72, "#8c5f16"],
+    [0.86, "#f2d27a"],
+    [1, "#5e3e0a"],
+  ];
+
+  function metalGradient(ctx, x, y, w, h) {
+    const g = ctx.createLinearGradient(x, y, x + w * 0.45, y + h);
+    GOLD.forEach(([o, c]) => g.addColorStop(o, c));
+    return g;
+  }
+
+  // 太さ t の額縁。左上が明るく右下が暗い立体の縁、中央に彫り溝、内外に細い影線。
+  function metalFrame(ctx, x, y, w, h, t) {
+    ctx.save();
     ctx.beginPath();
-    ctx.moveTo(x + o, y + h - o);
-    ctx.lineTo(x + o, y + o);
-    ctx.lineTo(x + w - o, y + o);
-    ctx.stroke();
-    ctx.strokeStyle = inset ? light : dark;
+    ctx.rect(x, y, w, h);
+    ctx.rect(x + t, y + t, w - t * 2, h - t * 2);
+    ctx.fillStyle = metalGradient(ctx, x, y, w, h);
+    ctx.fill("evenodd");
+
+    // 4辺それぞれに光と影(台形)
+    const sides = [
+      [[x, y], [x + w, y], [x + w - t, y + t], [x + t, y + t], "rgba(255,250,225,0.38)"],
+      [[x, y], [x + t, y + t], [x + t, y + h - t], [x, y + h], "rgba(255,250,225,0.22)"],
+      [[x + w, y], [x + w, y + h], [x + w - t, y + h - t], [x + w - t, y + t], "rgba(40,20,0,0.28)"],
+      [[x, y + h], [x + t, y + h - t], [x + w - t, y + h - t], [x + w, y + h], "rgba(40,20,0,0.4)"],
+    ];
+    sides.forEach((pts) => {
+      ctx.beginPath();
+      pts.slice(0, 4).forEach(([px, py], i) => ctx[i ? "lineTo" : "moveTo"](px, py));
+      ctx.closePath();
+      ctx.fillStyle = pts[4];
+      ctx.fill();
+    });
+
+    if (t >= 8) {
+      const m = t / 2;
+      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = "rgba(70,40,5,0.75)";
+      ctx.strokeRect(x + m - 0.6, y + m - 0.6, w - t + 1.2, h - t + 1.2);
+      ctx.strokeStyle = "rgba(255,246,210,0.7)";
+      ctx.strokeRect(x + m + 0.6, y + m + 0.6, w - t - 1.2, h - t - 1.2);
+    }
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = "rgba(35,18,2,0.9)";
+    ctx.strokeRect(x + 0.75, y + 0.75, w - 1.5, h - 1.5);
+    ctx.strokeRect(x + t - 0.75, y + t - 0.75, w - t * 2 + 1.5, h - t * 2 + 1.5);
+    ctx.restore();
+  }
+
+  // 枠の内側に落ちる影(くぼんで見せる)
+  function innerShadow(ctx, x, y, w, h, size, alpha) {
+    ctx.save();
+    const edges = [
+      [x, y, x, y + size, [x, y, w, size]],
+      [x, y + h, x, y + h - size, [x, y + h - size, w, size]],
+      [x, y, x + size, y, [x, y, size, h]],
+      [x + w, y, x + w - size, y, [x + w - size, y, size, h]],
+    ];
+    edges.forEach(([x0, y0, x1, y1, r]) => {
+      const g = ctx.createLinearGradient(x0, y0, x1, y1);
+      g.addColorStop(0, `rgba(0,0,0,${alpha})`);
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(r[0], r[1], r[2], r[3]);
+    });
+    ctx.restore();
+  }
+
+  // 角の飾り:金の台座に色付きの宝石
+  function cornerGem(ctx, cx, cy, size, gemColor) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.shadowColor = "rgba(0,0,0,0.5)";
+    ctx.shadowBlur = 5;
+    ctx.shadowOffsetY = 2;
     ctx.beginPath();
-    ctx.moveTo(x + w - o, y + o);
-    ctx.lineTo(x + w - o, y + h - o);
-    ctx.lineTo(x + o, y + h - o);
+    ctx.moveTo(0, -size);
+    ctx.lineTo(size, 0);
+    ctx.lineTo(0, size);
+    ctx.lineTo(-size, 0);
+    ctx.closePath();
+    ctx.fillStyle = metalGradient(ctx, -size, -size, size * 2, size * 2);
+    ctx.fill();
+    ctx.shadowColor = "transparent";
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = "rgba(35,18,2,0.9)";
     ctx.stroke();
+
+    const r = size * 0.5;
+    ctx.beginPath();
+    ctx.moveTo(0, -r);
+    ctx.lineTo(r, 0);
+    ctx.lineTo(0, r);
+    ctx.lineTo(-r, 0);
+    ctx.closePath();
+    const g = ctx.createRadialGradient(-r * 0.3, -r * 0.35, 0, 0, 0, r * 1.1);
+    g.addColorStop(0, shade(gemColor, 0.7));
+    g.addColorStop(0.45, gemColor);
+    g.addColorStop(1, shade(gemColor, -0.6));
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(20,10,0,0.8)";
+    ctx.stroke();
+    // カット面
+    ctx.strokeStyle = "rgba(255,255,255,0.35)";
+    ctx.beginPath();
+    ctx.moveTo(-r, 0);
+    ctx.lineTo(r, 0);
+    ctx.moveTo(0, -r);
+    ctx.lineTo(0, r);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // 両端が細くなる飾り罫(中央にひし形)
+  function ornamentLine(ctx, x1, x2, y, color) {
+    ctx.save();
+    const g = ctx.createLinearGradient(x1, 0, x2, 0);
+    g.addColorStop(0, rgba(color, 0));
+    g.addColorStop(0.12, rgba(color, 0.85));
+    g.addColorStop(0.88, rgba(color, 0.85));
+    g.addColorStop(1, rgba(color, 0));
+    ctx.fillStyle = g;
+    const mid = (x1 + x2) / 2;
+    ctx.beginPath();
+    ctx.moveTo(x1, y);
+    ctx.quadraticCurveTo(mid, y - 2.4, x2, y);
+    ctx.quadraticCurveTo(mid, y + 2.4, x1, y);
+    ctx.fill();
+    ctx.fillStyle = rgba(color, 0.9);
+    ctx.beginPath();
+    ctx.moveTo(mid, y - 5);
+    ctx.lineTo(mid + 9, y);
+    ctx.lineTo(mid, y + 5);
+    ctx.lineTo(mid - 9, y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
   }
 
   // 横幅が足りないときは横方向に縮めて描く(本物のカード名と同じ処理)
@@ -171,14 +301,43 @@ const CardRenderer = (() => {
     ctx.fillStyle = "rgba(0,0,0,0.35)";
     ctx.fillRect(b.x - 3, b.y - 3, b.w + 6, b.h + 6);
     drawTexture(ctx, b.x, b.y, b.w, b.h, frame, seed + 1, 1);
+    innerShadow(ctx, b.x, b.y, b.w, b.h, 22, 0.28);
+    // 本体の縁取り(細い金の象嵌)
+    metalFrame(ctx, b.x - 5, b.y - 5, b.w + 10, b.h + 10, 7);
+    ctx.restore();
+  }
+
+  // 全体にうっすら斜めの光沢
+  function drawGloss(ctx) {
+    ctx.save();
+    roundRect(ctx, 0, 0, W, H, 26);
+    ctx.clip();
+    ctx.globalCompositeOperation = "screen";
+    const g = ctx.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, "rgba(255,255,255,0)");
+    g.addColorStop(0.3, "rgba(255,255,255,0)");
+    g.addColorStop(0.4, "rgba(255,250,235,0.1)");
+    g.addColorStop(0.46, "rgba(255,255,255,0)");
+    g.addColorStop(0.62, "rgba(255,255,255,0)");
+    g.addColorStop(0.68, "rgba(255,250,235,0.06)");
+    g.addColorStop(0.74, "rgba(255,255,255,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
     ctx.restore();
   }
 
   function drawNameBox(ctx, card, frame, seed) {
     const n = LAYOUT.nameBox;
-    drawTexture(ctx, n.x, n.y, n.w, n.h, shade(frame, 0.08), seed + 2, 0.8);
-    bevel(ctx, n.x, n.y, n.w, n.h, frame, 5, true);
-    bevel(ctx, n.x + 5, n.y + 5, n.w - 10, n.h - 10, frame, 2, false);
+    const fw = 12;
+    drawTexture(ctx, n.x, n.y, n.w, n.h, shade(frame, -0.18), seed + 2, 0.8);
+    const plate = ctx.createLinearGradient(0, n.y, 0, n.y + n.h);
+    plate.addColorStop(0, "rgba(255,240,210,0.16)");
+    plate.addColorStop(0.5, "rgba(0,0,0,0)");
+    plate.addColorStop(1, "rgba(0,0,0,0.22)");
+    ctx.fillStyle = plate;
+    ctx.fillRect(n.x, n.y, n.w, n.h);
+    innerShadow(ctx, n.x + fw, n.y + fw, n.w - fw * 2, n.h - fw * 2, 12, 0.45);
+    metalFrame(ctx, n.x, n.y, n.w, n.h, fw);
 
     const name = card.name.trim() || "カード名";
     ctx.font = `900 60px ${SERIF}`;
@@ -253,11 +412,22 @@ const CardRenderer = (() => {
     ctx.fill();
     ctx.restore();
 
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = "rgba(255,240,200,0.8)";
+    // 金の縁
+    ctx.save();
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = metalGradient(ctx, cx - r, cy - r, r * 2, r * 2);
     ctx.beginPath();
-    ctx.arc(cx, cy, r - 2, 0, Math.PI * 2);
+    ctx.arc(cx, cy, r - 1, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = "rgba(35,18,2,0.9)";
+    ctx.beginPath();
+    ctx.arc(cx, cy, r + 2, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r - 4, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
 
     if (glyph && !img) {
       ctx.font = `900 ${glyph.length > 1 ? 34 : 50}px ${SERIF}`;
@@ -327,10 +497,14 @@ const CardRenderer = (() => {
   function drawArt(ctx, card, images, seed) {
     const f = LAYOUT.artFrame;
     const a = LAYOUT.art;
-    ctx.fillStyle = "#3d4a6b";
+    // 額縁の落とす影
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.5)";
+    ctx.shadowBlur = 14;
+    ctx.shadowOffsetY = 5;
+    ctx.fillStyle = "#1a1510";
     ctx.fillRect(f.x, f.y, f.w, f.h);
-    bevel(ctx, f.x, f.y, f.w, f.h, "#6a7aa3", 6, false);
-    bevel(ctx, a.x - 3, a.y - 3, a.w + 6, a.h + 6, "#6a7aa3", 3, true);
+    ctx.restore();
 
     ctx.save();
     ctx.beginPath();
@@ -364,7 +538,18 @@ const CardRenderer = (() => {
       ctx.textAlign = "left";
     }
     drawArtEffect(ctx, card, a, seed);
+    innerShadow(ctx, a.x, a.y, a.w, a.h, 16, 0.55);
     ctx.restore();
+
+    metalFrame(ctx, f.x, f.y, f.w, f.h, a.x - f.x);
+    const gem = CardFormat.ATTRIBUTES[card.attribute === "custom" ? "custom" : card.attribute];
+    const gemColor = card.attribute === "custom" ? card.customAttribute.color : gem.color;
+    [
+      [f.x, f.y],
+      [f.x + f.w, f.y],
+      [f.x, f.y + f.h],
+      [f.x + f.w, f.y + f.h],
+    ].forEach(([x, y]) => cornerGem(ctx, x, y, 23, gemColor));
   }
 
   // 写真に「カードのイラストっぽさ」を足す光の演出
@@ -552,32 +737,33 @@ const CardRenderer = (() => {
 
   function drawTextBox(ctx, card, type, seed) {
     const t = LAYOUT.textBox;
-    const border = "#d0671e";
-    drawTexture(ctx, t.x, t.y, t.w, t.h, "#ece0c9", seed + 3, 0.7);
-    ctx.lineWidth = 7;
-    ctx.strokeStyle = border;
-    ctx.strokeRect(t.x + 3.5, t.y + 3.5, t.w - 7, t.h - 7);
-    ctx.lineWidth = 1.5;
-    ctx.strokeStyle = shade(border, -0.4);
-    ctx.strokeRect(t.x + 9, t.y + 9, t.w - 18, t.h - 18);
+    const fw = 12;
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.45)";
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetY = 4;
+    ctx.fillStyle = "#ece0c9";
+    ctx.fillRect(t.x, t.y, t.w, t.h);
+    ctx.restore();
+    drawTexture(ctx, t.x, t.y, t.w, t.h, "#ede2cc", seed + 3, 0.7);
+    innerShadow(ctx, t.x + fw, t.y + fw, t.w - fw * 2, t.h - fw * 2, 14, 0.22);
+    metalFrame(ctx, t.x, t.y, t.w, t.h, fw);
+    // 内側の細い飾り線
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(140,95,22,0.6)";
+    ctx.strokeRect(t.x + fw + 5.5, t.y + fw + 5.5, t.w - fw * 2 - 11, t.h - fw * 2 - 11);
+    ctx.strokeRect(t.x + fw + 8.5, t.y + fw + 8.5, t.w - fw * 2 - 17, t.h - fw * 2 - 17);
+    const gem = card.attribute === "custom" ? card.customAttribute.color : CardFormat.ATTRIBUTES[card.attribute].color;
     [
       [t.x, t.y],
       [t.x + t.w, t.y],
       [t.x, t.y + t.h],
       [t.x + t.w, t.y + t.h],
-    ].forEach(([x, y]) => {
-      ctx.fillStyle = shade(border, -0.15);
-      ctx.fillRect(x - 11, y - 11, 22, 22);
-      ctx.strokeStyle = shade(border, -0.55);
-      ctx.lineWidth = 2;
-      ctx.strokeRect(x - 11, y - 11, 22, 22);
-      ctx.fillStyle = shade(border, 0.35);
-      ctx.fillRect(x - 4, y - 4, 8, 8);
-    });
+    ].forEach(([x, y]) => cornerGem(ctx, x, y, 20, gem));
 
-    const left = t.x + 28;
-    const right = t.x + t.w - 28;
-    let top = t.y + 28;
+    const left = t.x + 34;
+    const right = t.x + t.w - 34;
+    let top = t.y + 32;
     ctx.fillStyle = "#1a1310";
     ctx.textBaseline = "top";
 
@@ -598,8 +784,7 @@ const CardRenderer = (() => {
       const y = top + it.y;
       if (y + lay.size > bottom + 4) return;
       if (it.sep) {
-        ctx.fillStyle = "rgba(26,19,16,0.7)";
-        ctx.fillRect(left, y, right - left, 1.6);
+        ornamentLine(ctx, left, right, y, "#6b4a1c");
         ctx.fillStyle = "#1a1310";
         return;
       }
@@ -611,8 +796,8 @@ const CardRenderer = (() => {
     });
 
     if (type.monster) {
+      ornamentLine(ctx, left - 6, right + 6, statsY, "#5a3d14");
       ctx.fillStyle = "#1a1310";
-      ctx.fillRect(left, statsY, right - left, 2);
       ctx.font = `600 38px ${SERIF}`;
       ctx.textBaseline = "top";
       const stats = `ATK/${card.atk || "?"}   DEF/${card.def || "?"}`;
@@ -660,6 +845,7 @@ const CardRenderer = (() => {
     drawArt(ctx, card, images, seed);
     drawTextBox(ctx, card, type, seed);
     drawFooter(ctx, card, frame);
+    drawGloss(ctx);
     return canvas;
   }
 

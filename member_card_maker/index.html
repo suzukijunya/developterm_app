@@ -90,14 +90,17 @@
     <details class="panel" open>
       <summary>③ イラスト</summary>
       <label>写真・イラスト<input type="file" id="artFile" accept="image/*" /></label>
-      <p class="hint">プレビューのイラストをドラッグで位置調整、ホイールで拡大縮小できます。</p>
+      <p class="hint">プレビューのイラストをドラッグで位置調整、ホイールで拡大縮小できます。作成済みのトレカ画像(枠つき)を入れたときは「トレカ画像からイラスト部分だけ使う」で枠が二重になりません。</p>
       <div class="grid2">
         <label>拡大 <input type="range" name="art.zoom" min="0.5" max="4" step="0.01" /></label>
         <label>光エフェクト<select name="art.effect" id="artEffect"></select></label>
         <label>左右 <input type="range" name="art.x" min="-1" max="1" step="0.01" /></label>
         <label>エフェクトの強さ <input type="range" name="art.intensity" min="0" max="1" step="0.05" /></label>
         <label>上下 <input type="range" name="art.y" min="-1" max="1" step="0.01" /></label>
-        <label class="inline-btn"><button type="button" id="btnClearArt" class="link">イラストを外す</button></label>
+        <label class="inline-btn">
+          <button type="button" id="btnCropCard" class="link">トレカ画像からイラスト部分だけ使う</button>
+          <button type="button" id="btnClearArt" class="link">イラストを外す</button>
+        </label>
       </div>
       <details class="sub">
         <summary>画像生成AI用プロンプト(写真 → カードのイラスト)</summary>
