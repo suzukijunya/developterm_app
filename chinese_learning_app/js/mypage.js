@@ -320,12 +320,28 @@ const MyPage = (() => {
     u11: ["招聘", "zhāopìn", "採用する"],
     u12: ["合同", "hétong", "契約"],
     u13: ["合规", "héguī", "コンプライアンス"],
+    u14: ["城市", "chéngshì", "都市"],
+    u15: ["微信", "Wēixìn", "WeChat"],
+    u16: ["会议", "huìyì", "会議"],
+    u17: ["系统", "xìtǒng", "システム"],
+    u18: ["财务", "cáiwù", "財務・経理"],
+    u19: ["海关", "hǎiguān", "税関"],
+    u20: ["安全", "ānquán", "安全"],
   };
   const DECK_CARDS = {
     trade: ["贸易", "màoyì", "貿易"],
     accounting: ["会计", "kuàijì", "会計"],
     news: ["新闻", "xīnwén", "ニュース"],
     contract: ["条款", "tiáokuǎn", "条項"],
+    customs_police: ["法律", "fǎlǜ", "法律"],
+    basic: ["日常", "rìcháng", "日常"],
+    chat: ["聊天", "liáotiān", "おしゃべり・チャット"],
+    meeting: ["开会", "kāihuì", "会議をする"],
+    it: ["技术", "jìshù", "技術"],
+    life: ["生活", "shēnghuó", "生活"],
+    hr: ["人才", "réncái", "人材"],
+    sales: ["营销", "yíngxiāo", "マーケティング"],
+    logistics: ["运输", "yùnshū", "輸送"],
   };
 
   function cardDefs() {

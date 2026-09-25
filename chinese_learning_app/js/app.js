@@ -15,11 +15,17 @@
     return FLAT_LESSONS.findIndex((x) => x.lesson.id === lessonId);
   }
 
+  // 直前のレッスンを終えていれば解放。あとからユニットを途中に追加しても、
+  // すでにそれより先のレッスンを終えている人には追加分も含めて解放する
   function isLessonUnlocked(lessonId) {
     const idx = lessonIndexById(lessonId);
     if (idx <= 0) return true;
-    const prevLesson = FLAT_LESSONS[idx - 1].lesson;
-    return AppState.isLessonCompleted(prevLesson.id);
+    if (AppState.isLessonCompleted(lessonId)) return true;
+    if (AppState.isLessonCompleted(FLAT_LESSONS[idx - 1].lesson.id)) return true;
+    for (let i = idx + 1; i < FLAT_LESSONS.length; i++) {
+      if (AppState.isLessonCompleted(FLAT_LESSONS[i].lesson.id)) return true;
+    }
+    return false;
   }
 
   const LESSON_BY_ID = {};

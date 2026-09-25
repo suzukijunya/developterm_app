@@ -181,7 +181,8 @@ const Exercises = (() => {
   function choiceList(options, { onPick, variant = "" }) {
     const wrap = el("div", "cs-choices" + (variant ? ` cs-choices--${variant}` : ""));
     let locked = false;
-    const buttons = options.map((opt) => {
+    // データでは正解を先頭に書いているので、表示順は毎回シャッフルする
+    const buttons = shuffle(options).map((opt) => {
       const btn = el("button", "cs-choice", opt.label);
       btn.type = "button";
       btn.addEventListener("click", () => {
