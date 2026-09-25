@@ -1,4 +1,4 @@
-// 見本カード(添付いただいた3枚をこのツールの入力フォーマットで書き起こしたもの)。
+// 見本カード(添付いただいた3枚をこのツールの入力フォーマットで書き起こしたもの+魔法・罠の例)。
 // イラストは未設定なので、各カードに写真・画像を追加して使う。
 const SAMPLE_CARDS = [
   {
@@ -46,7 +46,7 @@ const SAMPLE_CARDS = [
     "level": 6,
     "tribe": "CFO族",
     "abilities": "効果",
-    "effect": "このカードがフィールドに存在する限り、相手の「グレー金融」「曖昧契約」の効果は無効化される。\n①：１ターンに１度、相手が「リターン請求」を発動した時に発動できる。このカードは「法務確認」を発動する。",
+    "effect": "このカードがフィールドに存在する限り、相手の「グレー金融」「曖昧契約」の効果は無効化される。\n①：１ターンに１度、相手が「リターン請求」を発動した時に発動できる。デッキから「法務確認」１枚を手札に加える。",
     "atk": "2400",
     "def": "2100",
     "cardCode": "WBHC-024",
@@ -67,7 +67,8 @@ const SAMPLE_CARDS = [
       "skills": "財務・契約チェック",
       "personality": "冷静沈着。電卓が相棒",
       "episode": "怪しい契約は必ず見抜く",
-      "tone": "かっこよく"
+      "tone": "かっこよく",
+      "related": "「法務確認」「グレー金融」"
     }
   },
   {
@@ -99,6 +100,72 @@ const SAMPLE_CARDS = [
       "skills": "税務・節税スキーム",
       "personality": "穏やかな笑顔で難題をかわす",
       "episode": "口癖は「些細な問題ですよ」",
+      "tone": "面白く"
+    }
+  },
+  {
+    "id": "sample-houmu",
+    "cardType": "spell",
+    "subtype": "速攻",
+    "name": "法務確認",
+    "attribute": "魔",
+    "level": 0,
+    "tribe": "",
+    "effect": "①：相手が「グレー金融」「曖昧契約」を発動した時に発動できる。その発動を無効にし、自分はデッキから１枚ドローする。\n②：自分フィールドに「財務統括魔導士スズキ」が存在する場合、このカードの発動は無効化されない。",
+    "atk": "0",
+    "def": "0",
+    "cardCode": "WBSP-001",
+    "copyright": "©2024 WB ARGO",
+    "nameColor": "gold",
+    "art": {
+      "image": null,
+      "zoom": 1,
+      "x": 0,
+      "y": 0,
+      "effect": "blue",
+      "intensity": 0.7
+    },
+    "member": {
+      "realName": "法務チェック",
+      "department": "",
+      "role": "",
+      "skills": "契約の穴を一瞬で見抜く",
+      "personality": "",
+      "episode": "スズキの得意技",
+      "related": "「財務統括魔導士スズキ」「曖昧契約」",
+      "tone": "かっこよく"
+    }
+  },
+  {
+    "id": "sample-return",
+    "cardType": "trap",
+    "subtype": "カウンター",
+    "name": "リターン請求",
+    "attribute": "罠",
+    "level": 0,
+    "tribe": "",
+    "effect": "①：相手が「ボックス」を完売した時に発動できる。その取引を無効にし、相手は売上の半分を自分に支払う。",
+    "atk": "0",
+    "def": "0",
+    "cardCode": "WBTR-001",
+    "copyright": "©2024 WB ARGO",
+    "nameColor": "gold",
+    "art": {
+      "image": null,
+      "zoom": 1,
+      "x": 0,
+      "y": 0,
+      "effect": "purple",
+      "intensity": 0.7
+    },
+    "member": {
+      "realName": "返金・返品の要求",
+      "department": "",
+      "role": "",
+      "skills": "取引をなかったことにする",
+      "personality": "",
+      "episode": "",
+      "related": "「海外転売仙人 キョウ」",
       "tone": "面白く"
     }
   }

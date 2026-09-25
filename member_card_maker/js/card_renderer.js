@@ -363,16 +363,99 @@ const CardRenderer = (() => {
     }
   }
 
+  // 魔法・罠の種類アイコン(永続∞・装備＋・速攻⚡・フィールド・儀式・カウンター)
+  function drawSubtypeIcon(ctx, subtype, cx, cy, size) {
+    const r = size / 2;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.fillStyle = COLORS.ink;
+    ctx.strokeStyle = COLORS.ink;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    switch (subtype) {
+      case "永続":
+        ctx.lineWidth = r * 0.22;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.bezierCurveTo(r * 0.45, -r * 0.6, r * 0.95, -r * 0.45, r * 0.9, 0);
+        ctx.bezierCurveTo(r * 0.95, r * 0.45, r * 0.45, r * 0.6, 0, 0);
+        ctx.bezierCurveTo(-r * 0.45, -r * 0.6, -r * 0.95, -r * 0.45, -r * 0.9, 0);
+        ctx.bezierCurveTo(-r * 0.95, r * 0.45, -r * 0.45, r * 0.6, 0, 0);
+        ctx.stroke();
+        break;
+      case "装備": {
+        const a = r * 0.85;
+        const b = r * 0.24;
+        ctx.fillRect(-b, -a, b * 2, a * 2);
+        ctx.fillRect(-a, -b, a * 2, b * 2);
+        break;
+      }
+      case "速攻":
+        ctx.beginPath();
+        ctx.moveTo(r * 0.25, -r * 0.95);
+        ctx.lineTo(-r * 0.55, r * 0.12);
+        ctx.lineTo(-r * 0.02, r * 0.12);
+        ctx.lineTo(-r * 0.3, r * 0.95);
+        ctx.lineTo(r * 0.58, -r * 0.18);
+        ctx.lineTo(r * 0.05, -r * 0.18);
+        ctx.closePath();
+        ctx.fill();
+        break;
+      case "フィールド":
+        ctx.lineWidth = r * 0.14;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 0.62, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        for (let i = 0; i < 8; i++) {
+          const a = (i * Math.PI) / 4 - Math.PI / 2;
+          const rr = i % 2 ? r * 0.22 : r * 0.98;
+          ctx[i ? "lineTo" : "moveTo"](Math.cos(a) * rr, Math.sin(a) * rr);
+        }
+        ctx.closePath();
+        ctx.fill();
+        break;
+      case "儀式":
+        ctx.beginPath();
+        ctx.moveTo(0, -r * 0.95);
+        ctx.bezierCurveTo(r * 0.2, -r * 0.45, r * 0.8, -r * 0.15, r * 0.6, r * 0.45);
+        ctx.bezierCurveTo(r * 0.45, r * 0.9, -r * 0.45, r * 0.9, -r * 0.6, r * 0.45);
+        ctx.bezierCurveTo(-r * 0.75, 0, -r * 0.35, -r * 0.2, -r * 0.2, -r * 0.55);
+        ctx.bezierCurveTo(-r * 0.05, -r * 0.3, 0, -r * 0.6, 0, -r * 0.95);
+        ctx.fill();
+        break;
+      case "カウンター":
+        ctx.lineWidth = r * 0.2;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 0.62, -Math.PI * 0.35, Math.PI * 1.35);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(r * 0.28, -r * 0.95);
+        ctx.lineTo(r * 0.85, -r * 0.62);
+        ctx.lineTo(r * 0.28, -r * 0.22);
+        ctx.closePath();
+        ctx.fill();
+        break;
+    }
+    ctx.restore();
+  }
+
   function drawStars(ctx, card, type) {
     const s = LAYOUT.stars;
     if (!type.monster) {
-      const label = card.cardType === "spell" ? "【魔法カード】" : "【罠カード】";
+      // 【魔法カード】/【罠カード】。通常以外は】の前に種類のアイコンを入れる
+      const label = card.cardType === "spell" ? "【魔法カード" : "【罠カード";
+      const icon = card.subtype && card.subtype !== "通常" ? 40 : 0;
       ctx.font = `700 40px ${SANS}`;
-      ctx.textAlign = "right";
       ctx.textBaseline = "middle";
       ctx.fillStyle = COLORS.ink;
-      ctx.fillText(label, s.right + s.r, s.y);
-      ctx.textAlign = "left";
+      const right = s.right + s.r;
+      const close = ctx.measureText("】").width;
+      const labelW = ctx.measureText(label).width;
+      const x0 = right - close - icon - (icon ? 6 : 0) - labelW;
+      ctx.fillText(label, x0, s.y);
+      if (icon) drawSubtypeIcon(ctx, card.subtype, x0 + labelW + 4 + icon / 2, s.y + 1, icon);
+      ctx.fillText("】", right - close, s.y);
       return;
     }
     const xyz = card.cardType === "xyz";

@@ -1,7 +1,9 @@
-// 画面の操作:フォーム ⇔ カードJSON の同期、保存、画像の読み込み、書き出し。
+// 画面の操作:フォーム ⇔ カードJSON の同期、保存、画像の読み込み、表からの一括作成、書き出し。
 
 (() => {
   const STORE_KEY = "member_cards_v1";
+  const WORLD_KEY = "member_card_world_v1";
+  const XLSX_URL = new URL("vendor/xlsx.mini.min.js", document.currentScript.src).href;
   const IMAGE_PLACEHOLDER = "[埋め込み画像]";
   const EXPORT_SCALE = 2; // PNG は 2048 x 2880px で書き出す
 
@@ -34,6 +36,26 @@
         toast("ブラウザの保存容量が足りません。「全カードをJSON保存」で書き出してください。");
       }
     }, 400);
+  }
+
+  function loadWorld() {
+    try {
+      return localStorage.getItem(WORLD_KEY) || "";
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function saveWorld(text) {
+    try {
+      localStorage.setItem(WORLD_KEY, text);
+    } catch (e) {
+      // 保存できない環境では今回の表示中のみ有効
+    }
+  }
+
+  function world() {
+    return $("worldMemo").value;
   }
 
   // ---------------- 画像 ----------------
@@ -126,6 +148,14 @@
     $("statsRow").hidden = !type.monster;
     $("abilities").placeholder = type.ability || "(なし)";
     $("customAttr").hidden = current.attribute !== "custom";
+    const subs = CardFormat.subtypesFor(current.cardType);
+    $("subtypeRow").hidden = !subs.length;
+    const sel = $("subtype");
+    if (sel.dataset.for !== current.cardType) {
+      fillSelect(sel, subs.map((v) => [v, v]));
+      sel.dataset.for = current.cardType;
+    }
+    if (subs.length) sel.value = current.subtype;
     if (!current.frameColor) $("frameColorPick").value = type.frame;
     $("imagePrompt").value = CardFormat.buildImagePrompt(current, $("artStyle").value);
     $("cardJson").value = cardJsonForView(current);
@@ -143,6 +173,7 @@
       else if (v === "trap") current.attribute = "罠";
       else if (current.attribute === "魔" || current.attribute === "罠") current.attribute = "光";
       form.querySelector('[name="attribute"]').value = current.attribute;
+      current.subtype = "通常";
     }
     if (el.name === "frameColor" && /^#[0-9a-f]{6}$/i.test(v)) $("frameColorPick").value = v;
     changed();
@@ -172,7 +203,9 @@
     const list = $("cardList");
     list.innerHTML = "";
     cards.forEach((c, i) => {
-      const label = `${i + 1}. ${c.name.trim() || "(名前未入力)"}${c.cardCode ? "  " + c.cardCode : ""}`;
+      const kind = c.cardType === "spell" ? "[魔] " : c.cardType === "trap" ? "[罠] " : "";
+      const wait = c.autoFields.length ? " ✳AI待ち" : "";
+      const label = `${i + 1}. ${kind}${c.name.trim() || c.member.realName.trim() || "(名前未入力)"}${c.cardCode ? "  " + c.cardCode : ""}${wait}`;
       list.add(new Option(label, c.id, false, c === current));
     });
   }
@@ -249,13 +282,14 @@
   }
 
   function exportJson(list, filename) {
-    const body = JSON.stringify({ formatVersion: CardFormat.VERSION, cards: list }, null, 2);
+    const body = JSON.stringify({ formatVersion: CardFormat.VERSION, world: world(), cards: list }, null, 2);
     download(new Blob([body], { type: "application/json" }), filename);
   }
 
   function importJson(text) {
     const data = JSON.parse(text);
     const list = Array.isArray(data) ? data : Array.isArray(data.cards) ? data.cards : [data];
+    if (data.world && !world().trim()) setWorld(data.world);
     const ids = new Set(cards.map((c) => c.id));
     const added = list.map((raw) => {
       const c = CardFormat.normalize(raw);
@@ -305,7 +339,7 @@
     btn.disabled = true;
     setAiStatus("AIがカードを考えています…");
     try {
-      const result = await CardAI.generateCard(current.member, $("aiExtra").value);
+      const result = await CardAI.generateCard(current, { extra: $("aiExtra").value, world: world(), keep: [] });
       setCard(CardFormat.applyAiResult(current, result));
       setAiStatus("カード文面を反映しました。気に入らなければもう一度押すと別案が出ます。");
     } catch (e) {
@@ -322,6 +356,170 @@
       toast(done);
     } catch (e) {
       toast("コピーできませんでした。テキストを選択してコピーしてください。");
+    }
+  }
+
+  // ---------------- 表からまとめて作る ----------------
+
+  function setWorld(text) {
+    $("worldMemo").value = text;
+    saveWorld(text);
+  }
+
+  function setBulkStatus(msg, isError) {
+    const el = $("bulkStatus");
+    el.textContent = msg;
+    el.classList.toggle("error", !!isError);
+  }
+
+  let xlsxPromise = null;
+  function loadXlsx() {
+    if (window.XLSX) return Promise.resolve(window.XLSX);
+    if (!xlsxPromise) {
+      xlsxPromise = new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = XLSX_URL;
+        s.onload = () => resolve(window.XLSX);
+        s.onerror = () => {
+          xlsxPromise = null;
+          reject(new Error("Excel 読み込み用のファイルを読めませんでした。CSV で保存するか、表をコピーして貼り付けてください。"));
+        };
+        document.head.appendChild(s);
+      });
+    }
+    return xlsxPromise;
+  }
+
+  // .xlsx → { rows: カード一覧シート, world: 世界観メモシートのテキスト }
+  async function readWorkbook(file) {
+    const XLSX = await loadXlsx();
+    const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
+    const toRows = (name) => XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, raw: false, defval: "" });
+    const cardSheet = wb.SheetNames.find((n) => n.includes("カード")) || wb.SheetNames[0];
+    // テンプレートの「カード一覧」シートは上に説明行があるので、見出し行(「カード種類」で始まるセルがある行)から使う
+    let rows = toRows(cardSheet);
+    const head = rows.findIndex((r) => r.some((c) => String(c).replace(/\s/g, "").startsWith("カード種類")));
+    if (head > 0) rows = rows.slice(head);
+    let worldText = "";
+    const worldSheet = wb.SheetNames.find((n) => n.includes("世界観"));
+    if (worldSheet) {
+      const w = toRows(worldSheet);
+      const wh = w.findIndex((r) => r.some((c) => String(c).trim() === "用語"));
+      worldText = w
+        .slice(wh + 1)
+        .filter((r) => String(r[0] || "").trim())
+        .map((r) => `${String(r[0]).trim()}${String(r[1] || "").trim() ? `(${String(r[1]).trim()})` : ""}: ${String(r[2] || "").trim()}`)
+        .join("\n");
+    }
+    return { rows, world: worldText };
+  }
+
+  // 選んだイラスト画像:ファイル名(大文字小文字・拡張子の有無は問わない)→ File
+  let bulkImageFiles = new Map();
+  function imageKey(name) {
+    return String(name || "")
+      .trim()
+      .toLowerCase()
+      .replace(/^.*[\\/]/, "");
+  }
+
+  async function attachImages(list) {
+    let n = 0;
+    for (const card of list) {
+      const key = imageKey(card.art.fileName);
+      if (!key || card.art.image) continue;
+      const file = bulkImageFiles.get(key) || bulkImageFiles.get(key.replace(/\.[^.]+$/, ""));
+      if (!file) continue;
+      card.art.image = await fileToDataUrl(file, 1600, "image/jpeg");
+      n++;
+    }
+    return n;
+  }
+
+  async function importRows(rows, worldText) {
+    const { cards: added, warnings } = CardFormat.rowsToCards(rows, cards.length + 1);
+    if (worldText && worldText.trim()) {
+      setWorld(world().trim() ? world().trim() + "\n" + worldText.trim() : worldText.trim());
+    }
+    if (!added.length) {
+      setBulkStatus(warnings.join(" "), true);
+      return;
+    }
+    const withImages = await attachImages(added);
+    cards.push(...added.map(CardFormat.normalize));
+    selectCard(cards[cards.length - added.length].id);
+    scheduleSave();
+    const waiting = added.filter((c) => c.autoFields.length).length;
+    const missing = added.filter((c) => c.art.fileName && !c.art.image).map((c) => c.art.fileName);
+    const msg = [`${added.length}枚を読み込みました。`];
+    if (withImages) msg.push(`イラスト${withImages}枚を自動で入れました。`);
+    if (missing.length) msg.push(`見つからない画像: ${missing.join("、")}(「イラスト画像」で選ぶと入ります)。`);
+    if (waiting) msg.push(`${waiting}枚に空欄があります →「空欄をAIでまとめて埋める」`);
+    if (warnings.length) msg.push("注意: " + warnings.join(" "));
+    setBulkStatus(msg.join(" "), warnings.length > 0);
+  }
+
+  async function onTableFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      if (/\.xlsx$/i.test(file.name)) {
+        const { rows, world: w } = await readWorkbook(file);
+        await importRows(rows, w);
+      } else {
+        await importRows(CardFormat.parseDelimited(await file.text()), "");
+      }
+    } catch (err) {
+      setBulkStatus("読み込めませんでした: " + err.message, true);
+    }
+    e.target.value = "";
+  }
+
+  async function onBulkImages(e) {
+    bulkImageFiles = new Map();
+    [...e.target.files].forEach((f) => {
+      const key = imageKey(f.name);
+      bulkImageFiles.set(key, f);
+      bulkImageFiles.set(key.replace(/\.[^.]+$/, ""), f);
+    });
+    const n = await attachImages(cards);
+    if (n) changed();
+    setBulkStatus(`${e.target.files.length}枚の画像を選びました。${n ? `読み込み済みのカード${n}枚に入れました。` : "このあと読み込む表の「イラスト画像ファイル名」と照合します。"}`);
+  }
+
+  let bulkRunning = false;
+  async function runBulkAi() {
+    const targets = cards.filter((c) => c.autoFields.length);
+    if (!targets.length) return setBulkStatus("空欄のあるカードはありません(表から読み込んだカードの空欄だけが対象です)。");
+    if (bulkRunning) return;
+    bulkRunning = true;
+    $("btnBulkAi").disabled = true;
+    let done = 0;
+    try {
+      for (const card of targets) {
+        setBulkStatus(`AIが作成中… ${done + 1} / ${targets.length}「${card.name || card.member.realName}」`);
+        const keep = CardFormat.AI_FIELDS.filter((f) => !card.autoFields.includes(f));
+        const result = await CardAI.generateCard(card, { world: world(), keep });
+        const next = CardFormat.applyAiResult(card, result, card.autoFields);
+        const idx = cards.indexOf(card);
+        if (idx >= 0) cards[idx] = next;
+        if (current === card) current = next;
+        done++;
+        refreshList();
+        scheduleSave();
+      }
+      setBulkStatus(`${done}枚の空欄を埋めました。一覧から選んで確認・修正してください。`);
+    } catch (e) {
+      setBulkStatus(`${done}枚まで完了。${e.message}`, true);
+      if (/APIキー/.test(e.message)) {
+        $("aiSettings").open = true;
+        $("aiSettings").scrollIntoView({ block: "center" });
+      }
+    } finally {
+      bulkRunning = false;
+      $("btnBulkAi").disabled = false;
+      fillForm();
+      scheduleRender();
     }
   }
 
@@ -490,7 +688,7 @@
 
     $("btnAi").addEventListener("click", runAi);
     $("btnCopyPrompt").addEventListener("click", () =>
-      copyText(CardFormat.buildCopyPrompt(current.member, $("aiExtra").value), "プロンプトをコピーしました。チャットAIに貼り付けてください。")
+      copyText(CardFormat.buildCopyPrompt(current, { extra: $("aiExtra").value, world: world(), keep: [] }), "プロンプトをコピーしました。チャットAIに貼り付けてください。")
     );
     $("btnApplyJson").addEventListener("click", () => {
       try {
@@ -501,6 +699,23 @@
         toast("JSONを読み取れませんでした: " + e.message);
       }
     });
+    setWorld(loadWorld());
+    $("worldMemo").addEventListener("input", (e) => saveWorld(e.target.value));
+    $("tableFile").addEventListener("change", onTableFile);
+    $("bulkImages").addEventListener("change", onBulkImages);
+    $("btnTableImport").addEventListener("click", async () => {
+      const text = $("tablePaste").value;
+      if (!text.trim()) return setBulkStatus("表を貼り付けてください。", true);
+      await importRows(CardFormat.parseDelimited(text), "");
+      $("tablePaste").value = "";
+    });
+    $("btnBulkAi").addEventListener("click", runBulkAi);
+    $("btnCopyTablePrompt").addEventListener("click", () =>
+      copyText(CardFormat.buildTablePrompt(world()), "コピーしました。チャットAIに貼り、続けて表(見出し行ごと)を貼ってください。返ってきた表を「貼り付けた表を読み込む」へ。")
+    );
+    $("btnTableExport").addEventListener("click", () =>
+      download(new Blob([CardFormat.toCsv(CardFormat.cardsToRows(cards))], { type: "text/csv" }), "cards.csv")
+    );
     $("btnCopyImagePrompt").addEventListener("click", () => copyText($("imagePrompt").value, "画像生成用プロンプトをコピーしました。"));
 
     cards = loadCards();

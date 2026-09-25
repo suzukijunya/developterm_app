@@ -1,4 +1,4 @@
-// Claude API でメンバー情報からカード文面を作る。
+// Claude API で元ネタ(人・社内用語・出来事)からカード文面を作る。
 // APIキーはこのブラウザ(localStorage)にだけ保存し、送信先は api.anthropic.com のみ。
 // SDK は中国語学習アプリに同梱しているものを共用する。
 
@@ -57,15 +57,16 @@ const CardAI = (() => {
     return new AIError(err && err.message ? err.message : "AIの呼び出しに失敗しました。");
   }
 
-  // メンバー情報 → { name, attribute, level, tribe, effect, atk, def, ... }
-  async function generateCard(member, extra) {
+  // カード(元ネタ入り) → { name, attribute, level, tribe, effect, atk, def, artEffect }
+  // opts: { extra, world, keep: [変えない項目] }
+  async function generateCard(card, opts) {
     const { apiKey, model } = loadSettings();
     if (!apiKey) throw new AIError("APIキーが未設定です。「AI設定」から入力してください。");
     let Anthropic = null;
     try {
       Anthropic = await loadSdk();
       const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
-      const req = CardFormat.buildAiRequest(member, extra);
+      const req = CardFormat.buildAiRequest(card, opts);
       const params = {
         model,
         max_tokens: 16000,

@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>メンバートレカメーカー</title>
-<meta name="description" content="社内メンバーの情報を入れると、トレーディングカード風の画像を作れるツール。" />
+<title>社内トレカメーカー</title>
+<meta name="description" content="社内の人・社内用語・出来事から、モンスター・魔法・罠のトレーディングカード風画像を作れるツール。" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%83%8F%3C/text%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -13,7 +13,7 @@
 </head>
 <body>
 <header class="topbar">
-  <h1>メンバートレカメーカー</h1>
+  <h1>社内トレカメーカー</h1>
   <div class="deck">
     <select id="cardList" aria-label="保存済みカード"></select>
     <button type="button" id="btnNew">新規</button>
@@ -29,12 +29,38 @@
 <main class="layout">
   <form id="form" class="editor" autocomplete="off" onsubmit="return false">
 
-    <details class="panel" open>
-      <summary>① メンバー情報 <small>AIで文面を作るときに使う</small></summary>
+    <details class="panel" id="bulkPanel">
+      <summary>📋 表からまとめて作る <small>Excel / CSV / コピペ</small></summary>
+      <ol class="steps">
+        <li><a href="templates/card_input_template.xlsx" download>入力テンプレート(Excel)</a>をダウンロードし、1行に1枚ずつ書く。必須は「カード種類」と「元ネタ」だけ。空欄はAIが考えます。</li>
+        <li>表を読み込む(下のどちらか)。イラスト画像があれば一緒に選ぶと、「イラスト画像ファイル名」の列と同じ名前の画像が自動で入ります。</li>
+        <li>「空欄をAIでまとめて埋める」を押す(APIキーがない場合は、チャットAI用プロンプトで表を埋めてから読み込む)。</li>
+      </ol>
       <div class="grid2">
-        <label>呼び名・名前<input name="member.realName" placeholder="スズキ" /></label>
-        <label>部署<input name="member.department" placeholder="管理本部" /></label>
-        <label>役職・担当<input name="member.role" placeholder="CFO" /></label>
+        <label>表ファイル(.xlsx / .csv)<input type="file" id="tableFile" accept=".xlsx,.csv,.tsv,.txt" /></label>
+        <label>イラスト画像(複数選択可)<input type="file" id="bulkImages" accept="image/*" multiple /></label>
+      </div>
+      <label>または表をコピーして貼り付け(見出し行ごと)<textarea id="tablePaste" rows="4" placeholder="Excel や Google スプレッドシートで見出し行を含めて範囲をコピーし、ここに貼り付け"></textarea></label>
+      <div class="ai-actions">
+        <button type="button" id="btnTableImport" class="primary">貼り付けた表を読み込む</button>
+        <button type="button" id="btnBulkAi">空欄をAIでまとめて埋める</button>
+        <button type="button" id="btnCopyTablePrompt">表を埋めてもらうチャットAI用プロンプトをコピー</button>
+        <button type="button" id="btnTableExport">全カードを表(CSV)で書き出す</button>
+      </div>
+      <p id="bulkStatus" class="status" role="status"></p>
+      <details class="sub">
+        <summary>ウィーブレインの世界観メモ(社内用語・人物・出来事)</summary>
+        <p class="hint">ここに書いた用語はすべてのカードのAI生成で使われ、カード同士の効果がつながります。Excelテンプレートの「世界観メモ」シートからも読み込まれます。</p>
+        <textarea id="worldMemo" rows="6" placeholder="例:&#10;グレー金融: 怪しい儲け話の総称&#10;雅さん: 海外事業の相談役&#10;テスラ: 社用車。乗ると商談がまとまる"></textarea>
+      </details>
+    </details>
+
+    <details class="panel" open>
+      <summary>① 元ネタ <small>人・社内用語・出来事など。AIで文面を作るときに使う</small></summary>
+      <div class="grid2">
+        <label>カード種類<select name="cardType" id="cardType"></select></label>
+        <label id="subtypeRow">魔法・罠の種類<select name="subtype" id="subtype"></select></label>
+        <label>元ネタ(人の名前・社内用語・出来事)<input name="member.realName" placeholder="スズキ / 月末締め / 全社会議" /></label>
         <label>カードの雰囲気
           <select name="member.tone">
             <option>かっこよく</option>
@@ -43,10 +69,13 @@
             <option>渋く</option>
           </select>
         </label>
+        <label>部署(人のとき)<input name="member.department" placeholder="管理本部" /></label>
+        <label>役職・担当(人のとき)<input name="member.role" placeholder="CFO" /></label>
       </div>
-      <label>得意なこと・スキル<textarea name="member.skills" rows="2" placeholder="財務・契約チェック、Excelマクロ"></textarea></label>
-      <label>性格・口癖<textarea name="member.personality" rows="2" placeholder="冷静沈着。「それ、契約書に書いてあります?」"></textarea></label>
-      <label>エピソード・社内での評判<textarea name="member.episode" rows="2" placeholder="怪しい契約は必ず見抜く"></textarea></label>
+      <label>特徴・得意なこと<textarea name="member.skills" rows="2" placeholder="財務・契約チェック / 毎月25日に全員が追われる"></textarea></label>
+      <label>口癖・名ゼリフ<textarea name="member.personality" rows="2" placeholder="「それ、契約書に書いてあります?」"></textarea></label>
+      <label>エピソード<textarea name="member.episode" rows="2" placeholder="怪しい契約は必ず見抜く"></textarea></label>
+      <label>一緒に登場させたい人・モノ<input name="member.related" placeholder="「ヨナハ」「法務確認」" /></label>
       <label>AIへの追加の要望(任意)<input id="aiExtra" placeholder="例: ATKは高めに / 効果を2つに" /></label>
 
       <div class="ai-actions">
@@ -70,9 +99,8 @@
 
     <details class="panel" open>
       <summary>② カードの基本</summary>
-      <label>カード名<input name="name" placeholder="財務統括魔導士スズキ" /></label>
+      <label>カード名<input name="name" placeholder="財務統括魔導士スズキ / 法務確認" /></label>
       <div class="grid2">
-        <label>カード種類<select name="cardType" id="cardType"></select></label>
         <label>名前の色<select name="nameColor" id="nameColor"></select></label>
         <label>属性<select name="attribute" id="attribute"></select></label>
         <label class="level">レベル <output id="levelOut"></output><input type="range" name="level" min="0" max="12" step="1" /></label>
