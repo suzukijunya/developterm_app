@@ -3,7 +3,7 @@
 (() => {
   const STORE_KEY = "member_cards_v1";
   const IMAGE_PLACEHOLDER = "[埋め込み画像]";
-  const EXPORT_SCALE = 2; // PNG は 2000 x 2920px で書き出す
+  const EXPORT_SCALE = 2; // PNG は 2048 x 2880px で書き出す
 
   const $ = (id) => document.getElementById(id);
   const form = $("form");
@@ -326,8 +326,8 @@
   }
 
   // 既存のトレカ画像(縦長のカード全体)を入れたとき、イラスト枠の部分だけが見えるように拡大・位置合わせする。
-  // 比率は一般的なカードのイラスト枠の位置(左11%・右88.5%・上16.5%・下65%)。
-  const CARD_ART_REGION = { left: 0.11, right: 0.885, top: 0.165, bottom: 0.65 };
+  // 比率は見本カード画像(1024x1536)のイラスト枠の位置。
+  const CARD_ART_REGION = { left: 0.114, right: 0.886, top: 0.17, bottom: 0.651 };
 
   async function cropFromCardImage() {
     const img = await CardRenderer.loadImage(current.art.image);

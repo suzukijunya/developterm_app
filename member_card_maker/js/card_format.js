@@ -8,7 +8,7 @@ const CardFormat = (() => {
   // カード種類 → 枠の色・モンスターかどうか・種族行に入る能力
   const CARD_TYPES = {
     normal: { label: "通常モンスター", frame: "#d2ad52", monster: true, ability: "" },
-    effect: { label: "効果モンスター", frame: "#c7834b", monster: true, ability: "効果" },
+    effect: { label: "効果モンスター", frame: "#c8834e", monster: true, ability: "効果" },
     ritual: { label: "儀式モンスター", frame: "#6d8fc6", monster: true, ability: "儀式／効果" },
     fusion: { label: "融合モンスター", frame: "#8d6aae", monster: true, ability: "融合／効果" },
     synchro: { label: "シンクロモンスター", frame: "#e4e4e4", monster: true, ability: "シンクロ／効果" },
@@ -19,16 +19,16 @@ const CardFormat = (() => {
 
   // 属性(右上の丸いマーク)
   const ATTRIBUTES = {
-    光: { color: "#e2b93b", label: "光" },
-    闇: { color: "#4f3872", label: "闇" },
-    炎: { color: "#c6352a", label: "炎" },
-    水: { color: "#2d6cbc", label: "水" },
-    風: { color: "#3b9548", label: "風" },
-    地: { color: "#7a5731", label: "地" },
-    神: { color: "#b08a26", label: "神" },
-    魔: { color: "#1f8a7e", label: "魔" },
-    罠: { color: "#a8447c", label: "罠" },
-    custom: { color: "#c6352a", label: "カスタム(文字・画像)" },
+    光: { color: "#b8741a", ruby: "ひかり", label: "光" },
+    闇: { color: "#5b2f86", ruby: "やみ", label: "闇" },
+    炎: { color: "#c52a1c", ruby: "ほのお", label: "炎" },
+    水: { color: "#1f63b8", ruby: "みず", label: "水" },
+    風: { color: "#2f8a3c", ruby: "かぜ", label: "風" },
+    地: { color: "#6e4a26", ruby: "ち", label: "地" },
+    神: { color: "#a88418", ruby: "かみ", label: "神" },
+    魔: { color: "#13806f", ruby: "まほう", label: "魔" },
+    罠: { color: "#a3336e", ruby: "トラップ", label: "罠" },
+    custom: { color: "#c6352a", ruby: "", label: "カスタム(文字・画像)" },
   };
 
   // イラストに重ねる光のエフェクト

@@ -1,22 +1,34 @@
 // カード JSON(card_format.js の形式)を canvas に描く。
-// 座標はすべてカード1枚 = 1000 x 1460 の論理座標で書き、scale で出力解像度を変える。
+// デザインは見本カード(1024 x 1440)を実測して再現している。座標はすべてこの論理座標で書き、
+// scale で出力解像度を変える。
 
 const CardRenderer = (() => {
-  const W = 1000;
-  const H = 1460;
-  const SERIF = '"Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif';
+  const W = 1024;
+  const H = 1440;
   const SANS = '"Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif';
+  // カードコード・ATK/DEF・コピーライトの欧文セリフ体
+  const SERIF_LATIN = '"Noto Serif", "Times New Roman", Times, serif';
 
   const LAYOUT = {
-    body: { x: 32, y: 32, w: 936, h: 1396 },
-    nameBox: { x: 58, y: 58, w: 884, h: 104 },
-    attr: { cx: 880, cy: 110, r: 44 },
-    stars: { y: 208, r: 26, gap: 58, right: 912 },
-    artFrame: { x: 100, y: 246, w: 800, h: 800 },
-    art: { x: 117, y: 263, w: 766, h: 766 },
-    code: { x: 886, y: 1082 },
-    textBox: { x: 58, y: 1096, w: 884, h: 296 },
-    copyright: { x: 880, y: 1418 },
+    body: { x: 33, y: 31, w: 954, h: 1376 },
+    nameBox: { x: 52, y: 50, w: 918, h: 112 },
+    name: { x: 80, y: 106, size: 60 },
+    attr: { cx: 898, cy: 106, r: 55 },
+    stars: { y: 205, r: 33, gap: 66, right: 868 },
+    artFrame: { x: 95, y: 240, w: 834, h: 796 },
+    art: { x: 114, y: 258, w: 796, h: 760 },
+    code: { x: 905, y: 1066 },
+    textBox: { x: 55, y: 1072, w: 913, h: 304 },
+    text: { left: 88, right: 936, header: 1092, top: 1134, rule: 1311, stats: 1354 },
+    copyright: { x: 932, y: 1400 },
+  };
+
+  // 見本カードから拾った色
+  const COLORS = {
+    border: { base: "#555886", light: "#b4b6d8", dark: "#1a1f38", amp: 1.6 },
+    parchment: { base: "#dfc3ae", light: "#f5e7dc", dark: "#bb9a84", amp: 1.3 },
+    slate: { base: "#4e5e89", light: "#7684ad", dark: "#2a3458" },
+    ink: "#1c1410",
   };
 
   // ---------------- 小物 ----------------
@@ -46,20 +58,9 @@ const CardRenderer = (() => {
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
   }
 
-  function shade(hex, amt) {
-    const [r, g, b] = hexToRgb(hex);
-    const f = (c) => Math.round(amt >= 0 ? c + (255 - c) * amt : c * (1 + amt));
-    return `rgb(${f(r)},${f(g)},${f(b)})`;
-  }
-
   function rgba(hex, a) {
     const [r, g, b] = hexToRgb(hex);
     return `rgba(${r},${g},${b},${a})`;
-  }
-
-  function isLight(hex) {
-    const [r, g, b] = hexToRgb(hex);
-    return r * 0.299 + g * 0.587 + b * 0.114 > 150;
   }
 
   function roundRect(ctx, x, y, w, h, r) {
@@ -72,199 +73,118 @@ const CardRenderer = (() => {
     ctx.closePath();
   }
 
-  // まだらな紙・石のような質感。同じ色・大きさ・シードなら使い回す。
+  function clamp01(v) {
+    return Math.max(0, Math.min(1, v));
+  }
+
+  function toHsl(hex) {
+    const [r, g, b] = hexToRgb(hex).map((v) => v / 255);
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const l = (max + min) / 2;
+    if (max === min) return [0, 0, l];
+    const d = max - min;
+    const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    const h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return [h / 6, s, l];
+  }
+
+  function fromHsl(h, s, l) {
+    const f = (n) => {
+      const k = (n + h * 12) % 12;
+      const a = s * Math.min(l, 1 - l);
+      return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))));
+    };
+    return "#" + [f(0), f(8), f(4)].map((v) => v.toString(16).padStart(2, "0")).join("");
+  }
+
+  // 彩度・明度をずらした色
+  function tone(hex, ds, dl) {
+    const [h, s, l] = toHsl(hex);
+    return fromHsl(h, clamp01(s + ds), clamp01(l + dl));
+  }
+
+  // 雲のようなまだら模様(本体・外枠・テキスト欄の紙)。大小のぼかしたムラを重ねて作る。
   const textureCache = new Map();
-  function mottled(w, h, base, seed, strength, scale) {
-    const key = [w, h, base, seed, strength, scale].join("|");
+  function clouds(w, h, pal, seed, scale, grain = 10) {
+    const key = [w, h, pal.base, pal.light, pal.dark, pal.amp, seed, scale, grain].join("|");
     if (textureCache.has(key)) return textureCache.get(key);
     const c = document.createElement("canvas");
     c.width = Math.max(1, Math.round(w * scale));
     c.height = Math.max(1, Math.round(h * scale));
     const g = c.getContext("2d");
     g.scale(scale, scale);
-    g.fillStyle = base;
+    g.fillStyle = pal.base;
     g.fillRect(0, 0, w, h);
+    g.imageSmoothingEnabled = true;
+    g.imageSmoothingQuality = "high";
     const rand = rng(seed);
-    const blobs = Math.round((w * h) / 2600);
-    for (let i = 0; i < blobs; i++) {
-      const x = rand() * w;
-      const y = rand() * h;
-      const r = 12 + rand() * 90;
-      const light = rand() > 0.5;
-      const a = rand() * 0.09 * strength;
-      const grad = g.createRadialGradient(x, y, 0, x, y, r);
-      grad.addColorStop(0, light ? `rgba(255,245,225,${a})` : `rgba(40,20,10,${a})`);
-      grad.addColorStop(1, "rgba(0,0,0,0)");
-      g.fillStyle = grad;
-      g.fillRect(x - r, y - r, r * 2, r * 2);
+    const light = hexToRgb(pal.light);
+    const dark = hexToRgb(pal.dark);
+    [
+      [230, 0.55],
+      [110, 0.45],
+      [46, 0.3],
+      [16, 0.18],
+    ].forEach(([cell, amp]) => {
+      const gw = Math.ceil(w / cell) + 3;
+      const gh = Math.ceil(h / cell) + 3;
+      const n = document.createElement("canvas");
+      n.width = gw;
+      n.height = gh;
+      const ng = n.getContext("2d");
+      const id = ng.createImageData(gw, gh);
+      for (let i = 0; i < id.data.length; i += 4) {
+        const v = rand() * 2 - 1;
+        const col = v > 0 ? light : dark;
+        id.data[i] = col[0];
+        id.data[i + 1] = col[1];
+        id.data[i + 2] = col[2];
+        id.data[i + 3] = Math.min(1, Math.abs(v) * amp * (pal.amp || 1)) * 255;
+      }
+      ng.putImageData(id, 0, 0);
+      g.drawImage(n, -cell * 1.5, -cell * 1.5, gw * cell, gh * cell);
+    });
+    if (grain) {
+      const img = g.getImageData(0, 0, c.width, c.height);
+      const d = img.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const v = (rand() - 0.5) * grain;
+        d[i] += v;
+        d[i + 1] += v;
+        d[i + 2] += v;
+      }
+      g.putImageData(img, 0, 0);
     }
-    const img = g.getImageData(0, 0, c.width, c.height);
-    const d = img.data;
-    for (let i = 0; i < d.length; i += 4) {
-      const n = (rand() - 0.5) * 16 * strength;
-      d[i] += n;
-      d[i + 1] += n;
-      d[i + 2] += n;
-    }
-    g.putImageData(img, 0, 0);
     if (textureCache.size > 40) textureCache.clear();
     textureCache.set(key, c);
     return c;
   }
 
-  function drawTexture(ctx, x, y, w, h, base, seed, strength) {
-    const scale = ctx.getTransform().a;
-    ctx.drawImage(mottled(w, h, base, seed, strength, scale), x, y, w, h);
+  function drawClouds(ctx, x, y, w, h, pal, seed, grain) {
+    ctx.drawImage(clouds(w, h, pal, seed, ctx.getTransform().a, grain), x, y, w, h);
   }
 
-  // ---- 金属フレーム ----
-
-  const GOLD = [
-    [0, "#6e4a0e"],
-    [0.14, "#e9c768"],
-    [0.3, "#fff2bf"],
-    [0.44, "#b88627"],
-    [0.58, "#f6dc85"],
-    [0.72, "#8c5f16"],
-    [0.86, "#f2d27a"],
-    [1, "#5e3e0a"],
-  ];
-
-  function metalGradient(ctx, x, y, w, h) {
-    const g = ctx.createLinearGradient(x, y, x + w * 0.45, y + h);
-    GOLD.forEach(([o, c]) => g.addColorStop(o, c));
-    return g;
+  // 本体色からまだら用の明暗を作る
+  function bodyPalette(frame) {
+    return { base: frame, light: tone(frame, 0.02, 0.16), dark: tone(frame, 0.12, -0.16), amp: 1.9 };
   }
 
-  // 太さ t の額縁。左上が明るく右下が暗い立体の縁、中央に彫り溝、内外に細い影線。
-  function metalFrame(ctx, x, y, w, h, t) {
-    ctx.save();
+  // 台形(面取りした辺)を塗る
+  function quad(ctx, pts, fill) {
     ctx.beginPath();
-    ctx.rect(x, y, w, h);
-    ctx.rect(x + t, y + t, w - t * 2, h - t * 2);
-    ctx.fillStyle = metalGradient(ctx, x, y, w, h);
-    ctx.fill("evenodd");
-
-    // 4辺それぞれに光と影(台形)
-    const sides = [
-      [[x, y], [x + w, y], [x + w - t, y + t], [x + t, y + t], "rgba(255,250,225,0.38)"],
-      [[x, y], [x + t, y + t], [x + t, y + h - t], [x, y + h], "rgba(255,250,225,0.22)"],
-      [[x + w, y], [x + w, y + h], [x + w - t, y + h - t], [x + w - t, y + t], "rgba(40,20,0,0.28)"],
-      [[x, y + h], [x + t, y + h - t], [x + w - t, y + h - t], [x + w, y + h], "rgba(40,20,0,0.4)"],
-    ];
-    sides.forEach((pts) => {
-      ctx.beginPath();
-      pts.slice(0, 4).forEach(([px, py], i) => ctx[i ? "lineTo" : "moveTo"](px, py));
-      ctx.closePath();
-      ctx.fillStyle = pts[4];
-      ctx.fill();
-    });
-
-    if (t >= 8) {
-      const m = t / 2;
-      ctx.lineWidth = 1.2;
-      ctx.strokeStyle = "rgba(70,40,5,0.75)";
-      ctx.strokeRect(x + m - 0.6, y + m - 0.6, w - t + 1.2, h - t + 1.2);
-      ctx.strokeStyle = "rgba(255,246,210,0.7)";
-      ctx.strokeRect(x + m + 0.6, y + m + 0.6, w - t - 1.2, h - t - 1.2);
-    }
-    ctx.lineWidth = 1.5;
-    ctx.strokeStyle = "rgba(35,18,2,0.9)";
-    ctx.strokeRect(x + 0.75, y + 0.75, w - 1.5, h - 1.5);
-    ctx.strokeRect(x + t - 0.75, y + t - 0.75, w - t * 2 + 1.5, h - t * 2 + 1.5);
-    ctx.restore();
-  }
-
-  // 枠の内側に落ちる影(くぼんで見せる)
-  function innerShadow(ctx, x, y, w, h, size, alpha) {
-    ctx.save();
-    const edges = [
-      [x, y, x, y + size, [x, y, w, size]],
-      [x, y + h, x, y + h - size, [x, y + h - size, w, size]],
-      [x, y, x + size, y, [x, y, size, h]],
-      [x + w, y, x + w - size, y, [x + w - size, y, size, h]],
-    ];
-    edges.forEach(([x0, y0, x1, y1, r]) => {
-      const g = ctx.createLinearGradient(x0, y0, x1, y1);
-      g.addColorStop(0, `rgba(0,0,0,${alpha})`);
-      g.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = g;
-      ctx.fillRect(r[0], r[1], r[2], r[3]);
-    });
-    ctx.restore();
-  }
-
-  // 角の飾り:金の台座に色付きの宝石
-  function cornerGem(ctx, cx, cy, size, gemColor) {
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.shadowColor = "rgba(0,0,0,0.5)";
-    ctx.shadowBlur = 5;
-    ctx.shadowOffsetY = 2;
-    ctx.beginPath();
-    ctx.moveTo(0, -size);
-    ctx.lineTo(size, 0);
-    ctx.lineTo(0, size);
-    ctx.lineTo(-size, 0);
+    pts.forEach(([x, y], i) => ctx[i ? "lineTo" : "moveTo"](x, y));
     ctx.closePath();
-    ctx.fillStyle = metalGradient(ctx, -size, -size, size * 2, size * 2);
+    ctx.fillStyle = fill;
     ctx.fill();
-    ctx.shadowColor = "transparent";
-    ctx.lineWidth = 1.5;
-    ctx.strokeStyle = "rgba(35,18,2,0.9)";
-    ctx.stroke();
-
-    const r = size * 0.5;
-    ctx.beginPath();
-    ctx.moveTo(0, -r);
-    ctx.lineTo(r, 0);
-    ctx.lineTo(0, r);
-    ctx.lineTo(-r, 0);
-    ctx.closePath();
-    const g = ctx.createRadialGradient(-r * 0.3, -r * 0.35, 0, 0, 0, r * 1.1);
-    g.addColorStop(0, shade(gemColor, 0.7));
-    g.addColorStop(0.45, gemColor);
-    g.addColorStop(1, shade(gemColor, -0.6));
-    ctx.fillStyle = g;
-    ctx.fill();
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = "rgba(20,10,0,0.8)";
-    ctx.stroke();
-    // カット面
-    ctx.strokeStyle = "rgba(255,255,255,0.35)";
-    ctx.beginPath();
-    ctx.moveTo(-r, 0);
-    ctx.lineTo(r, 0);
-    ctx.moveTo(0, -r);
-    ctx.lineTo(0, r);
-    ctx.stroke();
-    ctx.restore();
   }
 
-  // 両端が細くなる飾り罫(中央にひし形)
-  function ornamentLine(ctx, x1, x2, y, color) {
-    ctx.save();
-    const g = ctx.createLinearGradient(x1, 0, x2, 0);
-    g.addColorStop(0, rgba(color, 0));
-    g.addColorStop(0.12, rgba(color, 0.85));
-    g.addColorStop(0.88, rgba(color, 0.85));
-    g.addColorStop(1, rgba(color, 0));
-    ctx.fillStyle = g;
-    const mid = (x1 + x2) / 2;
-    ctx.beginPath();
-    ctx.moveTo(x1, y);
-    ctx.quadraticCurveTo(mid, y - 2.4, x2, y);
-    ctx.quadraticCurveTo(mid, y + 2.4, x1, y);
-    ctx.fill();
-    ctx.fillStyle = rgba(color, 0.9);
-    ctx.beginPath();
-    ctx.moveTo(mid, y - 5);
-    ctx.lineTo(mid + 9, y);
-    ctx.lineTo(mid, y + 5);
-    ctx.lineTo(mid - 9, y);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
+  // 辺ごとに明暗をつけた額縁(左上が明るく右下が暗い)。t は縁の太さ。
+  function bevelSides(ctx, x, y, w, h, t, light, lightSide, darkSide, dark) {
+    quad(ctx, [[x, y], [x + w, y], [x + w - t, y + t], [x + t, y + t]], light);
+    quad(ctx, [[x, y], [x + t, y + t], [x + t, y + h - t], [x, y + h]], lightSide);
+    quad(ctx, [[x + w, y], [x + w, y + h], [x + w - t, y + h - t], [x + w - t, y + t]], darkSide);
+    quad(ctx, [[x, y + h], [x + t, y + h - t], [x + w - t, y + h - t], [x + w, y + h]], dark);
   }
 
   // 横幅が足りないときは横方向に縮めて描く(本物のカード名と同じ処理)
@@ -292,153 +212,154 @@ const CardRenderer = (() => {
 
   // ---------------- パーツ ----------------
 
+  // 青紫の外枠と、本体(カード種類の色)
   function drawBase(ctx, card, frame, seed) {
     ctx.save();
-    roundRect(ctx, 0, 0, W, H, 26);
+    roundRect(ctx, 0, 0, W, H, 24);
     ctx.clip();
-    drawTexture(ctx, 0, 0, W, H, "#5b5876", seed, 1.4);
+    drawClouds(ctx, 0, 0, W, H, COLORS.border, seed, 14);
+
+    // 外周はうっすら明るく、本体に近いほど暗く(外枠の丸み)
     const b = LAYOUT.body;
-    ctx.fillStyle = "rgba(0,0,0,0.35)";
-    ctx.fillRect(b.x - 3, b.y - 3, b.w + 6, b.h + 6);
-    drawTexture(ctx, b.x, b.y, b.w, b.h, frame, seed + 1, 1);
-    innerShadow(ctx, b.x, b.y, b.w, b.h, 22, 0.28);
-    // 本体の縁取り(細い金の象嵌)
-    metalFrame(ctx, b.x - 5, b.y - 5, b.w + 10, b.h + 10, 7);
+    const edge = (x0, y0, x1, y1, rect, from, to) => {
+      const g = ctx.createLinearGradient(x0, y0, x1, y1);
+      g.addColorStop(0, from);
+      g.addColorStop(1, to);
+      ctx.fillStyle = g;
+      ctx.fillRect(...rect);
+    };
+    const hi = "rgba(200,202,232,0.35)";
+    const clear = "rgba(0,0,0,0)";
+    edge(0, 0, 10, 0, [0, 0, 10, H], hi, clear);
+    edge(W, 0, W - 10, 0, [W - 10, 0, 10, H], hi, clear);
+    edge(0, 0, 0, 10, [0, 0, W, 10], hi, clear);
+    edge(0, H, 0, H - 10, [0, H - 10, W, 10], hi, clear);
+    const sh = "rgba(8,10,28,0.8)";
+    edge(b.x, 0, b.x - 22, 0, [b.x - 22, 0, 22, H], sh, clear);
+    edge(b.x + b.w, 0, b.x + b.w + 22, 0, [b.x + b.w, 0, 22, H], sh, clear);
+    edge(0, b.y, 0, b.y - 22, [0, b.y - 22, W, 22], sh, clear);
+    edge(0, b.y + b.h, 0, b.y + b.h + 22, [0, b.y + b.h, W, 22], sh, clear);
+
+    drawClouds(ctx, b.x, b.y, b.w, b.h, bodyPalette(frame), seed + 1, 10);
+    // 本体の縁:外側に細い影線、内側の上と左に細いハイライト
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = "rgba(38,26,24,0.95)";
+    ctx.strokeRect(b.x - 1.25, b.y - 1.25, b.w + 2.5, b.h + 2.5);
+    ctx.fillStyle = "rgba(245,212,176,0.55)";
+    ctx.fillRect(b.x, b.y, b.w, 2.5);
+    ctx.fillRect(b.x, b.y, 2.5, b.h);
     ctx.restore();
   }
 
-  // 全体にうっすら斜めの光沢
-  function drawGloss(ctx) {
-    ctx.save();
-    roundRect(ctx, 0, 0, W, H, 26);
-    ctx.clip();
-    ctx.globalCompositeOperation = "screen";
-    const g = ctx.createLinearGradient(0, 0, W, H);
-    g.addColorStop(0, "rgba(255,255,255,0)");
-    g.addColorStop(0.3, "rgba(255,255,255,0)");
-    g.addColorStop(0.4, "rgba(255,250,235,0.1)");
-    g.addColorStop(0.46, "rgba(255,255,255,0)");
-    g.addColorStop(0.62, "rgba(255,255,255,0)");
-    g.addColorStop(0.68, "rgba(255,250,235,0.06)");
-    g.addColorStop(0.74, "rgba(255,255,255,0)");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, W, H);
-    ctx.restore();
-  }
-
+  // 名前欄:少し濃い色の板。上と左に明るい縁、下と右に影の縁。
   function drawNameBox(ctx, card, frame, seed) {
     const n = LAYOUT.nameBox;
-    const fw = 12;
-    drawTexture(ctx, n.x, n.y, n.w, n.h, shade(frame, -0.18), seed + 2, 0.8);
-    const plate = ctx.createLinearGradient(0, n.y, 0, n.y + n.h);
-    plate.addColorStop(0, "rgba(255,240,210,0.16)");
-    plate.addColorStop(0.5, "rgba(0,0,0,0)");
-    plate.addColorStop(1, "rgba(0,0,0,0.22)");
-    ctx.fillStyle = plate;
-    ctx.fillRect(n.x, n.y, n.w, n.h);
-    innerShadow(ctx, n.x + fw, n.y + fw, n.w - fw * 2, n.h - fw * 2, 12, 0.45);
-    metalFrame(ctx, n.x, n.y, n.w, n.h, fw);
+    const plate = tone(frame, 0.06, -0.05);
+    drawClouds(ctx, n.x, n.y, n.w, n.h, bodyPalette(plate), seed + 2, 10);
+    bevelSides(ctx, n.x, n.y, n.w, n.h, 8, rgba(tone(frame, -0.1, 0.2), 0.95), rgba(tone(frame, -0.1, 0.16), 0.9), rgba(tone(frame, 0, -0.33), 0.9), rgba(tone(frame, 0, -0.36), 0.92));
+    // 板の下と右に落ちる影
+    ctx.fillStyle = "rgba(60,32,18,0.35)";
+    ctx.fillRect(n.x + 6, n.y + n.h, n.w - 4, 3);
+    ctx.fillRect(n.x + n.w, n.y + 6, 3, n.h - 3);
 
     const name = card.name.trim() || "カード名";
-    ctx.font = `900 60px ${SERIF}`;
+    const L = LAYOUT.name;
+    ctx.font = `600 ${L.size}px ${SANS}`;
     ctx.textBaseline = "middle";
-    const maxW = LAYOUT.attr.cx - LAYOUT.attr.r - 24 - (n.x + 24);
-    const y = n.y + n.h / 2 + 3;
-    fitText(ctx, name, n.x + 24, y, maxW, "left", (x, yy) => {
-      if (card.nameColor === "gold") {
-        const g = ctx.createLinearGradient(0, yy - 30, 0, yy + 30);
-        g.addColorStop(0, "#fff6c9");
-        g.addColorStop(0.45, "#f1cf6b");
-        g.addColorStop(0.55, "#d9a83a");
-        g.addColorStop(1, "#fbe7a0");
-        ctx.lineJoin = "round";
-        ctx.lineWidth = 7;
-        ctx.strokeStyle = "rgba(60,30,10,0.85)";
-        ctx.strokeText(name, x, yy);
-        ctx.fillStyle = g;
-      } else if (card.nameColor === "white") {
-        ctx.lineJoin = "round";
-        ctx.lineWidth = 6;
-        ctx.strokeStyle = "rgba(0,0,0,0.75)";
-        ctx.strokeText(name, x, yy);
-        ctx.fillStyle = "#ffffff";
+    const maxW = LAYOUT.attr.cx - LAYOUT.attr.r - 18 - L.x;
+    fitText(ctx, name, L.x, L.y + 2, maxW, "left", (x, y) => {
+      ctx.save();
+      if (card.nameColor === "black") {
+        ctx.fillStyle = COLORS.ink;
       } else {
-        ctx.fillStyle = "#1a1310";
+        ctx.shadowColor = "rgba(60,25,5,0.7)";
+        ctx.shadowOffsetX = 1.5;
+        ctx.shadowOffsetY = 2;
+        ctx.shadowBlur = 2;
+        if (card.nameColor === "white") {
+          ctx.fillStyle = "#fbf8f2";
+        } else {
+          const g = ctx.createLinearGradient(0, y - L.size / 2, 0, y + L.size / 2);
+          g.addColorStop(0, "#feee9e");
+          g.addColorStop(0.5, "#fbe07a");
+          g.addColorStop(1, "#f2c957");
+          ctx.fillStyle = g;
+        }
       }
-      ctx.fillText(name, x, yy);
+      ctx.fillText(name, x, y);
+      ctx.restore();
     });
   }
 
+  // 属性:金の輪+つやのある玉+白い文字(上にふりがな)
   function drawAttribute(ctx, card, images) {
     const { cx, cy, r } = LAYOUT.attr;
     const def = CardFormat.ATTRIBUTES[card.attribute];
     const custom = card.attribute === "custom";
     const color = custom ? card.customAttribute.color : def.color;
     const glyph = custom ? card.customAttribute.text : card.attribute;
+    const ruby = custom ? "" : def.ruby || "";
     const img = custom ? images.attribute : null;
 
     ctx.save();
-    ctx.shadowColor = "rgba(0,0,0,0.55)";
-    ctx.shadowBlur = 8;
+    ctx.shadowColor = "rgba(50,25,10,0.55)";
+    ctx.shadowBlur = 5;
+    ctx.shadowOffsetX = 2;
     ctx.shadowOffsetY = 3;
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.fillStyle = shade(color, -0.4);
+    const ring = ctx.createLinearGradient(cx - r, cy - r, cx + r, cy + r);
+    ring.addColorStop(0, "#fdf0b8");
+    ring.addColorStop(0.35, "#f3cf6a");
+    ring.addColorStop(0.65, "#d9a13a");
+    ring.addColorStop(1, "#f6d98a");
+    ctx.fillStyle = ring;
     ctx.fill();
     ctx.restore();
 
+    const ri = r - 6.5;
     ctx.save();
     ctx.beginPath();
-    ctx.arc(cx, cy, r - 3, 0, Math.PI * 2);
+    ctx.arc(cx, cy, ri, 0, Math.PI * 2);
     ctx.clip();
     if (img) {
-      const s = Math.max((r * 2) / img.width, (r * 2) / img.height);
+      const s = Math.max((ri * 2) / img.width, (ri * 2) / img.height);
       ctx.drawImage(img, cx - (img.width * s) / 2, cy - (img.height * s) / 2, img.width * s, img.height * s);
     } else {
-      const g = ctx.createRadialGradient(cx - r * 0.35, cy - r * 0.4, r * 0.1, cx, cy, r);
-      g.addColorStop(0, shade(color, 0.55));
-      g.addColorStop(0.55, color);
-      g.addColorStop(1, shade(color, -0.45));
+      const g = ctx.createRadialGradient(cx - ri * 0.45, cy - ri * 0.55, ri * 0.05, cx, cy, ri * 1.05);
+      g.addColorStop(0, tone(color, 0, 0.3));
+      g.addColorStop(0.35, color);
+      g.addColorStop(0.75, tone(color, 0, -0.3));
+      g.addColorStop(1, tone(color, 0, -0.4));
       ctx.fillStyle = g;
-      ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+      ctx.fillRect(cx - ri, cy - ri, ri * 2, ri * 2);
     }
-    // ガラス玉のようなハイライト
-    const hl = ctx.createLinearGradient(0, cy - r, 0, cy + r * 0.2);
-    hl.addColorStop(0, "rgba(255,255,255,0.55)");
-    hl.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.fillStyle = hl;
-    ctx.beginPath();
-    ctx.ellipse(cx, cy - r * 0.42, r * 0.72, r * 0.45, 0, 0, Math.PI * 2);
-    ctx.fill();
     ctx.restore();
-
-    // 金の縁
-    ctx.save();
-    ctx.lineWidth = 6;
-    ctx.strokeStyle = metalGradient(ctx, cx - r, cy - r, r * 2, r * 2);
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = "rgba(110,60,10,0.9)";
     ctx.beginPath();
-    ctx.arc(cx, cy, r - 1, 0, Math.PI * 2);
+    ctx.arc(cx, cy, ri, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.lineWidth = 1.2;
-    ctx.strokeStyle = "rgba(35,18,2,0.9)";
-    ctx.beginPath();
-    ctx.arc(cx, cy, r + 2, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(cx, cy, r - 4, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
 
     if (glyph && !img) {
-      ctx.font = `900 ${glyph.length > 1 ? 34 : 50}px ${SERIF}`;
+      const fill = ctx.createLinearGradient(0, cy - 30, 0, cy + 36);
+      fill.addColorStop(0, "#fffaf2");
+      fill.addColorStop(1, "#f0d9cb");
+      ctx.save();
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.lineWidth = 5;
-      ctx.strokeStyle = "rgba(30,15,5,0.8)";
-      ctx.strokeText(glyph, cx, cy + 3);
-      ctx.fillStyle = "#fffaf0";
-      ctx.fillText(glyph, cx, cy + 3);
-      ctx.textAlign = "left";
+      ctx.shadowColor = "rgba(20,8,0,0.6)";
+      ctx.shadowBlur = 2;
+      ctx.shadowOffsetY = 1;
+      ctx.fillStyle = fill;
+      ctx.font = `700 ${glyph.length > 1 ? 40 : 64}px ${SANS}`;
+      ctx.fillText(glyph, cx, cy + (ruby ? 7 : 3));
+      if (ruby) {
+        ctx.font = `700 14px ${SANS}`;
+        const step = Math.min(17, 60 / ruby.length);
+        [...ruby].forEach((ch, i) => ctx.fillText(ch, cx + (i - (ruby.length - 1) / 2) * step, cy - 34));
+      }
+      ctx.restore();
     }
   }
 
@@ -446,65 +367,73 @@ const CardRenderer = (() => {
     const s = LAYOUT.stars;
     if (!type.monster) {
       const label = card.cardType === "spell" ? "【魔法カード】" : "【罠カード】";
-      ctx.font = `700 40px ${SERIF}`;
+      ctx.font = `700 40px ${SANS}`;
       ctx.textAlign = "right";
       ctx.textBaseline = "middle";
-      ctx.fillStyle = "#1a1310";
-      ctx.fillText(label, s.right, s.y);
+      ctx.fillStyle = COLORS.ink;
+      ctx.fillText(label, s.right + s.r, s.y);
       ctx.textAlign = "left";
       return;
     }
-    const n = card.level;
     const xyz = card.cardType === "xyz";
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < card.level; i++) {
       // エクシーズはランクなので左から、それ以外は右から並べる
-      const cx = xyz ? LAYOUT.nameBox.x + 30 + i * s.gap : s.right - s.r - i * s.gap;
+      const cx = xyz ? LAYOUT.nameBox.x + 38 + i * s.gap : s.right - i * s.gap;
       const cy = s.y;
       ctx.save();
-      ctx.shadowColor = "rgba(0,0,0,0.5)";
-      ctx.shadowBlur = 5;
-      ctx.shadowOffsetY = 2;
-      const g = ctx.createRadialGradient(cx - 8, cy - 9, 3, cx, cy, s.r);
+      ctx.shadowColor = "rgba(30,6,0,0.75)";
+      ctx.shadowBlur = 4;
+      ctx.shadowOffsetX = 3;
+      ctx.shadowOffsetY = 3;
+      const g = ctx.createRadialGradient(cx - 9, cy - 11, 2, cx, cy, s.r);
       if (xyz) {
-        g.addColorStop(0, "#5a5a5a");
+        g.addColorStop(0, "#6a6a6a");
         g.addColorStop(1, "#050505");
       } else {
-        g.addColorStop(0, "#ffb347");
-        g.addColorStop(0.6, "#e0561c");
-        g.addColorStop(1, "#7a1f05");
+        g.addColorStop(0, "#ffc83c");
+        g.addColorStop(0.4, "#f99306");
+        g.addColorStop(0.78, "#e2480c");
+        g.addColorStop(1, "#8e2006");
       }
       ctx.fillStyle = g;
       ctx.beginPath();
       ctx.arc(cx, cy, s.r, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
-      starPath(ctx, cx, cy + 1, s.r * 0.72, s.r * 0.3);
+      starPath(ctx, cx, cy + 1.5, s.r * 0.8, s.r * 0.36);
       const sg = ctx.createLinearGradient(0, cy - s.r, 0, cy + s.r);
-      sg.addColorStop(0, "#fff7b0");
-      sg.addColorStop(1, "#f2b100");
+      sg.addColorStop(0, "#fff3a6");
+      sg.addColorStop(0.55, "#fbd565");
+      sg.addColorStop(1, "#f3ad20");
       ctx.fillStyle = sg;
       ctx.fill();
-      ctx.lineWidth = 1.5;
-      ctx.strokeStyle = "rgba(120,50,0,0.7)";
+      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = "rgba(170,70,0,0.75)";
       ctx.stroke();
-      ctx.fillStyle = "rgba(255,255,255,0.45)";
+      ctx.fillStyle = "rgba(255,255,255,0.35)";
       ctx.beginPath();
-      ctx.ellipse(cx - 6, cy - 12, 10, 5, -0.4, 0, Math.PI * 2);
+      ctx.ellipse(cx - 9, cy - 15, 9, 4.5, -0.5, 0, Math.PI * 2);
       ctx.fill();
     }
   }
 
+  // イラスト枠:青灰色の縁を黒い細線ではさみ、本体に影を落とす
   function drawArt(ctx, card, images, seed) {
     const f = LAYOUT.artFrame;
     const a = LAYOUT.art;
-    // 額縁の落とす影
     ctx.save();
-    ctx.shadowColor = "rgba(0,0,0,0.5)";
-    ctx.shadowBlur = 14;
-    ctx.shadowOffsetY = 5;
-    ctx.fillStyle = "#1a1510";
+    ctx.shadowColor = "rgba(45,22,8,0.75)";
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetX = 2;
+    ctx.shadowOffsetY = 3;
+    ctx.fillStyle = "#1c1921";
     ctx.fillRect(f.x, f.y, f.w, f.h);
     ctx.restore();
+    const t = a.x - f.x;
+    drawClouds(ctx, f.x + 3, f.y + 3, f.w - 6, f.h - 6, COLORS.slate, seed + 4, 8);
+    bevelSides(ctx, f.x + 3, f.y + 3, f.w - 6, f.h - 6, t - 5, "rgba(150,165,205,0.35)", "rgba(150,165,205,0.22)", "rgba(10,14,35,0.25)", "rgba(10,14,35,0.35)");
+    ctx.fillStyle = "#1c1921";
+    ctx.fillRect(a.x - 3, a.y - 3, a.w + 6, a.h + 6);
 
     ctx.save();
     ctx.beginPath();
@@ -538,18 +467,7 @@ const CardRenderer = (() => {
       ctx.textAlign = "left";
     }
     drawArtEffect(ctx, card, a, seed);
-    innerShadow(ctx, a.x, a.y, a.w, a.h, 16, 0.55);
     ctx.restore();
-
-    metalFrame(ctx, f.x, f.y, f.w, f.h, a.x - f.x);
-    const gem = CardFormat.ATTRIBUTES[card.attribute === "custom" ? "custom" : card.attribute];
-    const gemColor = card.attribute === "custom" ? card.customAttribute.color : gem.color;
-    [
-      [f.x, f.y],
-      [f.x + f.w, f.y],
-      [f.x, f.y + f.h],
-      [f.x + f.w, f.y + f.h],
-    ].forEach(([x, y]) => cornerGem(ctx, x, y, 23, gemColor));
   }
 
   // 写真に「カードのイラストっぽさ」を足す光の演出
@@ -713,8 +631,8 @@ const CardRenderer = (() => {
     for (let i = 0; i < EFFECT_FITS.length; i++) {
       const [size, squeeze] = EFFECT_FITS[i];
       ctx.font = `500 ${size}px ${font}`;
-      const lh = size * 1.38;
-      const gap = size * 0.3;
+      const lh = size * 1.34;
+      const gap = size * 0.18;
       const items = [];
       let h = 0;
       text.split("\n").forEach((raw, idx) => {
@@ -735,89 +653,141 @@ const CardRenderer = (() => {
     }
   }
 
+  // テキスト欄の縁:オレンジの丸棒(中央が明るい)を黒い細線ではさむ
+  const TUBE = [
+    [0, "#3a2210"],
+    [0.1, "#7a3208"],
+    [0.28, "#e57f14"],
+    [0.48, "#fbb444"],
+    [0.66, "#f08c1c"],
+    [0.86, "#a8480a"],
+    [1, "#3a2210"],
+  ];
+
+  function tube(ctx, x, y, w, h, vertical) {
+    const g = vertical ? ctx.createLinearGradient(x, 0, x + w, 0) : ctx.createLinearGradient(0, y, 0, y + h);
+    TUBE.forEach(([o, c]) => g.addColorStop(o, c));
+    ctx.fillStyle = g;
+    ctx.fillRect(x, y, w, h);
+  }
+
+  // 四隅の赤い角金具
+  function cornerSquare(ctx, cx, cy) {
+    const s = 14;
+    ctx.save();
+    ctx.shadowColor = "rgba(40,15,5,0.6)";
+    ctx.shadowBlur = 3;
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 1.5;
+    const g = ctx.createRadialGradient(cx - 4, cy - 5, 1, cx, cy, s * 1.4);
+    g.addColorStop(0, "#f0804a");
+    g.addColorStop(0.55, "#cf4d1c");
+    g.addColorStop(1, "#8e2c0c");
+    ctx.fillStyle = g;
+    ctx.fillRect(cx - s, cy - s, s * 2, s * 2);
+    ctx.restore();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = "#3d1606";
+    ctx.strokeRect(cx - s, cy - s, s * 2, s * 2);
+    ctx.fillStyle = "rgba(255,190,140,0.35)";
+    ctx.fillRect(cx - s + 1.5, cy - s + 1.5, s * 2 - 3, 1.5);
+    // うっすらした渦の刻印
+    ctx.lineWidth = 1.6;
+    ctx.strokeStyle = "rgba(100,28,5,0.55)";
+    ctx.beginPath();
+    ctx.arc(cx + 1, cy + 1, 6, Math.PI * 0.9, Math.PI * 2.1);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(255,160,110,0.35)";
+    ctx.beginPath();
+    ctx.arc(cx, cy, 6, Math.PI * 0.9, Math.PI * 2.1);
+    ctx.stroke();
+  }
+
   function drawTextBox(ctx, card, type, seed) {
     const t = LAYOUT.textBox;
-    const fw = 12;
+    const T = 14;
     ctx.save();
-    ctx.shadowColor = "rgba(0,0,0,0.45)";
-    ctx.shadowBlur = 12;
-    ctx.shadowOffsetY = 4;
-    ctx.fillStyle = "#ece0c9";
+    ctx.shadowColor = "rgba(60,30,10,0.55)";
+    ctx.shadowBlur = 6;
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 2;
+    ctx.fillStyle = "#3a2412";
     ctx.fillRect(t.x, t.y, t.w, t.h);
     ctx.restore();
-    drawTexture(ctx, t.x, t.y, t.w, t.h, "#ede2cc", seed + 3, 0.7);
-    innerShadow(ctx, t.x + fw, t.y + fw, t.w - fw * 2, t.h - fw * 2, 14, 0.22);
-    metalFrame(ctx, t.x, t.y, t.w, t.h, fw);
-    // 内側の細い飾り線
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = "rgba(140,95,22,0.6)";
-    ctx.strokeRect(t.x + fw + 5.5, t.y + fw + 5.5, t.w - fw * 2 - 11, t.h - fw * 2 - 11);
-    ctx.strokeRect(t.x + fw + 8.5, t.y + fw + 8.5, t.w - fw * 2 - 17, t.h - fw * 2 - 17);
-    const gem = card.attribute === "custom" ? card.customAttribute.color : CardFormat.ATTRIBUTES[card.attribute].color;
-    [
-      [t.x, t.y],
-      [t.x + t.w, t.y],
-      [t.x, t.y + t.h],
-      [t.x + t.w, t.y + t.h],
-    ].forEach(([x, y]) => cornerGem(ctx, x, y, 20, gem));
+    drawClouds(ctx, t.x + T, t.y + T, t.w - T * 2, t.h - T * 2, COLORS.parchment, seed + 3, 9);
+    // 紙のふちをほんの少し暗く
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "rgba(120,80,50,0.18)";
+    ctx.strokeRect(t.x + T + 1.5, t.y + T + 1.5, t.w - T * 2 - 3, t.h - T * 2 - 3);
 
-    const left = t.x + 34;
-    const right = t.x + t.w - 34;
-    let top = t.y + 32;
-    ctx.fillStyle = "#1a1310";
+    tube(ctx, t.x, t.y, t.w, T, false);
+    tube(ctx, t.x, t.y + t.h - T, t.w, T, false);
+    tube(ctx, t.x, t.y, T, t.h, true);
+    tube(ctx, t.x + t.w - T, t.y, T, t.h, true);
+    const c = T / 2;
+    [
+      [t.x + c, t.y + c],
+      [t.x + t.w - c, t.y + c],
+      [t.x + c, t.y + t.h - c],
+      [t.x + t.w - c, t.y + t.h - c],
+    ].forEach(([x, y]) => cornerSquare(ctx, x, y));
+
+    const L = LAYOUT.text;
+    ctx.fillStyle = COLORS.ink;
     ctx.textBaseline = "top";
 
+    let top = L.top;
     const header = CardFormat.typeLine(card);
     if (header) {
       ctx.font = `700 29px ${SANS}`;
-      fitText(ctx, header, left - 8, top, right - left, "left", (x, y) => ctx.fillText(header, x, y));
-      top += 42;
+      fitText(ctx, header, L.left - 6, L.header, L.right - L.left, "left", (x, y) => ctx.fillText(header, x, y));
+    } else {
+      top = L.header + 4;
     }
 
-    const statsY = t.y + t.h - 62;
-    const bottom = type.monster ? statsY - 14 : t.y + t.h - 26;
+    const bottom = type.monster ? L.rule - 8 : t.y + t.h - T - 14;
     const text = card.effect.trim() || (type.monster ? "(効果テキストを入力)" : "(カードの効果を入力)");
-    const lay = layoutEffect(ctx, text, right - left, bottom - top, SANS);
+    const lay = layoutEffect(ctx, text, L.right - L.left, bottom - top, SANS);
     ctx.font = `500 ${lay.size}px ${SANS}`;
-    ctx.fillStyle = card.effect.trim() ? "#1a1310" : "rgba(26,19,16,0.4)";
+    ctx.fillStyle = card.effect.trim() ? COLORS.ink : "rgba(28,20,16,0.4)";
     lay.items.forEach((it) => {
       const y = top + it.y;
       if (y + lay.size > bottom + 4) return;
       if (it.sep) {
-        ornamentLine(ctx, left, right, y, "#6b4a1c");
-        ctx.fillStyle = "#1a1310";
+        ctx.fillStyle = "#3b2a1e";
+        ctx.fillRect(L.left - 2, y, L.right - L.left + 4, 2);
+        ctx.fillStyle = COLORS.ink;
         return;
       }
       ctx.save();
-      ctx.translate(left, y);
+      ctx.translate(L.left, y);
       ctx.scale(lay.squeeze, 1);
       ctx.fillText(it.text, it.indent, 0);
       ctx.restore();
     });
 
     if (type.monster) {
-      ornamentLine(ctx, left - 6, right + 6, statsY, "#5a3d14");
-      ctx.fillStyle = "#1a1310";
-      ctx.font = `600 38px ${SERIF}`;
-      ctx.textBaseline = "top";
-      const stats = `ATK/${card.atk || "?"}   DEF/${card.def || "?"}`;
-      fitText(ctx, stats, right - 6, statsY + 12, right - left, "right", (x, y) => ctx.fillText(stats, x, y));
+      ctx.fillStyle = "#3b2a1e";
+      ctx.fillRect(L.left - 2, L.rule, L.right - L.left + 4, 2);
+      ctx.fillStyle = COLORS.ink;
+      ctx.font = `500 38px ${SERIF_LATIN}`;
+      ctx.textBaseline = "alphabetic";
+      const stats = `ATK/${card.atk || "?"}  DEF/${card.def || "?"}`;
+      fitText(ctx, stats, L.right - 6, L.stats, L.right - L.left, "right", (x, y) => ctx.fillText(stats, x, y));
     }
   }
 
   function drawFooter(ctx, card, frame) {
-    const dark = !isLight(frame) && hexToRgb(frame).reduce((s, c) => s + c, 0) < 200;
-    const ink = dark ? "#f2eee6" : "#1a1310";
+    const ink = toHsl(frame)[2] < 0.3 ? "#f2eee6" : COLORS.ink;
     ctx.textBaseline = "alphabetic";
+    ctx.textAlign = "right";
     ctx.fillStyle = ink;
     if (card.cardCode.trim()) {
-      ctx.font = `500 27px ${SERIF}`;
-      ctx.textAlign = "right";
+      ctx.font = `500 28px ${SERIF_LATIN}`;
       ctx.fillText(card.cardCode.trim(), LAYOUT.code.x, LAYOUT.code.y);
     }
     if (card.copyright.trim()) {
-      ctx.font = `500 23px ${SERIF}`;
-      ctx.textAlign = "right";
+      ctx.font = `500 23px ${SERIF_LATIN}`;
       ctx.fillText(card.copyright.trim(), LAYOUT.copyright.x, LAYOUT.copyright.y);
     }
     ctx.textAlign = "left";
@@ -845,7 +815,6 @@ const CardRenderer = (() => {
     drawArt(ctx, card, images, seed);
     drawTextBox(ctx, card, type, seed);
     drawFooter(ctx, card, frame);
-    drawGloss(ctx);
     return canvas;
   }
 
@@ -862,10 +831,10 @@ const CardRenderer = (() => {
   function loadFonts() {
     if (!document.fonts || !document.fonts.load) return Promise.resolve();
     return Promise.all([
-      document.fonts.load(`900 60px "Noto Serif JP"`),
-      document.fonts.load(`600 38px "Noto Serif JP"`),
-      document.fonts.load(`500 26px "Noto Sans JP"`),
+      document.fonts.load(`600 60px "Noto Sans JP"`),
       document.fonts.load(`700 29px "Noto Sans JP"`),
+      document.fonts.load(`500 27px "Noto Sans JP"`),
+            document.fonts.load(`500 28px "Noto Serif"`),
     ]).catch(() => {});
   }
 
