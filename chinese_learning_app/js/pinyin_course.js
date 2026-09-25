@@ -446,6 +446,17 @@ const PinyinCourse = (() => {
         });
         if (ok) score++;
         else missed.push(q);
+        const correctBtn = opts.querySelectorAll(".pq-opt")[q.answer];
+        if (ok) {
+          Motion.Sfx.correct();
+          Motion.hop([correctBtn]);
+          fill.style.width = `${((idx + 1) / questions.length) * 100}%`;
+          setTimeout(() => Motion.sparkle(fill), 320);
+        } else {
+          Motion.Sfx.wrong();
+          Motion.vibrate(80);
+          Motion.shake(opts.querySelectorAll(".pq-opt")[k]);
+        }
         const sheet = el("div", "pq-sheet " + (ok ? "is-good" : "is-bad"));
         sheet.appendChild(el("div", "pq-sheet-title", ok ? "正解!" : "おしい!"));
         sheet.appendChild(el("div", "pq-sheet-text", q.reveal));

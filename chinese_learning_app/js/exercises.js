@@ -198,8 +198,10 @@ const Exercises = (() => {
       mark(correctValue, pickedValue) {
         locked = true;
         buttons.forEach(({ btn, opt }) => {
-          if (opt.value === correctValue) btn.classList.add("is-correct");
-          else if (opt.value === pickedValue) btn.classList.add("is-wrong");
+          if (opt.value === correctValue) {
+            btn.classList.add("is-correct");
+            if (opt.value === pickedValue) Motion.hop([btn]);
+          } else if (opt.value === pickedValue) btn.classList.add("is-wrong");
           else btn.classList.add("is-dim");
         });
       },
@@ -860,12 +862,11 @@ const Exercises = (() => {
   // ---------- ペアマッチ: 中国語と意味の組を作る ----------
   function renderMatchPairs(exercise, api) {
     const wrap = el("div", "cs-ex cs-ex--match");
-    const doneArea = el("div", "cs-match-done");
     const grid = el("div", "cs-match-grid");
     const left = el("div", "cs-match-col");
     const right = el("div", "cs-match-col");
     grid.append(left, right);
-    wrap.append(doneArea, grid);
+    wrap.append(grid);
 
     const pairs = exercise.pairs;
     let mistakes = 0;
@@ -889,7 +890,7 @@ const Exercises = (() => {
     shuffle(pairs.map((_, i) => i)).forEach((i) => right.appendChild(makeTile("ja", i)));
 
     function pick(side, btn) {
-      if (locked || btn.classList.contains("is-matched")) return;
+      if (locked || btn.classList.contains("is-matched") || btn.classList.contains("is-done")) return;
       if (side === "zh") {
         Speech.speak(pairs[Number(btn.dataset.i)].hanzi).catch(() => {});
         if (selLeft) selLeft.classList.remove("is-selected");
@@ -909,25 +910,31 @@ const Exercises = (() => {
       selLeft = null;
       selRight = null;
       if (a.dataset.i === b.dataset.i) {
+        // そろったペアは緑に光ってから、その場でグレーになって残る
+        Motion.Sfx.pair(matchedCount);
         matchedCount++;
-        a.classList.add("is-matched");
-        b.classList.add("is-matched");
-        const p = pairs[Number(a.dataset.i)];
-        const bar = el("div", "cs-match-bar");
-        bar.appendChild(Ruby.render(p.hanzi, p.pinyin, { className: "cs-match-ruby" }));
-        bar.appendChild(el("span", "cs-match-bar-ja", p.meaning));
+        [a, b].forEach((t) => {
+          t.classList.remove("is-selected");
+          t.classList.add("is-matched");
+          Motion.pop(t, 1.05);
+          Motion.shine(t);
+        });
         setTimeout(() => {
-          a.remove();
-          b.remove();
-          doneArea.appendChild(bar);
-        }, 220);
+          [a, b].forEach((t) => {
+            t.classList.remove("is-matched");
+            t.classList.add("is-done");
+            t.disabled = true;
+          });
+        }, 650);
         if (matchedCount === pairs.length) {
           locked = true;
-          setTimeout(() => api.submit(), 750);
+          setTimeout(() => api.submit(), 900);
         }
       } else {
         mistakes++;
         locked = true;
+        Motion.Sfx.wrong();
+        Motion.vibrate(60);
         a.classList.add("is-wrong");
         b.classList.add("is-wrong");
         setTimeout(() => {
@@ -991,31 +998,36 @@ const Exercises = (() => {
       if (chosen) slot.appendChild(Ruby.render(chosen.hanzi, chosen.pinyin, { className: "cs-tile-ruby" }));
     }
 
+    // 空欄のタイルを元の場所へ飛ばして戻す
+    function returnChosen() {
+      const back = chosenBtn;
+      back.classList.remove("is-used");
+      Motion.fly(slot, back);
+      chosen = null;
+      chosenBtn = null;
+      renderSlot();
+    }
+
     options.forEach((opt) => {
       const btn = tileButton(opt);
       btn.addEventListener("click", () => {
-        if (locked) return;
-        if (chosenBtn) chosenBtn.classList.remove("is-used");
-        if (chosenBtn === btn) {
-          chosen = null;
-          chosenBtn = null;
-        } else {
-          chosen = opt;
-          chosenBtn = btn;
-          btn.classList.add("is-used");
-          Speech.speak(opt.hanzi).catch(() => {});
-        }
+        if (locked || btn.classList.contains("is-used")) return;
+        Motion.Sfx.tap();
+        if (chosenBtn) returnChosen();
+        chosen = opt;
+        chosenBtn = btn;
         renderSlot();
-        api.onChange(!!chosen);
+        Motion.fly(btn, slot);
+        btn.classList.add("is-used");
+        Speech.speak(opt.hanzi).catch(() => {});
+        api.onChange(true);
       });
       bank.appendChild(btn);
     });
     slot.addEventListener("click", () => {
       if (locked || !chosenBtn) return;
-      chosenBtn.classList.remove("is-used");
-      chosen = null;
-      chosenBtn = null;
-      renderSlot();
+      Motion.Sfx.tap();
+      returnChosen();
       api.onChange(false);
     });
     wrap.appendChild(bank);
@@ -1036,6 +1048,8 @@ const Exercises = (() => {
       reveal(result) {
         locked = true;
         slot.classList.add(result.correct ? "is-correct" : "is-wrong");
+        if (result.correct) Motion.hop([slot]);
+        else Motion.shake(slot);
       },
     };
   }
@@ -1065,19 +1079,24 @@ const Exercises = (() => {
       const bankBtn = tileButton(tile);
       bankBtn.addEventListener("click", () => {
         if (locked || bankBtn.classList.contains("is-used")) return;
-        bankBtn.classList.add("is-used");
+        Motion.Sfx.tap();
         const answerBtn = tileButton(tile);
         answerBtn.classList.add("cs-tile--placed");
         const entry = { tile, answerBtn };
         answerBtn.addEventListener("click", () => {
-          if (locked) return;
-          answerBtn.remove();
+          if (locked || !answerBtn.isConnected) return;
+          Motion.Sfx.tap();
+          // 元の場所へ飛んで戻り、残りのタイルは詰める
           bankBtn.classList.remove("is-used");
+          Motion.fly(answerBtn, bankBtn);
+          Motion.flip(answerArea, () => answerBtn.remove());
           placed.splice(placed.indexOf(entry), 1);
           api.onChange(placed.length > 0);
         });
         placed.push(entry);
         answerArea.appendChild(answerBtn);
+        Motion.fly(bankBtn, answerBtn);
+        bankBtn.classList.add("is-used");
         Speech.speak(tile.hanzi).catch(() => {});
         api.onChange(true);
       });
@@ -1102,6 +1121,8 @@ const Exercises = (() => {
       reveal(result) {
         locked = true;
         placed.forEach((p) => p.answerBtn.classList.add(result.correct ? "is-correct" : "is-wrong"));
+        if (result.correct) Motion.hop(placed.map((p) => p.answerBtn));
+        else Motion.shake(answerArea);
       },
     };
   }

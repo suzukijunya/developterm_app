@@ -901,9 +901,11 @@
 
     return {
       el: top,
-      setProgress(value, isFire) {
+      setProgress(value, isFire, { sparkle = false } = {}) {
         fill.style.width = `${Math.max(2, value * 100)}%`;
         fill.classList.toggle("is-fire", !!isFire);
+        // 正解したら、伸びきったバーの先端でキラッとはじける
+        if (sparkle) setTimeout(() => Motion.sparkle(fill), 380);
       },
       showSkip(handler) {
         skip.classList.remove("hidden");
@@ -1125,6 +1127,7 @@
         footer.appendChild(submitBtn);
       }
       screen.appendChild(footer);
+      if (index > 0) screen.classList.add("cs-screen--enter");
       appRoot.appendChild(screen);
 
       function handleCheck() {
@@ -1153,7 +1156,15 @@
           top.popXp(gained);
         }
         progressShown = (index + 1) / total;
-        top.setProgress(progressShown, combo >= 3);
+        top.setProgress(progressShown, combo >= 3, { sparkle: !wasWrong });
+        if (!isSpeaking || !r.playRecording) {
+          if (wasWrong) {
+            Motion.Sfx.wrong();
+            Motion.vibrate(80);
+          } else {
+            Motion.Sfx.correct();
+          }
+        }
 
         if (result.autoAdvance) {
           if (combo >= 2) screen.appendChild(comboLabel(combo));
@@ -1183,7 +1194,7 @@
         const head = el("div", "cs-sheet-head");
         head.appendChild(el("span", "cs-sheet-label", result.correct ? "正解! 正しい回答:" : "正しい回答:"));
         const tools = el("div", "cs-sheet-tools");
-        tools.appendChild(el("span", "cs-mascot", result.correct ? "🐼" : "🙈"));
+        tools.appendChild(el("span", "cs-mascot " + (result.correct ? "cs-mascot--good" : "cs-mascot--bad"), result.correct ? "🐼" : "🙈"));
         if (result.audio) {
           const speak = Exercises.iconButton("cs-mini-speaker", Icons.speaker, "正解を再生");
           speak.addEventListener("click", () => Speech.speak(result.audio).catch(() => {}));
@@ -1200,7 +1211,22 @@
       }
     }
 
+    let advancing = false;
     function advance() {
+      if (advancing) return;
+      advancing = true;
+      const oldScreen = appRoot.querySelector(".cs-screen");
+      const parts = oldScreen ? oldScreen.querySelectorAll(":scope > .cs-instruction, :scope > .cs-body, :scope > .cs-footer, :scope > .cs-combo") : [];
+      // シートは中央寄せに transform を使っているので、横には流さずに下へ引っ込める
+      const sheet = oldScreen && oldScreen.querySelector(":scope > .cs-sheet");
+      if (sheet) sheet.classList.add("cs-sheet--leaving");
+      Motion.slideOut(parts).then(() => {
+        advancing = false;
+        advanceNow();
+      });
+    }
+
+    function advanceNow() {
       leaveExercise();
       index++;
       if (index >= total && options.onFinish) {
@@ -1238,6 +1264,7 @@
 
   function renderSummaryScreen(lesson, { accuracy, sessionXp, isReview, maxCombo }) {
     clear(appRoot);
+    setTimeout(() => Motion.Sfx.complete(), 250);
     const pct = Math.round(accuracy * 100);
     const [zh, ja] =
       pct >= 90 ? ["极好", "すばらしい"] : pct >= 70 ? ["很好", "よくできました"] : pct >= 40 ? ["不错", "いい調子"] : ["加油", "がんばろう"];

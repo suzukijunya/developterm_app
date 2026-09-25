@@ -491,6 +491,17 @@ const MyPage = (() => {
       row.appendChild(cb);
       body.appendChild(row);
     });
+    const sfxRow = el("label", "toggle-row");
+    sfxRow.appendChild(el("span", null, "効果音・振動"));
+    const sfx = el("input");
+    sfx.type = "checkbox";
+    sfx.checked = AppState.getPref("sfx", true);
+    sfx.addEventListener("change", () => {
+      AppState.setPref("sfx", sfx.checked);
+      if (sfx.checked) Motion.Sfx.correct();
+    });
+    sfxRow.appendChild(sfx);
+    body.appendChild(sfxRow);
 
     body.appendChild(el("div", "ui-section-title", "データ"));
     body.appendChild(
