@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>メンバートレカメーカー</title>
+<meta name="description" content="社内メンバーの情報を入れると、トレーディングカード風の画像を作れるツール。" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%83%8F%3C/text%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@500;700&family=Noto+Serif+JP:wght@500;600;900&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<header class="topbar">
+  <h1>メンバートレカメーカー</h1>
+  <div class="deck">
+    <select id="cardList" aria-label="保存済みカード"></select>
+    <button type="button" id="btnNew">新規</button>
+    <button type="button" id="btnDup">複製</button>
+    <button type="button" id="btnDelete" class="danger">削除</button>
+    <span class="sep"></span>
+    <button type="button" id="btnImport">JSON読み込み</button>
+    <button type="button" id="btnExportAll">全カードをJSON保存</button>
+    <input type="file" id="importFile" accept="application/json,.json" hidden />
+  </div>
+</header>
+
+<main class="layout">
+  <form id="form" class="editor" autocomplete="off" onsubmit="return false">
+
+    <details class="panel" open>
+      <summary>① メンバー情報 <small>AIで文面を作るときに使う</small></summary>
+      <div class="grid2">
+        <label>呼び名・名前<input name="member.realName" placeholder="スズキ" /></label>
+        <label>部署<input name="member.department" placeholder="管理本部" /></label>
+        <label>役職・担当<input name="member.role" placeholder="CFO" /></label>
+        <label>カードの雰囲気
+          <select name="member.tone">
+            <option>かっこよく</option>
+            <option>面白く</option>
+            <option>かわいく</option>
+            <option>渋く</option>
+          </select>
+        </label>
+      </div>
+      <label>得意なこと・スキル<textarea name="member.skills" rows="2" placeholder="財務・契約チェック、Excelマクロ"></textarea></label>
+      <label>性格・口癖<textarea name="member.personality" rows="2" placeholder="冷静沈着。「それ、契約書に書いてあります?」"></textarea></label>
+      <label>エピソード・社内での評判<textarea name="member.episode" rows="2" placeholder="怪しい契約は必ず見抜く"></textarea></label>
+      <label>AIへの追加の要望(任意)<input id="aiExtra" placeholder="例: ATKは高めに / 効果を2つに" /></label>
+
+      <div class="ai-actions">
+        <button type="button" id="btnAi" class="primary">AIでカード文面を作る</button>
+        <button type="button" id="btnCopyPrompt">チャットAI用プロンプトをコピー</button>
+      </div>
+      <p class="hint">APIキーがなくても、「チャットAI用プロンプト」を ChatGPT や Claude に貼れば、返ってきた JSON を下の欄に貼って反映できます。</p>
+      <details class="sub">
+        <summary>AIの回答(JSON)を貼り付けて反映</summary>
+        <textarea id="pasteJson" rows="5" placeholder='{"name": "...", "effect": "...", ...}'></textarea>
+        <button type="button" id="btnApplyJson">反映する</button>
+      </details>
+      <details class="sub" id="aiSettings">
+        <summary>AI設定(Claude APIキー)</summary>
+        <label>APIキー<input type="password" id="apiKey" placeholder="sk-ant-..." /></label>
+        <label>モデル<select id="aiModel"></select></label>
+        <p class="hint">キーはこのブラウザ内にだけ保存され、送信先は api.anthropic.com のみです。</p>
+      </details>
+      <p id="aiStatus" class="status" role="status"></p>
+    </details>
+
+    <details class="panel" open>
+      <summary>② カードの基本</summary>
+      <label>カード名<input name="name" placeholder="財務統括魔導士スズキ" /></label>
+      <div class="grid2">
+        <label>カード種類<select name="cardType" id="cardType"></select></label>
+        <label>名前の色<select name="nameColor" id="nameColor"></select></label>
+        <label>属性<select name="attribute" id="attribute"></select></label>
+        <label class="level">レベル <output id="levelOut"></output><input type="range" name="level" min="0" max="12" step="1" /></label>
+      </div>
+      <div id="customAttr" class="grid3" hidden>
+        <label>属性の文字(1〜2字)<input name="customAttribute.text" maxlength="2" placeholder="商" /></label>
+        <label>属性の色<input type="color" name="customAttribute.color" /></label>
+        <label>属性の画像(国旗など)
+          <input type="file" id="attrFile" accept="image/*" />
+          <button type="button" id="btnClearAttrImg" class="link">画像を外す</button>
+        </label>
+      </div>
+    </details>
+
+    <details class="panel" open>
+      <summary>③ イラスト</summary>
+      <label>写真・イラスト<input type="file" id="artFile" accept="image/*" /></label>
+      <p class="hint">プレビューのイラストをドラッグで位置調整、ホイールで拡大縮小できます。</p>
+      <div class="grid2">
+        <label>拡大 <input type="range" name="art.zoom" min="0.5" max="4" step="0.01" /></label>
+        <label>光エフェクト<select name="art.effect" id="artEffect"></select></label>
+        <label>左右 <input type="range" name="art.x" min="-1" max="1" step="0.01" /></label>
+        <label>エフェクトの強さ <input type="range" name="art.intensity" min="0" max="1" step="0.05" /></label>
+        <label>上下 <input type="range" name="art.y" min="-1" max="1" step="0.01" /></label>
+        <label class="inline-btn"><button type="button" id="btnClearArt" class="link">イラストを外す</button></label>
+      </div>
+      <details class="sub">
+        <summary>画像生成AI用プロンプト(写真 → カードのイラスト)</summary>
+        <p class="hint">本人の写真と一緒に ChatGPT などの画像生成AIに渡すと、枠・文字なしのイラストが作れます。できた画像を上の「写真・イラスト」に入れてください。文字はこのツールが描くので文字化けしません。</p>
+        <label>画風<select id="artStyle"></select></label>
+        <textarea id="imagePrompt" rows="9" readonly></textarea>
+        <button type="button" id="btnCopyImagePrompt">コピー</button>
+      </details>
+    </details>
+
+    <details class="panel" open>
+      <summary>④ テキスト</summary>
+      <div class="grid2" id="monsterOnly">
+        <label>種族<input name="tribe" placeholder="CFO族" /></label>
+        <label>能力(空欄なら種類から自動)<input name="abilities" id="abilities" placeholder="効果" /></label>
+      </div>
+      <label>効果テキスト<textarea name="effect" rows="6" placeholder="このカードがフィールドに存在する限り、…&#10;①：1ターンに1度、…&#10;②：…"></textarea></label>
+      <p class="hint">改行で段落を分けます。「①：」で始まる行は2行目以降が字下げされます。「---」だけの行は区切り線になります。長いと文字が自動で小さくなります。</p>
+      <div class="grid2" id="statsRow">
+        <label>ATK<input name="atk" inputmode="numeric" placeholder="2400" /></label>
+        <label>DEF<input name="def" inputmode="numeric" placeholder="2100" /></label>
+      </div>
+    </details>
+
+    <details class="panel">
+      <summary>⑤ その他</summary>
+      <div class="grid2">
+        <label>カードコード<input name="cardCode" placeholder="WBHC-024" /></label>
+        <label>コピーライト<input name="copyright" placeholder="©2024 WB ARGO" /></label>
+        <label>枠の色(空欄ならカード種類の色)
+          <span class="row"><input type="color" id="frameColorPick" /><input name="frameColor" placeholder="#c7834b" /></span>
+        </label>
+      </div>
+      <details class="sub">
+        <summary>このカードのJSON(入力フォーマット)</summary>
+        <textarea id="cardJson" rows="12" spellcheck="false"></textarea>
+        <button type="button" id="btnApplyCardJson">JSONをカードに反映</button>
+      </details>
+    </details>
+  </form>
+
+  <section class="preview">
+    <div class="canvas-wrap">
+      <canvas id="card" width="1000" height="1460"></canvas>
+    </div>
+    <div class="preview-actions">
+      <button type="button" id="btnPng" class="primary">PNGで保存</button>
+      <button type="button" id="btnJson">このカードをJSON保存</button>
+      <button type="button" id="btnAllPng">全カードをPNG保存</button>
+    </div>
+  </section>
+</main>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="js/card_format.js"></script>
+<script src="js/card_renderer.js"></script>
+<script src="data/samples.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
