@@ -19,6 +19,8 @@ const WhisperASR = (() => {
       pipelinePromise = import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3")
         .then(({ pipeline }) =>
           pipeline("automatic-speech-recognition", MODEL_ID, {
+            // 量子化(8bit)版を使ってメモリ使用量を抑える
+            dtype: "q8",
             progress_callback: (info) => {
               if (onProgress) onProgress(info);
             },
@@ -61,8 +63,37 @@ const WhisperASR = (() => {
     return out;
   }
 
-  function isSupported() {
+  // スマホ(特に iPhone の Safari)はメモリの上限が低く、モデルを読み込むと
+  // ページごと強制終了・再読み込みされる(=アプリが落ちる)ことがある。
+  // そのためスマホでは既定でオフにし、設定でオンにした場合だけ使う
+  function isMobile() {
+    const ua = navigator.userAgent || "";
+    const iOS = /iP(hone|ad|od)/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    return iOS || /Android|Mobile/i.test(ua);
+  }
+
+  function defaultEnabled() {
+    if (isMobile()) return false;
+    if (navigator.deviceMemory && navigator.deviceMemory < 4) return false;
+    return true;
+  }
+
+  function isEnabled() {
+    if (typeof AppState === "undefined") return defaultEnabled();
+    const pref = AppState.getPref("whisper", null);
+    return pref === null ? defaultEnabled() : !!pref;
+  }
+
+  function setEnabled(on) {
+    AppState.setPref("whisper", !!on);
+  }
+
+  function isAvailable() {
     return !!(window.AudioContext || window.webkitAudioContext);
+  }
+
+  function isSupported() {
+    return isAvailable() && isEnabled();
   }
 
   async function transcribe(blob, { onProgress } = {}) {
@@ -82,6 +113,10 @@ const WhisperASR = (() => {
   return {
     transcribe,
     isSupported,
+    isAvailable,
+    isEnabled,
+    setEnabled,
+    isMobile,
     get loaded() {
       return loaded;
     },

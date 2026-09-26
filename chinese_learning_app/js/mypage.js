@@ -519,6 +519,28 @@ const MyPage = (() => {
     sfxRow.appendChild(sfx);
     body.appendChild(sfxRow);
 
+    if (window.WhisperASR && WhisperASR.isAvailable()) {
+      body.appendChild(el("div", "ui-section-title", "スピーキング"));
+      const wRow = el("label", "toggle-row");
+      wRow.appendChild(el("span", null, "高精度認識(Whisper)を使う"));
+      const w = el("input");
+      w.type = "checkbox";
+      w.checked = WhisperASR.isEnabled();
+      w.addEventListener("change", () => {
+        WhisperASR.setEnabled(w.checked);
+        UI.toast(w.checked ? "高精度認識をオンにしました" : "高精度認識をオフにしました");
+      });
+      wRow.appendChild(w);
+      body.appendChild(wRow);
+      body.appendChild(
+        el(
+          "p",
+          "sub-note",
+          "録音をこの端末の中でAIモデル(数十MB)を使って文字起こしし、判定の精度を上げます。スマホではメモリ不足でアプリが落ちることがあるため、オフをおすすめします(スマホでは最初からオフ)。"
+        )
+      );
+    }
+
     body.appendChild(el("div", "ui-section-title", "データ"));
     body.appendChild(
       UI.button("secondary-btn", "APIキーをこの端末から削除する", () => {

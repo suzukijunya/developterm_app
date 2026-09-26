@@ -633,15 +633,23 @@ const Exercises = (() => {
         raf = requestAnimationFrame(tick);
       };
       raf = requestAnimationFrame(tick);
+      let meterClosed = false;
       Speech.createLevelMeter()
         .then((m) => {
-          meter = m;
+          // 録音が先に終わっていたら、使わずにすぐ閉じる(AudioContextの取り残し防止)
+          if (meterClosed) m.close();
+          else meter = m;
         })
         .catch(() => {});
+      const closeMeter = () => {
+        meterClosed = true;
+        if (meter) meter.close();
+        meter = null;
+      };
 
       cleanupRecording = () => {
         cancelAnimationFrame(raf);
-        if (meter) meter.close();
+        closeMeter();
         if (recog) recog.stop();
         finishManual();
       };
@@ -657,7 +665,7 @@ const Exercises = (() => {
         await manualStop; // 音声認識なし: タップされるまで録音だけ行う
       }
       cancelAnimationFrame(raf);
-      if (meter) meter.close();
+      closeMeter();
       cleanupRecording = null;
       if (disposed) return;
       renderProcessing();
@@ -768,6 +776,8 @@ const Exercises = (() => {
         disposed = true;
         if (cleanupRecording) cleanupRecording();
         if (stopPlayback) stopPlayback();
+        if (recordedAudioUrl) URL.revokeObjectURL(recordedAudioUrl);
+        recordedAudioUrl = null;
       },
     };
   }
