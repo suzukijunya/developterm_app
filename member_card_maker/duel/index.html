@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>ウィーブレイン デュエル</title>
+<meta name="description" content="社内トレカメーカーで作ったカードで対戦できる、マスターデュエル風のカードゲーム。" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9A%94%3C/text%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@500;600;700;900&family=Noto+Serif:wght@500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="duel.css" />
+</head>
+<body>
+
+<!-- タイトル -->
+<section id="title" class="screen active">
+  <div class="title-inner">
+    <p class="title-sub">WEBRAIN TRADING CARD GAME</p>
+    <h1 class="logo">ウィーブレイン<br /><span>DUEL</span></h1>
+    <p id="deckInfo" class="deck-info"></p>
+    <div class="title-actions">
+      <button type="button" id="btnStart" class="btn-main">デュエル開始</button>
+      <a class="btn-sub" href="../index.html">カードを作る(トレカメーカー)</a>
+      <label class="btn-sub file">デッキをJSONから読み込む<input type="file" id="deckFile" accept="application/json,.json" hidden /></label>
+    </div>
+    <details class="howto">
+      <summary>遊び方</summary>
+      <ul>
+        <li>トレカメーカーで作ったカードが、そのままデッキになります(1種類3枚まで。種類が少ないときは同じカードを多めに入れて30枚にします)。</li>
+        <li>LP 8000 から始まり、相手の LP を 0 にすれば勝ち。先攻の1ターン目はドローと攻撃ができません。</li>
+        <li>モンスターの通常召喚は1ターンに1回。レベル7〜9は1体、レベル10以上は2体の生け贄が必要です。自分の場にモンスターがいないときは、上級モンスターも生け贄なしで「妥協召喚」できます(攻撃力は半分)。</li>
+        <li>魔法は自分のメインフェイズに発動。罠はセットした次の相手ターンから、相手の攻撃や魔法に割り込んで発動できます。</li>
+        <li>カードの効果テキストは自由な文章なので、キーワードからゲーム用の効果(「ゲーム効果」)を自動で決めています。カードを選ぶと左の詳細に表示されます。</li>
+        <li>カードをクリック(タップ)すると、できる操作が出ます。</li>
+      </ul>
+    </details>
+  </div>
+</section>
+
+<!-- 読み込み中 -->
+<section id="loading" class="screen">
+  <p class="loading-text">カードを準備しています… <span id="loadingCount"></span></p>
+</section>
+
+<!-- デュエル画面 -->
+<section id="duel" class="screen">
+  <aside id="detail" class="detail">
+    <button type="button" class="detail-close" id="detailClose" aria-label="閉じる">×</button>
+    <div class="detail-card"><img id="detailImg" alt="" /></div>
+    <p class="detail-hint" id="detailHint">カードを選ぶと、ここに詳細が出ます</p>
+    <h2 id="detailName"></h2>
+    <p id="detailType" class="detail-type"></p>
+    <p id="detailStats" class="detail-stats"></p>
+    <div class="detail-box">
+      <h3>ゲーム効果</h3>
+      <p id="detailEffect"></p>
+    </div>
+    <details class="detail-text">
+      <summary>カードのテキスト</summary>
+      <p id="detailText"></p>
+    </details>
+    <ol id="log" class="log"></ol>
+  </aside>
+
+  <main class="board">
+    <div class="hand opp" id="oppHand"></div>
+    <div class="field-wrap">
+      <div class="field" id="field">
+        <div class="row" id="oppSpells"></div>
+        <div class="row" id="oppMonsters"></div>
+        <div class="midline"><span id="phaseLabel"></span></div>
+        <div class="row" id="myMonsters"></div>
+        <div class="row" id="mySpells"></div>
+        <div class="pile opp-deck" id="oppDeck"></div>
+        <div class="pile opp-grave" id="oppGrave"></div>
+        <div class="pile my-grave" id="myGrave"></div>
+        <div class="pile my-deck" id="myDeck"></div>
+      </div>
+    </div>
+    <div class="hand me" id="myHand"></div>
+  </main>
+
+  <aside class="side">
+    <div class="lp opp" id="oppLp">
+      <div class="lp-name">ライバル</div>
+      <div class="lp-num">8000</div>
+      <div class="lp-bar"><i></i></div>
+    </div>
+    <ol class="phases" id="phases">
+      <li data-phase="draw">DP</li>
+      <li data-phase="main1">M1</li>
+      <li data-phase="battle">BP</li>
+      <li data-phase="main2">M2</li>
+      <li data-phase="end">EP</li>
+    </ol>
+    <div class="side-actions">
+      <button type="button" id="btnBattle">バトルへ</button>
+      <button type="button" id="btnMain2">メイン2へ</button>
+      <button type="button" id="btnEnd" class="end">ターン終了</button>
+      <button type="button" id="btnSound" class="sound" aria-label="効果音">🔊</button>
+    </div>
+    <div class="lp me" id="myLp">
+      <div class="lp-name">あなた</div>
+      <div class="lp-num">8000</div>
+      <div class="lp-bar"><i></i></div>
+    </div>
+  </aside>
+</section>
+
+<!-- 重ねて出すもの -->
+<div id="menu" class="menu" hidden></div>
+<div id="targetBar" class="target-bar" hidden><span id="targetText"></span><button type="button" id="btnDirect">ダイレクトアタック</button><button type="button" id="btnTargetCancel">やめる</button></div>
+<div id="modal" class="modal" hidden>
+  <div class="modal-box">
+    <h2 id="modalTitle"></h2>
+    <p id="modalSub" class="modal-sub"></p>
+    <div id="modalCards" class="modal-cards"></div>
+    <div class="modal-actions">
+      <button type="button" id="modalCancel"></button>
+      <button type="button" id="modalOk" class="btn-main">決定</button>
+    </div>
+  </div>
+</div>
+<div id="cutin" class="cutin" hidden>
+  <div class="cutin-rays"></div>
+  <img id="cutinImg" alt="" />
+  <div class="cutin-text"><strong id="cutinName"></strong><span id="cutinEffect"></span></div>
+</div>
+<div id="banner" class="banner" hidden></div>
+<div id="result" class="result" hidden>
+  <div class="result-inner">
+    <p id="resultTitle" class="result-title"></p>
+    <p id="resultReason"></p>
+    <div class="title-actions">
+      <button type="button" id="btnAgain" class="btn-main">もう一度</button>
+      <button type="button" id="btnToTitle" class="btn-sub">タイトルへ</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/card_format.js"></script>
+<script src="../js/card_renderer.js"></script>
+<script src="../data/samples.js"></script>
+<script src="engine.js"></script>
+<script src="cpu.js"></script>
+<script src="ui.js"></script>
+</body>
+</html>
