@@ -227,6 +227,9 @@
     );
     screen.appendChild(intro);
     screen.appendChild(renderGoalDistanceCard());
+    const valueWrap = el("div", "cv-roadmap-link");
+    valueWrap.appendChild(ChineseValue.teaser(() => ChineseValue.screen(() => renderRoadmap(onBack))));
+    screen.appendChild(valueWrap);
 
     const STATUS_LABELS = { cleared: "✅ クリア", current: "📍 今ここ", partial: "🆕 未修了のレッスンあり", upcoming: "これから", future: "近日追加予定" };
 
@@ -411,6 +414,7 @@
     const screen = el("div", "screen screen--home");
     renderTopBar(screen);
     renderLevelBanner(screen);
+    screen.appendChild(ChineseValue.teaser(() => ChineseValue.screen(renderHome)));
     renderDailyGoal(screen);
     renderWeakReviewCard(screen);
     screen.appendChild(Rewards.questCard(renderHome));
@@ -1466,6 +1470,7 @@
     news: () => renderNewsHome(),
     flashcards: () => renderFlashcardHome(),
     roadmap: () => renderRoadmap(() => MyPage.home()),
+    value: () => ChineseValue.screen(() => MyPage.home()),
   };
 
   function go(name) {

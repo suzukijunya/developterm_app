@@ -68,6 +68,7 @@ const MyPage = (() => {
     [
       { icon: "📘", label: "学習ライブラリ", go: library },
       { icon: "📙", label: "教科書(ロードマップ)", go: () => App.go("roadmap") },
+      { icon: "💰", label: "中国語の価値(年収・ビジネス)", go: () => ChineseValue.screen(home) },
       { icon: "⭐", label: "ブックマーク", note: `${AppState.getBookmarks().length}件`, go: bookmarks },
       { icon: "🚀", label: "学習目標", note: `1日${goal}XP`, go: goalScreen },
       { icon: "📊", label: "中国語レベルチェックテスト", note: lastTest ? `正解率${lastTest.accuracy}%` : "未受験", go: levelTestIntro },
