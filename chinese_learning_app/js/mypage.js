@@ -541,6 +541,26 @@ const MyPage = (() => {
       );
     }
 
+    const crashes = Diag.crashes();
+    if (crashes.length) {
+      body.appendChild(el("div", "ui-section-title", "診断情報"));
+      body.appendChild(
+        el("p", "sub-note", "アプリが途中で終了した記録があります。不具合の報告のときは、この画面のスクリーンショットを送ってください。")
+      );
+      crashes.forEach((c) => {
+        const box = el("div", "diag-box");
+        box.appendChild(el("div", "diag-title", `${c.at}「${c.during}」の途中で終了(v${c.version})`));
+        box.appendChild(el("pre", "diag-trail", c.trail.join("\n")));
+        body.appendChild(box);
+      });
+      body.appendChild(
+        UI.button("secondary-btn", "診断情報を消去", () => {
+          Diag.clear();
+          settings();
+        })
+      );
+    }
+
     body.appendChild(el("div", "ui-section-title", "データ"));
     body.appendChild(
       UI.button("secondary-btn", "APIキーをこの端末から削除する", () => {
@@ -557,6 +577,7 @@ const MyPage = (() => {
         }
       })
     );
+    body.appendChild(el("p", "sub-note diag-version", `バージョン ${APP_VERSION}`));
     screen.appendChild(body);
   }
 

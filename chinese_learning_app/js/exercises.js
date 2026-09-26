@@ -468,12 +468,24 @@ const Exercises = (() => {
       });
     }
 
+    // 再生が終わって少し経っても無事なら「落ちずに終わった」と記録する
+    function endDiagSoon() {
+      setTimeout(() => Diag.end(), 2000);
+    }
+
     function finishAttempt() {
       if (!submitted) {
         submitted = true;
         api.submit();
+        // 1回目は画面側(app.js)が録音を再生する
+        setTimeout(() => {
+          if (!recordedAudioUrl) endDiagSoon();
+        }, 0);
       } else {
-        playOwn().then(() => api.setBusy(false));
+        playOwn().then(() => {
+          api.setBusy(false);
+          endDiagSoon();
+        });
       }
     }
 
@@ -565,12 +577,23 @@ const Exercises = (() => {
     function playOwn() {
       if (!recordedAudioUrl || disposed) return Promise.resolve();
       if (stopPlayback) stopPlayback();
+      Diag.mark("自分の録音を再生開始");
       return new Promise((resolve) => {
         const audio = new Audio(recordedAudioUrl);
         let finished = false;
         const done = () => {
           if (finished) return;
           finished = true;
+          Diag.mark("自分の録音を再生終了");
+          // 再生し終わった音声要素は中身を外して解放する
+          setTimeout(() => {
+            try {
+              audio.removeAttribute("src");
+              audio.load();
+            } catch (e) {
+              /* 解放に失敗しても問題はない */
+            }
+          }, 0);
           stopPlayback = null;
           if (resultHint) resultHint.textContent = "スコアをタップすると自分の録音を聞けます";
           if (resultScore) resultScore.classList.remove("is-playing");
@@ -598,6 +621,8 @@ const Exercises = (() => {
       if (submitted) api.setBusy(true);
       if (window.speechSynthesis) window.speechSynthesis.cancel();
 
+      Diag.begin("スピーキングの録音");
+      Diag.mark(`録音開始(認識:${recognitionSupported ? "あり" : "なし"} 録音:${recordingSupported ? "あり" : "なし"})`);
       let recorder = null;
       if (recordingSupported) {
         try {
@@ -667,12 +692,17 @@ const Exercises = (() => {
       cancelAnimationFrame(raf);
       closeMeter();
       cleanupRecording = null;
-      if (disposed) return;
+      Diag.mark(`認識結果 ${alternatives.length}件${recogError ? " エラー:" + recogError : ""}`);
+      if (disposed) {
+        Diag.end();
+        return;
+      }
       renderProcessing();
 
       let blob = null;
       if (recorder) blob = await recorder.stop().catch(() => null);
       const hasBlob = !!(blob && blob.size > 0);
+      Diag.mark(hasBlob ? `録音データ ${Math.round(blob.size / 1024)}KB ${blob.type || ""}` : "録音データなし");
       if (hasBlob) {
         if (recordedAudioUrl) URL.revokeObjectURL(recordedAudioUrl);
         recordedAudioUrl = URL.createObjectURL(blob);
@@ -693,6 +723,7 @@ const Exercises = (() => {
       }
 
       if (recog && alternatives.length === 0) {
+        Diag.end();
         busy = false;
         if (submitted) api.setBusy(false);
         renderIdle(recognitionErrorMessage(recogError));
@@ -710,6 +741,7 @@ const Exercises = (() => {
         recognizedText = best.text;
         paint(best.matched);
       }
+      Diag.mark(`採点 ${bestScore === null ? "-" : bestScore}点`);
       renderResult();
       busy = false;
       if (hasBlob && !usedWhisper) refineWithWhisper(blob);
@@ -720,6 +752,7 @@ const Exercises = (() => {
     // スコアが出たら表示を更新する。失敗しても既存の結果はそのまま使える
     async function refineWithWhisper(blob) {
       if (!window.WhisperASR || !window.WhisperASR.isSupported()) return;
+      Diag.mark("高精度認識(Whisper)開始");
       whisperBox.className = "cs-whisper";
       whisperBox.textContent = window.WhisperASR.loaded
         ? "🔍 高精度認識で確認中…"
@@ -770,7 +803,7 @@ const Exercises = (() => {
         };
       },
       playRecording() {
-        return playOwn();
+        return playOwn().then(endDiagSoon);
       },
       dispose() {
         disposed = true;

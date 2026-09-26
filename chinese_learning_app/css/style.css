@@ -7255,3 +7255,29 @@ body.hide-translation .tr-text {
     animation: none;
   }
 }
+
+/* 診断情報(設定画面) */
+.diag-box {
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--card-bg);
+}
+
+.diag-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--bad-dark);
+}
+
+.diag-trail {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  color: var(--text-light);
+}
+
+.diag-version {
+  margin-top: 12px;
+  text-align: center;
+}
