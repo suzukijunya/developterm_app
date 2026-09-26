@@ -73,6 +73,7 @@ const MyPage = (() => {
       { icon: "📊", label: "中国語レベルチェックテスト", note: lastTest ? `正解率${lastTest.accuracy}%` : "未受験", go: levelTestIntro },
       { icon: "🐼", label: "AI先生に質問", go: () => Practice.askAI(home) },
       "sep",
+      { icon: "💎", label: "ショップ", note: `💎${AppState.get().gems || 0}`, go: () => Rewards.shop(home) },
       { icon: "🃏", label: "カードコレクション", note: `${cardStats}/${cardDefs().length}`, go: cards },
       { icon: "🏅", label: "実績バッジ", go: badges },
       { icon: "⚙️", label: "設定", go: settings },

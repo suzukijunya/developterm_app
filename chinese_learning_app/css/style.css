@@ -7428,3 +7428,606 @@ body.hide-translation .tr-text {
 .roadmap-level--partial .roadmap-level-status {
   color: var(--orange-dark);
 }
+
+/* ===== ごほうび(rewards.js) ===== */
+.stat-pill--gems {
+  color: #1c8ad6;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.topbar-stats {
+  gap: 6px;
+}
+
+.rw-gem {
+  display: inline-block;
+  margin-right: 2px;
+}
+
+/* デイリークエスト */
+.rw-quests {
+  margin: 12px 16px 0;
+  padding: 14px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+}
+
+.rw-quests-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.rw-quests-title {
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.rw-quests-sub {
+  font-size: 11px;
+  color: var(--text-light);
+}
+
+.rw-quest {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.rw-quest + .rw-quest {
+  border-top: 1px solid var(--border);
+}
+
+.rw-quest-icon {
+  width: 30px;
+  font-size: 22px;
+  text-align: center;
+}
+
+.rw-quest-mid {
+  flex: 1;
+  min-width: 0;
+}
+
+.rw-quest-label {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.rw-quest-bar {
+  position: relative;
+  height: 16px;
+  margin-top: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--track);
+}
+
+.rw-quest-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ffd23f, var(--orange));
+  transition: width 0.6s ease;
+}
+
+.rw-quest.is-done .rw-quest-fill {
+  background: var(--green);
+}
+
+.rw-quest-count {
+  position: absolute;
+  inset: 0;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 16px;
+  text-align: center;
+  color: var(--text);
+}
+
+.rw-quest-reward {
+  min-width: 42px;
+  font-size: 13px;
+  font-weight: 900;
+  color: #1c8ad6;
+  text-align: right;
+}
+
+.rw-quest.is-done .rw-quest-label {
+  color: var(--text-light);
+  text-decoration: line-through;
+}
+
+.rw-daily-chest {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 2px dashed var(--border);
+  border-radius: 14px;
+  background: none;
+  color: var(--text-light);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rw-daily-chest-icon {
+  font-size: 26px;
+}
+
+.rw-daily-chest.is-ready {
+  border: none;
+  background: linear-gradient(135deg, #ffd23f, var(--orange));
+  color: #fff;
+  box-shadow: 0 4px 0 var(--orange-dark);
+  animation: rw-wiggle 1.4s ease-in-out infinite;
+}
+
+.rw-daily-chest.is-claimed {
+  opacity: 0.6;
+}
+
+@keyframes rw-wiggle {
+  0%,
+  80%,
+  100% {
+    transform: rotate(0);
+  }
+  85% {
+    transform: rotate(-2deg);
+  }
+  90% {
+    transform: rotate(2deg);
+  }
+  95% {
+    transform: rotate(-1deg);
+  }
+}
+
+/* スキルパスの宝箱 */
+.rw-unit-chest {
+  width: 72px;
+  height: 72px;
+  margin-top: 4px;
+  border: none;
+  border-radius: 20px;
+  background: var(--card-bg);
+  cursor: pointer;
+  box-shadow: 0 5px 0 var(--border);
+}
+
+.rw-unit-chest-icon {
+  font-size: 40px;
+}
+
+.rw-unit-chest.is-locked {
+  filter: grayscale(1);
+  opacity: 0.55;
+}
+
+.rw-unit-chest.is-ready {
+  background: linear-gradient(135deg, #fff3c4, #ffd23f);
+  box-shadow: 0 5px 0 #d1a300;
+  animation: rw-chest-bounce 1.2s ease-in-out infinite;
+}
+
+.rw-unit-chest.is-opened {
+  opacity: 0.7;
+  box-shadow: none;
+}
+
+@keyframes rw-chest-bounce {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+  30% {
+    transform: translateY(-8px) rotate(-4deg);
+  }
+  60% {
+    transform: translateY(0) rotate(3deg);
+  }
+}
+
+/* お祝いのオーバーレイ */
+.rw-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  overflow: hidden;
+  background: rgba(10, 20, 30, 0.6);
+  animation: rw-fade 0.2s ease-out;
+}
+
+.rw-overlay.is-leaving {
+  animation: rw-fade 0.18s ease-in reverse forwards;
+}
+
+@keyframes rw-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.rw-modal {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  padding: 30px 22px 22px;
+  overflow: hidden;
+  border-radius: 26px;
+  background: var(--card-bg);
+  text-align: center;
+  animation: rw-pop 0.45s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+
+@keyframes rw-pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.rw-burst {
+  position: absolute;
+  top: 78px;
+  left: 50%;
+  width: 0;
+  height: 0;
+  animation: rw-spin 8s linear infinite;
+}
+
+.rw-ray {
+  position: absolute;
+  left: -14px;
+  bottom: 0;
+  width: 28px;
+  height: 170px;
+  transform-origin: 50% 100%;
+  background: linear-gradient(to top, rgba(255, 210, 63, 0.35), transparent);
+  clip-path: polygon(50% 100%, 0 0, 100% 0);
+}
+
+@keyframes rw-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.rw-modal-art {
+  position: relative;
+  font-size: 84px;
+  line-height: 1.1;
+}
+
+.rw-modal-art.is-shaking {
+  animation: rw-shake 0.14s linear infinite;
+}
+
+.rw-modal-art.is-open {
+  animation: rw-open 0.5s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+@keyframes rw-shake {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  25% {
+    transform: rotate(-8deg);
+  }
+  75% {
+    transform: rotate(8deg);
+  }
+}
+
+@keyframes rw-open {
+  from {
+    transform: scale(0.5);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+.rw-modal-title {
+  position: relative;
+  margin-top: 8px;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.rw-modal--big .rw-modal-title {
+  color: var(--orange-dark);
+  font-size: 26px;
+}
+
+.rw-modal-sub {
+  position: relative;
+  margin-top: 6px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-light);
+}
+
+.rw-modal-gems {
+  position: relative;
+  margin-top: 14px;
+  font-size: 34px;
+  font-weight: 900;
+  color: #1c8ad6;
+}
+
+.rw-modal-btn {
+  position: relative;
+  margin-top: 20px;
+  background: var(--orange);
+  box-shadow: 0 4px 0 var(--orange-dark);
+}
+
+.rw-modal-btn:not(:disabled) {
+  background: var(--orange);
+  box-shadow: 0 4px 0 var(--orange-dark);
+}
+
+.rw-confetti {
+  position: absolute;
+  top: -12px;
+  width: 9px;
+  height: 14px;
+  border-radius: 2px;
+  animation: rw-fall linear forwards;
+  pointer-events: none;
+}
+
+@keyframes rw-fall {
+  to {
+    transform: translateY(110vh) rotate(540deg);
+  }
+}
+
+/* レッスン結果のごほうび */
+.rw-result {
+  position: relative;
+  z-index: 1;
+  margin: 14px 20px 0;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: var(--card-bg);
+  box-shadow: 0 3px 0 var(--shadow-neutral);
+}
+
+.rw-result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.rw-result-title {
+  font-weight: 900;
+}
+
+.rw-result-total {
+  font-size: 24px;
+  font-weight: 900;
+  color: #1c8ad6;
+}
+
+.rw-result-line {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 13px;
+  opacity: 0;
+  animation: rw-line-in 0.3s ease-out forwards;
+}
+
+@keyframes rw-line-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rw-result-label {
+  font-weight: 700;
+}
+
+.rw-result-gems {
+  font-weight: 900;
+  color: #1c8ad6;
+}
+
+.rw-result-quests {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+
+.rw-result-quest {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.rw-result-quest-bar {
+  flex: 1;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--track);
+}
+
+.rw-result-quest-fill {
+  display: block;
+  height: 100%;
+  background: var(--orange);
+}
+
+.rw-result-quest.is-done .rw-result-quest-fill {
+  background: var(--green);
+}
+
+/* ショップ */
+.rw-wallet {
+  padding: 18px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #5aa9ff, #1c8ad6);
+  color: #fff;
+  text-align: center;
+}
+
+.rw-wallet-label {
+  font-size: 13px;
+  font-weight: 800;
+  opacity: 0.9;
+}
+
+.rw-wallet-amount {
+  font-size: 36px;
+  font-weight: 900;
+}
+
+.rw-wallet-hint {
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.rw-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  background: var(--card-bg);
+}
+
+.rw-item-icon {
+  font-size: 34px;
+}
+
+.rw-item-mid {
+  flex: 1;
+  min-width: 0;
+}
+
+.rw-item-title {
+  font-weight: 900;
+}
+
+.rw-item-desc {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-light);
+}
+
+.rw-item-buy {
+  flex-shrink: 0;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 12px;
+  background: #1c8ad6;
+  color: #fff;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #146aa6;
+}
+
+.rw-item-buy:disabled {
+  background: var(--locked);
+  box-shadow: none;
+  cursor: default;
+}
+
+.rw-mascots {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.rw-mascot {
+  padding: 12px 4px;
+  border: 2px solid transparent;
+  border-radius: 16px;
+  background: var(--card-bg);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.rw-mascot.is-on {
+  border-color: var(--orange);
+  background: var(--orange-soft);
+}
+
+.rw-mascot-emoji {
+  font-size: 36px;
+}
+
+.rw-mascot-name {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.rw-mascot-price {
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #1c8ad6;
+}
+
+.rw-howto {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+  font-size: 13px;
+}
+
+.rw-howto + .rw-howto {
+  border-top: 1px solid var(--border);
+}
+
+.rw-howto-label {
+  flex: 1;
+  font-weight: 700;
+}
+
+.rw-howto-value {
+  font-weight: 800;
+  color: #1c8ad6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rw-daily-chest.is-ready,
+  .rw-unit-chest.is-ready,
+  .rw-burst,
+  .rw-modal-art.is-shaking {
+    animation: none;
+  }
+}

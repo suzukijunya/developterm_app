@@ -28,6 +28,9 @@ function defaultState() {
     bookmarks: {}, // { [hanzi]: { hanzi, pinyin, meaning, source, addedAt } }
     levelTests: [], // レベルチェックテストの結果(新しい順、最大10件)
     prefs: {}, // ゲームのベストスコアなど、細かい記録
+    gems: 0, // ごほうびの通貨(宝箱・クエスト・パーフェクトなどで貯まり、ショップで使う)
+    rewards: {}, // 宝箱の開封・クエスト・マイルストーンなどの記録(rewards.js が管理)
+    streakFreezes: 0, // 連続記録フリーズの所持数(1日休んでも連続記録が途切れない)
   };
 }
 
@@ -83,7 +86,18 @@ const AppState = (() => {
     if (state.lastStudyDate) {
       const prev = new Date(state.lastStudyDate);
       const diffDays = Math.round((new Date(today) - prev) / 86400000);
-      state.streak = diffDays === 1 ? state.streak + 1 : 1;
+      const missed = diffDays - 1;
+      if (diffDays === 1) {
+        state.streak += 1;
+      } else if (missed > 0 && (state.streakFreezes || 0) >= missed) {
+        // 休んだ日数分のフリーズを使って連続記録を守る
+        state.streakFreezes -= missed;
+        state.streak += 1;
+        state.rewards = state.rewards || {};
+        state.rewards.freezeUsedOn = today;
+      } else {
+        state.streak = 1;
+      }
     } else {
       state.streak = 1;
     }
@@ -163,6 +177,26 @@ const AppState = (() => {
 
   function setPref(key, value) {
     state.prefs[key] = value;
+    save();
+  }
+
+  function addGems(amount) {
+    state.gems = Math.max(0, (state.gems || 0) + amount);
+    save();
+    return state.gems;
+  }
+
+  function getRewards() {
+    if (!state.rewards) state.rewards = {};
+    return state.rewards;
+  }
+
+  function saveRewards() {
+    save();
+  }
+
+  function addStreakFreeze(n = 1) {
+    state.streakFreezes = (state.streakFreezes || 0) + n;
     save();
   }
 
@@ -293,5 +327,9 @@ const AppState = (() => {
     getLevelTests,
     getPref,
     setPref,
+    addGems,
+    getRewards,
+    saveRewards,
+    addStreakFreeze,
   };
 })();

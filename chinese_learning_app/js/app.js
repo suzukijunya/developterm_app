@@ -308,9 +308,14 @@
 
     const stats = el("div", "topbar-stats");
     const streak = el("div", "stat-pill stat-pill--streak", `🔥 ${state.streak}`);
-    const xp = el("div", "stat-pill stat-pill--xp", `💎 ${state.xp}`);
+    const xp = el("div", "stat-pill stat-pill--xp", `${Rewards.xpMultiplier() > 1 ? "⚡×2 " : "⚡ "}${state.xp}`);
+    const gems = el("button", "stat-pill stat-pill--gems", `💎 ${state.gems || 0}`);
+    gems.type = "button";
+    gems.setAttribute("aria-label", "ショップを開く");
+    gems.addEventListener("click", () => Rewards.shop(() => renderHome()));
     stats.appendChild(streak);
     stats.appendChild(xp);
+    stats.appendChild(gems);
     bar.appendChild(stats);
 
     container.appendChild(bar);
@@ -408,6 +413,7 @@
     renderLevelBanner(screen);
     renderDailyGoal(screen);
     renderWeakReviewCard(screen);
+    screen.appendChild(Rewards.questCard(renderHome));
 
     const path = el("div", "skill-path");
     // ホームを開いたら、次にやるレッスンまでスクロールする
@@ -475,6 +481,9 @@
 
         lessonRow.appendChild(node);
       });
+      // ユニットの最後に宝箱。全レッスンをクリアすると開けられる
+      const unitDone = unit.lessons.every((l) => AppState.isLessonCompleted(l.id));
+      lessonRow.appendChild(Rewards.unitChest(unit, UNITS.indexOf(unit), unitDone, renderHome));
       path.appendChild(lessonRow);
     });
 
@@ -695,6 +704,7 @@
 
       function answer(knew) {
         AppState.reviewFlashcard(queue[index].key, knew);
+        Rewards.track("cards", 1);
         AppState.addXp(2);
         reviewedCount++;
         index++;
@@ -1212,11 +1222,15 @@
           combo = 0;
         }
         if (result.correct) {
-          const gained = isSpeaking && result.bonus === false ? 5 : 10;
+          const gained = (isSpeaking && result.bonus === false ? 5 : 10) * Rewards.xpMultiplier();
           AppState.addXp(gained);
           sessionXp += gained;
           top.popXp(gained);
+          Rewards.track("xp", gained);
         }
+        if (!wasWrong && !isSpeaking) Rewards.track("correct", 1);
+        if (!wasWrong) Rewards.track("combo", combo);
+        if (isSpeaking) Rewards.track("speaking", 1);
         progressShown = (index + 1) / total;
         top.setProgress(progressShown, combo >= 3, { sparkle: !wasWrong });
         if (!isSpeaking || !r.playRecording) {
@@ -1256,7 +1270,7 @@
         const head = el("div", "cs-sheet-head");
         head.appendChild(el("span", "cs-sheet-label", result.correct ? "正解! 正しい回答:" : "正しい回答:"));
         const tools = el("div", "cs-sheet-tools");
-        tools.appendChild(el("span", "cs-mascot " + (result.correct ? "cs-mascot--good" : "cs-mascot--bad"), result.correct ? "🐼" : "🙈"));
+        tools.appendChild(el("span", "cs-mascot " + (result.correct ? "cs-mascot--good" : "cs-mascot--bad"), result.correct ? Rewards.mascot() : "🙈"));
         if (result.audio) {
           const speak = Exercises.iconButton("cs-mini-speaker", Icons.speaker, "正解を再生");
           speak.addEventListener("click", () => Speech.speak(result.audio).catch(() => {}));
@@ -1300,15 +1314,26 @@
       if (index >= total) {
         const answeredCount = total - skippedCount;
         const accuracy = answeredCount > 0 ? correctCount / answeredCount : 0;
+        const firstTime = !isReview && !AppState.isLessonCompleted(lesson.id);
+        const entry = FLAT_LESSONS.find((x) => x.lesson.id === lesson.id);
+        const unit = entry ? entry.unit : null;
+        const level = unit ? LEVELS.find((lv) => lv.unitIds.includes(unit.id)) : null;
+        const unitDoneBefore = unit && unit.lessons.every((l) => AppState.isLessonCompleted(l.id));
+        const levelDoneBefore = level && getLevelLessons(level).every((l) => AppState.isLessonCompleted(l.id));
         if (isReview) {
           AppState.markStudiedToday();
         } else {
           AppState.completeLesson(lesson.id, accuracy);
         }
-        AppState.addXp(20); // レッスン完了ボーナス
-        sessionXp += 20;
+        const bonusXp = 20 * Rewards.xpMultiplier(); // レッスン完了ボーナス
+        AppState.addXp(bonusXp);
+        sessionXp += bonusXp;
+        Rewards.track("xp", bonusXp);
         commitStudyTime();
-        renderSummaryScreen(lesson, { accuracy, sessionXp, isReview, maxCombo });
+        const reward = Rewards.onLessonComplete({ accuracy, firstTime, maxCombo, isReview });
+        const unitCleared = !!unit && !unitDoneBefore && unit.lessons.every((l) => AppState.isLessonCompleted(l.id));
+        const levelCleared = !!level && !levelDoneBefore && getLevelLessons(level).every((l) => AppState.isLessonCompleted(l.id));
+        renderSummaryScreen(lesson, { accuracy, sessionXp, isReview, maxCombo, reward, unit: unitCleared ? unit : null, level: levelCleared ? level : null });
       } else {
         renderExerciseScreen();
       }
@@ -1324,7 +1349,7 @@
     renderExerciseScreen();
   }
 
-  function renderSummaryScreen(lesson, { accuracy, sessionXp, isReview, maxCombo }) {
+  function renderSummaryScreen(lesson, { accuracy, sessionXp, isReview, maxCombo, reward = null, unit = null, level = null }) {
     clear(appRoot);
     setTimeout(() => Motion.Sfx.complete(), 250);
     const pct = Math.round(accuracy * 100);
@@ -1370,10 +1395,61 @@
     });
     screen.appendChild(stats);
 
+    // ごほうび: 獲得ジェムの内訳と、今日のクエストの進み具合
+    if (reward) {
+      const box = el("div", "rw-result");
+      const head = el("div", "rw-result-head");
+      head.appendChild(el("span", "rw-result-title", "ごほうび"));
+      const total = el("span", "rw-result-total");
+      total.appendChild(el("span", "rw-gem", "💎"));
+      const num = el("span", "", "0");
+      total.appendChild(el("span", "", "+"));
+      total.appendChild(num);
+      head.appendChild(total);
+      box.appendChild(head);
+      const questGems = reward.quests.reduce((n, q) => n + q.gems, 0);
+      const lines = reward.lines.concat(reward.quests.map((q) => ({ label: `クエスト達成: ${q.label}`, gems: q.gems })));
+      lines.forEach((line, i) => {
+        const row = el("div", "rw-result-line");
+        row.style.animationDelay = `${0.35 + i * 0.18}s`;
+        row.appendChild(el("span", "rw-result-label", line.label));
+        row.appendChild(el("span", "rw-result-gems", `💎+${line.gems}`));
+        box.appendChild(row);
+      });
+      const quests = Rewards.getQuests();
+      const qrow = el("div", "rw-result-quests");
+      quests.forEach((q) => {
+        const chip = el("div", "rw-result-quest" + (q.done ? " is-done" : ""));
+        chip.appendChild(el("span", "", q.done ? "✅" : q.icon));
+        const bar = el("span", "rw-result-quest-bar");
+        const fill = el("span", "rw-result-quest-fill");
+        fill.style.width = `${(q.progress / q.target) * 100}%`;
+        bar.appendChild(fill);
+        chip.appendChild(bar);
+        qrow.appendChild(chip);
+      });
+      box.appendChild(qrow);
+      screen.appendChild(box);
+      setTimeout(() => {
+        Rewards.countUp(num, reward.gems + questGems, { duration: 900 });
+        Motion.Sfx.coin();
+      }, 700);
+    }
+
+    // 続ける → ユニットクリア → レベルクリアのお祝い → ホーム
+    const afterSteps = [];
+    if (unit) afterSteps.push((next) => Rewards.showUnitClear(unit, next));
+    if (level) afterSteps.push((next) => Rewards.showLevelUp(level, Rewards.claimLevelReward(level.id), next));
+    const runSteps = () => {
+      const step = afterSteps.shift();
+      if (step) step(runSteps);
+      else renderHome();
+    };
+
     const footer = el("div", "cs-footer cs-result-footer");
     const continueBtn = el("button", "primary-btn", "続ける");
     continueBtn.type = "button";
-    continueBtn.addEventListener("click", renderHome);
+    continueBtn.addEventListener("click", runSteps);
     footer.appendChild(continueBtn);
     screen.appendChild(footer);
     appRoot.appendChild(screen);

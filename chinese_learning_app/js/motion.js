@@ -234,6 +234,18 @@ const Motion = (() => {
           tone(ac, base, 0, 0.1, { type: "triangle", gain: 0.14 });
           tone(ac, base * 1.5, 0.07, 0.16, { type: "triangle", gain: 0.12 });
         }),
+      // コイン・ジェムを手に入れた「チャリン」
+      coin: () =>
+        play((ac) => {
+          tone(ac, 1567.98, 0, 0.08, { type: "square", gain: 0.05 });
+          tone(ac, 2093, 0.07, 0.22, { type: "triangle", gain: 0.12 });
+        }),
+      // 宝箱が開く
+      chest: () =>
+        play((ac) => {
+          tone(ac, 196, 0, 0.12, { type: "square", gain: 0.05, slideTo: 392 });
+          [783.99, 987.77, 1174.66, 1567.98].forEach((f, i) => tone(ac, f, 0.14 + i * 0.07, 0.2, { type: "triangle", gain: 0.13 }));
+        }),
       // レッスン完了のファンファーレ
       complete: () =>
         play((ac) => {
