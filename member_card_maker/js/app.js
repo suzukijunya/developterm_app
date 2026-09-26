@@ -1,9 +1,10 @@
-// 画面の操作:フォーム ⇔ カードJSON の同期、保存、画像の読み込み、表からの一括作成、書き出し。
+// 画面の操作:フォーム ⇔ カードJSON の同期、保存、画像の読み込み、Google フォームの回答からの一括作成、書き出し。
 
 (() => {
   const STORE_KEY = "member_cards_v1";
   const WORLD_KEY = "member_card_world_v1";
-  const XLSX_URL = new URL("vendor/xlsx.mini.min.js", document.currentScript.src).href;
+  const SHEET_URL_KEY = "member_card_sheet_url_v1";
+  const GAS_URL = new URL("../google_form/create_form.gs", document.currentScript.src).href;
   const IMAGE_PLACEHOLDER = "[埋め込み画像]";
   const EXPORT_SCALE = 2; // PNG は 2048 x 2880px で書き出す
 
@@ -372,119 +373,105 @@
     el.classList.toggle("error", !!isError);
   }
 
-  let xlsxPromise = null;
-  function loadXlsx() {
-    if (window.XLSX) return Promise.resolve(window.XLSX);
-    if (!xlsxPromise) {
-      xlsxPromise = new Promise((resolve, reject) => {
-        const s = document.createElement("script");
-        s.src = XLSX_URL;
-        s.onload = () => resolve(window.XLSX);
-        s.onerror = () => {
-          xlsxPromise = null;
-          reject(new Error("Excel 読み込み用のファイルを読めませんでした。CSV で保存するか、表をコピーして貼り付けてください。"));
-        };
-        document.head.appendChild(s);
-      });
-    }
-    return xlsxPromise;
+  // 世界観メモに、まだ無い行だけを足す
+  function addWorldLines(lines) {
+    const have = new Set(world().split("\n").map((l) => l.trim()).filter(Boolean));
+    const fresh = lines.map((l) => l.trim()).filter((l) => l && !have.has(l));
+    if (fresh.length) setWorld([world().trim(), ...fresh].filter(Boolean).join("\n"));
+    return fresh.length;
   }
 
-  // .xlsx → { rows: カード一覧シート, world: 世界観メモシートのテキスト }
-  async function readWorkbook(file) {
-    const XLSX = await loadXlsx();
-    const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
-    const toRows = (name) => XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, raw: false, defval: "" });
-    const cardSheet = wb.SheetNames.find((n) => n.includes("カード")) || wb.SheetNames[0];
-    // テンプレートの「カード一覧」シートは上に説明行があるので、見出し行(「カード種類」で始まるセルがある行)から使う
-    let rows = toRows(cardSheet);
-    const head = rows.findIndex((r) => r.some((c) => String(c).replace(/\s/g, "").startsWith("カード種類")));
-    if (head > 0) rows = rows.slice(head);
-    let worldText = "";
-    const worldSheet = wb.SheetNames.find((n) => n.includes("世界観"));
-    if (worldSheet) {
-      const w = toRows(worldSheet);
-      const wh = w.findIndex((r) => r.some((c) => String(c).trim() === "用語"));
-      worldText = w
-        .slice(wh + 1)
-        .filter((r) => String(r[0] || "").trim())
-        .map((r) => `${String(r[0]).trim()}${String(r[1] || "").trim() ? `(${String(r[1]).trim()})` : ""}: ${String(r[2] || "").trim()}`)
-        .join("\n");
+  // 表(フォームの回答 / CSV / 貼り付け)を読み込む。すでに読み込んだ回答は飛ばす。
+  function importRows(rows) {
+    if (CardFormat.isWorldTable(rows)) {
+      const n = addWorldLines(CardFormat.rowsToWorld(rows));
+      setBulkStatus(`世界観メモに${n}件追加しました。`);
+      $("worldDetails").open = true;
+      return { cards: 0, world: n };
     }
-    return { rows, world: worldText };
-  }
-
-  // 選んだイラスト画像:ファイル名(大文字小文字・拡張子の有無は問わない)→ File
-  let bulkImageFiles = new Map();
-  function imageKey(name) {
-    return String(name || "")
-      .trim()
-      .toLowerCase()
-      .replace(/^.*[\\/]/, "");
-  }
-
-  async function attachImages(list) {
-    let n = 0;
-    for (const card of list) {
-      const key = imageKey(card.art.fileName);
-      if (!key || card.art.image) continue;
-      const file = bulkImageFiles.get(key) || bulkImageFiles.get(key.replace(/\.[^.]+$/, ""));
-      if (!file) continue;
-      card.art.image = await fileToDataUrl(file, 1600, "image/jpeg");
-      n++;
-    }
-    return n;
-  }
-
-  async function importRows(rows, worldText) {
-    const { cards: added, warnings } = CardFormat.rowsToCards(rows, cards.length + 1);
-    if (worldText && worldText.trim()) {
-      setWorld(world().trim() ? world().trim() + "\n" + worldText.trim() : worldText.trim());
-    }
+    const { cards: parsed, warnings } = CardFormat.rowsToCards(rows, cards.length + 1);
+    const seen = new Set(cards.map((c) => c.responseKey).filter(Boolean));
+    const added = parsed.filter((c) => !c.responseKey || !seen.has(c.responseKey));
+    const skipped = parsed.length - added.length;
     if (!added.length) {
-      setBulkStatus(warnings.join(" "), true);
-      return;
+      setBulkStatus(skipped ? `新しい回答はありません(${skipped}件は読み込み済み)。` : warnings.join(" "), !skipped);
+      return { cards: 0, world: 0 };
     }
-    const withImages = await attachImages(added);
+    // 読み込み済みを飛ばした分、カードコードの連番を詰め直す
+    let no = cards.length + 1;
+    added.forEach((c) => {
+      if (c.autoCode) c.cardCode = "WB-" + String(no++).padStart(3, "0");
+    });
     cards.push(...added.map(CardFormat.normalize));
     selectCard(cards[cards.length - added.length].id);
     scheduleSave();
     const waiting = added.filter((c) => c.autoFields.length).length;
-    const missing = added.filter((c) => c.art.fileName && !c.art.image).map((c) => c.art.fileName);
     const msg = [`${added.length}枚を読み込みました。`];
-    if (withImages) msg.push(`イラスト${withImages}枚を自動で入れました。`);
-    if (missing.length) msg.push(`見つからない画像: ${missing.join("、")}(「イラスト画像」で選ぶと入ります)。`);
+    if (skipped) msg.push(`(${skipped}件は読み込み済みなので飛ばしました)`);
     if (waiting) msg.push(`${waiting}枚に空欄があります →「空欄をAIでまとめて埋める」`);
     if (warnings.length) msg.push("注意: " + warnings.join(" "));
     setBulkStatus(msg.join(" "), warnings.length > 0);
+    return { cards: added.length, world: 0 };
   }
 
   async function onTableFile(e) {
     const file = e.target.files[0];
     if (!file) return;
     try {
-      if (/\.xlsx$/i.test(file.name)) {
-        const { rows, world: w } = await readWorkbook(file);
-        await importRows(rows, w);
-      } else {
-        await importRows(CardFormat.parseDelimited(await file.text()), "");
-      }
+      importRows(CardFormat.parseDelimited(await file.text()));
     } catch (err) {
       setBulkStatus("読み込めませんでした: " + err.message, true);
     }
     e.target.value = "";
   }
 
-  async function onBulkImages(e) {
-    bulkImageFiles = new Map();
-    [...e.target.files].forEach((f) => {
-      const key = imageKey(f.name);
-      bulkImageFiles.set(key, f);
-      bulkImageFiles.set(key.replace(/\.[^.]+$/, ""), f);
-    });
-    const n = await attachImages(cards);
-    if (n) changed();
-    setBulkStatus(`${e.target.files.length}枚の画像を選びました。${n ? `読み込み済みのカード${n}枚に入れました。` : "このあと読み込む表の「イラスト画像ファイル名」と照合します。"}`);
+  // 回答スプレッドシートのURL → シートを CSV で取得(「リンクを知っている全員が閲覧可」の共有が必要)
+  function sheetCsvUrl(sheetUrl, sheetName) {
+    const m = String(sheetUrl).match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+    if (!m) throw new Error("スプレッドシートのURLではないようです。https://docs.google.com/spreadsheets/d/… の形のURLを入れてください。");
+    return `https://docs.google.com/spreadsheets/d/${m[1]}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+  }
+
+  async function fetchSheet(sheetUrl, sheetName) {
+    const res = await fetch(sheetCsvUrl(sheetUrl, sheetName));
+    if (!res.ok) throw new Error(`「${sheetName}」シートを読めませんでした(${res.status})。`);
+    const text = await res.text();
+    if (/^\s*</.test(text)) throw new Error("共有設定を「リンクを知っている全員(閲覧者)」にしてください。");
+    return CardFormat.parseDelimited(text);
+  }
+
+  async function importFromSheet() {
+    const url = $("sheetUrl").value.trim();
+    if (!url) return setBulkStatus("回答スプレッドシートのURLを入れてください。", true);
+    try {
+      localStorage.setItem(SHEET_URL_KEY, url);
+    } catch (e) {
+      // 保存できなくても読み込みは続ける
+    }
+    const btn = $("btnSheetImport");
+    btn.disabled = true;
+    setBulkStatus("スプレッドシートを読み込んでいます…");
+    try {
+      let worldAdded = 0;
+      try {
+        worldAdded = addWorldLines(CardFormat.rowsToWorld(await fetchSheet(url, "世界観メモ回答")));
+      } catch (e) {
+        // 世界観メモのシートが無くてもカードは読み込む
+      }
+      const cardRows = await fetchSheet(url, "カード回答");
+      const r = importRows(cardRows);
+      if (worldAdded) $("bulkStatus").textContent += ` 世界観メモに${worldAdded}件追加しました。`;
+      if (!r.cards && !worldAdded && cardRows.length <= 1) setBulkStatus("まだ回答がありません。");
+    } catch (e) {
+      const blocked = e instanceof TypeError; // 通信や共有設定で弾かれたとき fetch は TypeError になる
+      setBulkStatus(
+        (blocked ? "スプレッドシートを読めませんでした。" : e.message) +
+          " うまくいかないときは、回答シートを全選択(Ctrl+A)してコピーし、下の欄に貼り付けてください。",
+        true
+      );
+    } finally {
+      btn.disabled = false;
+    }
   }
 
   let bulkRunning = false;
@@ -702,11 +689,26 @@
     setWorld(loadWorld());
     $("worldMemo").addEventListener("input", (e) => saveWorld(e.target.value));
     $("tableFile").addEventListener("change", onTableFile);
-    $("bulkImages").addEventListener("change", onBulkImages);
-    $("btnTableImport").addEventListener("click", async () => {
+    try {
+      $("sheetUrl").value = localStorage.getItem(SHEET_URL_KEY) || "";
+    } catch (e) {
+      // 読めない環境では空のまま
+    }
+    $("btnSheetImport").addEventListener("click", importFromSheet);
+    $("btnCopyGas").addEventListener("click", async () => {
+      try {
+        const res = await fetch(GAS_URL);
+        if (!res.ok) throw new Error(String(res.status));
+        await copyText(await res.text(), "スクリプトをコピーしました。Apps Script のエディタに貼り付けて、createCardForms を実行してください。");
+      } catch (e) {
+        window.open(GAS_URL, "_blank");
+        toast("自動でコピーできなかったので、スクリプトのファイルを開きました。全文をコピーしてください。");
+      }
+    });
+    $("btnTableImport").addEventListener("click", () => {
       const text = $("tablePaste").value;
-      if (!text.trim()) return setBulkStatus("表を貼り付けてください。", true);
-      await importRows(CardFormat.parseDelimited(text), "");
+      if (!text.trim()) return setBulkStatus("回答シートの内容を貼り付けてください。", true);
+      importRows(CardFormat.parseDelimited(text));
       $("tablePaste").value = "";
     });
     $("btnBulkAi").addEventListener("click", runBulkAi);

@@ -1,6 +1,6 @@
 // 社内トレカの「入力フォーマット」定義。
 // 1枚のカード = 1つの JSON オブジェクト。ここにある項目を埋めれば card_renderer.js が画像を描く。
-// まとめて作るときは表(Excel / CSV)の1行 = 1枚。列の定義は TABLE_COLUMNS。
+// まとめて作るときは Google フォームの回答(スプレッドシート)の1行 = 1枚。列の定義は TABLE_COLUMNS。
 // 項目の説明は FORMAT.md を参照。
 
 const CardFormat = (() => {
@@ -132,6 +132,9 @@ const CardFormat = (() => {
       },
       member,
       autoFields: Array.isArray(src.autoFields) ? src.autoFields.filter((f) => AI_FIELDS.includes(f)) : [],
+      // Google フォームから読み込んだときの回答の目印(同じ回答を二重に読み込まないため)と投稿者
+      responseKey: str(src.responseKey),
+      author: str(src.author),
     };
   }
 
@@ -325,9 +328,14 @@ ${JSON.stringify(example, null, 2)}`;
   }
 
   // ---------------------------------------------------------------
-  // 表(Excel / CSV / 貼り付け)⇔ カード
-  // 1行 = 1枚。1行目は見出し。列の順番は自由(見出しの名前で判定)。
+  // 表(Google フォームの回答スプレッドシート / CSV / 貼り付け)⇔ カード
+  // 1行 = 1枚。1行目は見出し(= フォームの質問名)。列の順番は自由で、見出しの名前で判定する。
+  // フォームはカード種類ごとにセクションが分かれ、同じ名前の質問(元ネタなど)が複数の列になるので、
+  // 同じ見出しの列は「空でない最初の値」を使う。
   // ---------------------------------------------------------------
+
+  // 選択肢の「おまかせ」は空欄(= AIが考える)と同じ扱い
+  const LEAVE_TO_AI = ["おまかせ", "AIにおまかせ", "おまかせ(AIが考える)"];
 
   const TONES = ["かっこよく", "面白く", "かわいく", "渋く"];
   const TYPE_WORDS = {
@@ -357,11 +365,13 @@ ${JSON.stringify(example, null, 2)}`;
     { key: "attribute", label: "属性", ai: true, monster: true, options: ["光", "闇", "炎", "水", "風", "地", "神"], help: "モンスターのみ" },
     { key: "level", label: "レベル", ai: true, monster: true, help: "モンスターのみ。1〜12" },
     { key: "tribe", label: "種族", ai: true, monster: true, help: "モンスターのみ。例: CFO族" },
-    { key: "effect", label: "効果テキスト", ai: true, help: "改行はセル内改行(Alt+Enter)か \\n" },
+    { key: "effect", label: "効果テキスト", ai: true, help: "改行で段落を分ける。「①：」で始めると字下げ" },
     { key: "atk", label: "ATK", ai: true, monster: true, help: "モンスターのみ。0〜5000" },
     { key: "def", label: "DEF", ai: true, monster: true, help: "モンスターのみ。0〜5000" },
     { key: "cardCode", label: "カードコード", help: "空欄なら WB-001 から連番" },
     { key: "art.file", label: "イラスト画像ファイル名", help: "例: suzuki.png(画像は読み込み時に一緒に選ぶ)" },
+    { key: "author", label: "投稿者", help: "フォームに回答した人" },
+    { key: "timestamp", label: "タイムスタンプ", help: "フォームが自動で付ける回答日時" },
     { key: "art.effect", label: "イラストの光", options: Object.values(ART_EFFECTS).map((e) => e.label), help: "空欄なら黄金の光" },
     { key: "note", label: "メモ", help: "自由記入(カードには使わない)" },
   ];
@@ -427,18 +437,24 @@ ${JSON.stringify(example, null, 2)}`;
     const headers = rows[0].map(normHeader);
     const colIndex = {};
     TABLE_COLUMNS.forEach((c) => {
-      const i = headers.findIndex((h) => h === normHeader(c.label) || h === c.key);
-      if (i >= 0) colIndex[c.key] = i;
+      const idx = headers.map((h, i) => (h === normHeader(c.label) || h === c.key ? i : -1)).filter((i) => i >= 0);
+      if (idx.length) colIndex[c.key] = idx;
     });
     if (colIndex.cardType === undefined && colIndex["member.realName"] === undefined) {
-      return { cards: [], warnings: ["1行目に見出し(「カード種類」「元ネタ」など)が見つかりません。テンプレートの見出し行ごと貼り付けてください。"] };
+      return { cards: [], warnings: ["1行目に見出し(「カード種類」「元ネタ」など)が見つかりません。回答シートの見出し行ごと貼り付けてください。"] };
     }
     const cards = [];
     let no = startNo;
     rows.slice(1).forEach((r, idx) => {
       const rowNo = idx + 2;
-      const get = (key) => (colIndex[key] === undefined ? "" : String(r[colIndex[key]] === undefined ? "" : r[colIndex[key]]).trim());
-      if (TABLE_COLUMNS.every((c) => !get(c.key) || c.key === "note")) return;
+      const get = (key) => {
+        for (const i of colIndex[key] || []) {
+          const v = String(r[i] === undefined || r[i] === null ? "" : r[i]).trim();
+          if (v && !LEAVE_TO_AI.includes(v)) return v;
+        }
+        return "";
+      };
+      if (TABLE_COLUMNS.every((c) => !get(c.key) || ["note", "author", "timestamp"].includes(c.key))) return;
 
       const c = createDefault();
       const picked = pickType(get("cardType"));
@@ -477,15 +493,39 @@ ${JSON.stringify(example, null, 2)}`;
       if (monster && get("attribute") && !ATTRIBUTES[get("attribute")]) c.autoFields.push("attribute");
 
       c.cardCode = get("cardCode") || "WB-" + String(no).padStart(3, "0");
+      c.autoCode = !get("cardCode"); // 読み込み側で連番を振り直してよい印(保存はされない)
       no++;
       const fx = get("art.effect");
       const fxKey = Object.keys(ART_EFFECTS).find((k) => ART_EFFECTS[k].label === fx || k === fx);
       if (fxKey) c.art.effect = fxKey;
       c.art.fileName = get("art.file");
+      c.author = get("author");
+      if (get("timestamp")) c.responseKey = `${get("timestamp")}|${get("author")}|${c.member.realName}`;
       cards.push(c);
     });
     if (!cards.length && !warnings.length) warnings.push("カードの行が見つかりませんでした。");
     return { cards, warnings };
+  }
+
+  // 世界観メモの回答(見出しに「用語」「説明」がある表)→ 「用語(種類): 説明」の行の配列
+  function isWorldTable(rows) {
+    const h = (rows[0] || []).map(normHeader);
+    return h.includes("用語") && h.includes("説明");
+  }
+
+  function rowsToWorld(rows) {
+    const h = rows[0].map(normHeader);
+    const at = (name) => h.indexOf(name);
+    const [ti, ki, di] = [at("用語"), at("種類"), at("説明")];
+    return rows
+      .slice(1)
+      .map((r) => {
+        const term = String(r[ti] || "").trim();
+        if (!term) return "";
+        const kind = ki >= 0 ? String(r[ki] || "").trim() : "";
+        return `${term}${kind ? `(${kind})` : ""}: ${String(r[di] || "").trim().replace(/\n/g, " ")}`;
+      })
+      .filter(Boolean);
   }
 
   // カード → 表(書き出し用)
@@ -506,7 +546,10 @@ ${JSON.stringify(example, null, 2)}`;
             case "art.effect":
               return ART_EFFECTS[card.art.effect].label;
             case "note":
+            case "timestamp":
               return "";
+            case "author":
+              return card.author || "";
             default: {
               if (col.monster && !monster) return "";
               if (card.autoFields.includes(col.key)) return "";
@@ -616,6 +659,8 @@ ${world && world.trim() ? `\n世界観メモ(ウィーブレインの社内用�
     parseLooseJson,
     parseDelimited,
     rowsToCards,
+    isWorldTable,
+    rowsToWorld,
     cardsToRows,
     toCsv,
     buildTablePrompt,

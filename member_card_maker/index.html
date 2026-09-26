@@ -30,28 +30,32 @@
   <form id="form" class="editor" autocomplete="off" onsubmit="return false">
 
     <details class="panel" id="bulkPanel">
-      <summary>📋 表からまとめて作る <small>Excel / CSV / コピペ</small></summary>
+      <summary>📋 Googleフォームで集めてまとめて作る</summary>
       <ol class="steps">
-        <li><a href="templates/card_input_template.xlsx" download>入力テンプレート(Excel)</a>をダウンロードし、1行に1枚ずつ書く。必須は「カード種類」と「元ネタ」だけ。空欄はAIが考えます。</li>
-        <li>表を読み込む(下のどちらか)。イラスト画像があれば一緒に選ぶと、「イラスト画像ファイル名」の列と同じ名前の画像が自動で入ります。</li>
-        <li>「空欄をAIでまとめて埋める」を押す(APIキーがない場合は、チャットAI用プロンプトで表を埋めてから読み込む)。</li>
+        <li><b>フォームを作る(最初の1回だけ)</b>: <a href="https://script.google.com/home/projects/create" target="_blank" rel="noopener">Apps Script</a> で新しいプロジェクトを開き、<button type="button" id="btnCopyGas" class="link">フォーム作成スクリプトをコピー</button>して貼り付け →「createCardForms」を実行。カード投稿フォーム・世界観メモ投稿フォーム・回答スプレッドシートができます。</li>
+        <li><b>社内に回答してもらう</b>: 実行ログに出たフォームのURLを共有。必須は「カード種類」と「元ネタ」だけで、書かなかった項目はAIが考えます。</li>
+        <li><b>回答を読み込む</b>: 回答スプレッドシートのURLを入れて「回答を読み込む」(共有を「リンクを知っている全員」にしておく)。共有したくない場合は、シートを全選択してコピーし下の欄に貼り付け。何度読み込んでも、読み込み済みの回答は飛ばします。</li>
+        <li><b>空欄をAIで埋める</b> → 一覧から1枚ずつイラストを入れて確認 →「全カードをPNG保存」</li>
       </ol>
-      <div class="grid2">
-        <label>表ファイル(.xlsx / .csv)<input type="file" id="tableFile" accept=".xlsx,.csv,.tsv,.txt" /></label>
-        <label>イラスト画像(複数選択可)<input type="file" id="bulkImages" accept="image/*" multiple /></label>
-      </div>
-      <label>または表をコピーして貼り付け(見出し行ごと)<textarea id="tablePaste" rows="4" placeholder="Excel や Google スプレッドシートで見出し行を含めて範囲をコピーし、ここに貼り付け"></textarea></label>
+      <label>回答スプレッドシートのURL
+        <span class="row"><input id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/…" /><button type="button" id="btnSheetImport" class="primary">回答を読み込む</button></span>
+      </label>
+      <label>または回答シートの内容を貼り付け(見出し行ごと。「世界観メモ回答」シートを貼ると世界観メモに入ります)<textarea id="tablePaste" rows="4" placeholder="回答シートで Ctrl+A → Ctrl+C して、ここに Ctrl+V"></textarea></label>
       <div class="ai-actions">
-        <button type="button" id="btnTableImport" class="primary">貼り付けた表を読み込む</button>
-        <button type="button" id="btnBulkAi">空欄をAIでまとめて埋める</button>
-        <button type="button" id="btnCopyTablePrompt">表を埋めてもらうチャットAI用プロンプトをコピー</button>
-        <button type="button" id="btnTableExport">全カードを表(CSV)で書き出す</button>
+        <button type="button" id="btnTableImport">貼り付けた回答を読み込む</button>
+        <button type="button" id="btnBulkAi" class="primary">空欄をAIでまとめて埋める</button>
+        <button type="button" id="btnCopyTablePrompt">空欄を埋めてもらうチャットAI用プロンプトをコピー</button>
       </div>
       <p id="bulkStatus" class="status" role="status"></p>
       <details class="sub">
+        <summary>CSVで読み込む・書き出す</summary>
+        <label>CSVファイル(スプレッドシートの「ファイル → ダウンロード → CSV」)<input type="file" id="tableFile" accept=".csv,.tsv,.txt" /></label>
+        <button type="button" id="btnTableExport">全カードをCSVで書き出す</button>
+      </details>
+      <details class="sub" id="worldDetails">
         <summary>ウィーブレインの世界観メモ(社内用語・人物・出来事)</summary>
-        <p class="hint">ここに書いた用語はすべてのカードのAI生成で使われ、カード同士の効果がつながります。Excelテンプレートの「世界観メモ」シートからも読み込まれます。</p>
-        <textarea id="worldMemo" rows="6" placeholder="例:&#10;グレー金融: 怪しい儲け話の総称&#10;雅さん: 海外事業の相談役&#10;テスラ: 社用車。乗ると商談がまとまる"></textarea>
+        <p class="hint">ここに書いた用語はすべてのカードのAI生成で使われ、カード同士の効果がつながります。世界観メモ投稿フォームの回答も読み込み時にここへ追加されます。</p>
+        <textarea id="worldMemo" rows="6" placeholder="例:&#10;グレー金融: 怪しい儲け話の総称&#10;テスラ: 社用車。乗ると商談がまとまる"></textarea>
       </details>
     </details>
 
