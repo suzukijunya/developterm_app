@@ -479,15 +479,8 @@
     },
   ];
 
-  // 追加ユニットを指定のユニットの後ろに差し込み、レベルにも登録する
-  NEW_UNITS.forEach(({ after, level, unit }) => {
-    if (UNITS.some((u) => u.id === unit.id)) return;
-    const idx = UNITS.findIndex((u) => u.id === after);
-    UNITS.splice(idx < 0 ? UNITS.length : idx + 1, 0, unit);
-    const lv = LEVELS.find((l) => l.id === level);
-    if (lv && !lv.unitIds.includes(unit.id)) {
-      const pos = lv.unitIds.indexOf(after);
-      lv.unitIds.splice(pos < 0 ? lv.unitIds.length : pos + 1, 0, unit.id);
-    }
+  // 追加ユニットを UNITS に加える(並び順とレベルは curriculum.js で LEVELS に合わせる)
+  NEW_UNITS.forEach(({ unit }) => {
+    if (!UNITS.some((u) => u.id === unit.id)) UNITS.push(unit);
   });
 })();

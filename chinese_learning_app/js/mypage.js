@@ -196,7 +196,7 @@ const MyPage = (() => {
 
   // ---------- レベルチェックテスト ----------
   const TEST_TYPES = ["listening_choice", "translate_choice", "writing_cn", "writing_pinyin", "reading"];
-  const TEST_SIZE = 20;
+  const TEST_SIZE = 24;
 
   function levelTestIntro() {
     const screen = UI.screen("screen--sub");
@@ -327,6 +327,18 @@ const MyPage = (() => {
     u18: ["财务", "cáiwù", "財務・経理"],
     u19: ["海关", "hǎiguān", "税関"],
     u20: ["安全", "ānquán", "安全"],
+    u21: ["美食", "měishí", "グルメ"],
+    u22: ["天气", "tiānqì", "天気"],
+    u23: ["爱好", "àihào", "趣味"],
+    u24: ["健康", "jiànkāng", "健康"],
+    u25: ["办公室", "bàngōngshì", "オフィス"],
+    u26: ["工厂", "gōngchǎng", "工場"],
+    u27: ["市场", "shìchǎng", "市場"],
+    u28: ["质量", "zhìliàng", "品質"],
+    u29: ["管理", "guǎnlǐ", "管理"],
+    u30: ["贸易", "màoyì", "貿易"],
+    u31: ["经济", "jīngjì", "経済"],
+    u32: ["演讲", "yǎnjiǎng", "スピーチ"],
   };
   const DECK_CARDS = {
     trade: ["贸易", "màoyì", "貿易"],

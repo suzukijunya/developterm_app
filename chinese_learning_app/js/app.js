@@ -2,6 +2,8 @@
 
 (function () {
   const appRoot = document.getElementById("app");
+  // 再読み込み時にブラウザが前のスクロール位置へ戻すと、現在地への自動スクロールが上書きされるので止める
+  if ("scrollRestoration" in history) history.scrollRestoration = "manual";
 
   // ユニット/レッスンをフラットな配列にして順序管理(アンロック判定に使う)
   const FLAT_LESSONS = [];
@@ -61,23 +63,31 @@
     return { total, completed, percent };
   }
 
-  // レベルごとの状態(cleared/current/upcoming/future)を判定する。
-  // 実装済みレベルのうち最初に未クリアのものを「current」とする
+  // 次にやるレッスン = 最後に終えたレッスンより後で、まだ終えていない最初のもの。
+  // (あとから途中に追加されたユニットは解放されているが、「現在地」は進んだ先に置く)
+  function getFrontierLessonId() {
+    let lastDone = -1;
+    FLAT_LESSONS.forEach(({ lesson }, i) => {
+      if (AppState.isLessonCompleted(lesson.id)) lastDone = i;
+    });
+    const isOpen = ({ lesson }) => !AppState.isLessonCompleted(lesson.id) && isLessonUnlocked(lesson.id);
+    const entry = FLAT_LESSONS.slice(lastDone + 1).find(isOpen) || FLAT_LESSONS.find(isOpen);
+    return entry ? entry.lesson.id : null;
+  }
+
+  // レベルごとの状態を判定する。次にやるレッスンを含むレベルを「current」とし、
+  // それより前でまだ終えていないレッスン(あとから追加された分)があるレベルは「partial」
   function getLevelStatuses() {
-    let currentAssigned = false;
-    return LEVELS.map((lv) => {
+    const frontier = getFrontierLessonId();
+    const currentIdx = frontier ? LEVELS.findIndex((lv) => getLevelLessons(lv).some((l) => l.id === frontier)) : -1;
+    return LEVELS.map((lv, i) => {
       const stats = getLevelStats(lv);
       let status;
-      if (!lv.implemented) {
-        status = "future";
-      } else if (stats.total > 0 && stats.percent >= 1) {
-        status = "cleared";
-      } else if (!currentAssigned) {
-        status = "current";
-        currentAssigned = true;
-      } else {
-        status = "upcoming";
-      }
+      if (!lv.implemented) status = "future";
+      else if (stats.total > 0 && stats.percent >= 1) status = "cleared";
+      else if (i === currentIdx) status = "current";
+      else if (currentIdx >= 0 && i < currentIdx) status = "partial";
+      else status = "upcoming";
       return Object.assign({}, lv, { stats, status });
     });
   }
@@ -189,7 +199,7 @@
       el(
         "div",
         "goal-distance-app-note",
-        `現在アプリに収録済みの語彙: ${vocabInApp}語(全12ユニット分)。アプリの学習だけでゴールの語彙量に届くことはありません。`
+        `現在アプリに収録済みの語彙: ${vocabInApp}語(全${UNITS.length}ユニット・単語帳${VOCAB_DECKS.length}デッキ)。アプリの学習だけでゴールの語彙量に届くことはありません。`
       )
     );
     card.appendChild(el("div", "goal-distance-disclaimer", LEVEL_BENCHMARK_NOTE));
@@ -218,7 +228,7 @@
     screen.appendChild(intro);
     screen.appendChild(renderGoalDistanceCard());
 
-    const STATUS_LABELS = { cleared: "✅ クリア", current: "📍 今ここ", upcoming: "これから", future: "近日追加予定" };
+    const STATUS_LABELS = { cleared: "✅ クリア", current: "📍 今ここ", partial: "🆕 未修了のレッスンあり", upcoming: "これから", future: "近日追加予定" };
 
     const list = el("div", "roadmap-list");
     getLevelStatuses().forEach((lv) => {
@@ -230,6 +240,20 @@
       header.appendChild(el("div", "roadmap-level-hsk", lv.hskLabel));
       card.appendChild(header);
       card.appendChild(el("div", "roadmap-level-desc", lv.description));
+
+      // レベルに含まれるユニットを並べ、どこまで進んだかを細かく見せる
+      const units = el("div", "roadmap-units");
+      lv.unitIds.forEach((uid) => {
+        const unit = UNITS.find((u) => u.id === uid);
+        if (!unit) return;
+        const done = unit.lessons.filter((l) => AppState.isLessonCompleted(l.id)).length;
+        const chip = el("div", "roadmap-unit" + (done === unit.lessons.length ? " is-done" : done > 0 ? " is-doing" : ""));
+        chip.appendChild(el("span", "roadmap-unit-icon", unit.icon));
+        chip.appendChild(el("span", "roadmap-unit-title", unit.title));
+        chip.appendChild(el("span", "roadmap-unit-count", done === unit.lessons.length ? "✓" : `${done}/${unit.lessons.length}`));
+        units.appendChild(chip);
+      });
+      card.appendChild(units);
 
       if (lv.implemented) {
         const barOuter = el("div", "roadmap-level-bar-outer");
@@ -386,8 +410,27 @@
     renderWeakReviewCard(screen);
 
     const path = el("div", "skill-path");
+    // ホームを開いたら、次にやるレッスンまでスクロールする
+    const currentId = getFrontierLessonId();
+    let currentNode = null;
+    const levelOfUnit = {};
+    LEVELS.forEach((lv) => lv.unitIds.forEach((uid) => (levelOfUnit[uid] = lv)));
+    let lastLevelId = null;
 
     UNITS.forEach((unit) => {
+      // レベルが変わるところに区切りを入れる
+      const lv = levelOfUnit[unit.id];
+      if (lv && lv.id !== lastLevelId) {
+        lastLevelId = lv.id;
+        const lessons = getLevelLessons(lv);
+        const done = lessons.filter((l) => AppState.isLessonCompleted(l.id)).length;
+        const divider = el("button", "level-divider" + (done === lessons.length && lessons.length ? " is-cleared" : ""));
+        divider.type = "button";
+        divider.appendChild(el("span", "level-divider-label", lv.label));
+        divider.appendChild(el("span", "level-divider-hsk", `${lv.hskLabel}・${done}/${lessons.length}`));
+        divider.addEventListener("click", () => renderRoadmap(renderHome));
+        path.appendChild(divider);
+      }
       const unitHeader = el("div", "unit-header");
       const unitTitleWrap = el("div", "unit-title-wrap");
       unitTitleWrap.appendChild(el("div", "unit-icon", unit.icon));
@@ -415,6 +458,11 @@
         circle.disabled = !unlocked;
         circle.addEventListener("click", () => startLesson(lesson.id));
         node.appendChild(circle);
+        if (lesson.id === currentId) {
+          node.classList.add("lesson-node--current");
+          node.appendChild(el("div", "lesson-current-badge", "ここから"));
+          currentNode = node;
+        }
         node.appendChild(el("div", "lesson-title", lesson.title));
 
         if (completed) {
@@ -434,6 +482,14 @@
     screen.appendChild(renderBottomNav("study"));
 
     appRoot.appendChild(screen);
+    if (currentNode) {
+      // 描画が終わってから、次のレッスンが画面の真ん中に来るようにスクロールする
+      requestAnimationFrame(() => {
+        const rect = currentNode.getBoundingClientRect();
+        const target = window.scrollY + rect.top - window.innerHeight / 2 + rect.height / 2;
+        window.scrollTo({ top: Math.max(0, target), behavior: "auto" });
+      });
+    }
   }
 
   // 下部タブ(学習・練習・発見・トーク・マイページ)
