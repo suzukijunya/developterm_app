@@ -2658,4 +2658,6 @@ const EXERCISE_SKILL = {
   translate_choice: "reading",
   writing_cn: "writing",
   writing_pinyin: "writing",
+  dialogue_listening: "listening",
+  dialogue_reading: "reading",
 };

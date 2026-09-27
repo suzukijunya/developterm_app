@@ -8507,3 +8507,239 @@ body.hide-translation .tr-text {
     animation: none;
   }
 }
+
+/* ===== 会話(3往復)の長文問題 ===== */
+.cs-ex--dialogue {
+  gap: 12px;
+}
+
+.dl-cast {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dl-person {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 10px 6px 6px;
+  border-radius: 999px;
+  background: var(--card-bg);
+}
+
+.dl-person--B {
+  flex-direction: row-reverse;
+  padding: 6px 6px 6px 10px;
+  text-align: right;
+}
+
+.dl-avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--orange-soft);
+  font-size: 20px;
+}
+
+.dl-person--B .dl-avatar {
+  background: rgba(28, 176, 246, 0.16);
+}
+
+.dl-person-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.dl-person-name {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dl-person-role {
+  font-size: 10px;
+  color: var(--text-light);
+}
+
+.dl-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 10px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+}
+
+.dl-line {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.dl-line--B {
+  flex-direction: row-reverse;
+}
+
+.dl-line-avatar {
+  flex-shrink: 0;
+  font-size: 22px;
+}
+
+.dl-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 80%;
+  padding: 8px 12px;
+  border: 2px solid transparent;
+  border-radius: 16px 16px 16px 4px;
+  background: var(--card-bg);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 2px 0 var(--shadow-neutral);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.dl-line--B .dl-bubble {
+  border-radius: 16px 16px 4px 16px;
+  background: #e8f6ff;
+}
+
+@media (prefers-color-scheme: dark) {
+  .dl-line--B .dl-bubble {
+    background: #1d3a4d;
+  }
+}
+
+.dl-line.is-speaking .dl-bubble {
+  border-color: var(--orange);
+  transform: scale(1.02);
+}
+
+.dl-ruby {
+  font-size: 17px;
+}
+
+.dl-ja {
+  display: none;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-light);
+}
+
+.dl-hidden {
+  display: none;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+}
+
+.dl-wave {
+  width: 4px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--locked);
+}
+
+.dl-line.is-speaking .dl-wave {
+  background: var(--orange);
+  animation: dl-wave 0.7s ease-in-out infinite;
+}
+
+.dl-wave:nth-child(2) {
+  animation-delay: 0.1s !important;
+}
+
+.dl-wave:nth-child(3) {
+  animation-delay: 0.2s !important;
+}
+
+.dl-wave:nth-child(4) {
+  animation-delay: 0.3s !important;
+}
+
+.dl-wave:nth-child(5) {
+  animation-delay: 0.4s !important;
+}
+
+@keyframes dl-wave {
+  0%,
+  100% {
+    height: 6px;
+  }
+  50% {
+    height: 20px;
+  }
+}
+
+/* 聞き取り問題: 回答するまで文字を隠して波形だけ見せる */
+.is-listening:not(.is-revealed) .dl-hidden {
+  display: flex;
+}
+
+.is-listening:not(.is-revealed) .dl-text {
+  display: none;
+}
+
+.is-listening:not(.is-revealed) .dl-bubble {
+  min-width: 70px;
+}
+
+/* 回答後は日本語訳も表示 */
+.is-revealed .dl-ja {
+  display: block;
+}
+
+body.hide-translation .is-revealed .dl-ja {
+  display: none;
+}
+
+.dl-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dl-play {
+  width: 48px;
+  height: 48px;
+  padding: 13px;
+}
+
+.dl-slow {
+  margin-top: 0;
+}
+
+.dl-slow.is-on {
+  background: var(--orange-dark);
+}
+
+.dl-status {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-light);
+}
+
+.dl-question {
+  padding: 10px 12px;
+  border-left: 4px solid var(--orange);
+  border-radius: 10px;
+  background: var(--card-bg);
+  font-size: 16px;
+  font-weight: 900;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dl-line.is-speaking .dl-wave {
+    animation: none;
+  }
+}

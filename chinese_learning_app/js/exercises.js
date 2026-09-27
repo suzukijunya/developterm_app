@@ -1171,6 +1171,117 @@ const Exercises = (() => {
     };
   }
 
+  // ---------- 会話(3往復)の長文: 聞いて答える / 読んで答える ----------
+  function renderDialogue(exercise, api) {
+    const listening = exercise.type === "dialogue_listening";
+    const wrap = el("div", "cs-ex cs-ex--dialogue" + (listening ? " is-listening" : " is-reading"));
+
+    // 登場人物
+    const cast = el("div", "dl-cast");
+    ["A", "B"].forEach((k) => {
+      const sp = exercise.speakers[k];
+      const who = el("div", `dl-person dl-person--${k}`);
+      who.appendChild(el("span", "dl-avatar", sp.icon));
+      const t = el("span", "dl-person-text");
+      t.appendChild(el("span", "dl-person-name", sp.name));
+      t.appendChild(el("span", "dl-person-role", sp.role));
+      who.appendChild(t);
+      cast.appendChild(who);
+    });
+    wrap.appendChild(cast);
+
+    // 会話の吹き出し。聞き取り問題では回答するまで文字を隠す
+    const thread = el("div", "dl-thread");
+    const bubbles = exercise.lines.map(([k, hanzi, pinyin, ja], i) => {
+      const row = el("div", `dl-line dl-line--${k}`);
+      row.appendChild(el("span", "dl-line-avatar", exercise.speakers[k].icon));
+      const bubble = el("button", "dl-bubble");
+      bubble.type = "button";
+      const hidden = el("span", "dl-hidden");
+      for (let n = 0; n < 5; n++) hidden.appendChild(el("span", "dl-wave"));
+      const text = el("span", "dl-text");
+      text.appendChild(Ruby.render(hanzi, pinyin, { className: "dl-ruby" }));
+      const tr = el("span", "dl-ja", ja);
+      bubble.append(hidden, text, tr);
+      bubble.addEventListener("click", () => playFrom(i, true));
+      row.appendChild(bubble);
+      thread.appendChild(row);
+      return { row, bubble, k, hanzi };
+    });
+    wrap.appendChild(thread);
+
+    // 再生コントロール(人物ごとに声の高さを変えて読み上げる)
+    let token = 0;
+    let slow = false;
+    const controls = el("div", "dl-controls");
+    const playBtn = iconButton("cs-speaker dl-play", Icons.play, "会話を最初から再生");
+    const slowBtn = iconButton("cs-speaker cs-speaker--slow dl-slow", Icons.slow, "ゆっくり再生");
+    const status = el("span", "dl-status", listening ? "会話を聞いて、質問に答えよう" : "吹き出しをタップすると読み上げます");
+    playBtn.addEventListener("click", () => playFrom(0, false));
+    slowBtn.addEventListener("click", () => {
+      slow = !slow;
+      slowBtn.classList.toggle("is-on", slow);
+      playFrom(0, false);
+    });
+    controls.append(playBtn, slowBtn, status);
+    wrap.appendChild(controls);
+
+    async function playFrom(start, single) {
+      const my = ++token;
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+      const end = single ? start + 1 : bubbles.length;
+      for (let i = start; i < end; i++) {
+        if (my !== token || !wrap.isConnected) return;
+        bubbles.forEach((b, j) => b.row.classList.toggle("is-speaking", j === i));
+        if (!single) status.textContent = `再生中… ${i + 1} / ${bubbles.length}`;
+        const b = bubbles[i];
+        await Speech.speak(b.hanzi, { rate: slow ? 0.6 : 0.88, pitch: b.k === "A" ? 1.12 : 0.86 }).catch(() => {});
+        await new Promise((r) => setTimeout(r, 350));
+      }
+      if (my !== token) return;
+      bubbles.forEach((b) => b.row.classList.remove("is-speaking"));
+      if (!single) status.textContent = listening && !revealed ? "もう一度聞くには ▶ をタップ" : "吹き出しをタップすると1文ずつ聞けます";
+    }
+
+    // 質問は会話の上に出して、質問を意識しながら聞く・読めるようにする
+    const q = el("div", "dl-question", `Q. ${exercise.question}`);
+    wrap.insertBefore(q, thread);
+    let selected = null;
+    let revealed = false;
+    const list = choiceList(
+      exercise.choices.map((c) => ({ label: c.text, value: c })),
+      {
+        onPick: (value) => {
+          selected = value;
+          api.submit();
+        },
+      }
+    );
+    wrap.appendChild(list.el);
+
+    if (listening) setTimeout(() => wrap.isConnected && playFrom(0, false), 500);
+
+    return {
+      element: wrap,
+      instruction: listening ? "会話を聞いて、質問に答えなさい" : "会話を読んで、質問に答えなさい",
+      submitMode: "tap",
+      check() {
+        return choiceResult(exercise, selected);
+      },
+      reveal() {
+        revealed = true;
+        list.mark(exercise.choices.find((c) => c.correct), selected);
+        // 答えたら全文(ピンイン・日本語訳つき)を見せる
+        wrap.classList.add("is-revealed");
+        status.textContent = "吹き出しをタップすると1文ずつ聞けます";
+      },
+      dispose() {
+        token++;
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+      },
+    };
+  }
+
   const renderers = {
     listening_choice: renderListeningChoice,
     translate_choice: renderTranslateChoice,
@@ -1181,6 +1292,8 @@ const Exercises = (() => {
     match_pairs: renderMatchPairs,
     fill_blank: renderFillBlank,
     sentence_build: renderSentenceBuild,
+    dialogue_listening: renderDialogue,
+    dialogue_reading: renderDialogue,
   };
 
   function render(exercise, api) {
