@@ -88,6 +88,20 @@
 
   // 特別コースのカード(ホームの上の方に置き、いつでも始められるようにする)
   function renderSpecialCourses(container) {
+    if (typeof Courses !== "undefined" && Courses.count() > 1) {
+      const card = el("button", "special-card");
+      card.type = "button";
+      card.appendChild(el("div", "special-card-icon", "💼"));
+      const mid = el("div", "special-card-mid");
+      mid.appendChild(el("div", "special-card-kicker", "特別コース"));
+      mid.appendChild(el("div", "special-card-title", `30ラリー会話コース 全${Courses.count()}本`));
+      mid.appendChild(el("div", "special-card-sub", "貿易・工場・IT・法務・生活など、場面ごとに通しで練習"));
+      card.appendChild(mid);
+      card.appendChild(el("div", "special-card-count", "›"));
+      card.addEventListener("click", () => Courses.catalog(renderHome));
+      container.appendChild(card);
+      return;
+    }
     UNITS.filter((u) => u.special).forEach((unit) => {
       const done = unit.lessons.filter((l) => AppState.isLessonCompleted(l.id)).length;
       const next = unit.lessons.find((l) => !AppState.isLessonCompleted(l.id));
@@ -1179,10 +1193,12 @@
       if (window.speechSynthesis) window.speechSynthesis.cancel();
     }
 
+    // 特別コースなど、ホーム以外から始めたレッスンは元の画面へ戻る
+    const exitTo = options.onExit || renderHome;
     function quit() {
       leaveExercise();
       commitStudyTime();
-      renderHome();
+      exitTo();
     }
 
     function renderExerciseScreen() {
@@ -1380,7 +1396,7 @@
         const reward = Rewards.onLessonComplete({ accuracy, firstTime, maxCombo, isReview });
         const unitCleared = !!unit && !unitDoneBefore && unit.lessons.every((l) => AppState.isLessonCompleted(l.id));
         const levelCleared = !!level && !levelDoneBefore && getLevelLessons(level).every((l) => AppState.isLessonCompleted(l.id));
-        renderSummaryScreen(lesson, { accuracy, sessionXp, isReview, maxCombo, reward, unit: unitCleared ? unit : null, level: levelCleared ? level : null });
+        renderSummaryScreen(lesson, { accuracy, sessionXp, isReview, maxCombo, reward, unit: unitCleared ? unit : null, level: levelCleared ? level : null, exitTo });
       } else {
         renderExerciseScreen();
       }
@@ -1396,7 +1412,7 @@
     renderExerciseScreen();
   }
 
-  function renderSummaryScreen(lesson, { accuracy, sessionXp, isReview, maxCombo, reward = null, unit = null, level = null }) {
+  function renderSummaryScreen(lesson, { accuracy, sessionXp, isReview, maxCombo, reward = null, unit = null, level = null, exitTo = renderHome }) {
     clear(appRoot);
     setTimeout(() => Motion.Sfx.complete(), 250);
     const pct = Math.round(accuracy * 100);
@@ -1490,7 +1506,7 @@
     const runSteps = () => {
       const step = afterSteps.shift();
       if (step) step(runSteps);
-      else renderHome();
+      else exitTo();
     };
 
     const footer = el("div", "cs-footer cs-result-footer");

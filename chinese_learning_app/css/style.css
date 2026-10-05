@@ -8823,3 +8823,257 @@ body.hide-translation .is-revealed .dl-ja {
 .level-divider--special .level-divider-label {
   color: #1c8ad6;
 }
+
+/* ===== 特別コース一覧(courses.js) ===== */
+.co-hero {
+  padding: 18px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #1c8ad6, #0f5e99);
+  color: #fff;
+}
+
+.co-hero-title {
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.co-hero-sub {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+  opacity: 0.92;
+}
+
+.co-resume {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 2px solid #1c8ad6;
+  border-radius: 16px;
+  background: var(--card-bg);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.co-resume-icon {
+  font-size: 28px;
+}
+
+.co-resume-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.co-resume-kicker {
+  font-size: 11px;
+  font-weight: 900;
+  color: #1c8ad6;
+}
+
+.co-resume-title {
+  font-weight: 900;
+}
+
+.co-resume-count,
+.co-card-count {
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--text-light);
+}
+
+.co-chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.co-chip {
+  flex-shrink: 0;
+  padding: 7px 12px;
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  background: var(--card-bg);
+  color: var(--text-light);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.co-chip.is-on {
+  border-color: #1c8ad6;
+  background: #1c8ad6;
+  color: #fff;
+}
+
+.co-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.co-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: none;
+  border-radius: 16px;
+  background: var(--card-bg);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--shadow-neutral);
+}
+
+.co-card:active {
+  transform: translateY(3px);
+  box-shadow: none;
+}
+
+.co-card-icon {
+  font-size: 30px;
+}
+
+.co-card-mid {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.co-card-cat {
+  font-size: 11px;
+  font-weight: 900;
+  color: #1c8ad6;
+}
+
+.co-card-title {
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.co-card-desc {
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--text-light);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.co-card-bar {
+  height: 5px;
+  margin-top: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--track);
+}
+
+.co-card-fill {
+  display: block;
+  height: 100%;
+  background: #1c8ad6;
+}
+
+.co-card.is-done .co-card-count {
+  color: var(--green-dark);
+}
+
+.co-loading {
+  padding: 40px 0;
+  color: var(--text-light);
+  text-align: center;
+}
+
+.co-head {
+  padding: 16px;
+  border-radius: 18px;
+  background: var(--card-bg);
+}
+
+.co-head-icon {
+  font-size: 40px;
+}
+
+.co-head-desc {
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.co-cast {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-light);
+}
+
+.co-cast-person {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.co-lesson {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: none;
+  border-radius: 16px;
+  background: var(--card-bg);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--shadow-neutral);
+}
+
+.co-lesson-num {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--locked);
+  color: #fff;
+  font-weight: 900;
+}
+
+.co-lesson.is-open .co-lesson-num {
+  background: #1c8ad6;
+  box-shadow: 0 3px 0 #146aa6;
+}
+
+.co-lesson.is-done .co-lesson-num {
+  background: var(--yellow);
+  color: #7a5900;
+}
+
+.co-lesson.is-locked {
+  opacity: 0.6;
+}
+
+.co-lesson-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.co-lesson-title {
+  font-weight: 900;
+}
+
+.co-lesson-sub {
+  font-size: 12px;
+  color: var(--text-light);
+}
