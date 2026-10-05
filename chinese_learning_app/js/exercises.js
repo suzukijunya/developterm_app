@@ -1224,7 +1224,7 @@ const Exercises = (() => {
       playFrom(0, false);
     });
     controls.append(playBtn, slowBtn, status);
-    wrap.appendChild(controls);
+    wrap.insertBefore(controls, thread);
 
     async function playFrom(start, single) {
       const my = ++token;
@@ -1245,7 +1245,7 @@ const Exercises = (() => {
 
     // 質問は会話の上に出して、質問を意識しながら聞く・読めるようにする
     const q = el("div", "dl-question", `Q. ${exercise.question}`);
-    wrap.insertBefore(q, thread);
+    wrap.insertBefore(q, controls);
     let selected = null;
     let revealed = false;
     const list = choiceList(

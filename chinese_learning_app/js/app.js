@@ -19,13 +19,23 @@
 
   // 直前のレッスンを終えていれば解放。あとからユニットを途中に追加しても、
   // すでにそれより先のレッスンを終えている人には追加分も含めて解放する
+  // 特別コース(unit.special)はレベルの順番に関係なく、ユニット内で順に解放する。
+  // 通常のレッスンの解放判定・現在地の判定では、特別コースは数に入れない
   function isLessonUnlocked(lessonId) {
     const idx = lessonIndexById(lessonId);
-    if (idx <= 0) return true;
+    if (idx < 0) return false;
     if (AppState.isLessonCompleted(lessonId)) return true;
-    if (AppState.isLessonCompleted(FLAT_LESSONS[idx - 1].lesson.id)) return true;
-    for (let i = idx + 1; i < FLAT_LESSONS.length; i++) {
-      if (AppState.isLessonCompleted(FLAT_LESSONS[i].lesson.id)) return true;
+    const { unit } = FLAT_LESSONS[idx];
+    if (unit.special) {
+      const pos = unit.lessons.findIndex((l) => l.id === lessonId);
+      return pos <= 0 || AppState.isLessonCompleted(unit.lessons[pos - 1].id);
+    }
+    const regular = FLAT_LESSONS.filter((x) => !x.unit.special);
+    const ri = regular.findIndex((x) => x.lesson.id === lessonId);
+    if (ri <= 0) return true;
+    if (AppState.isLessonCompleted(regular[ri - 1].lesson.id)) return true;
+    for (let i = ri + 1; i < regular.length; i++) {
+      if (AppState.isLessonCompleted(regular[i].lesson.id)) return true;
     }
     return false;
   }
@@ -66,13 +76,38 @@
   // 次にやるレッスン = 最後に終えたレッスンより後で、まだ終えていない最初のもの。
   // (あとから途中に追加されたユニットは解放されているが、「現在地」は進んだ先に置く)
   function getFrontierLessonId() {
+    const regular = FLAT_LESSONS.filter((x) => !x.unit.special);
     let lastDone = -1;
-    FLAT_LESSONS.forEach(({ lesson }, i) => {
+    regular.forEach(({ lesson }, i) => {
       if (AppState.isLessonCompleted(lesson.id)) lastDone = i;
     });
     const isOpen = ({ lesson }) => !AppState.isLessonCompleted(lesson.id) && isLessonUnlocked(lesson.id);
-    const entry = FLAT_LESSONS.slice(lastDone + 1).find(isOpen) || FLAT_LESSONS.find(isOpen);
+    const entry = regular.slice(lastDone + 1).find(isOpen) || regular.find(isOpen);
     return entry ? entry.lesson.id : null;
+  }
+
+  // 特別コースのカード(ホームの上の方に置き、いつでも始められるようにする)
+  function renderSpecialCourses(container) {
+    UNITS.filter((u) => u.special).forEach((unit) => {
+      const done = unit.lessons.filter((l) => AppState.isLessonCompleted(l.id)).length;
+      const next = unit.lessons.find((l) => !AppState.isLessonCompleted(l.id));
+      const card = el("button", "special-card");
+      card.type = "button";
+      card.appendChild(el("div", "special-card-icon", unit.icon));
+      const mid = el("div", "special-card-mid");
+      mid.appendChild(el("div", "special-card-kicker", "特別コース"));
+      mid.appendChild(el("div", "special-card-title", unit.title));
+      mid.appendChild(el("div", "special-card-sub", next ? `次: ${next.title}` : "全レッスン修了!何度でも復習できます"));
+      const bar = el("div", "special-card-bar");
+      const fill = el("div", "special-card-fill");
+      fill.style.width = `${(done / unit.lessons.length) * 100}%`;
+      bar.appendChild(fill);
+      mid.appendChild(bar);
+      card.appendChild(mid);
+      card.appendChild(el("div", "special-card-count", `${done}/${unit.lessons.length}`));
+      card.addEventListener("click", () => startLesson((next || unit.lessons[0]).id));
+      container.appendChild(card);
+    });
   }
 
   // レベルごとの状態を判定する。次にやるレッスンを含むレベルを「current」とし、
@@ -417,6 +452,7 @@
     screen.appendChild(ChineseValue.teaser(() => ChineseValue.screen(renderHome)));
     renderDailyGoal(screen);
     renderWeakReviewCard(screen);
+    renderSpecialCourses(screen);
     screen.appendChild(Rewards.questCard(renderHome));
 
     const path = el("div", "skill-path");
@@ -430,6 +466,13 @@
     UNITS.forEach((unit) => {
       // レベルが変わるところに区切りを入れる
       const lv = levelOfUnit[unit.id];
+      if (!lv && unit.special && lastLevelId !== "special") {
+        lastLevelId = "special";
+        const divider = el("div", "level-divider level-divider--special");
+        divider.appendChild(el("span", "level-divider-label", "特別コース"));
+        divider.appendChild(el("span", "level-divider-hsk", "いつでも挑戦できます"));
+        path.appendChild(divider);
+      }
       if (lv && lv.id !== lastLevelId) {
         lastLevelId = lv.id;
         const lessons = getLevelLessons(lv);
