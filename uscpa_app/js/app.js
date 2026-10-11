@@ -701,6 +701,13 @@ const App = (() => {
 
   // キャプチャ段階で処理して、選択肢の回答やカードの操作と同時に起きないようにする
   function onPieceTap(e) {
+    const strip = e.target.closest && e.target.closest(".c-tools");
+    if (strip && !e.target.closest("[data-cjab], [data-say]")) {
+      // ボタンの周りの余白を押した場合は、回答にならないよう何もしない
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     const t = e.target.closest && e.target.closest("[data-cjab], .q-en [data-cl]");
     if (!t) return;
     if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
@@ -743,24 +750,46 @@ const App = (() => {
     current.section = q.section;
     const picked = session.picks[q.id];
     const answered = picked !== undefined;
+    const confirmMode = !!Store.get().prefs.confirmAnswer;
+    const pending = !answered && confirmMode && session.pending && session.pending.qid === q.id ? session.pending.k : undefined;
     const body = `
       ${bar(idx / qs.length)}
-      ${questionHtml(q, idx, qs.length, { picked, reveal: true })}
+      ${questionHtml(q, idx, qs.length, answered ? { picked, reveal: true } : { picked: pending, reveal: false })}
       <div class="btn-row sticky">
         <a class="btn" href="${session.back}">中断</a>
-        ${answered ? `<button class="btn primary" data-act="next">${idx + 1 < qs.length ? "次の問題 ›" : "結果を見る"}</button>` : `<span class="muted small kb">キーボード:1〜4 / A〜D で解答</span>`}
+        ${
+          answered
+            ? `<button class="btn primary" data-act="next">${idx + 1 < qs.length ? "次の問題 ›" : "結果を見る"}</button>`
+            : confirmMode
+            ? `<button class="btn primary" data-act="commit" ${pending === undefined ? "disabled" : ""}>${pending === undefined ? "選択肢を選んでください" : `${letters[pending]} で解答する`}</button>`
+            : `<span class="muted small kb">キーボード:1〜4 / A〜D で解答</span>`
+        }
       </div>`;
     page({ title: esc(session.title), back: session.back, body, tab: null });
 
+    // 再描画してもスクロール位置を保つ(解説や選択中の選択肢が見えたままにする)
+    const keepScroll = () => {
+      const y = window.scrollY;
+      viewQuiz();
+      window.scrollTo(0, y);
+    };
+    const commit = (k) => {
+      session.pending = null;
+      session.picks[q.id] = k;
+      Store.answer(q.id, k === q.a);
+      keepScroll();
+    };
     $app.querySelectorAll(".choice").forEach((b) => {
       b.onclick = () => {
         if (session.picks[q.id] !== undefined) return;
         const k = +b.dataset.k;
-        session.picks[q.id] = k;
-        Store.answer(q.id, k === q.a);
-        viewQuiz();
+        if (!confirmMode || pending === k) return commit(k);
+        session.pending = { qid: q.id, k };
+        keepScroll();
       };
     });
+    const cm = $app.querySelector("[data-act=commit]");
+    if (cm && pending !== undefined) cm.onclick = () => commit(pending);
     bindQuestionCommon(q, viewQuiz);
     const nx = $app.querySelector("[data-act=next]");
     if (nx)
@@ -1309,6 +1338,7 @@ const App = (() => {
                 .join("")}</div></div>`
             : `<p class="muted small">このブラウザは英語の読み上げに対応していません。</p>`
         }
+        <label class="check"><input type="checkbox" id="s-confirm" ${st.prefs.confirmAnswer ? "checked" : ""}> 選択肢を選んでから「解答する」で確定する(誤タップ防止)</label>
         <label class="check"><input type="checkbox" id="s-qt" ${st.prefs.autoTranslate !== false ? "checked" : ""}> 英文を選択したら自動で翻訳する</label>
       </div>
 
@@ -1353,6 +1383,7 @@ const App = (() => {
         Speech.speak("Relevance and faithful representation.");
       };
     });
+    $app.querySelector("#s-confirm").onchange = (e) => Store.setPref("confirmAnswer", e.target.checked);
     $app.querySelector("#s-qt").onchange = (e) => Store.setPref("autoTranslate", e.target.checked);
     const $box = $app.querySelector("#s-backup");
     const $text = $app.querySelector("#s-text");
@@ -1829,7 +1860,7 @@ const App = (() => {
       const btn = $app.querySelectorAll(".choice")[idx];
       if (btn && btn.getAttribute("aria-disabled") !== "true") btn.click();
     } else if (e.key === "Enter" || e.key === "ArrowRight") {
-      const nx = $app.querySelector("[data-act=next]");
+      const nx = $app.querySelector("[data-act=next], [data-act=commit]:not([disabled])");
       if (nx) nx.click();
     }
   }
