@@ -424,3 +424,78 @@ CPA.extend("REG-01", {
     },
   ],
 });
+
+CPA.tbs({ id: "TBS-REG-10", section: "REG", chapter: "REG-01", title: "納税者ペナルティの計算(不提出・不納付・正確性関連・不正)",
+  scenario: `<p>Mai Tanaka, an individual, did not request an extension. Her return was due April 15 and was filed on July 20 of the same year. Facts:</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Tax shown on the return</td><td>$40,000</td></tr>
+<tr><td>Income tax withheld during the year</td><td>$10,000</td></tr>
+<tr><td>Balance due, paid in full with the return on July 20</td><td>$30,000</td></tr>
+<tr><td>Correct tax liability determined on later IRS examination</td><td>$52,000</td></tr></table>
+<p>Compute the failure-to-file and failure-to-pay penalties on the balance due shown on the return as filed (ignore the later deficiency and any minimum penalty for these two penalties). The understatement found on examination has no substantial authority, was not disclosed, and there is no reasonable cause. Fraud is not involved unless a row states otherwise.</p>
+<p class="ja">個人のMai Tanakaは延長申請をしなかった。申告期限は4月15日で、同年7月20日に申告書を提出した。申告税額$40,000、源泉徴収額$10,000、未納額$30,000は7月20日の申告時に全額納付した。後のIRS調査で正しい税額は$52,000と判定された。不提出・不納付ペナルティは提出された申告書上の未納額に基づいて計算する(後の不足税額と最低ペナルティは無視)。調査での過少申告には実質的根拠も開示も合理的理由もない。行に別段の記載がない限り不正はない。</p>`,
+  rows: [
+    { label: "Number of months (including partial months) the return was late(遅延月数(端数月を含む))", type: "num", answer: 4 },
+    { label: "Failure-to-pay penalty(不納付ペナルティ)", type: "num", answer: 600 },
+    { label: "Failure-to-file penalty, after reduction for the failure-to-pay penalty(不納付ペナルティ控除後の不提出ペナルティ)", type: "num", answer: 5400 },
+    { label: "Is the understatement found on examination a substantial understatement?(調査で判明した過少申告は重大な過少申告に該当するか)", type: "select", options: ["Yes", "No"], answer: "Yes" },
+    { label: "Accuracy-related penalty on the understatement(過少申告に対する正確性関連ペナルティ)", type: "num", answer: 2400 },
+    { label: "Civil fraud penalty if the entire understatement were instead attributable to fraud(過少申告全額が不正による場合の民事不正ペナルティ)", type: "num", answer: 9000 },
+  ],
+  explain: `<p>4月15日から7月20日までは3か月と5日であり、端数月は1か月とするため4か月。</p>
+<p>不納付ペナルティ = 30,000 × 0.5% × 4 = 600。</p>
+<p>不提出ペナルティ = 30,000 × 5% × 4 = 6,000。同じ月に不納付ペナルティが課されるため600を控除し5,400(合計6,000)。</p>
+<p>過少申告額 = 52,000 − 40,000 = 12,000。基準は正しい税額の10%(5,200)と$5,000のいずれか大きい方で5,200。12,000 &gt; 5,200のため重大な過少申告に該当し、正確性関連ペナルティは20% × 12,000 = 2,400。</p>
+<p>不正の場合は75% × 12,000 = 9,000(正確性関連ペナルティとは同じ部分に重複して課されない)。</p>`,
+});
+
+CPA.tbs({ id: "TBS-REG-11", section: "REG", chapter: "REG-01", title: "査定・還付・徴収の期間制限",
+  scenario: `<p>Each of the following independent cases involves an individual's 2024 calendar-year federal income tax return, due April 15, 2025. No extensions of time to file were requested and no agreements to extend the statute of limitations were signed. For each case, select the date on which the relevant period expires.</p>
+<table><tr><th>Case</th><th>Facts</th></tr>
+<tr><td>A</td><td>Return filed March 3, 2025; no omission of income and no fraud. Period for the IRS to assess additional tax.</td></tr>
+<tr><td>B</td><td>Return filed October 6, 2025; no omission of income and no fraud. Period for the IRS to assess additional tax.</td></tr>
+<tr><td>C</td><td>Return filed April 15, 2025, reporting gross income of $200,000 (wages and interest only); $60,000 of gross income was omitted; no fraud. Period for the IRS to assess additional tax.</td></tr>
+<tr><td>D</td><td>Return filed April 15, 2025, with intent to evade tax. Period for the IRS to assess additional tax.</td></tr>
+<tr><td>E</td><td>Return filed March 3, 2025; all tax was paid through wage withholding. Latest date for the taxpayer to file a claim for refund that can recover the withheld tax.</td></tr>
+<tr><td>F</td><td>Tax was properly assessed on June 30, 2026. Period for the IRS to collect the tax by levy or court proceeding.</td></tr></table>
+<p class="ja">以下の独立したケースはいずれも、期限が2025年4月15日の個人の2024暦年連邦所得税申告書に関するものである。申告期限の延長申請も時効延長の合意もない。各ケースについて該当する期間の満了日を選択せよ。A:2025年3月3日提出、脱漏・不正なし(査定期間)。B:2025年10月6日提出、脱漏・不正なし(査定期間)。C:2025年4月15日提出、総所得$200,000(給与と利息のみ)を記載、総所得$60,000を脱漏、不正なし(査定期間)。D:2025年4月15日に脱税の意図をもって提出(査定期間)。E:2025年3月3日提出、税はすべて源泉徴収で納付(源泉税を回収できる還付請求の最終期限)。F:2026年6月30日に適正に査定(差押え・訴訟による徴収期間)。</p>`,
+  rows: [
+    { label: "Case A(ケースA)", type: "select", options: ["March 3, 2028", "April 15, 2028", "October 6, 2028", "April 15, 2031", "June 30, 2036", "No limitation"], answer: "April 15, 2028" },
+    { label: "Case B(ケースB)", type: "select", options: ["March 3, 2028", "April 15, 2028", "October 6, 2028", "April 15, 2031", "June 30, 2036", "No limitation"], answer: "October 6, 2028" },
+    { label: "Case C(ケースC)", type: "select", options: ["March 3, 2028", "April 15, 2028", "October 6, 2028", "April 15, 2031", "June 30, 2036", "No limitation"], answer: "April 15, 2031" },
+    { label: "Case D(ケースD)", type: "select", options: ["March 3, 2028", "April 15, 2028", "October 6, 2028", "April 15, 2031", "June 30, 2036", "No limitation"], answer: "No limitation" },
+    { label: "Case E(ケースE)", type: "select", options: ["March 3, 2028", "April 15, 2028", "October 6, 2028", "April 15, 2031", "June 30, 2036", "No limitation"], answer: "April 15, 2028" },
+    { label: "Case F(ケースF)", type: "select", options: ["March 3, 2028", "April 15, 2028", "October 6, 2028", "April 15, 2031", "June 30, 2036", "No limitation"], answer: "June 30, 2036" },
+  ],
+  explain: `<p>A:期限前の提出は期限日(2025年4月15日)に提出したものとみなされ、3年後の2028年4月15日に満了。</p>
+<p>B:期限後提出は実際の提出日から3年で2028年10月6日。</p>
+<p>C:脱漏額60,000は記載総所得200,000の30%で25%を超えるため査定期間は6年となり2031年4月15日。</p>
+<p>D:不正な申告書(および無申告)は期間制限がない。</p>
+<p>E:還付請求は申告から3年または納付から2年のいずれか遅い日まで。源泉徴収税は期限日に納付したものとみなされ、早期提出も期限日提出とみなされるため2028年4月15日。</p>
+<p>F:徴収期間は査定日から10年で2036年6月30日。</p>`,
+});
+
+CPA.tbs({ id: "TBS-REG-12", section: "REG", chapter: "REG-01", title: "監査人の第三者責任(コモンローと証券法)",
+  scenario: `<p>Kato &amp; Co., CPAs, audited the financial statements of Rivera Corp. The statements were materially misstated, and Kato failed to detect the misstatement because of its <b>ordinary negligence</b> (not gross negligence or fraud) unless a case states otherwise. Kato cannot establish a due diligence defense. Each plaintiff relied on the statements (unless stated otherwise) and suffered losses caused by the misstatement. Determine whether Kato is liable to each plaintiff.</p>
+<table><tr><th>Plaintiff</th><th>Facts</th></tr>
+<tr><td>Ace Bank</td><td>Kato's engagement letter stated that the audit was being performed so that Ace Bank could decide on a loan to Rivera. Ace's state follows Ultramares/near-privity.</td></tr>
+<tr><td>Baker Supply (Restatement state)</td><td>A trade creditor that Kato did not know about. Its state follows the Restatement (Second) of Torts §552.</td></tr>
+<tr><td>Baker Supply (foreseeability state)</td><td>Same facts, but assume the state follows the reasonably foreseeable user approach.</td></tr>
+<tr><td>Cole</td><td>Bought shares in Rivera's registered IPO, whose registration statement included the misstated statements; Cole never read them and sues under Section 11 of the 1933 Act.</td></tr>
+<tr><td>Dunn</td><td>Bought Rivera shares on a stock exchange and sues under Rule 10b-5 of the 1934 Act.</td></tr>
+<tr><td>Evans</td><td>A trade creditor unknown to Kato in a Restatement state; assume Kato's audit was performed with reckless disregard for the truth (gross negligence).</td></tr></table>
+<p class="ja">Kato &amp; Co.(CPA事務所)はRivera社の財務諸表を監査した。財務諸表には重要な虚偽表示があり、別段の記載がない限りKatoは通常の過失(重過失・詐欺ではない)によりそれを発見できなかった。Katoはデューデリジェンスの抗弁を立証できない。各原告は(別段の記載がない限り)財務諸表に依拠し、虚偽表示による損失を被った。Ace Bank:契約書にAce Bankの融資判断のための監査と明記、州はUltramares/near-privity。Baker Supply:Katoが知らない取引債権者、州はRestatement §552(および、foreseeabilityの州と仮定した場合)。Cole:登録IPOで購入、財務諸表は読んでおらず第11条で提訴。Dunn:取引所で購入しRule 10b-5で提訴。Evans:Restatement州の未知の取引債権者だが、Katoは真実を無謀に無視した(重過失)。</p>`,
+  rows: [
+    { label: "Ace Bank(Ace Bank)", type: "select", options: ["Liable", "Not liable"], answer: "Liable" },
+    { label: "Baker Supply — Restatement state(Baker Supply:Restatementの州)", type: "select", options: ["Liable", "Not liable"], answer: "Not liable" },
+    { label: "Baker Supply — foreseeability state(Baker Supply:予見可能性の州)", type: "select", options: ["Liable", "Not liable"], answer: "Liable" },
+    { label: "Cole — Section 11(Cole:第11条)", type: "select", options: ["Liable", "Not liable"], answer: "Liable" },
+    { label: "Dunn — Rule 10b-5(Dunn:Rule 10b-5)", type: "select", options: ["Liable", "Not liable"], answer: "Not liable" },
+    { label: "Evans — gross negligence(Evans:重過失)", type: "select", options: ["Liable", "Not liable"], answer: "Liable" },
+  ],
+  explain: `<p>Ace Bank:契約上の主たる受益者(既知の利用者)であり、Ultramares/near-privityでも過失責任を負う。</p>
+<p>Baker Supply:Restatementでは監査人が知っていた限定的な利用者の範囲に限られるため、未知の取引債権者には通常の過失で責任を負わない。予見可能性アプローチなら合理的に予見可能な利用者として責任を負う。</p>
+<p>Cole:第11条では依拠も過失も立証不要で、重要な虚偽表示と損害を示せばよい。監査人はデューデリジェンスの抗弁を立証できないため責任を負う。</p>
+<p>Dunn:Rule 10b-5はscienter(故意または無謀)が必要で、通常の過失では責任を負わない。</p>
+<p>Evans:重過失(擬制詐欺)は予見可能な第三者全般に責任が及ぶため、契約関係や既知性は不要。</p>`,
+});
