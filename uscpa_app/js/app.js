@@ -476,23 +476,85 @@ const App = (() => {
     else go("#/quiz");
   }
 
+  // ---- 部分ごとの和訳 ----
+  // 問題文は句読点や接続語の前で短いかたまりに分け、タップしたかたまりだけを訳す。
+  // 選択肢は「訳」ボタンを押したものだけを訳す。表示中の訳は問題IDごとに覚えておく。
+  const shownClauses = new Map(); // qid -> Set(かたまり番号)
+  const shownChoices = new Map(); // qid -> Set(選択肢番号)
+  const jaCache = new Map(); // 英文 -> 訳(起動中のみ。端末への保存は QuickTranslate が行う)
+  const SPLIT_WORDS = ["that", "which", "who", "whose", "when", "where", "if", "because", "unless", "under", "during", "for", "from", "by", "to", "on", "with", "and"];
+
+  function splitClauses(text) {
+    // 句読点の直後で分ける(古い Safari は後読み正規表現に未対応のため使わない)
+    // 文末(U.S. などの略語は除く)でも分ける
+    const pieces = text
+      .replace(/([,;:?])\s+/g, "$1\u0000")
+      .replace(/([a-z0-9)%]{2}\.)\s+(?=[A-Z])/g, "$1\u0000")
+      .split("\u0000");
+    const out = [];
+    const cut = (t) => {
+      if (t.length <= 55) return out.push(t);
+      // 真ん中に近い接続語の前で分ける(両側が短くなりすぎない位置だけ)
+      let best = -1;
+      const re = new RegExp("\\s(?=(" + SPLIT_WORDS.join("|") + ")\\s)", "gi");
+      let m;
+      while ((m = re.exec(t))) {
+        if (m.index < 22 || t.length - m.index < 18) continue;
+        // 「for which」「to whom」のような前置詞の直後では分けない
+        if (/\b(for|to|of|in|on|by|with|from|at|about|under)$/i.test(t.slice(0, m.index))) continue;
+        if (best < 0 || Math.abs(m.index - t.length / 2) < Math.abs(best - t.length / 2)) best = m.index;
+      }
+      if (best < 0) return out.push(t);
+      cut(t.slice(0, best));
+      cut(t.slice(best + 1));
+    };
+    pieces.forEach(cut);
+    return out;
+  }
+
+  function translatePiece(text) {
+    if (jaCache.has(text)) return Promise.resolve(jaCache.get(text));
+    if (typeof QuickTranslate === "undefined") return Promise.resolve(null);
+    return QuickTranslate.translateLines([text]).then((r) => {
+      if (r[0]) jaCache.set(text, r[0]);
+      return r[0];
+    });
+  }
+
+  function fillPiece(el, text) {
+    if (jaCache.has(text)) {
+      el.textContent = jaCache.get(text);
+      return;
+    }
+    translatePiece(text).then((ja) => {
+      el.textContent = ja || "(訳を取得できませんでした)";
+      el.classList.toggle("fail", !ja);
+    });
+  }
+
   function questionHtml(q, i, total, opts) {
     const r = Store.qRec(q.id);
     const showJa = Store.get().prefs.showJa;
     const picked = opts.picked;
     const reveal = opts.reveal && picked !== undefined;
+    const sc = shownClauses.get(q.id) || new Set();
+    const cc = shownChoices.get(q.id) || new Set();
+    const clauses = splitClauses(q.q);
     return `
       <div class="q-head">
         <span>${tag(q.section)} 問題 ${i + 1} / ${total}</span>
         <button class="flag ${r && r.flag ? "on" : ""}" data-act="flag" title="要復習に追加">⚑ 要復習</button>
       </div>
       <div class="q-box">
-        <p class="q-en">${esc(q.q)}</p>
+        <p class="q-en" data-qid="${q.id}">${clauses
+          .map((t, n) => `<span class="cl ${sc.has(n) ? "on" : ""}" data-cl="${n}">${esc(t)}</span>${sc.has(n) ? `<span class="cl-ja" data-clja="${n}">${esc(jaCache.get(t) || "…")}</span>` : ""}`)
+          .join(" ")}</p>
         ${Speech.button(q.q, "問題文", "inline")} ${Speech.button(q.q + " " + q.c.map((c, k) => letters[k] + ". " + c + ".").join(" "), "選択肢まで", "inline")}
-        <button class="ja-toggle" data-act="ja">${showJa ? "和訳を隠す" : "和訳を表示"}</button>${Store.get().prefs.autoTranslate !== false ? `<span class="ja-hint">英文を選択するとその部分だけ訳せます</span>` : ""}
+        <button class="ja-toggle" data-act="ja">${showJa ? "全文の和訳を隠す" : "全文の和訳"}</button>
+        <span class="ja-hint">わからない部分をタップするとそこだけ和訳します(もう一度タップで隠す)。選択肢は「訳」ボタンで。</span>
         <p class="q-ja ${showJa ? "" : "hidden"}">${esc(q.ja)}</p>
       </div>
-      <div class="choices">
+      <div class="choices" data-qid="${q.id}">
         ${q.c
           .map((c, k) => {
             let cls = "";
@@ -500,7 +562,11 @@ const App = (() => {
               if (k === q.a) cls = "correct";
               else if (k === picked) cls = "wrong";
             } else if (k === picked) cls = "picked";
-            return `<button class="choice ${cls}" data-k="${k}" ${reveal ? 'aria-disabled="true"' : ""}><span class="ck">${letters[k]}</span><span class="ctext">${esc(c)}${showJa ? `<span class="c-ja" data-cja="${k}">…</span>` : ""}</span>${Speech.button(c, "", "small")}</button>`;
+            return `<button class="choice ${cls}" data-k="${k}" ${reveal ? 'aria-disabled="true"' : ""}><span class="ck">${letters[k]}</span><span class="ctext"><span class="cen">${esc(c)}</span>${
+              cc.has(k) ? `<span class="c-ja" data-cja="${k}">${esc(jaCache.get(c) || "…")}</span>` : ""
+            }</span><span class="c-tools">${
+              /[A-Za-z]{3,}/.test(c) ? `<span class="cja-btn ${cc.has(k) ? "on" : ""}" role="button" tabindex="0" data-cjab="${k}" aria-label="この選択肢を和訳">訳</span>` : ""
+            }${Speech.button(c, "", "small")}</span></button>`;
           })
           .join("")}
       </div>
@@ -515,21 +581,85 @@ const App = (() => {
       }`;
   }
 
-  // 選択肢の和訳(自動翻訳)を埋める。画面が変わっていたら何もしない
-  function fillChoiceJa(q) {
-    const slots = $app.querySelectorAll("[data-cja]");
-    if (!slots.length || typeof QuickTranslate === "undefined") return;
-    QuickTranslate.translateLines(q.c).then((ja) => {
-      $app.querySelectorAll("[data-cja]").forEach((el) => {
-        const t = ja[+el.dataset.cja];
-        el.textContent = t || "(訳を取得できませんでした)";
-        el.classList.toggle("fail", !t);
-      });
-    });
+  // 再描画のあと、表示中で未取得の訳を埋める
+  function fillShownPieces(q) {
+    const clauses = splitClauses(q.q);
+    $app.querySelectorAll("[data-clja]").forEach((el) => fillPiece(el, clauses[+el.dataset.clja]));
+    $app.querySelectorAll("[data-cja]").forEach((el) => fillPiece(el, q.c[+el.dataset.cja]));
   }
 
+  // 問題文のかたまりをタップ:そのかたまりの訳を出す・隠す(画面は再描画しない)
+  function toggleClause(el) {
+    const box = el.closest("[data-qid]");
+    const q = box && CPA.getMcq(box.dataset.qid);
+    if (!q) return;
+    const n = +el.dataset.cl;
+    const set = shownClauses.get(q.id) || new Set();
+    shownClauses.set(q.id, set);
+    const next = el.nextElementSibling;
+    if (set.has(n)) {
+      set.delete(n);
+      el.classList.remove("on");
+      if (next && next.matches("[data-clja]")) next.remove();
+    } else {
+      set.add(n);
+      el.classList.add("on");
+      const ja = document.createElement("span");
+      ja.className = "cl-ja";
+      ja.dataset.clja = n;
+      ja.textContent = "…";
+      el.after(ja);
+      fillPiece(ja, splitClauses(q.q)[n]);
+    }
+  }
+
+  // 選択肢の「訳」ボタン:その選択肢だけ訳を出す・隠す(回答はしない)
+  function toggleChoiceJa(btn) {
+    const box = btn.closest("[data-qid]");
+    const q = box && CPA.getMcq(box.dataset.qid);
+    if (!q) return;
+    const k = +btn.dataset.cjab;
+    const set = shownChoices.get(q.id) || new Set();
+    shownChoices.set(q.id, set);
+    const ctext = btn.closest(".choice").querySelector(".ctext");
+    const cur = ctext.querySelector("[data-cja]");
+    if (set.has(k)) {
+      set.delete(k);
+      btn.classList.remove("on");
+      if (cur) cur.remove();
+    } else {
+      set.add(k);
+      btn.classList.add("on");
+      const ja = document.createElement("span");
+      ja.className = "c-ja";
+      ja.dataset.cja = k;
+      ja.textContent = "…";
+      ctext.appendChild(ja);
+      fillPiece(ja, q.c[k]);
+    }
+  }
+
+  // キャプチャ段階で処理して、選択肢の回答やカードの操作と同時に起きないようにする
+  function onPieceTap(e) {
+    const t = e.target.closest && e.target.closest("[data-cjab], .q-en [data-cl]");
+    if (!t) return;
+    if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
+    if (t.matches("[data-cl]")) {
+      // 長押しで文字を選択している最中はタップ扱いにしない
+      const sel = window.getSelection && window.getSelection();
+      if (sel && !sel.isCollapsed && sel.toString().trim()) return;
+      toggleClause(t);
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    toggleChoiceJa(t);
+  }
+  document.addEventListener("click", onPieceTap, true);
+  document.addEventListener("keydown", onPieceTap, true);
+
   function bindQuestionCommon(q, rerender) {
-    fillChoiceJa(q);
+    fillShownPieces(q);
     const ja = $app.querySelector("[data-act=ja]");
     if (ja)
       ja.onclick = () => {
