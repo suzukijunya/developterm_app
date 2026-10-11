@@ -27,8 +27,8 @@ CPA.extend("AUD-01", {
       ex: "セーフガードで許容可能な水準まで低減できない場合、独立性は損なわれるため、証明業務(または脅威の原因となる業務)を辞退・中止する。報告書での開示やクライアントの同意で独立性の欠如を治癒することはできない。",
     },
     {
-      q: "A covered member and a vice president of a nonissuer attest client each own 50% of a small real estate partnership, and the covered member can exercise significant influence over it. With respect to the attest client, this arrangement:",
-      ja: "対象者と非公開の証明業務クライアントの副社長が、小規模な不動産パートナーシップをそれぞれ50%ずつ保有しており、対象者はそのパートナーシップに重要な影響力を行使できる。この関係は証明業務クライアントに関してどうなるか。",
+      q: "A covered member and a vice president of a nonissuer attest client each own 50% of a small real estate partnership, and the covered member can exercise significant influence over it. The investment is material to the covered member's net worth. With respect to the attest client, this arrangement:",
+      ja: "対象者と非公開の証明業務クライアントの副社長が、小規模な不動産パートナーシップをそれぞれ50%ずつ保有しており、対象者はそのパートナーシップに重要な影響力を行使できる。この投資は対象者の純資産にとって重要である。この関係は証明業務クライアントに関してどうなるか。",
       c: [
         "Impairs independence because it is a joint closely held investment that is material to the covered member",
         "Does not impair independence because the investment is not in the client itself",
@@ -164,16 +164,16 @@ CPA.extend("AUD-02", {
       ex: "SAS 145では固有リスクと統制リスクを区分して評価し、運用評価手続を予定しない場合、統制リスクは最大と評価されるため、重要な虚偽表示リスクは固有リスクの評価と同じになる。整備評価のみでは統制リスクを下げられない。",
     },
     {
-      q: "An auditor has assessed a material account balance as having no relevant assertions with an identified risk of material misstatement. Under AICPA standards, the auditor should:",
-      ja: "監査人は、ある重要な勘定残高について、重要な虚偽表示リスクが識別された関連するアサーションがないと評価した。AICPA基準のもとで、監査人はどうすべきか。",
+      q: "An auditor has assessed the risks of material misstatement for the relevant assertions of a material account balance as low, because controls are expected to operate effectively. Under AICPA standards, the auditor should:",
+      ja: "監査人は、ある重要な勘定残高の関連するアサーションについて、内部統制が有効に運用されると見込まれるため重要な虚偽表示リスクを低いと評価した。AICPA基準のもとで、監査人はどうすべきか。",
       c: [
         "Perform no procedures on the balance",
         "Perform only tests of controls on the balance",
-        "Still design and perform substantive procedures for the material account balance",
+        "Still design and perform substantive procedures for the relevant assertions of the material account balance",
         "Document that the balance is excluded from the scope of the audit",
       ],
       a: 2,
-      ex: "評価したリスクにかかわらず、重要な取引種類・勘定残高・開示等には実証手続を立案・実施しなければならない(いわゆる「スタンドバック」の考え方)。手続を全く行わない、または運用評価のみとすることは認められない。",
+      ex: "評価したリスクの程度にかかわらず、重要な取引種類・勘定残高・開示等の関連するアサーションには実証手続を立案・実施しなければならない(リスク評価は判断に基づくものであり、内部統制には固有の限界があるため)。手続を全く行わない、または運用評価のみとすることは認められない。",
     },
     {
       q: "During planning, an auditor sets a threshold below which misstatements need not be accumulated because their correction would clearly have no material effect, individually or in aggregate. This threshold is referred to as:",

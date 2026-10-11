@@ -362,7 +362,7 @@ CPA.extend("FAR-05", {
     {
       q: "A company had 100,000 common shares outstanding on January 1. It issued 20,000 shares on March 1, distributed a 10% stock dividend on July 1, and purchased 6,000 treasury shares on October 1. What is the weighted-average number of shares for basic EPS?",
       ja: "ある会社は1月1日に普通株式100,000株が発行済みであった。3月1日に20,000株を発行、7月1日に10%の株式配当を実施、10月1日に自己株式6,000株を取得した。基本的EPSの加重平均株式数はいくらか。",
-      c: ["$125,167", "126,833", "121,167", "128,333"],
+      c: ["125,167", "126,833", "121,167", "128,333"],
       a: 1,
       ex: "株式配当は期首(または発行日)に遡って適用:100,000 × 1.1 + 20,000 × 1.1 × 10/12 − 6,000 × 3/12 = 110,000 + 18,333 − 1,500 = 126,833。3月発行分に株式配当を遡及しないと125,167になる。",
     },
@@ -545,4 +545,105 @@ CPA.extend("FAR-07", {
       ex: "配当の支払額 = 60,000 − 10,000 = 50,000。財務CF = 300,000 − 50,000 − 40,000 − 15,000 = 195,000。ファイナンス・リースの元本返済は財務活動(利息部分は営業活動)。宣言額60,000を使うと185,000となる。",
     },
   ],
+});
+
+CPA.tbs({
+  id: "TBS-FAR-09",
+  section: "FAR",
+  chapter: "FAR-02",
+  title: "複数の履行義務への取引価格の配分と収益認識時期",
+  scenario: `<p>On October 1, Year 1, Hayashi Software Inc. entered into a contract with a customer for a total price of <b>$96,000</b>, paid in full at contract inception. The contract includes three distinct performance obligations:</p>
+<table><tr><th>Performance obligation</th><th>Standalone selling price</th><th>Timing</th></tr>
+<tr><td>Software license (functional IP, right to use)</td><td>$90,000</td><td>License transferred October 1, Year 1</td></tr>
+<tr><td>Installation services</td><td>$10,000</td><td>Completed December 15, Year 1</td></tr>
+<tr><td>Technical support</td><td>$20,000</td><td>24 months beginning October 1, Year 1 (stand-ready, evenly)</td></tr></table>
+<p>There is no observable evidence that the discount relates to any particular performance obligation. Hayashi's year-end is December 31.</p>
+<p class="ja">1年目10月1日、Hayashi Software社は顧客と総額$96,000(契約開始時に全額受領)の契約を締結した。契約には3つの別個の履行義務がある:ソフトウェア・ライセンス(機能的IP、使用権。独立販売価格$90,000、10月1日に移転)、導入サービス($10,000、12月15日に完了)、技術サポート($20,000、10月1日から24か月間、均等に提供する待機型)。値引きが特定の履行義務に関連するという観察可能な証拠はない。決算日は12月31日。</p>`,
+  rows: [
+    { label: "Transaction price allocated to the software license(ライセンスへの配分額)", type: "num", answer: 72000 },
+    { label: "Transaction price allocated to installation(導入サービスへの配分額)", type: "num", answer: 8000 },
+    { label: "Transaction price allocated to technical support(技術サポートへの配分額)", type: "num", answer: 16000 },
+    { label: "Total revenue recognized in Year 1(1年目の収益合計)", type: "num", answer: 82000 },
+    { label: "Contract liability at December 31, Year 1(1年目末の契約負債)", type: "num", answer: 14000 },
+    { label: "Timing of revenue for the license(ライセンス収益の認識時期)", type: "select", options: ["Point in time", "Over the license period", "When the support period ends", "When cash is received"], answer: "Point in time" },
+  ],
+  explain: `<p>独立販売価格の合計は120,000、取引価格96,000との比率は80%。値引き24,000は特定の履行義務に帰属する証拠がないため比例配分:ライセンス 90,000 × 80% = 72,000、導入 8,000、サポート 16,000。</p>
+<p>1年目の収益:ライセンス72,000(機能的IPの使用権は一時点)+ 導入8,000(完了済み)+ サポート 16,000 × 3/24 = 2,000、合計82,000。</p>
+<p>契約負債 = 受領額96,000 − 認識済み収益82,000 = 14,000(残りのサポート分 16,000 − 2,000)。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-FAR-10",
+  section: "FAR",
+  chapter: "FAR-04",
+  title: "借手のオペレーティング・リース(ASC 842)",
+  scenario: `<p>On January 1, Year 1, Okada Corp. (lessee) leased equipment for <b>5 years</b>. Annual payments of <b>$20,000</b> are due at the <b>end</b> of each year. The equipment has a fair value of $150,000 and a 12-year economic life. There is no transfer of ownership, no purchase option, no residual value guarantee, and the equipment is not specialized. Okada's incremental borrowing rate is <b>6%</b> (the rate implicit in the lease is not readily determinable). There are no initial direct costs or lease incentives. The present value of an ordinary annuity of $1 for 5 periods at 6% is <b>4.2124</b>. Round to the nearest dollar.</p>
+<p class="ja">1年目1月1日、Okada社(借手)は設備を5年間リースした。年額$20,000を各年度末に支払う。設備の公正価値は$150,000、経済的耐用年数は12年。所有権移転・購入オプション・残価保証はなく、特別仕様でもない。追加借入利子率は6%(リースの計算利子率は容易に算定できない)。当初直接コストやリース・インセンティブはない。6%・5期の年金現価係数(期末払い)は4.2124。1ドル未満は四捨五入すること。</p>`,
+  rows: [
+    { label: "Lease classification(リースの分類)", type: "select", options: ["Finance lease", "Operating lease", "Short-term lease (off-balance sheet)", "Sales-type lease"], answer: "Operating lease" },
+    { label: "Initial lease liability, Jan 1, Year 1(当初のリース負債)", type: "num", answer: 84248, tol: 1 },
+    { label: "Interest (accretion) on the lease liability, Year 1(1年目のリース負債の利息相当額)", type: "num", answer: 5055, tol: 1 },
+    { label: "Lease cost reported in Year 1 income statement(1年目の損益計算書のリース費用)", type: "num", answer: 20000 },
+    { label: "Lease liability, Dec 31, Year 1(1年目末のリース負債)", type: "num", answer: 69303, tol: 2 },
+    { label: "Right-of-use asset, Dec 31, Year 1(1年目末の使用権資産)", type: "num", answer: 69303, tol: 2 },
+  ],
+  explain: `<p>分類:リース期間5年は経済的耐用年数12年の大部分(約42%)ではなく、リース料の現在価値84,248は公正価値150,000の実質的にすべて(約56%)でもない。所有権移転・購入オプション・特別仕様もないためオペレーティング・リース。</p>
+<p>リース負債 = 20,000 × 4.2124 = 84,248。1年目の利息相当額 = 84,248 × 6% = 5,055。期末負債 = 84,248 + 5,055 − 20,000 = 69,303。</p>
+<p>オペレーティング・リースでは単一のリース費用を定額で計上:20,000。使用権資産の償却額は定額費用 − 利息相当額 = 14,945(差額調整)で、期末の使用権資産 = 84,248 − 14,945 = 69,303(支払が均等なので負債と一致)。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-FAR-11",
+  section: "FAR",
+  chapter: "FAR-06",
+  title: "政府基金から政府全体財務諸表への調整",
+  scenario: `<p>Maple City's governmental funds reported a net change in fund balances of <b>$250,000</b> for the year. The following information is available:</p>
+<ul>
+<li>Capital outlay expenditures: <b>$600,000</b></li>
+<li>Depreciation expense on governmental capital assets: <b>$180,000</b></li>
+<li>Proceeds from issuance of general obligation bonds (reported as an other financing source): <b>$400,000</b></li>
+<li>Principal repayments on general obligation bonds (reported as expenditures): <b>$150,000</b></li>
+<li>Increase in accrued interest payable on bonds (not reported in governmental funds): <b>$10,000</b></li>
+<li>Property tax revenues earned but not available (deferred inflows increased): <b>$30,000</b></li>
+</ul>
+<p>Enter decreases as negative numbers.</p>
+<p class="ja">Maple市の政府基金の当期の基金残高の純増減は$250,000。資本的支出$600,000、政府活動の固定資産の減価償却費$180,000、一般財源債の発行収入(その他の財源)$400,000、一般財源債の元本返済(支出として計上)$150,000、社債の未払利息の増加(政府基金では未計上)$10,000、稼得済みだが利用可能でない固定資産税収益(繰延資源流入の増加)$30,000。減少項目はマイナスで入力すること。</p>`,
+  rows: [
+    { label: "Net adjustment for capital outlay and depreciation(資本的支出と減価償却費の純調整額)", type: "num", answer: 420000 },
+    { label: "Adjustment for bond proceeds(社債発行収入の調整額)", type: "num", answer: -400000 },
+    { label: "Adjustment for principal repayments(元本返済の調整額)", type: "num", answer: 150000 },
+    { label: "Adjustment for accrued interest(未払利息の調整額)", type: "num", answer: -10000 },
+    { label: "Change in net position of governmental activities(政府活動の純資産の増減)", type: "num", answer: 440000 },
+    { label: "Measurement focus and basis of accounting of the government-wide statements(政府全体財務諸表の測定の焦点と会計基準)", type: "select", options: ["Current financial resources; modified accrual", "Economic resources; accrual", "Economic resources; modified accrual", "Current financial resources; cash basis"], answer: "Economic resources; accrual" },
+  ],
+  explain: `<p>政府全体財務諸表は経済的資源の測定の焦点・発生主義。資本的支出は資産計上(+600,000)、減価償却費は費用(−180,000)→ +420,000。</p>
+<p>社債発行収入は負債の増加であり収益ではない → −400,000。元本返済は負債の減少で費用ではない → +150,000。未払利息の増加は発生主義の費用 → −10,000。利用可能でない税収は政府全体では収益 → +30,000。</p>
+<p>純資産の増減 = 250,000 + 420,000 − 400,000 + 150,000 − 10,000 + 30,000 = 440,000。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-FAR-12",
+  section: "FAR",
+  chapter: "FAR-03",
+  title: "有形固定資産の取得原価・減価償却・減損",
+  scenario: `<p>On January 1, Year 1, Sato Manufacturing purchased a machine and incurred the following costs:</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Invoice price</td><td>$90,000</td></tr>
+<tr><td>Freight to the plant</td><td>$3,000</td></tr>
+<tr><td>Installation and testing</td><td>$7,000</td></tr>
+<tr><td>Repair of damage caused by Sato's employees during installation</td><td>$2,000</td></tr>
+<tr><td>First-year property insurance on the machine</td><td>$1,500</td></tr></table>
+<p>The machine has an estimated useful life of <b>5 years</b> and a salvage value of <b>$10,000</b>. At December 31, Year 2, under the straight-line method, indicators of impairment exist: undiscounted future cash flows are <b>$60,000</b> and fair value is <b>$52,000</b>. The machine is held and used.</p>
+<p class="ja">1年目1月1日、Sato Manufacturing社は機械を購入し、次の費用を支出した:本体価格$90,000、工場までの運賃$3,000、据付・試運転費$7,000、据付時に従業員が起こした損傷の修理費$2,000、初年度の機械の損害保険料$1,500。耐用年数5年、残存価額$10,000。定額法を採用している場合、2年目12月31日に減損の兆候があり、割引前将来キャッシュフローは$60,000、公正価値は$52,000。機械は保有・使用目的である。</p>`,
+  rows: [
+    { label: "Capitalized cost of the machine(機械の取得原価)", type: "num", answer: 100000 },
+    { label: "Straight-line depreciation, Year 1(定額法による1年目の減価償却費)", type: "num", answer: 18000 },
+    { label: "Double-declining-balance depreciation, Year 2(2倍定率法による2年目の減価償却費)", type: "num", answer: 24000 },
+    { label: "Sum-of-the-years'-digits depreciation, Year 1(級数法による1年目の減価償却費)", type: "num", answer: 30000 },
+    { label: "Impairment loss at Dec 31, Year 2 — straight-line(定額法の場合の2年目末の減損損失)", type: "num", answer: 12000 },
+    { label: "Reversal of the impairment loss if fair value later recovers(後に公正価値が回復した場合の減損損失の戻入れ)", type: "select", options: ["Required, up to the original carrying amount", "Permitted, as an accounting policy election", "Prohibited", "Required, recognized in other comprehensive income"], answer: "Prohibited" },
+  ],
+  explain: `<p>取得原価 = 90,000 + 3,000 + 7,000 = 100,000。使用可能な状態にするための支出は資産計上するが、自社の過失による修理費と保険料は費用処理する。</p>
+<p>定額法:(100,000 − 10,000) ÷ 5 = 18,000。2倍定率法(率40%、残存価額は当初考慮しない):1年目40,000、2年目 60,000 × 40% = 24,000。級数法:90,000 × 5/15 = 30,000。</p>
+<p>2年目末の帳簿価額 = 100,000 − 36,000 = 64,000。割引前CF 60,000 < 64,000で回収可能性テストに不合格 → 公正価値まで減額:64,000 − 52,000 = 12,000。米国GAAPでは保有・使用資産の減損の戻入れは禁止(IFRSとの相違)。</p>`,
 });
