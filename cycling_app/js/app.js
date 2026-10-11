@@ -22,6 +22,11 @@
   // pick: 地図で確認中の場所 { lat, lon, label }
   let placeForm = { name: "", query: "", results: [], status: "", pick: null };
   let pickMap = null; // 地図(Leaflet)
+  // ナビ: route = Nav のルート、hint = ルート上の現在位置、announced = 案内済みの曲がり角
+  let nav = freshNav();
+  let navMap = null; // 走行画面の地図
+  let navLayers = {};
+  let navFollowAt = 0; // 地図を手で動かしたら、しばらく現在地を追わない
 
   const FOODS = [
     { name: "おにぎり", kcal: 180, unit: "個" },
@@ -268,6 +273,7 @@
       ride.placeId = (Eta.guess(Store.places, pos) || {}).id || null;
       if (ride.placeId) Store.markUsed(ride.placeId);
     }
+    if (result !== "inaccurate") updateNav();
     updateEta();
     refreshWeather(pos);
     persist(false);
@@ -300,6 +306,8 @@
     pos = null;
     lastResult = null;
     resumed = false;
+    resetNav();
+    if (Store.prefs.nav && ride.placeId !== null) speak(ride.placeId ? `${placeById(ride.placeId).name}へのナビを開始します` : "ナビを開始します", true);
     Store.setActive(ride);
     startGps();
     updateWake();
@@ -323,6 +331,12 @@
       if (lastResult.end) Store.setLastPos(lastResult.end);
     }
     ride = null;
+    resetNav();
+    try {
+      if (window.speechSynthesis) speechSynthesis.cancel();
+    } catch (e) {
+      // 無視
+    }
     Store.setActive(null);
     Store.setPrefs({ destId: null }); // 次のライドは現在地から自動で選び直す(帰り道なら自宅に切り替わる)
     updateWake();
@@ -368,9 +382,176 @@
     const i = ids.indexOf(ride.placeId == null ? null : ride.placeId);
     ride.placeId = ids[(i + 1) % ids.length];
     ride.etaMid = null;
-    if (pos) updateEta();
+    if (pos) {
+      updateNav();
+      updateEta();
+    }
     persist(true);
     renderLive();
+  }
+
+  // ---------- ナビ ----------
+  function freshNav() {
+    return { route: null, placeId: null, hint: null, announced: {}, off: {}, fetching: false, status: "", lastFetch: 0 };
+  }
+
+  function resetNav() {
+    nav = freshNav();
+    if (navMap) drawRoute();
+  }
+
+  // 音声案内。force はライド開始などのタップ時(iPhoneは最初にタップの中で話さないと音が出ない)
+  function speak(text, force) {
+    if (!Store.prefs.voice || !("speechSynthesis" in window)) return;
+    if (!force && document.visibilityState !== "visible") return;
+    // 音声で失敗しても、計測やナビは止めない
+    try {
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "ja-JP";
+      u.rate = 1.05;
+      speechSynthesis.cancel();
+      speechSynthesis.speak(u);
+    } catch (e) {
+      // 話せなかった
+    }
+  }
+
+  async function requestRoute(reason) {
+    const place = placeById(ride && ride.placeId);
+    if (!place || !pos || nav.fetching) return;
+    // ルートを外れたときの引き直しは15秒に1回まで
+    if (reason === "reroute" && Date.now() - nav.lastFetch < 15000) return;
+    nav.fetching = true;
+    nav.lastFetch = Date.now();
+    nav.status = reason === "reroute" ? "ルートを外れました。ルートを引き直しています…" : "ルートを検索しています…";
+    if (reason === "reroute") speak("ルートを外れました。ルートを引き直します");
+    renderLive();
+    try {
+      const route = await Nav.fetchRoute({ lat: pos.lat, lon: pos.lon, heading: ride && ride.heading }, place);
+      if (!ride || ride.placeId !== place.id) return; // 待っている間に目的地が変わった
+      nav = Object.assign(freshNav(), { route, placeId: place.id, lastFetch: nav.lastFetch });
+      nav.hint = Nav.snap(route, pos, null);
+      drawRoute(true);
+    } catch (e) {
+      if (!ride) return;
+      nav.status = "ルートを取得できませんでした。電波のよい場所で「ルート再検索」を押してください";
+      nav.placeId = place.id; // 測位のたびに再検索しない
+    } finally {
+      nav.fetching = false;
+      // 検索を待っている間にライドが終わっていれば何もしない
+      if (ride) {
+        updateEta();
+        renderLive();
+      }
+    }
+  }
+
+  // 測位のたびに: ルート上の位置を合わせ、外れていれば引き直し、曲がる手前なら音声で案内する
+  function updateNav() {
+    if (!Store.prefs.nav || !ride || !pos) return;
+    const place = placeById(ride.placeId);
+    if (!place) {
+      if (nav.route || nav.placeId) resetNav();
+      return;
+    }
+    if (nav.placeId !== place.id) {
+      nav.route = null;
+      nav.placeId = null;
+      if (navMap) drawRoute();
+      requestRoute("new");
+      return;
+    }
+    if (!nav.route) return;
+    if (ride.arrival && ride.arrival.placeId === place.id) return; // 到着済み
+    nav.hint = Nav.snap(nav.route, pos, nav.hint);
+    if (Nav.offRoute(nav.off, nav.hint.off, lastAccuracy)) {
+      requestRoute("reroute");
+      return;
+    }
+    if (nav.hint.off < 60) {
+      const text = Nav.announcement(nav.route, nav.hint.along, ride.vEma, nav.announced);
+      if (text) speak(text);
+    }
+  }
+
+  // 次に曲がる場所のカード
+  function renderNavCard() {
+    const el = document.getElementById("navcard");
+    if (!el) return;
+    const place = placeById(ride.placeId);
+    if (!place) {
+      el.className = "nav-card idle";
+      el.innerHTML = `<div class="nav-main">目的地を選ぶとルート案内をします</div>`;
+      return;
+    }
+    if (ride.arrival && ride.arrival.placeId === place.id) {
+      el.className = "nav-card arrived";
+      el.innerHTML = `<div class="nav-arrow">🏁</div><div><div class="nav-main">${esc(place.name)}に到着</div></div>`;
+      return;
+    }
+    if (!nav.route || nav.fetching) {
+      el.className = "nav-card idle";
+      el.innerHTML = `<div class="nav-main small">${esc(nav.status || "ルートを検索しています…")}</div>`;
+      return;
+    }
+    const n = Nav.next(nav.route, nav.hint ? nav.hint.along : 0);
+    const info = Nav.turnInfo(n.step.kind);
+    const after = n.after ? Nav.turnInfo(n.after.kind) : null;
+    const off = nav.hint && nav.hint.off > 40;
+    el.className = "nav-card" + (off ? " off" : "");
+    el.innerHTML = `
+      <div class="nav-arrow">${info.arrow}</div>
+      <div class="nav-body">
+        <div class="nav-dist">${Nav.distText(n.dist)}</div>
+        <div class="nav-main">${info.text}${n.step.street ? `<span>${esc(n.step.street)}</span>` : ""}</div>
+        <div class="nav-sub">${
+          off ? "ルートから外れています" : after ? `その次: ${after.arrow} ${after.text}` : `ゴールまで ${Nav.distText(nav.route.length - (nav.hint ? nav.hint.along : 0))}`
+        }</div>
+      </div>`;
+  }
+
+  // 走行画面の地図
+  async function mountNavMap() {
+    const el = document.getElementById("navmap");
+    if (!el) return;
+    try {
+      await loadLeaflet();
+    } catch (e) {
+      el.innerHTML = `<p class="muted small">地図を読み込めませんでした。曲がる場所の案内はこのまま続けます</p>`;
+      el.classList.add("failed");
+      return;
+    }
+    if (!document.body.contains(el) || navMap) return;
+    const c = pos || Store.lastPos || { lat: 35.6812, lon: 139.7671 };
+    navMap = L.map(el, { zoomControl: false, attributionControl: true }).setView([c.lat, c.lon], 16);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(navMap);
+    navMap.on("dragstart", () => (navFollowAt = Date.now() + 15000));
+    drawRoute();
+    updateNavMap();
+  }
+
+  function drawRoute(fit) {
+    if (!navMap) return;
+    for (const k of ["route", "dest"]) {
+      if (navLayers[k]) navMap.removeLayer(navLayers[k]);
+      navLayers[k] = null;
+    }
+    const place = ride && placeById(ride.placeId);
+    if (nav.route) {
+      const color = getComputedStyle(document.documentElement).getPropertyValue("--brand").trim() || "#0047ab";
+      navLayers.route = L.polyline(nav.route.points, { color, weight: 6, opacity: 0.85 }).addTo(navMap);
+      if (fit && !pos) navMap.fitBounds(navLayers.route.getBounds(), { padding: [20, 20] });
+    }
+    if (place) navLayers.dest = L.marker([place.lat, place.lon], { title: place.name }).addTo(navMap);
+  }
+
+  function updateNavMap() {
+    if (!navMap || !pos) return;
+    const ll = [pos.lat, pos.lon];
+    if (!navLayers.me) {
+      navLayers.me = L.circleMarker(ll, { radius: 9, color: "#fff", weight: 3, fillColor: "#e11d48", fillOpacity: 1 }).addTo(navMap);
+    } else navLayers.me.setLatLng(ll);
+    if (Date.now() > navFollowAt) navMap.panTo(ll, { animate: true, duration: 0.5 });
   }
 
   // ---------- 目的地の登録 ----------
@@ -591,6 +772,11 @@
 
   // ---------- 描画 ----------
   function render() {
+    if (navMap) {
+      navMap.remove();
+      navMap = null;
+      navLayers = {};
+    }
     app.innerHTML = `
       <header class="topbar"><div class="topbar-inner">RIDE <span>CALORIE</span></div></header>
       <main class="main">${view === "ride" ? rideView() : view === "history" ? historyView() : settingsView()}</main>
@@ -604,6 +790,7 @@
     renderLive();
     renderWeather();
     mountPickMap();
+    mountNavMap();
     if (view === "settings") backfillAddresses();
     if (view === "ride" && !ride) locateForWeather();
   }
@@ -620,8 +807,23 @@
   function rideView() {
     if (ride) {
       return `
-        <section class="live">
+        <section class="live ${Store.prefs.nav ? "nav-on" : ""}">
           ${resumed ? `<p class="notice">前回の記録の続きから計測しています</p>` : ""}
+          ${
+            Store.prefs.nav
+              ? `<div class="nav-card" id="navcard"></div>
+                 <div class="nav-map" id="navmap"></div>`
+              : ""
+          }
+          <div class="nav-tools">
+            <button class="chip ${Store.prefs.nav ? "on" : ""}" id="nav-toggle">🧭 ナビ ${Store.prefs.nav ? "ON" : "OFF"}</button>
+            ${
+              Store.prefs.nav
+                ? `<button class="chip ${Store.prefs.voice ? "on" : ""}" id="voice-toggle">${Store.prefs.voice ? "🔊 音声 ON" : "🔇 音声 OFF"}</button>
+                   <button class="chip" id="reroute">↻ ルート再検索</button>`
+                : ""
+            }
+          </div>
           <div class="hero">
             <div class="hero-label">消費カロリー</div>
             <div class="hero-value"><span id="kcal">0</span><small>kcal</small></div>
@@ -936,6 +1138,12 @@
             <option value="riding" ${pr.wake === "riding" ? "selected" : ""}>走行中のみ</option>
           </select></label>
 
+        <h2>ナビ</h2>
+        <label class="check"><input type="checkbox" name="nav" ${pr.nav ? "checked" : ""} />
+          <span>走行中に地図とルート案内を表示する<small>目的地までの自転車向けのルートを調べ、次に曲がる場所を表示します。地図を表示するぶん、電池と通信量が増えます</small></span></label>
+        <label class="check"><input type="checkbox" name="voice" ${pr.voice ? "checked" : ""} />
+          <span>曲がる場所を音声で案内する<small>「150m先、左折です」のように話します</small></span></label>
+
         <button class="btn start" type="submit">保存</button>
         <p class="muted small">基礎代謝 約${Math.round(Physics.bmrPerDay(p))}kcal/日・空気抵抗係数(CdA) ${Physics.cdaFor(p).toFixed(3)}m²</p>
       </form>
@@ -983,6 +1191,8 @@
     }
 
     renderEta();
+    renderNavCard();
+    updateNavMap();
 
     const gps = document.getElementById("gps");
     if (gps) {
@@ -1011,7 +1221,9 @@
   // ライド終了後の学習と答え合わせに使う
   function updateEta() {
     const place = placeById(ride.placeId);
-    ride.eta = place && pos ? Object.assign(Eta.estimate(place, ride, pos), { at: Date.now() }) : null;
+    const onRoute = place && nav.route && nav.placeId === place.id && nav.hint && nav.hint.off < 60;
+    const opts = onRoute ? { routeRemainM: Math.max(0, nav.route.length - nav.hint.along) } : null;
+    ride.eta = place && pos ? Object.assign(Eta.estimate(place, ride, pos, opts), { at: Date.now() }) : null;
     const est = ride.eta;
     if (!est) return;
     if (est.arrived) {
@@ -1056,9 +1268,11 @@
       return;
     }
     const acc = Eta.accuracy(place);
-    const basis = est.learnedN
-      ? `到着${est.learnedN}回分の学習${acc ? `・予測のずれ 平均${acc.minutes.toFixed(1)}分` : ""}`
-      : "学習前の目安(到着するたびに正確になります)";
+    const basis =
+      (est.byRoute ? "ルートの距離・" : "") +
+      (est.learnedN
+        ? `到着${est.learnedN}回分の学習${acc ? `・予測のずれ 平均${acc.minutes.toFixed(1)}分` : ""}`
+        : "学習前の目安(到着するたびに正確になります)");
     // 残り時間は最後の測位からの経過分を差し引く
     const sec = Math.max(0, est.sec - (Date.now() - est.at) / 1000);
     el.className = "eta";
@@ -1084,6 +1298,33 @@
       })
     );
     on("start", startRide);
+    on("nav-toggle", () => {
+      Store.setPrefs({ nav: !Store.prefs.nav });
+      if (Store.prefs.nav) {
+        speak("ナビをオンにしました", true);
+        updateNav();
+      } else resetNav();
+      render();
+    });
+    on("voice-toggle", () => {
+      Store.setPrefs({ voice: !Store.prefs.voice });
+      if (Store.prefs.voice) speak("音声案内をオンにしました", true);
+      else {
+        try {
+          speechSynthesis.cancel();
+        } catch (e) {
+          // 無視
+        }
+      }
+      render();
+    });
+    on("reroute", () => {
+      speak("ルートを検索します", true);
+      nav.lastFetch = 0;
+      nav.placeId = null;
+      nav.route = null;
+      updateNav();
+    });
     on("finish", finishRide);
     on("eta", () => {
       if (Store.places.length) cycleDest();
@@ -1231,7 +1472,7 @@
       posture: f.get("posture"),
       surface: f.get("surface"),
     });
-    Store.setPrefs({ wind: f.get("wind") === "on", wake: f.get("wake") });
+    Store.setPrefs({ wind: f.get("wind") === "on", wake: f.get("wake"), nav: f.get("nav") === "on", voice: f.get("voice") === "on" });
     updateWake();
     view = "ride";
     render();
@@ -1245,7 +1486,7 @@
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2026.10.19";
+  const APP_VERSION = "2026.10.20";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });

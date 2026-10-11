@@ -34,11 +34,13 @@ const Eta = (() => {
   }
 
   // 走行中の推定。pos: { lat, lon }。ride: Tracker の状態
-  function estimate(place, ride, pos) {
+  // opts.routeRemainM: ナビのルートに沿った残り距離(あれば遠回り率の代わりに使う)
+  function estimate(place, ride, pos, opts) {
     const straight = P.distance(pos.lat, pos.lon, place.lat, place.lon);
     if (straight < ARRIVE_M) return { arrived: true, remainM: 0, sec: 0 };
     const L = learned(place);
-    const remainM = straight * (L ? L.detour : DEFAULT_DETOUR);
+    const byRoute = !!(opts && opts.routeRemainM != null);
+    const remainM = byRoute ? opts.routeRemainM : straight * (L ? L.detour : DEFAULT_DETOUR);
     const elapsed = ride.movingSec + ride.stoppedSec + ride.gapSec;
     const today = ride.distance > 500 && elapsed > 60 ? ride.distance / elapsed : null;
     let speed;
@@ -50,7 +52,7 @@ const Eta = (() => {
     } else {
       speed = (L && L.speed) || today || DEFAULT_SPEED;
     }
-    return { arrived: false, remainM, sec: remainM / speed, speed, learnedN: L ? L.n : 0 };
+    return { arrived: false, remainM, sec: remainM / speed, speed, learnedN: L ? L.n : 0, byRoute };
   }
 
   // 出発地から遠い目的地のうち、よく行く所を候補にする(通勤なら行き先が自動で選ばれる)
