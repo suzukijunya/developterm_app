@@ -208,6 +208,7 @@ const App = (() => {
           })
           .join("")}
       </div>
+      <a class="link-card" href="#/eligibility"><b>受験資格チェック</b><span>学歴と単位から、出願できる州と次にやることを判定 ›</span></a>
       <a class="link-card" href="#/guide"><b>USCPA試験ガイド</b><span>試験制度・科目の選び方・おすすめの学習の流れ ›</span></a>`;
     page({ title: "ホーム", body, tab: "home" });
   }
@@ -1353,6 +1354,8 @@ const App = (() => {
           <li>日本でも受験できます(Prometric テストセンター)。出願・受験資格は州ごとに要件が違います。</li>
         </ul>
 
+        <p><a href="#/eligibility"><b>受験資格チェック</b></a>で、学歴と単位から出願できる州の目安と次にやることを確認できます。</p>
+
         <h3>選択科目の選び方</h3>
         <ul>
           <li><b>BAR</b>:FARの延長。財務分析・管理会計も含む。会計の得意な人、FARと続けて学習したい人向け。</li>
@@ -1375,6 +1378,138 @@ const App = (() => {
         <p class="muted small">本アプリの問題・解説はオリジナルの学習用教材で、AICPA の公式問題や特定の予備校の教材ではありません。税額の基準値などは毎年改正されるため、最新の公式情報を確認してください。</p>
       </article>`;
     page({ title: "試験ガイド", back: "#/home", body, tab: "home" });
+  }
+
+  // ---------- 受験資格チェック ----------
+  const EDU = [
+    ["bachelor", "4年制大学卒(学士)"],
+    ["master", "大学院修了(修士)"],
+    ["senior", "4年制大学に在学中(最終学年)"],
+    ["junior", "4年制大学に在学中(1〜3年)"],
+    ["associate", "短大・高専・専門学校卒"],
+    ["highschool", "高校卒"],
+  ];
+
+  function eligInput() {
+    return Object.assign({ edu: "bachelor", total: 124, acct: 0, biz: 0, exp: 0, goal: "license" }, Store.get().prefs.elig || {});
+  }
+
+  function judgeReq(req, me, isExam) {
+    const hasBachelor = me.edu === "bachelor" || me.edu === "master";
+    const miss = [];
+    let pending = null;
+    if (req.degree === "master" && me.edu !== "master") miss.push("修士号");
+    else if (req.degree === "bachelor" && !hasBachelor) {
+      if (isExam && req.seniorOk && me.edu === "senior") pending = "卒業見込みで出願";
+      else if (me.edu === "senior" || me.edu === "junior") miss.push("学士号(卒業後に可)");
+      else miss.push("学士号");
+    }
+    const gap = (need, have, label) => {
+      if (need && have < need) miss.push(`${label}あと${need - have}`);
+    };
+    gap(req.total, me.total, "総単位");
+    gap(req.acct, me.acct, "会計単位");
+    gap(req.biz, me.biz, "ビジネス単位");
+    if (!isExam && req.exp && me.exp < req.exp) miss.push(`実務経験あと${+(req.exp - me.exp).toFixed(1)}年`);
+    return { ok: !miss.length, pending, miss };
+  }
+
+  function judgeState(st, me) {
+    const exam = judgeReq(st.exam, me, true);
+    const lic = st.licenses
+      .map((p) => Object.assign({ path: p }, judgeReq(p, me, false)))
+      .sort((a, b) => a.miss.length - b.miss.length)[0];
+    return { st, exam, lic };
+  }
+
+  function viewEligibility() {
+    current.section = null;
+    const me = eligInput();
+    const num = (id, label, val, hint) =>
+      `<label class="field"><span>${label}</span><input type="number" inputmode="numeric" min="0" step="1" id="${id}" value="${val}">${hint ? `<small class="muted">${hint}</small>` : ""}</label>`;
+    const body = `
+      <div class="panel">
+        <p class="muted small" style="margin-top:0">学歴と単位を入れると、日本からの出願で選ばれやすい5つの州について、受験資格とライセンス要件を満たしているかの<b>目安</b>を表示します。</p>
+        <label class="field"><span>最終学歴</span><select id="el-edu">${EDU.map(([v, l]) => `<option value="${v}" ${me.edu === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+        ${num("el-total", "取得済みの総単位数", me.total, "日本の大学の単位をそのまま入力(目安としてほぼ同数で換算)。大学院の単位も含めます")}
+        ${num("el-acct", "うち会計の単位", me.acct, "簿記・財務会計・管理会計・原価計算・監査・税務など")}
+        ${num("el-biz", "うちビジネスの単位", me.biz, "経済・経営・ファイナンス・商法/会社法・統計・情報など(会計は含めない)")}
+        <label class="field"><span>会計・監査・税務などの実務経験</span><select id="el-exp">${[
+          [0, "なし"],
+          [0.5, "1年未満"],
+          [1, "1年以上2年未満"],
+          [2, "2年以上"],
+        ]
+          .map(([v, l]) => `<option value="${v}" ${+me.exp === v ? "selected" : ""}>${l}</option>`)
+          .join("")}</select><small class="muted">ライセンスの実務経験は、原則としてCPA(または州が認める者)の確認が必要です</small></label>
+      </div>
+      <div id="el-result"></div>`;
+    page({ title: "受験資格チェック", back: "#/home", body, tab: "home" });
+
+    const draw = () => {
+      const cur = {
+        edu: $app.querySelector("#el-edu").value,
+        total: Math.max(0, parseInt($app.querySelector("#el-total").value, 10) || 0),
+        acct: Math.max(0, parseInt($app.querySelector("#el-acct").value, 10) || 0),
+        biz: Math.max(0, parseInt($app.querySelector("#el-biz").value, 10) || 0),
+        exp: +$app.querySelector("#el-exp").value,
+      };
+      Store.setPref("elig", cur);
+      const res = ELIGIBILITY.states
+        .map((st) => judgeState(st, cur))
+        .sort((a, b) => (a.exam.ok ? 0 : 1) - (b.exam.ok ? 0 : 1) || a.exam.miss.length - b.exam.miss.length || a.lic.miss.length - b.lic.miss.length);
+      const anyExam = res.some((r) => r.exam.ok);
+      const mark = (j) => (j.ok ? (j.pending ? `<span class="jm warn">△ ${j.pending}</span>` : `<span class="jm ok">◯ 満たす見込み</span>`) : `<span class="jm ng">✕ ${j.miss.join("・")}</span>`);
+      const steps = [];
+      steps.push(`<b>学歴評価を申し込む</b>:日本の大学の単位がどう認定されるかは評価機関(NIES・FACS など)の判定で決まります。この判定の結果がすべての出発点です(目安1.5〜3か月)。`);
+      if (!anyExam) {
+        const best = res[0];
+        steps.push(
+          best.exam.miss.some((m) => m.startsWith("学士"))
+            ? `<b>学位を確保する</b>:多くの州は学士号が必要です。在学中なら卒業見込みで出願できる州(グアムなど)を、学位がない場合は学位を取得できる通信制大学などを検討します。`
+            : `<b>不足単位を取る</b>:${esc(best.st.name)}なら ${esc(best.exam.miss.join("・"))} です。予備校の単位取得プログラムや放送大学などの科目履修が一般的です。履修前に、その科目が会計/ビジネス単位として認定されるかを確認しましょう。`
+        );
+      }
+      steps.push(`<b>出願州を決めて出願</b>:受験資格を満たす州に出願し、NTS(受験票)を受け取ったら、日本のプロメトリック・テストセンターで予約します。`);
+      steps.push(`<b>30か月以内に4科目合格</b>:多くの州で、最初の合格から30か月以内に残りの科目に合格する必要があります。`);
+      steps.push(`<b>ライセンス</b>:合格後、実務経験・倫理試験などの要件を満たす州でライセンスを申請します。受験した州と別の州で申請することもできます(要件は申請先の州のもの)。`);
+
+      $app.querySelector("#el-result").innerHTML = `
+        <h2 class="h2">判定結果<small>${ELIGIBILITY.checkedAt}時点の情報</small></h2>
+        <div class="elig-list">
+          ${res
+            .map(
+              ({ st, exam, lic }) => `
+            <details class="elig ${exam.ok ? "ok" : ""}">
+              <summary>
+                <div class="elig-head"><b>${st.name}</b><span class="muted small">${st.en}</span></div>
+                <div class="elig-row"><span class="elig-k">受験</span>${mark(exam)}</div>
+                <div class="elig-row"><span class="elig-k">ライセンス</span>${mark(lic)}<span class="muted small">(${esc(lic.path.label)})</span></div>
+              </summary>
+              <div class="elig-body">
+                <p><b>受験要件</b>:${esc(st.examText)}${st.exam.acctNote ? `<br><span class="muted small">※会計単位は${esc(st.exam.acctNote)}が必要です。この判定では12単位以上で仮に判定しています</span>` : ""}</p>
+                <p><b>ライセンスのルート</b></p>
+                <ul>${st.licenses.map((p) => `<li>${esc(p.label)}${p.note ? `<span class="muted small">(${esc(p.note)})</span>` : ""}</li>`).join("")}</ul>
+                <p><b>注意点</b></p>
+                <ul>${st.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>
+                <p class="small">情報源:${st.sources.map((x) => `<a href="${x.url}" target="_blank" rel="noopener">${esc(x.label)}</a>`).join(" / ")}</p>
+              </div>
+            </details>`
+            )
+            .join("")}
+        </div>
+        <h2 class="h2">次にやること</h2>
+        <ol class="steps-list">${steps.map((x) => `<li>${x}</li>`).join("")}</ol>
+        <h2 class="h2">共通のポイント</h2>
+        <div class="panel">${ELIGIBILITY.common.map((c) => `<p><b>${esc(c.label)}</b>:${esc(c.text)}</p>`).join("")}</div>
+        <p class="muted small">この判定は${ELIGIBILITY.checkedAt}時点の公開情報(予備校・解説サイトなどの二次情報を含む)にもとづく目安です。各州の要件は改正が続いており、情報源によって食い違う点は厳しい側で判定しています。出願前に必ず各州の Board of Accountancy と学歴評価機関で最新の要件を確認してください。<br>
+        参考:${ELIGIBILITY.generalSources.map((x) => `<a href="${x.url}" target="_blank" rel="noopener">${esc(x.label)}</a>`).join(" / ")}</p>`;
+    };
+    $app.querySelectorAll("#el-edu, #el-total, #el-acct, #el-biz, #el-exp").forEach((el) => {
+      el.oninput = draw;
+      el.onchange = draw;
+    });
+    draw();
   }
 
   // ---------- ルーティング ----------
@@ -1420,6 +1555,8 @@ const App = (() => {
         return viewSettings();
       case "guide":
         return viewGuide();
+      case "eligibility":
+        return viewEligibility();
       default:
         return viewHome();
     }
