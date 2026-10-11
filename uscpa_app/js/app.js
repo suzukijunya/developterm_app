@@ -300,7 +300,8 @@ const App = (() => {
               <div class="sec-id">${id}</div>
               <div class="sec-body"><div class="sec-name">${s.ja}<small>${s.kind}</small></div>
                 ${bar(sectionProgress(s), s.color)}
-                <div class="sec-meta"><span>進捗 ${pct(sectionProgress(s))}%</span><span>正答率 ${acc === null ? "—" : pct(acc) + "%"}</span><span>${fmtHours(Store.studySeconds({ section: id }))}h</span></div>
+                <div class="sec-meta"><span class="pct-strong">進捗 ${pct(sectionProgress(s))}%</span><span>正答率 ${acc === null ? "—" : pct(acc) + "%"}</span><span>学習済み ${fmtHours(Store.studySeconds({ section: id }))}h</span></div>
+                <div class="time-line">${timeLine(sectionMinutes(s))}</div>
               </div></a>`;
           })
           .join("")}
