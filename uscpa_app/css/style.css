@@ -2134,3 +2134,40 @@ details.panel summary {
   padding-left: 18px;
   margin: 6px 0 0;
 }
+
+.cp-group {
+  margin: 12px 0 4px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.cp-cond {
+  font-size: 13px;
+}
+
+.cp-cond th:first-child {
+  white-space: nowrap;
+}
+
+.cp-cond td {
+  min-width: 9em;
+}
+
+.cp-check {
+  display: grid;
+  gap: 10px;
+}
+
+.cp-check .check {
+  align-items: flex-start;
+  font-size: 14px;
+}
+
+.cp-check input {
+  margin-top: 4px;
+}

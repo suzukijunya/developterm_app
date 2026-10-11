@@ -1600,37 +1600,83 @@ const App = (() => {
 
   function comparePrefs() {
     const saved = Store.get().prefs.compare || {};
-    const plans = COURSE_PRESETS.plans.map((p) => Object.assign({}, p, (saved.plans || {})[p.id] || {}));
-    return { needCredits: saved.needCredits !== false, subsidy: !!saved.subsidy, cashback: !!saved.cashback, extra: saved.extra || 0, plans };
+    const plans = COURSE_PRESETS.plans.map((p) => {
+      const ov = Object.assign({}, (saved.plans || {})[p.id] || {});
+      delete ov.cashback; // 旧版の「条件付き還元」1項目の編集値は使わない
+      return Object.assign({}, p, ov);
+    });
+    // 旧版の「条件付き還元を含める」チェックは、3つの還元すべてに引き継ぐ
+    const legacy = !!saved.cashback;
+    const flag = (k) => (saved[k] === undefined ? legacy : !!saved[k]);
+    return {
+      needCredits: saved.needCredits !== false,
+      subsidy: !!saved.subsidy,
+      pass: flag("pass"),
+      career: flag("career"),
+      other: flag("other"),
+      extra: saved.extra || 0,
+      checked: saved.checked || {},
+      plans,
+    };
   }
 
   function viewCompare() {
     current.section = null;
     const pr = comparePrefs();
+    const cb = COURSE_PRESETS.cashback;
+    const elig = Store.get().prefs.elig;
+    const noDegree = elig && ["vocational", "highschool", "associate", "junior"].includes(elig.edu);
+    const chk = (id, on, label) => `<label class="check"><input type="checkbox" id="${id}" ${on ? "checked" : ""}> ${label}</label>`;
+    const field = (p, k, label) =>
+      `<label class="field"><span>${label}</span><input type="number" inputmode="numeric" min="0" step="10" data-plan="${p.id}" data-k="${k}" value="${p[k]}"></label>`;
     const body = `
       <div class="panel">
         <p class="muted small" style="margin-top:0">予備校の受講料を、あなたの条件で比べます。金額は${COURSE_PRESETS.updatedAt}時点の案内をもとにした初期値で、キャンペーンに合わせて編集できます。</p>
-        <label class="check"><input type="checkbox" id="cp-credits" ${pr.needCredits ? "checked" : ""}> 会計・ビジネス単位を取る必要がある</label>
-        <label class="check"><input type="checkbox" id="cp-subsidy" ${pr.subsidy ? "checked" : ""}> 教育訓練給付金を受け取れる(雇用保険の加入期間などの要件あり)</label>
-        <label class="check"><input type="checkbox" id="cp-cashback" ${pr.cashback ? "checked" : ""}> 条件付きの還元(合格お祝い金など)も満額受け取れる前提で計算する</label>
+        ${chk("cp-credits", pr.needCredits, "会計・ビジネス単位を取る必要がある")}
+        ${chk("cp-subsidy", pr.subsidy, "教育訓練給付金を受け取れる(雇用保険の加入期間などの要件あり)")}
+        <div class="cp-group">条件付きの還元(受け取れる見込みのものだけチェック)</div>
+        ${chk("cp-pass", pr.pass, "合格お祝い金:期限内(入会から約2年)に4科目すべて合格できる")}
+        ${chk("cp-career", pr.career, "キャリア支援金:予備校の転職支援(ABcareer)を通じて転職する")}
+        ${chk("cp-other", pr.other, "その他の補助(CPA会計学院の「最大46%補助」など、内訳不明のもの)")}
         <label class="field" style="margin-top:10px"><span>どの講座でも共通でかかる費用(任意)</span><input type="number" inputmode="numeric" min="0" step="1000" id="cp-extra" value="${pr.extra}"><small class="muted">受験料・日本受験の追加料金・学歴評価など。4科目で数十万円規模になります(州と為替で変わります)</small></label>
       </div>
       <div id="cp-result"></div>
+
+      <h2 class="h2">${cb.title}</h2>
+      <div class="table-wrap"><table class="tbl cp-cond">
+        <thead><tr><th></th><th>合格お祝い金</th><th>キャリア支援金</th></tr></thead>
+        <tbody>${cb.rows.map((r) => `<tr><th>${esc(r[0])}</th><td>${esc(r[1])}</td><td>${esc(r[2])}</td></tr>`).join("")}</tbody>
+      </table></div>
+      <p class="muted small">${esc(cb.note)}</p>
+      ${
+        noDegree
+          ? `<div class="warn-box"><b>あなたの場合(受験資格チェックの入力より)</b>
+              合格お祝い金は、受け取るのが難しい可能性が高いです。期限は入会から約2年ですが、先に学士号(州によっては単位)をそろえる必要があり、学位の取得に2年以上かかると受験を始める前に期限が来てしまいます。キャリア支援金は試験に合格しなくても対象になりえますが、ABcareerで転職する場合に限られます。</div>`
+          : `<p class="muted small">受験資格チェックに学歴を入力すると、ここにあなたの場合の注意点を表示します。</p>`
+      }
+      <h2 class="h2">ガイダンス・個別相談で確認すること</h2>
+      <div class="panel cp-check">
+        ${cb.checklist.map((t, i) => `<label class="check"><input type="checkbox" data-ck="${i}" ${pr.checked[i] ? "checked" : ""}> ${esc(t)}</label>`).join("")}
+      </div>
+      <p class="small">情報源:${cb.sources.map((x) => `<a href="${x.url}" target="_blank" rel="noopener">${esc(x.label)}</a>`).join(" / ")}</p>
+
       <h2 class="h2">講座の金額を編集</h2>
       <div class="cp-edit">
         ${pr.plans
           .map(
             (p) => `<details class="panel det"><summary><b>${esc(p.school)}</b> ${esc(p.name)}</summary>
-              <label class="field"><span>受講料(最初に払う額)</span><input type="number" inputmode="numeric" min="0" step="10" data-plan="${p.id}" data-k="price" value="${p.price}"></label>
-              <label class="field"><span>教育訓練給付金の目安</span><input type="number" inputmode="numeric" min="0" step="10" data-plan="${p.id}" data-k="subsidy" value="${p.subsidy}"></label>
-              <label class="field"><span>条件付きの還元・補助(最大)</span><input type="number" inputmode="numeric" min="0" step="10" data-plan="${p.id}" data-k="cashback" value="${p.cashback}"></label>
+              ${field(p, "price", "受講料(最初に払う額)")}
+              ${field(p, "subsidy", "教育訓練給付金の目安")}
+              ${field(p, "pass", "合格お祝い金")}
+              ${field(p, "career", "キャリア支援金")}
+              ${field(p, "other", "その他の条件付き補助")}
               <ul class="small muted">${p.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>
             </details>`
           )
           .join("")}
-        <button class="btn block" data-act="cp-reset">初期値に戻す</button>
+        <button class="btn block" data-act="cp-reset">金額を初期値に戻す</button>
       </div>
-      <p class="muted small">金額は各校の案内(${COURSE_PRESETS.updatedAt}時点)をもとにした目安です。キャンペーンの条件・給付金の対象かどうか・単位取得の有無は、申し込む前に各校で必ず確認してください。教育訓練給付金は受講修了後に支給され、前回の受給から3年以上空いていることなどの要件があります。</p>`;
+      <p class="muted small">金額は各校の案内(${COURSE_PRESETS.updatedAt}時点)と公開情報をもとにした目安です。キャンペーンの条件・給付金の対象かどうか・単位取得の有無は、申し込む前に各校で必ず確認してください。教育訓練給付金は受講修了後に支給され、前回の受給から3年以上空いていることなどの要件があります。</p>`;
     page({ title: "講座の料金比較", back: "#/home", body, tab: "home" });
 
     const save = (patch) => {
@@ -1641,16 +1687,21 @@ const App = (() => {
       const c = comparePrefs();
       const rows = c.plans.map((p) => {
         const afterSubsidy = p.price - (c.subsidy ? p.subsidy : 0);
-        const final = afterSubsidy - (c.cashback ? p.cashback : 0) + c.extra;
+        const parts = [
+          [c.pass, p.pass, "合格お祝い金"],
+          [c.career, p.career, "キャリア支援金"],
+          [c.other, p.other, "その他の補助"],
+        ].filter(([on, v]) => on && v);
+        const back = parts.reduce((a, [, v]) => a + v, 0);
+        const final = afterSubsidy - back + c.extra;
         const warn = [];
         if (c.needCredits && p.credits === false) warn.push("単位取得が含まれません(別途必要)");
         if (c.needCredits && p.credits === null) warn.push("単位取得が含まれるか要確認");
-        if (c.cashback && p.cashback) warn.push(`条件付きの還元 ${yen(p.cashback)} を含む`);
-        return { p, upfront: p.price + c.extra, afterSubsidy: afterSubsidy + c.extra, final, warn, usable: !(c.needCredits && p.credits === false) };
+        return { p, upfront: p.price + c.extra, afterSubsidy: afterSubsidy + c.extra, final, parts, warn, usable: !(c.needCredits && p.credits === false) };
       });
       const usable = rows.filter((r) => r.usable);
       const best = usable.length ? usable.reduce((a, b) => (b.final < a.final ? b : a)) : null;
-      const sorted = rows.slice().sort((a, b) => (b.usable - a.usable) || a.final - b.final);
+      const sorted = rows.slice().sort((a, b) => b.usable - a.usable || a.final - b.final);
       $app.querySelector("#cp-result").innerHTML = `
         <h2 class="h2">比較結果<small>安い順</small></h2>
         <div class="cp-list">
@@ -1662,24 +1713,30 @@ const App = (() => {
                 <table class="cp-break">
                   <tr><td>最初に払う額</td><td>${yen(r.upfront)}</td></tr>
                   ${c.subsidy ? `<tr><td>給付金が戻った後</td><td>${yen(r.afterSubsidy)}</td></tr>` : ""}
-                  ${c.cashback ? `<tr><td>条件付き還元を満額受けた後</td><td>${yen(r.final)}</td></tr>` : ""}
+                  ${r.parts.map(([, v, label]) => `<tr><td>− ${label}</td><td>${yen(v)}</td></tr>`).join("")}
                 </table>
                 ${r.warn.length ? `<ul class="cp-warn">${r.warn.map((w) => `<li>${esc(w)}</li>`).join("")}</ul>` : ""}
               </div>`
             )
             .join("")}
         </div>
-        ${
-          !c.cashback
-            ? `<p class="muted small">「条件付きの還元」は含めていません(確実に払う額で比較しています)。合格お祝い金なども見込む場合は、上のチェックを入れてください。</p>`
-            : `<p class="muted small">条件付きの還元は、合格などの条件を満たしたときだけ受け取れます。満たせなかった場合の負担も確認しておきましょう。</p>`
-        }`;
+        <p class="muted small">${
+          c.pass || c.career || c.other
+            ? "条件付きの還元は、条件を満たしたときだけ受け取れます。満たせなかった場合の負担も確認しておきましょう。"
+            : "条件付きの還元は含めていません(確実に払う額で比較しています)。受け取れる見込みのものにチェックを入れると反映されます。"
+        }</p>`;
     };
 
-    $app.querySelector("#cp-credits").onchange = (e) => (save({ needCredits: e.target.checked }), draw());
-    $app.querySelector("#cp-subsidy").onchange = (e) => (save({ subsidy: e.target.checked }), draw());
-    $app.querySelector("#cp-cashback").onchange = (e) => (save({ cashback: e.target.checked }), draw());
+    [["cp-credits", "needCredits"], ["cp-subsidy", "subsidy"], ["cp-pass", "pass"], ["cp-career", "career"], ["cp-other", "other"]].forEach(([id, k]) => {
+      $app.querySelector("#" + id).onchange = (e) => (save({ [k]: e.target.checked }), draw());
+    });
     $app.querySelector("#cp-extra").oninput = (e) => (save({ extra: Math.max(0, +e.target.value || 0) }), draw());
+    $app.querySelectorAll("[data-ck]").forEach((el) => {
+      el.onchange = () => {
+        const checked = Object.assign({}, comparePrefs().checked, { [el.dataset.ck]: el.checked });
+        save({ checked });
+      };
+    });
     $app.querySelectorAll("[data-plan]").forEach((el) => {
       el.oninput = () => {
         const cur = Store.get().prefs.compare || {};
@@ -1690,10 +1747,9 @@ const App = (() => {
       };
     });
     $app.querySelector("[data-act=cp-reset]").onclick = () => {
-      const cur = Store.get().prefs.compare || {};
-      Store.setPref("compare", Object.assign({}, cur, { plans: {} }));
+      save({ plans: {} });
       viewCompare();
-      toast("初期値に戻しました");
+      toast("金額を初期値に戻しました");
     };
     draw();
   }
