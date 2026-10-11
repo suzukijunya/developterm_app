@@ -821,3 +821,7 @@ small {
 .place-form .or {
   margin: 16px 0 0;
 }
+
+.metric.wide {
+  grid-column: 1 / -1;
+}

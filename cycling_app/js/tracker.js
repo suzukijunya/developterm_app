@@ -46,7 +46,8 @@ const Tracker = (() => {
     if (fix.accuracy > MAX_ACCURACY) return "inaccurate";
     if (!ride.last) {
       ride.start = { lat: fix.lat, lon: fix.lon };
-      ride.last = { lat: fix.lat, lon: fix.lon, t: fix.t };
+      // 開始前に測った位置が届くことがあるので、開始時刻より前の時間は数えない
+      ride.last = { lat: fix.lat, lon: fix.lon, t: Math.max(fix.t, ride.startedAt) };
       return "first";
     }
     const dt = (fix.t - ride.last.t) / 1000;

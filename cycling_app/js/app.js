@@ -483,8 +483,7 @@
             ${metric("speed", "速度", "km/h")}
             ${metric("grade", "勾配", "%")}
             ${metric("dist", "距離", "km")}
-            ${metric("elapsed", "経過時間", "")}
-            ${metric("stopped", "信号待ちなど", "")}
+            ${metric("elapsed", "経過時間", "", "wide")}
           </div>
           <div class="status">
             <span id="gps" class="pill"></span>
@@ -558,8 +557,8 @@
       </section>`;
   }
 
-  function metric(id, label, unit) {
-    return `<div class="metric"><div class="metric-label">${label}</div><div class="metric-value"><span id="${id}">–</span>${unit ? `<small>${unit}</small>` : ""}</div></div>`;
+  function metric(id, label, unit, cls) {
+    return `<div class="metric ${cls || ""}"><div class="metric-label">${label}</div><div class="metric-value"><span id="${id}">–</span>${unit ? `<small>${unit}</small>` : ""}</div></div>`;
   }
 
   function foodLine(kcal, all) {
@@ -797,7 +796,6 @@
     set("speed", fmt.kmh(moving ? ride.vEma : 0));
     set("dist", fmt.km(ride.distance));
     set("elapsed", fmt.dur((Date.now() - ride.startedAt) / 1000));
-    set("stopped", fmt.dur(ride.stoppedSec));
 
     const g = document.getElementById("grade");
     if (g) {
@@ -1026,7 +1024,7 @@
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2026.10.14";
+  const APP_VERSION = "2026.10.15";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });
