@@ -554,3 +554,77 @@ CPA.extend("FAR-01", {
     },
   ],
 });
+
+CPA.tbs({ id: "TBS-FAR-13", section: "FAR", chapter: "FAR-01", title: "後発事象(認識される事象と認識されない事象)",
+  scenario: `<p>Kato Corp.'s fiscal year ends December 31, Year 1. Its financial statements will be issued on March 5, Year 2. The following events occurred between December 31, Year 1 and March 5, Year 2:</p>
+<table><tr><th>Date</th><th>Event</th></tr>
+<tr><td>Jan 25</td><td>A lawsuit for an injury that occurred in October Year 1 was settled for $180,000. At December 31, Year 1, Kato had accrued $120,000 as its best estimate.</td></tr>
+<tr><td>Feb 3</td><td>A customer owing $90,000 at December 31, Year 1 filed for bankruptcy because of a deteriorating financial condition that existed at year-end. Kato expects to recover 20% of the balance. No allowance had been provided for this customer.</td></tr>
+<tr><td>Feb 14</td><td>A fire destroyed a warehouse, causing an uninsured loss of $250,000.</td></tr>
+<tr><td>Feb 20</td><td>Kato issued $2,000,000 of 10-year bonds.</td></tr></table>
+<p class="ja">Kato社の決算日はYear 1年12月31日、財務諸表の発行日はYear 2年3月5日である。1月25日:Year 1年10月に発生した傷害事故の訴訟が$180,000で和解した(期末に最善の見積りとして$120,000を計上済み)。2月3日:期末に$90,000の債務があった顧客が、期末に既に存在した財務状況の悪化により破産申請した。回収見込みは20%で、この顧客に対する引当は未計上。2月14日:火災により倉庫が焼失し、無保険の損失$250,000が生じた。2月20日:10年満期の社債$2,000,000を発行した。</p>`,
+  rows: [
+    { label: "Litigation liability reported at December 31, Year 1(期末に計上すべき訴訟債務)", type: "num", answer: 180000 },
+    { label: "Additional litigation loss recognized in Year 1(Year 1に追加計上する訴訟損失)", type: "num", answer: 60000 },
+    { label: "Treatment of the customer bankruptcy(顧客破産の取扱い)", type: "select", options: ["Recognized (adjust the financial statements)", "Nonrecognized (disclose only)", "No adjustment or disclosure"], answer: "Recognized (adjust the financial statements)" },
+    { label: "Additional credit loss recognized in Year 1(Year 1に追加計上する信用損失)", type: "num", answer: 72000 },
+    { label: "Treatment of the warehouse fire(倉庫火災の取扱い)", type: "select", options: ["Recognized (adjust the financial statements)", "Nonrecognized (disclose only)", "No adjustment or disclosure"], answer: "Nonrecognized (disclose only)" },
+    { label: "Treatment of the bond issuance(社債発行の取扱い)", type: "select", options: ["Recognized (adjust the financial statements)", "Nonrecognized (disclose only)", "No adjustment or disclosure"], answer: "Nonrecognized (disclose only)" },
+  ],
+  explain: `<p>期末日に存在した状況について追加的証拠を提供する事象は「認識される後発事象」として期末の財務諸表を修正し、期末後に生じた状況による事象は「認識されない後発事象」として重要なものを注記する。</p>
+<p>訴訟:事故は期末前に発生 → 修正。債務 = 180,000、追加損失 = 180,000 − 120,000 = 60,000。</p>
+<p>顧客破産:原因は期末に存在 → 修正。信用損失 = 90,000 × (1 − 20%) = 72,000。</p>
+<p>火災・社債発行:期末後に生じた事象 → 修正せず注記のみ(火災損失$250,000はYear 2の損失)。</p>`,
+});
+
+CPA.tbs({ id: "TBS-FAR-14", section: "FAR", chapter: "FAR-01", title: "公正価値測定(主要な市場・最有効使用・ヒエラルキー)",
+  scenario: `<p>Nara Co. holds 1,000 units of a commodity that trades in three active markets (per-unit data):</p>
+<table><tr><th>Market</th><th>Price</th><th>Transaction costs</th><th>Transportation costs</th><th>Share of total volume</th></tr>
+<tr><td>Market 1</td><td>$100</td><td>$6</td><td>$3</td><td>40%</td></tr>
+<tr><td>Market 2</td><td>$104</td><td>$12</td><td>$4</td><td>25%</td></tr>
+<tr><td>Market 3</td><td>$101</td><td>$4</td><td>$5</td><td>35%</td></tr></table>
+<p>Nara also owns a parcel of land currently used as a parking lot, valued at $800,000 in its current use. Market participants would develop the land for residential use, which is physically possible, legally permissible, and financially feasible; the land would be worth $1,100,000 for residential use, less conversion costs of $150,000.</p>
+<p>Nara also holds (a) listed shares with a quoted price in an active market, (b) a corporate bond valued using quoted prices for similar bonds in active markets, and (c) a private equity investment valued using a discounted cash flow model based on Nara's own projections.</p>
+<p class="ja">Nara社は3つの活発な市場で取引される商品を1,000単位保有している(上表は1単位当たりのデータ)。また、現在駐車場として使用している土地(現行用途での価値$800,000)を保有する。市場参加者はこの土地を住宅用に開発すると考えられ(物理的に可能・法的に許容・財務的に実行可能)、住宅用の価値は$1,100,000、転用費用は$150,000である。さらに、(a)活発な市場で相場価格のある上場株式、(b)活発な市場における類似社債の相場価格で評価する社債、(c)自社の予測に基づくDCFモデルで評価する未公開株式投資を保有している。</p>`,
+  rows: [
+    { label: "Fair value of the 1,000 units, assuming the market with the greatest volume is the principal market(取引量最大の市場が主要な市場である場合の1,000単位の公正価値)", type: "num", answer: 97000 },
+    { label: "Fair value of the 1,000 units, assuming there is no principal market(主要な市場がない場合の1,000単位の公正価値)", type: "num", answer: 96000 },
+    { label: "Fair value of the land(土地の公正価値)", type: "num", answer: 950000 },
+    { label: "Hierarchy level — listed shares(上場株式のレベル)", type: "select", options: ["Level 1", "Level 2", "Level 3"], answer: "Level 1" },
+    { label: "Hierarchy level — corporate bond(社債のレベル)", type: "select", options: ["Level 1", "Level 2", "Level 3"], answer: "Level 2" },
+    { label: "Hierarchy level — private equity investment(未公開株式投資のレベル)", type: "select", options: ["Level 1", "Level 2", "Level 3"], answer: "Level 3" },
+  ],
+  explain: `<p>主要な市場:取引量が最大の市場1(40%)。公正価値は輸送コストのみ控除し取引コストは控除しない:(100 − 3) × 1,000 = 97,000。</p>
+<p>主要な市場がない場合は最も有利な市場を手取額(価格 − 取引コスト − 輸送コスト)で選ぶ:市場1 = 91、市場2 = 88、市場3 = 92 → 市場3。公正価値 = (101 − 5) × 1,000 = 96,000。</p>
+<p>土地:最有効使用は住宅用 1,100,000 − 150,000 = 950,000 > 現行用途800,000。</p>
+<p>レベル:活発な市場の同一資産の相場価格 = レベル1、類似資産の相場価格 = レベル2、企業自身の予測など重要な観察不能インプット = レベル3。</p>`,
+});
+
+CPA.tbs({ id: "TBS-FAR-15", section: "FAR", chapter: "FAR-01", title: "多段階損益計算書と包括利益",
+  scenario: `<p>Sato Inc. reports the following for the year. The income tax rate is 25% on all items, including OCI items.</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Net sales</td><td>$2,400,000</td></tr>
+<tr><td>Cost of goods sold</td><td>1,440,000</td></tr>
+<tr><td>Selling expenses</td><td>250,000</td></tr>
+<tr><td>General and administrative expenses</td><td>210,000</td></tr>
+<tr><td>Interest expense</td><td>40,000</td></tr>
+<tr><td>Dividend income</td><td>10,000</td></tr>
+<tr><td>Realized gain on sale of available-for-sale debt securities</td><td>20,000</td></tr>
+<tr><td>Unrealized gain on equity securities with readily determinable fair values</td><td>12,000</td></tr>
+<tr><td>Unrealized holding gain on AFS debt securities arising during the year</td><td>60,000</td></tr>
+<tr><td>Foreign currency translation loss</td><td>16,000</td></tr></table>
+<p>The $20,000 realized gain had previously been recognized in accumulated other comprehensive income (AOCI). AOCI at January 1 was a $50,000 credit (net of tax).</p>
+<p class="ja">Sato社の当期データは上表のとおり。税率はOCI項目を含むすべての項目に25%を適用する。実現したAFS証券売却益$20,000は、以前にその他の包括利益累計額(AOCI)に計上されていたものである。1月1日のAOCIは貸方$50,000(税引後)。</p>`,
+  rows: [
+    { label: "Gross profit(売上総利益)", type: "num", answer: 960000 },
+    { label: "Income from operations(営業利益)", type: "num", answer: 500000 },
+    { label: "Net income(純利益)", type: "num", answer: 376500 },
+    { label: "Other comprehensive income, net of tax(税引後その他の包括利益)", type: "num", answer: 18000 },
+    { label: "Comprehensive income(包括利益)", type: "num", answer: 394500 },
+    { label: "AOCI at December 31 (credit)(12月31日のAOCI・貸方)", type: "num", answer: 68000 },
+  ],
+  explain: `<p>売上総利益 = 2,400,000 − 1,440,000 = 960,000。営業利益 = 960,000 − 250,000 − 210,000 = 500,000。</p>
+<p>税引前利益 = 500,000 − 40,000 + 10,000 + 20,000 + 12,000 = 502,000。純利益 = 502,000 × 75% = 376,500(持分証券の評価益は純利益に含める)。</p>
+<p>OCI(税引前)= 60,000 − 組替調整20,000 − 換算損失16,000 = 24,000、税引後 = 18,000。包括利益 = 376,500 + 18,000 = 394,500。</p>
+<p>期末AOCI = 50,000 + 18,000 = 68,000(貸方)。</p>`,
+});
