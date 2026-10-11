@@ -1767,3 +1767,8 @@ details.panel summary {
 .bc-listen {
   text-wrap: balance;
 }
+
+/* hidden 属性は display 指定より常に優先する(翻訳ポップアップ等が閉じないのを防ぐ) */
+[hidden] {
+  display: none !important;
+}
