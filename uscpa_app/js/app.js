@@ -482,7 +482,7 @@ const App = (() => {
       </div>
       <div class="q-box">
         <p class="q-en">${esc(q.q)}</p>
-        <button class="ja-toggle" data-act="ja">${showJa ? "和訳を隠す" : "和訳を表示"}</button>
+        <button class="ja-toggle" data-act="ja">${showJa ? "和訳を隠す" : "和訳を表示"}</button>${Store.get().prefs.autoTranslate !== false ? `<span class="ja-hint">英文を選択するとその部分だけ訳せます</span>` : ""}
         <p class="q-ja ${showJa ? "" : "hidden"}">${esc(q.ja)}</p>
       </div>
       <div class="choices">
@@ -1061,6 +1061,7 @@ const App = (() => {
         <label class="field"><span>目標の総学習時間(時間)</span><input type="number" id="s-target" min="100" step="50" value="${plan.targetHours}"></label>
         <label class="field"><span>1日の目標(分)</span><input type="number" id="s-daily" min="10" step="10" value="${plan.dailyMin}"></label>
         <label class="check"><input type="checkbox" id="s-ja" ${st.prefs.showJa ? "checked" : ""}> 問題の和訳を最初から表示する</label>
+        <label class="check"><input type="checkbox" id="s-qt" ${st.prefs.autoTranslate !== false ? "checked" : ""}> 英文を選択したら自動で翻訳する</label>
       </div>
 
       <div class="panel">
@@ -1097,6 +1098,7 @@ const App = (() => {
     $app.querySelector("#s-target").onchange = (e) => Store.setPlan({ targetHours: Math.max(1, +e.target.value || 1200) });
     $app.querySelector("#s-daily").onchange = (e) => Store.setPlan({ dailyMin: Math.max(1, +e.target.value || 120) });
     $app.querySelector("#s-ja").onchange = (e) => Store.setPref("showJa", e.target.checked);
+    $app.querySelector("#s-qt").onchange = (e) => Store.setPref("autoTranslate", e.target.checked);
     const $box = $app.querySelector("#s-backup");
     const $text = $app.querySelector("#s-text");
     const load = (text) => {
