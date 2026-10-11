@@ -75,9 +75,9 @@ CPA.extend("BAR-01", {
     {
       q: "A project costs $90,000 and is expected to generate cash inflows of $30,000 in Year 1, $40,000 in Year 2, $25,000 in Year 3, and $20,000 in Year 4. Assuming cash flows occur evenly within each year, what is the payback period?",
       ja: "あるプロジェクトの投資額は$90,000で、キャッシュインフローは1年目$30,000、2年目$40,000、3年目$25,000、4年目$20,000と見込まれる。各年のCFは年間を通じて均等に発生するとすると、回収期間は何年か。",
-      c: ["3.0 years", "2.8 years", "3.27 years", "3.6 years"],
+      c: ["3.0 years", "2.8 years", "3.13 years", "3.6 years"],
       a: 1,
-      ex: "2年目末までの累計回収 = 70,000。残り20,000 ÷ 3年目のCF 25,000 = 0.8年 → 回収期間 2.8年。3.27年は平均CF(27,500)で割った誤り。",
+      ex: "2年目末までの累計回収 = 70,000。残り20,000 ÷ 3年目のCF 25,000 = 0.8年 → 回収期間 2.8年。3.13年は4年間の平均CF(115,000 ÷ 4 = 28,750)で割った誤り。",
     },
     {
       q: "A company makes a component at the following per-unit costs for 10,000 units: direct materials $12, direct labor $8, variable overhead $5, and allocated fixed overhead $10, of which $4 per unit is avoidable if the component is purchased. An outside supplier offers the component for $28 per unit. If the company buys the component, operating income will:",
@@ -154,7 +154,7 @@ CPA.extend("BAR-01", {
       ja: "掛売上の予算は4月$100,000、5月$120,000、6月$150,000である。顧客は販売月に30%、翌月に60%、翌々月に8%を支払い、2%は回収不能となる。6月の現金回収予算はいくらか。",
       c: ["$127,000", "$125,000", "$150,000", "$117,000"],
       a: 1,
-      ex: "6月の回収 = 6月売上 150,000 × 30% + 5月 120,000 × 60% + 4月 100,000 × 8% = 45,000 + 72,000 + 8,000 = 125,000。回収不能の2%は含めない(含めると127,000)。",
+      ex: "6月の回収 = 6月売上 150,000 × 30% + 5月 120,000 × 60% + 4月 100,000 × 8% = 45,000 + 72,000 + 8,000 = 125,000。回収不能の2%は回収されないので含めない(4月分の回収を8%+2%=10%と誤ると127,000)。",
     },
   ],
 });
