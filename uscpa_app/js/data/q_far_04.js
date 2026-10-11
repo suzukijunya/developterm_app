@@ -1,0 +1,132 @@
+// FAR の追加問題(取得後の有形固定資産・無形資産・研究開発費・ソフトウェア)
+
+CPA.extend("FAR-03", {
+  mcq: [
+    {
+      q: "On October 1, Year 1, a calendar-year company acquired a machine for $84,000 with an estimated salvage value of $4,000 and an 8-year useful life. The company uses the straight-line method with a half-year convention (one-half year of depreciation in the year of acquisition regardless of the acquisition date). What is depreciation expense for Year 1?",
+      ja: "暦年決算の会社は第1年度10月1日に機械を$84,000で取得した。見積残存価額は$4,000、耐用年数は8年である。会社は定額法と半年基準(取得日にかかわらず取得年度は半年分を償却する)を採用している。第1年度の減価償却費はいくらか。",
+      c: ["$2,500", "$5,000", "$10,000", "$5,250"],
+      a: 1,
+      ex: "(84,000 − 4,000) ÷ 8 = 10,000 × 1/2 = 5,000。$2,500は実際の保有月数(3か月)で按分した額で、半年基準とは異なる。$5,250は残存価額を控除していない。",
+    },
+    {
+      q: "A company acquired equipment on January 1, Year 1 for $50,000. The equipment has a 5-year useful life and no salvage value. The company uses the double-declining-balance method and switches to straight-line in the first year in which straight-line depreciation on the remaining book value over the remaining life exceeds the declining-balance amount. What is depreciation expense for Year 4?",
+      ja: "会社は第1年度1月1日に設備を$50,000で取得した。耐用年数5年、残存価額ゼロ。会社は200%定率法(DDB)を採用し、残存簿価を残存耐用年数で均等償却した額がDDBの額を上回る最初の年度に定額法へ切り替える。第4年度の減価償却費はいくらか。",
+      c: ["$4,320", "$3,600", "$10,000", "$5,400"],
+      a: 3,
+      ex: "DDB率40%:Y1 20,000(簿価30,000)、Y2 12,000(18,000)、Y3 7,200(10,800)。Y4はDDB 4,320 < 定額 10,800 ÷ 2 = 5,400 なので切替え、5,400。$4,320は切替えを考慮していない。",
+    },
+    {
+      q: "On July 1, Year 1, a calendar-year company acquired a machine for $64,000 with a salvage value of $4,000 and a 4-year useful life. The company uses the sum-of-the-years'-digits method and allocates each asset-year's depreciation to the fiscal years it spans. What is depreciation expense for Year 2?",
+      ja: "暦年決算の会社は第1年度7月1日に機械を$64,000で取得した。残存価額$4,000、耐用年数4年。会社は級数法を採用し、資産年度ごとの償却額をまたがる会計年度に按分する。第2年度の減価償却費はいくらか。",
+      c: ["$21,000", "$18,000", "$24,000", "$12,000"],
+      a: 0,
+      ex: "級数合計10。資産年度1 = 60,000 × 4/10 = 24,000、資産年度2 = 18,000。第2年度 = 24,000 × 6/12 + 18,000 × 6/12 = 21,000。$18,000は資産年度2をそのまま会計年度に当てた誤り。",
+    },
+    {
+      q: "A delivery truck was purchased for $90,000 with a salvage value of $10,000 and an estimated total life of 200,000 miles. It was driven 50,000 miles in Year 1. At the beginning of Year 2, the estimated total life was revised to 170,000 miles (salvage unchanged). The truck was driven 40,000 miles in Year 2. Using the units-of-production method, what is Year 2 depreciation?",
+      ja: "配送用トラックを$90,000で購入した。残存価額$10,000、見積総走行距離200,000マイル。第1年度は50,000マイル走行した。第2年度期首に見積総走行距離を170,000マイルに改定した(残存価額は不変)。第2年度は40,000マイル走行した。生産高比例法による第2年度の減価償却費はいくらか。",
+      c: ["$16,000", "$18,824", "$20,000", "$14,118"],
+      a: 2,
+      ex: "Y1 = 80,000 ÷ 200,000 × 50,000 = 20,000。見積りの変更は将来に向かって処理:(70,000 − 10,000) ÷ (170,000 − 50,000) = 0.50/マイル × 40,000 = 20,000。$16,000は旧単価、$18,824は当初の償却可能額を改定後総距離で割った誤り。",
+    },
+    {
+      q: "A company uses the composite depreciation method for a group of assets: Asset A cost $40,000 (salvage $4,000, 6-year life); Asset B cost $60,000 (no salvage, 10-year life); Asset C cost $20,000 (salvage $2,000, 3-year life). Each asset's annual straight-line depreciation is computed and the composite rate is applied to total cost. What is the composite depreciation rate?",
+      ja: "会社は資産グループに総合償却法を採用している。資産A:取得原価$40,000(残存価額$4,000、耐用6年)、資産B:$60,000(残存価額なし、耐用10年)、資産C:$20,000(残存価額$2,000、耐用3年)。各資産の年間定額償却額を計算し、総合償却率を取得原価合計に適用する。総合償却率は何%か。",
+      c: ["15.0%", "15.8%", "20.0%", "6.3%"],
+      a: 0,
+      ex: "年間償却額 = 6,000 + 6,000 + 6,000 = 18,000。総合償却率 = 18,000 ÷ 取得原価合計120,000 = 15%。15.8%は償却可能額114,000で割った誤り、20%は各償却率の単純平均。6.3は総合耐用年数(114,000 ÷ 18,000 = 6.33年)である。",
+    },
+    {
+      q: "A company uses the composite depreciation method. One asset in the group, with an original cost of $30,000, is sold for $8,000 cash. How should the sale be recorded?",
+      ja: "会社は総合償却法を採用している。グループ内の取得原価$30,000の資産1つを現金$8,000で売却した。この売却はどのように記録すべきか。",
+      c: [
+        "Recognize a gain or loss equal to the difference between the asset's individual book value and $8,000",
+        "Debit accumulated depreciation for $22,000 and recognize no gain or loss",
+        "Credit accumulated depreciation for $8,000 and recognize a $22,000 loss",
+        "Debit accumulated depreciation for $30,000 and recognize an $8,000 gain",
+      ],
+      a: 1,
+      ex: "総合(グループ)償却法では個別資産の簿価を把握しないため、売却時に損益を認識しない。仕訳:現金8,000/減価償却累計額22,000(差額)/設備30,000。",
+    },
+    {
+      q: "Equipment acquired on January 1, Year 1 for $120,000 was depreciated using straight-line over 10 years with a $12,000 salvage value. At the beginning of Year 5, the company revised the total useful life to 8 years and the salvage value to $6,000. What is depreciation expense for Year 5?",
+      ja: "第1年度1月1日に$120,000で取得した設備を、耐用年数10年、残存価額$12,000の定額法で償却してきた。第5年度期首に総耐用年数を8年、残存価額を$6,000に改定した。第5年度の減価償却費はいくらか。",
+      c: ["$14,250", "$10,800", "$11,800", "$17,700"],
+      a: 3,
+      ex: "4年分の累計額 = 10,800 × 4 = 43,200、簿価76,800。残存耐用年数 = 8 − 4 = 4年。(76,800 − 6,000) ÷ 4 = 17,700。$14,250は当初から8年とした遡及的計算、$11,800は残存6年で割った誤り。",
+    },
+    {
+      q: "A company acquired equipment on January 1, Year 1 for $100,000 (no salvage value, 10-year life) and depreciated it using straight-line. On January 1, Year 4, the company justifiably changed to the double-declining-balance method based on the remaining 7-year life. How should Year 4 depreciation be reported?",
+      ja: "会社は第1年度1月1日に設備を$100,000(残存価額なし、耐用10年)で取得し、定額法で償却してきた。第4年度1月1日、正当な理由により残存耐用年数7年に基づく200%定率法へ変更した。第4年度の減価償却はどのように報告すべきか。",
+      c: [
+        "$14,000",
+        "$20,000, plus a cumulative-effect adjustment to beginning retained earnings",
+        "$20,000, applied prospectively with no adjustment to prior periods",
+        "$10,000",
+      ],
+      a: 2,
+      ex: "償却方法の変更は「会計方針の変更により生じる見積りの変更」として将来に向かって処理する。簿価70,000 × 2/7 = 20,000。過年度修正・累積的影響額の計上は行わない。$14,000は当初の10年に基づく率(20%)を用いた誤り。",
+    },
+    {
+      q: "On April 1, Year 1, a calendar-year company acquired equipment for $30,000 with a salvage value of $3,000 and a 5-year useful life. Using the double-declining-balance method with depreciation prorated for partial years, what is depreciation expense for Year 2?",
+      ja: "暦年決算の会社は第1年度4月1日に設備を$30,000で取得した。残存価額$3,000、耐用年数5年。期中取得は月割りする200%定率法による第2年度の減価償却費はいくらか。",
+      c: ["$8,400", "$7,200", "$9,000", "$12,000"],
+      a: 0,
+      ex: "率40%。Y1 = 30,000 × 40% × 9/12 = 9,000、簿価21,000。Y2 = 21,000 × 40% = 8,400。DDBでは償却率計算時に残存価額を控除しない。$7,200は資産年度2の額、$12,000は資産年度1の額である。",
+    },
+    {
+      q: "Which of the following depreciation methods ignores salvage value in computing the periodic depreciation charge, although the asset may not be depreciated below its salvage value?",
+      ja: "次の減価償却方法のうち、各期の償却額の計算において残存価額を考慮しない(ただし残存価額を下回って償却はしない)ものはどれか。",
+      c: ["Straight-line", "Sum-of-the-years'-digits", "Units-of-production", "Double-declining-balance"],
+      a: 3,
+      ex: "定率法(DDB)は期首簿価に一定率を乗じるため残存価額を計算に用いないが、簿価が残存価額を下回らないよう最終年度で調整する。他の方法は(取得原価 − 残存価額)を配分する。",
+    },
+    {
+      q: "A long-lived asset group held and used has a carrying amount of $800,000. Because of a significant decline in market price, the company tests for recoverability. The sum of undiscounted future cash flows from use and eventual disposition is $820,000, and fair value is $700,000. What impairment loss should be recognized?",
+      ja: "使用中の長期性資産グループの帳簿価額は$800,000である。市場価格が著しく下落したため回収可能性テストを行った。使用および最終処分から生じる割引前将来キャッシュ・フローの合計は$820,000、公正価値は$700,000である。認識すべき減損損失はいくらか。",
+      c: ["$100,000", "$120,000", "$0", "$20,000"],
+      a: 2,
+      ex: "ステップ1:帳簿価額800,000 ≤ 割引前CF 820,000 なので回収可能であり、減損損失は認識しない。公正価値との差額$100,000はステップ1を通過した場合のみ測定する。",
+    },
+    {
+      q: "At December 31, Year 1, a machine held and used had a cost of $900,000 and accumulated depreciation of $300,000. Undiscounted future cash flows were $500,000 and fair value was $420,000. The remaining useful life is 6 years with no salvage value. What is depreciation expense for Year 2?",
+      ja: "第1年度12月31日、使用中の機械の取得原価は$900,000、減価償却累計額は$300,000である。割引前将来CFは$500,000、公正価値は$420,000。残存耐用年数6年、残存価額なし。第2年度の減価償却費はいくらか。",
+      c: ["$100,000", "$70,000", "$83,333", "$150,000"],
+      a: 1,
+      ex: "帳簿価額600,000 > 割引前CF 500,000 なので減損。損失 = 600,000 − 420,000 = 180,000。減損後の帳簿価額420,000が新たな取得原価となり、420,000 ÷ 6 = 70,000。$83,333は割引前CFを基礎にした誤り。",
+    },
+    {
+      q: "In Year 1, a company recognized an impairment loss of $180,000 on equipment held and used, reducing its carrying amount to $420,000. At the end of Year 2, when the carrying amount is $350,000, the equipment's fair value has increased to $480,000. How should the company account for the recovery under U.S. GAAP?",
+      ja: "第1年度、会社は使用中の設備について$180,000の減損損失を認識し、帳簿価額を$420,000に減額した。第2年度末(帳簿価額$350,000)、設備の公正価値は$480,000に回復した。米国基準ではこの回復をどのように処理するか。",
+      c: [
+        "Recognize no recovery, because restoration of a previously recognized impairment loss is prohibited",
+        "Recognize a gain of $130,000",
+        "Recognize a gain limited to the $180,000 previously recognized loss",
+        "Increase the carrying amount with an offset to other comprehensive income",
+      ],
+      a: 0,
+      ex: "米国基準では使用中の資産について過去に認識した減損損失の戻入れは禁止される。戻入れが認められるのは売却目的保有資産(過去の損失累計額まで)であり、IFRS(のれん以外)とも異なる。",
+    },
+    {
+      q: "On October 1, a calendar-year company committed to a plan to sell a building, and all held-for-sale criteria were met. The building's carrying amount was $350,000, its fair value was $330,000, and estimated costs to sell were $15,000. Annual depreciation had been $40,000. What impairment loss and what depreciation for October 1–December 31 should be recognized, assuming no change in values at year-end?",
+      ja: "暦年決算の会社は10月1日に建物の売却計画を決定し、売却目的保有の要件をすべて満たした。建物の帳簿価額は$350,000、公正価値は$330,000、見積売却費用は$15,000。年間減価償却費は$40,000であった。期末までに価値の変動がないとすると、10月1日~12月31日に認識すべき減損損失と減価償却費はいくらか。",
+      c: [
+        "Loss $35,000; depreciation $10,000",
+        "Loss $20,000; depreciation $0",
+        "Loss $0; depreciation $10,000",
+        "Loss $35,000; depreciation $0",
+      ],
+      a: 3,
+      ex: "売却目的保有資産は帳簿価額と(公正価値 − 売却費用)の低い方で測定:350,000 − (330,000 − 15,000) = 35,000の損失。売却目的保有に分類した後は減価償却しない。$20,000は売却費用を控除していない。",
+    },
+    {
+      q: "A building classified as held for sale was written down by $35,000 to $315,000 (fair value less cost to sell). At the next reporting date, before the sale, fair value less cost to sell has increased to $360,000. What gain should be recognized?",
+      ja: "売却目的保有に分類した建物を$35,000減額し、$315,000(公正価値 − 売却費用)とした。売却前の次の報告日に、公正価値 − 売却費用は$360,000に上昇した。認識すべき利益はいくらか。",
+      c: ["$45,000", "$35,000", "$10,000", "$0"],
+      a: 1,
+      ex: "売却目的保有資産は、その後の公正価値 − 売却費用の上昇について利益を認識できるが、過去に認識した損失累計額(35,000)が上限。360,000 − 315,000 = 45,000ではなく35,000に制限される。使用中資産のような戻入れ禁止($0)とは異なる。",
+    },
+    // __MORE__
+  ],
+});
