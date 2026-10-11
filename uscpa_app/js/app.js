@@ -71,6 +71,64 @@ const App = (() => {
     setTimeout(() => t.remove(), 2600);
   }
 
+  // ---- 用語の詳しい説明(日本でいうと何か) ----
+  function explainBtn(cardId) {
+    if (typeof CPA_EXPLAIN === "undefined" || !CPA_EXPLAIN[cardId]) return "";
+    return `<span class="xp-btn" role="button" tabindex="0" data-explain="${cardId}">詳しく・日本では?</span>`;
+  }
+
+  function showExplain(cardId) {
+    const c = CPA.allCards().find((x) => x.id === cardId);
+    const x = c && CPA_EXPLAIN[cardId];
+    if (!x) return;
+    const ch = CPA.getChapter(c.chapter);
+    const d = document.createElement("div");
+    d.className = "modal";
+    d.innerHTML = `<div class="modal-box xp-box" role="dialog" aria-modal="true" aria-label="${esc(c.en)} の説明">
+        <button class="qt-close" data-x aria-label="閉じる">×</button>
+        <div class="xp-head">${tag(c.section)} <b>${esc(c.en)}</b> ${Speech.button(c.en)}</div>
+        <div class="xp-ja">${esc(c.ja)}</div>
+        <h4>詳しく</h4><p>${esc(x[0])}</p>
+        <h4>日本でいうと</h4><p class="xp-jp">${esc(x[1])}</p>
+        ${x[2] ? `<h4>例</h4><p>${esc(x[2])}</p>` : ""}
+        <div class="btn-row"><a class="btn" href="#/ch/${ch.id}/note" data-go title="${esc(ch.title)}">この章の講義へ</a><button class="btn primary" data-x>閉じる</button></div>
+      </div>`;
+    const close = () => {
+      d.remove();
+      document.removeEventListener("keydown", onEsc);
+    };
+    const onEsc = (e) => e.key === "Escape" && close();
+    d.addEventListener("click", (e) => {
+      if (e.target === d || e.target.closest("[data-x]") || e.target.closest("[data-go]")) close();
+    });
+    document.addEventListener("keydown", onEsc);
+    document.body.appendChild(d);
+    d.querySelector(".xp-box").scrollTop = 0;
+  }
+
+  // キャプチャ段階で処理して、カードの裏返しなどと同時に起きないようにする
+  document.addEventListener(
+    "click",
+    (e) => {
+      const b = e.target.closest && e.target.closest("[data-explain]");
+      if (!b) return;
+      e.preventDefault();
+      e.stopPropagation();
+      showExplain(b.dataset.explain);
+    },
+    true
+  );
+  document.addEventListener(
+    "keydown",
+    (e) => {
+      const b = e.target.closest && e.target.closest("[data-explain]");
+      if (!b || (e.key !== "Enter" && e.key !== " ")) return;
+      e.preventDefault();
+      showExplain(b.dataset.explain);
+    },
+    true
+  );
+
   // 本試験のスコアは非公開の方法で換算されるため、正答率からの「目安」として表示する
   function estScore(ratio) {
     const v = ratio <= 0.65 ? (ratio / 0.65) * 75 : 75 + ((ratio - 0.65) / 0.35) * 24;
@@ -317,7 +375,7 @@ const App = (() => {
               (c) => `<button class="flip" data-flip>
                 ${Speech.button(c.en, "", "corner")}
                 <span class="flip-front">${esc(c.en)}${Store.isCardMastered(c.id) ? '<i class="mastered">覚えた</i>' : ""}</span>
-                <span class="flip-back"><b>${esc(c.ja)}</b><small>${esc(c.desc)}</small></span></button>`
+                <span class="flip-back"><b>${esc(c.ja)}</b><small>${esc(c.desc)}</small>${explainBtn(c.id)}</span></button>`
             )
             .join("")}
         </div>
@@ -1055,7 +1113,7 @@ const App = (() => {
       const k = $q.value.trim().toLowerCase();
       const list = CPA.allCards().filter((c) => !k || (c.en + c.ja + c.desc).toLowerCase().includes(k));
       $app.querySelector("#g-list").innerHTML = list.length
-        ? list.map((c) => `<div class="gloss-row">${tag(c.section)}<div class="gloss-body"><b>${esc(c.en)}</b><span>${esc(c.ja)}</span><small>${esc(c.desc)}</small></div>${Speech.button(c.en)}</div>`).join("")
+        ? list.map((c) => `<div class="gloss-row">${tag(c.section)}<div class="gloss-body"><b>${esc(c.en)}</b><span>${esc(c.ja)}</span><small>${esc(c.desc)}</small>${explainBtn(c.id)}</div>${Speech.button(c.en)}</div>`).join("")
         : `<p class="muted">見つかりませんでした</p>`;
     };
     $q.oninput = draw;
@@ -1130,7 +1188,7 @@ const App = (() => {
         <span class="bc-tag">${c.section}</span>
         ${Speech.button(c.en, "", "corner big")}
         ${hideEn ? `<span class="bc-listen">音声を聞いて、用語と意味を思い浮かべてください</span>` : `<span class="bc-en">${esc(c.en)}</span>`}
-        ${cardRun.flipped ? `<span class="bc-ja">${esc(c.ja)}</span><span class="bc-desc">${esc(c.desc)}</span>` : `<span class="muted small">タップして${hideEn ? "答え" : "意味"}を表示</span>`}
+        ${cardRun.flipped ? `<span class="bc-ja">${esc(c.ja)}</span><span class="bc-desc">${esc(c.desc)}</span>${explainBtn(c.id)}` : `<span class="muted small">タップして${hideEn ? "答え" : "意味"}を表示</span>`}
       </button>
       ${
         cardRun.flipped
@@ -1606,7 +1664,7 @@ const App = (() => {
     route();
   }
 
-  return { init };
+  return { init, explainBtn };
 })();
 
 App.init();

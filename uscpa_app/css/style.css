@@ -1977,3 +1977,73 @@ details.panel summary {
   gap: 8px;
   font-size: 14px;
 }
+
+/* ---------- 用語の詳しい説明 ---------- */
+.xp-btn {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  margin-top: 8px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--brand-2);
+  color: var(--brand-2);
+  background: var(--card);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.flip-back .xp-btn,
+.gloss-body .xp-btn,
+.qt-term .xp-btn {
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 3px 10px;
+  font-size: 12px;
+}
+
+.xp-box {
+  position: relative;
+  max-width: 560px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 18px 18px 6px;
+}
+
+.xp-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-right: 36px;
+  font-size: 17px;
+  color: var(--brand);
+}
+
+.xp-ja {
+  font-size: 18px;
+  font-weight: 800;
+  margin: 4px 0 6px;
+}
+
+.xp-box h4 {
+  margin: 14px 0 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.xp-box p {
+  margin: 0;
+  font-weight: 400;
+  line-height: 1.7;
+}
+
+.xp-jp {
+  background: rgba(245, 158, 11, 0.12);
+  border-left: 4px solid var(--accent);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
