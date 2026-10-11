@@ -71,10 +71,10 @@ CPA.extend("AUD-01", {
         "The trust's holding in the client is immaterial to the covered member's personal net worth",
         "The covered member is not a beneficiary of the trust",
         "The covered member discloses the trusteeship to the client's board of directors",
-        "The covered member has no authority to make investment decisions for the trust, the trust's interest in the client is not more than 10% of the trust's assets, and the trust does not hold more than 5% of the client's outstanding equity",
+        "The covered member has no authority to make investment decisions for the trust, the trust's interest in the client is not more than 10% of the trust's assets, and the trust does not hold more than 10% of the client's outstanding equity",
       ],
       a: 3,
-      ex: "受託者として信託が保有するクライアント持分は原則として対象メンバーの直接的財務的利害とみなされる。例外は、①投資判断の権限がない、②当該持分が信託資産の10%以下、③信託(関連信託を含む)がクライアントの持分の5%超を保有しない、のすべてを満たす場合のみである。受益者でないことだけでは足りない。",
+      ex: "受託者として信託が保有するクライアント持分は原則として対象メンバーの直接的財務的利害とみなされる。例外は、①投資判断の権限がない、②当該持分が信託資産の10%以下、③信託がクライアントの発行済持分の10%超を保有しない、のすべてを満たす場合のみである。受益者でないことだけでは足りない。",
     },
     {
       q: "A partner in a CPA firm's Denver office is not on the attest engagement team, cannot influence the engagement, and does not practice in the office of the lead attest engagement partner. The partner owns 3% of the outstanding equity of a nonissuer attest client audited from the firm's Chicago office. Under the AICPA Code, independence is:",
@@ -89,7 +89,7 @@ CPA.extend("AUD-01", {
       ex: "対象メンバーでないパートナーや専門職員(およびその近親者)は、クライアントの発行済持分の5%超を保有・支配すると独立性が損なわれる。3%は5%以下なので問題ない。対象メンバーでなくとも5%基準があるため「割合にかかわらず可」は誤り。",
     },
     {
-      q: "The dependent 15-year-old son of an audit senior on the attest engagement team owns 10 shares of a nonissuer attest client's stock, received as a birthday gift from his grandparents. The shares are immaterial to the senior's net worth. Under the AICPA Code, independence is:",
+      q: "The dependent 15-year-old son of an audit senior on the attest engagement team owns 10 shares of a nonissuer attest client's stock, received as a birthday gift from his grandparents. The shares are immaterial to the senior's net worth, and no action has been taken to dispose of them. Under the AICPA Code, independence is:",
       ja: "証明業務チームのシニアの扶養する15歳の息子が、祖父母から誕生日祝いとして受け取った非公開クライアントの株式10株を保有している。株式はシニアの純資産に対して重要ではない。AICPA規程上、独立性はどうなるか(処分などの措置はとられていない)。",
       c: [
         "Not impaired, because the investment is immaterial",
@@ -723,7 +723,7 @@ CPA.tbs({ id: "TBS-AUD-09", section: "AUD", chapter: "AUD-01", title: "AICPA規�
 <p>3. 母親は近い親族(close relative)。近い親族の財務的利害は、本人にとって重要(かつメンバーが知っている)か重要な影響力を行使できる場合に限り問題となる。重要でないため損なわれない。</p>
 <p>4. クライアント承認済みの方法による減価償却計算は、一般要件(SKEを有する担当者の指名、責任の受入れ、書面化)を満たせば許容される記帳業務である。</p>
 <p>5. 財務情報システムの設計・導入は自己レビュー・経営参加の脅威が大きく独立性を損なう。</p>
-<p>6. 過年度の業務報酬が当期報告書日の1年以上前から未払いの場合、独立性は損なわれる(請求日2026年1月から報告書日2027年3月15日まで1年超)。</p>`,
+<p>6. 当期報告書日より1年以上前に提供した業務の報酬が未払いの場合、独立性は損なわれる(2025年度監査は遅くとも請求日の2026年1月までに提供済みで、報告書日2027年3月15日まで1年超)。</p>`,
 });
 
 CPA.tbs({ id: "TBS-AUD-10", section: "AUD", chapter: "AUD-01", title: "SEC・PCAOBの独立性規則",
