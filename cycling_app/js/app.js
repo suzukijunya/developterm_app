@@ -399,7 +399,8 @@
 
   // 名前が空欄なら、入力した住所・駅名をそのまま名前にする
   function savePlaceFromForm(lat, lon, label) {
-    const name = (placeForm.name.trim() || placeForm.query.trim()).slice(0, 20);
+    const q = placeForm.query.trim();
+    const name = (placeForm.name.trim() || (Geocode.parseLatLon(q) ? "" : q)).slice(0, 20);
     if (!name) return;
     if (!addPlace({ name, label, lat, lon })) return;
     placeForm = { name: "", query: "", results: [], status: `「${name}」を登録しました`, pick: null };
@@ -409,6 +410,19 @@
   async function searchPlace() {
     const q = placeForm.query.trim();
     if (!q) return;
+    if (Geocode.isShortLink(q)) {
+      placeForm.results = [];
+      placeForm.pick = null;
+      placeForm.status = "共有ボタンの短いURLからは位置を読み取れません。Googleマップで場所を長押しして出る「35.xxxx, 139.xxxx」をコピーしてください";
+      return render();
+    }
+    // 緯度経度やGoogleマップのURLなら、その位置を地図に出して住所を調べる
+    const direct = Geocode.parseLatLon(q);
+    if (direct) {
+      placeForm.results = [];
+      placeForm.status = "貼り付けた位置を地図に表示しました。名前を入れて登録してください";
+      return openPick({ lat: direct[0].lat, lon: direct[0].lon, label: null, moved: false, needAddr: true });
+    }
     placeForm.results = [];
     placeForm.pick = null;
     placeForm.status = "検索しています…";
@@ -417,7 +431,7 @@
       placeForm.results = await Geocode.search(q, nearPoint() || (await locateOnce()));
       placeForm.status = placeForm.results.length
         ? "近い順に表示しています。候補をタップすると地図で位置を確認できます"
-        : "見つかりませんでした。住所で探すか、「地図で場所を選ぶ」から選んでください";
+        : "見つかりませんでした。下の「Googleマップで探す」を使ってください";
     } catch (e) {
       placeForm.status = "検索できませんでした。通信状況を確認するか、Googleマップの「緯度,経度」を貼り付けてください";
     }
@@ -874,6 +888,18 @@
                       </div>`
                     : `<button type="button" class="btn sub" id="pick-open">🗺️ 地図で場所を選ぶ</button>`
                 }
+                <div class="gmaps">
+                  <p class="gmaps-title">検索に出てこない建物は、Googleマップで探せます</p>
+                  <ol class="muted small">
+                    <li>「Googleマップで探す」で開いて、目的の場所を長押し</li>
+                    <li>出てきた「35.xxxx, 139.xxxx」をタップしてコピー</li>
+                    <li>このアプリに戻って「コピーした位置を貼り付け」</li>
+                  </ol>
+                  <div class="gmaps-row">
+                    <a class="chip" id="gmaps-link" href="${Geocode.googleMapsUrl(f.query)}" target="_blank" rel="noopener">🔎 Googleマップで探す</a>
+                    <button type="button" class="chip" id="paste-pos">📋 コピーした位置を貼り付け</button>
+                  </div>
+                </div>
                 <p class="muted small or">いまいる場所を登録するときは、名前を入れてから↓</p>
                 <button type="button" class="btn sub" id="register-here">📍 現在地を目的地に登録</button>
               </form>`
@@ -1080,7 +1106,11 @@
       const nameEl = document.getElementById("place-name");
       const queryEl = document.getElementById("place-query");
       nameEl.addEventListener("input", () => (placeForm.name = nameEl.value));
-      queryEl.addEventListener("input", () => (placeForm.query = queryEl.value));
+      queryEl.addEventListener("input", () => {
+        placeForm.query = queryEl.value;
+        const link = document.getElementById("gmaps-link");
+        if (link) link.href = Geocode.googleMapsUrl(queryEl.value);
+      });
       pf.addEventListener("submit", (e) => {
         e.preventDefault();
         searchPlace();
@@ -1093,6 +1123,25 @@
         openPick({ lat: r.lat, lon: r.lon, label: r.label, from: i });
       })
     );
+    on("paste-pos", async () => {
+      let text = "";
+      try {
+        text = await navigator.clipboard.readText();
+      } catch (e) {
+        // 読み取れない端末では、検索欄に手で貼り付けてもらう
+      }
+      if (!text || !text.trim()) {
+        alert("コピーした内容を読み取れませんでした。検索欄を長押しして貼り付け、「検索」を押してください");
+        return;
+      }
+      placeForm.query = text.trim();
+      if (!Geocode.parseLatLon(placeForm.query) && !Geocode.isShortLink(placeForm.query)) {
+        placeForm.status = "コピーした内容に位置が見つかりませんでした。Googleマップで場所を長押しして出る「35.xxxx, 139.xxxx」をコピーしてください";
+        placeForm.results = [];
+        return render();
+      }
+      searchPlace();
+    });
     on("pick-open", () => {
       const c = nearPoint() || { lat: 35.6812, lon: 139.7671 };
       openPick({ lat: c.lat, lon: c.lon, label: null, moved: false, needAddr: true });
@@ -1103,7 +1152,8 @@
     });
     on("pick-save", () => {
       const p = placeForm.pick;
-      if (!placeForm.name.trim() && !placeForm.query.trim()) {
+      const q = placeForm.query.trim();
+      if (!placeForm.name.trim() && (!q || Geocode.parseLatLon(q))) {
         alert("名前を入力してください");
         document.getElementById("place-name").focus();
         return;
@@ -1194,7 +1244,7 @@
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2026.10.17";
+  const APP_VERSION = "2026.10.18";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });

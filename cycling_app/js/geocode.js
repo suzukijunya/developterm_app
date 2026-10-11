@@ -8,13 +8,31 @@ const Geocode = (() => {
   const NEAR_DEG = 0.25; // 近くを優先して探す範囲(緯度経度で±0.25度 ≒ 25km)
   const MAX_RESULTS = 10;
 
-  function parseLatLon(q) {
-    const m = q.match(/^\s*(-?\d{1,3}\.\d+)\s*[,、\s]\s*(-?\d{1,3}\.\d+)\s*$/);
-    if (!m) return null;
-    const lat = parseFloat(m[1]);
-    const lon = parseFloat(m[2]);
+  function toResult(lat, lon) {
     if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
     return [{ label: `緯度 ${lat.toFixed(5)}, 経度 ${lon.toFixed(5)}`, lat, lon }];
+  }
+
+  // 「35.7295, 139.7109」や、GoogleマップのURL(…/@35.72,139.71,17z や …!3d35.72!4d139.71、?q=35.72,139.71)から位置を読む
+  function parseLatLon(q) {
+    const s = q.trim();
+    let m = s.match(/^(-?\d{1,3}\.\d+)\s*[,、\s]\s*(-?\d{1,3}\.\d+)$/);
+    if (m) return toResult(parseFloat(m[1]), parseFloat(m[2]));
+    if (!/^https?:\/\//.test(s)) return null;
+    const url = decodeURIComponent(s);
+    // ピンの位置(!3d緯度!4d経度)を優先し、なければ地図の中心(@緯度,経度)や q= を使う
+    m = url.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) || url.match(/[?&](?:q|query|ll|center|destination)=(-?\d+\.\d+),\s*(-?\d+\.\d+)/) || url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    return m ? toResult(parseFloat(m[1]), parseFloat(m[2])) : null;
+  }
+
+  // Googleマップの共有ボタンで出る短縮URLは、ブラウザからは中身(位置)を読めない
+  function isShortLink(q) {
+    return /^https?:\/\/(maps\.app\.goo\.gl|goo\.gl\/maps)\//.test(q.trim());
+  }
+
+  // Googleマップでの検索URL(スマホにアプリがあればアプリで開く)
+  function googleMapsUrl(q) {
+    return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q.trim() || "現在地");
   }
 
   async function gsi(q) {
@@ -103,7 +121,7 @@ const Geocode = (() => {
     return null;
   }
 
-  return { search, reverse, parseLatLon };
+  return { search, reverse, parseLatLon, isShortLink, googleMapsUrl };
 })();
 
 if (typeof module !== "undefined") module.exports = Geocode;

@@ -866,3 +866,35 @@ small {
   font-size: 0.92rem;
   margin: 10px 0 2px;
 }
+
+/* ---------- Googleマップで探す ---------- */
+.gmaps {
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--bg);
+}
+
+.gmaps-title {
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin: 0 0 4px;
+}
+
+.gmaps ol {
+  margin: 4px 0 10px;
+  padding-left: 1.4em;
+}
+
+.gmaps-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gmaps-row .chip {
+  background: var(--card);
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 600;
+}
