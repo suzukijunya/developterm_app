@@ -217,7 +217,7 @@ CPA.extend("TCP-01", {
         "A 25-year-old full-time graduate student",
       ],
       a: 1,
-      ex: "対象は年末時点で19歳未満、または24歳未満のフルタイム学生(勤労所得が扶養費の半分以下)。共同申告する既婚者や24歳以上は対象外。",
+      ex: "対象は年末時点で18歳未満、18歳(勤労所得が扶養費の半分以下)、または24歳未満のフルタイム学生(勤労所得が扶養費の半分以下)。共同申告する既婚者や24歳以上は対象外。",
     },
     {
       q: "An individual's prior-year AGI was $200,000, and prior-year tax was $40,000. Current-year tax is expected to be $60,000. What is the minimum total of timely estimated payments and withholding needed to avoid the underpayment penalty?",
