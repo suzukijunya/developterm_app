@@ -20,6 +20,8 @@ const Store = (() => {
         wind: true, // 天気APIの風を計算に入れる
         wake: "always", // 画面を消さない: "always" = アプリを開いている間 / "riding" = 走行中のみ
         destId: null, // 次のライドの目的地。null = 現在地から自動で選ぶ / "none" = 目的地なし
+        nav: true, // 走行中に地図とルート案内を表示する
+        voice: true, // 曲がる場所を音声で案内する
       },
       profileSet: false,
       rides: [], // 保存したライド(新しい順)
