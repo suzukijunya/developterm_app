@@ -311,9 +311,9 @@ CPA.extend("BAR-01", {
     {
       q: "In its first year, a company produced 25,000 units and sold 22,000 units. Variable manufacturing costs were $17 per unit, and fixed manufacturing overhead was $200,000. What is the cost of ending finished goods inventory under absorption costing?",
       ja: "操業1年目に25,000個を生産し22,000個を販売した。変動製造原価は1個$17、固定製造間接費は$200,000である。全部原価計算による期末製品棚卸高はいくらか。",
-      c: ["$51,000", "$75,000", "$24,000", "$68,182"],
+      c: ["$51,000", "$75,000", "$24,000", "$78,273"],
       a: 1,
-      ex: "固定費単価 = 200,000 ÷ 25,000 = $8。全部原価の単位原価 = 17 + 8 = $25。期末3,000個 × 25 = 75,000。$51,000は直接原価計算による額、$68,182は販売数量で固定費単価を計算した誤り。",
+      ex: "固定費単価 = 200,000 ÷ 25,000 = $8。全部原価の単位原価 = 17 + 8 = $25。期末3,000個 × 25 = 75,000。$51,000は直接原価計算による額、$78,273は販売数量(22,000)で固定費単価を計算した誤り。",
     },
     {
       q: "Which of the following statements about variable (direct) costing is correct?",
