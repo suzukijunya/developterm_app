@@ -522,7 +522,7 @@ const App = (() => {
       </div>
 
       <div class="actions two">
-        <a class="action" href="#/mock"><span class="ai">⏱</span><span><b>模擬試験</b><small>MC ${MOCK_MCQ}問+TBS ${MOCK_TBS}問・時間制限つき</small></span></a>
+        <a class="action" href="#/mock"><span class="ai">⏱</span><span><b>模擬試験</b><small>ミニ(MC ${MOCK_MCQ}問+TBS ${MOCK_TBS}問)または本番と同じ問題数・時間制限つき</small></span></a>
         <a class="action ${weak.length ? "" : "dim"}" href="#/review"><span class="ai">↻</span><span><b>苦手復習</b><small>${weak.length}問</small></span></a>
       </div>
 
@@ -901,21 +901,27 @@ const App = (() => {
     current.section = null;
     const sel = secId || mySections()[0];
     const s = CPA.getSection(sel);
-    const nMcq = Math.min(MOCK_MCQ, s.chapters.reduce((a, c) => a + c.mcq.length, 0));
-    const nTbs = Math.min(MOCK_TBS, CPA.tbsFor({ section: sel }).length);
-    const minutes = Math.round(nMcq * 1.5 + nTbs * 12);
+    const poolMcq = s.chapters.reduce((a, c) => a + c.mcq.length, 0);
+    const poolTbs = CPA.tbsFor({ section: sel }).length;
+    // ミニ:MC 20問+TBS 2問。本番形式:本試験と同じ問題数・4時間(問題が足りないときは全問)
+    const modes = {
+      mini: { label: "ミニ模試", nMcq: Math.min(MOCK_MCQ, poolMcq), nTbs: Math.min(MOCK_TBS, poolTbs) },
+      full: { label: "本番形式", nMcq: Math.min(s.exam.mcq, poolMcq), nTbs: Math.min(s.exam.tbs, poolTbs) },
+    };
+    modes.mini.minutes = Math.round(modes.mini.nMcq * 1.5 + modes.mini.nTbs * 12);
+    modes.full.minutes = modes.full.nMcq === s.exam.mcq && modes.full.nTbs === s.exam.tbs ? s.exam.hours * 60 : Math.round(modes.full.nMcq * 1.5 + modes.full.nTbs * 12);
     const hist = Store.get().mocks.filter((m) => m.section === sel).slice(0, 5);
     const body = `
       <div class="seg wrap">${CPA.sections.map((x) => `<a href="#/mock/${x.id}" class="${x.id === sel ? "on" : ""}">${x.id}</a>`).join("")}</div>
       <div class="panel">
         <div class="sec-hero small" style="--c:${s.color}"><div class="sec-hero-id">${s.id}</div><div><div class="sec-hero-name">${s.name}</div><div class="sec-hero-ja">${s.ja}</div></div></div>
         <ul class="plain">
-          <li>MC <b>${nMcq}問</b> + TBS <b>${nTbs}問</b>(本試験は MC ${s.exam.mcq}問・TBS ${s.exam.tbs}問)</li>
-          <li>制限時間 <b>${minutes}分</b>(MC 1問1.5分・TBS 1問12分で換算)</li>
+          <li><b>ミニ模試</b>:MC ${modes.mini.nMcq}問 + TBS ${modes.mini.nTbs}問・${modes.mini.minutes}分(MC 1問1.5分・TBS 1問12分で換算)</li>
+          <li><b>本番形式</b>:MC ${modes.full.nMcq}問 + TBS ${modes.full.nTbs}問・${modes.full.minutes % 60 ? modes.full.minutes + "分" : modes.full.minutes / 60 + "時間"}(本試験は MC ${s.exam.mcq}問・TBS ${s.exam.tbs}問・${s.exam.hours}時間)</li>
           <li>配点 ${s.exam.weight}。解答中は正誤が表示されず、終了後にまとめて採点します</li>
-          <li>スコアは正答率から換算した<b>目安</b>です(合格ライン 75)</li>
+          <li>スコアは正答率から換算した<b>目安</b>です(合格ライン 75)。本番の画面操作は <a href="#/guide">AICPA公式サンプルテスト</a>でも確認できます</li>
         </ul>
-        <button class="btn primary block" data-act="start">模擬試験を開始</button>
+        <div class="btn-row"><button class="btn primary" data-mode="mini">ミニ模試を開始</button><button class="btn" data-mode="full">本番形式で開始</button></div>
       </div>
       ${
         hist.length
@@ -925,24 +931,27 @@ const App = (() => {
           : ""
       }`;
     page({ title: "模擬試験", back: "#/practice", body, tab: "practice" });
-    $app.querySelector("[data-act=start]").onclick = () => {
-      const qs = shuffle(s.chapters.flatMap((c) => c.mcq)).slice(0, nMcq);
-      const tb = shuffle(CPA.tbsFor({ section: sel })).slice(0, nTbs);
-      session = {
-        kind: "mock",
-        section: sel,
-        title: sel + " 模擬試験",
-        items: qs.map((q) => ({ type: "mcq", q })).concat(tb.map((t) => ({ type: "tbs", t }))),
-        idx: 0,
-        picks: {},
-        tbsInputs: {},
-        flags: {},
-        start: Date.now(),
-        limit: minutes * 60,
-        back: "#/mock/" + sel,
+    $app.querySelectorAll("[data-mode]").forEach((b) => {
+      b.onclick = () => {
+        const m = modes[b.dataset.mode];
+        const qs = shuffle(s.chapters.flatMap((c) => c.mcq)).slice(0, m.nMcq);
+        const tb = shuffle(CPA.tbsFor({ section: sel })).slice(0, m.nTbs);
+        session = {
+          kind: "mock",
+          section: sel,
+          title: sel + " " + (b.dataset.mode === "full" ? "模擬試験(本番形式)" : "模擬試験"),
+          items: qs.map((q) => ({ type: "mcq", q })).concat(tb.map((t) => ({ type: "tbs", t }))),
+          idx: 0,
+          picks: {},
+          tbsInputs: {},
+          flags: {},
+          start: Date.now(),
+          limit: m.minutes * 60,
+          back: "#/mock/" + sel,
+        };
+        go("#/quiz");
       };
-      go("#/quiz");
-    };
+    });
   }
 
   function viewMockRun() {
@@ -1528,6 +1537,17 @@ const App = (() => {
 
         <h3>学習時間の目安</h3>
         <p>会計の予備知識や英語力によって大きく変わりますが、4科目合計で <b>1,000〜1,500時間</b> 程度がよく目安にされます。FARは範囲が最も広いため、最初に着手して時間を多めに配分するのが一般的です。目標時間は設定で変更できます。</p>
+
+        <h3 id="supplement">演習量の補い方</h3>
+        <p>本番レベルの演習量(予備校の問題集は全科目で数千問)をこのアプリだけでそろえるのは難しいため、次のように使い分けます。</p>
+        <table class="tbl"><thead><tr><th>教材</th><th>役割</th><th>使い方</th></tr></thead><tbody>
+          <tr><td><b>予備校の問題集</b><br><small class="muted">アビタスなど</small></td><td>演習量の中心</td><td>本番レベルの問題を繰り返し解く。計算は手を動かして解く</td></tr>
+          <tr><td><b>AICPA公式サンプルテスト</b><br><small class="muted">無料・全6科目</small></td><td>本番の画面操作と時間配分の確認</td><td>本番と同じ試験ソフトの短縮版(最大2時間)。各科目1回分しかないので、受験の1〜2か月前に1回解く</td></tr>
+          <tr><td><b>このアプリ</b></td><td>理解と復習</td><td>問題集で間違えた論点を講義ノートと「詳しく・日本では?」で確認。スキマ時間に単語カード・リスニング・苦手復習。章が終わったら本番形式の模擬試験</td></tr>
+          <tr><td><b>無料の問題集</b><br><small class="muted">FreeFellow など</small></td><td>予備校に入る前の補助</td><td>質は未確認。内容が古い可能性があるため、利用条件と改訂時期を確認してから使う</td></tr>
+        </tbody></table>
+        <p><a href="https://www.aicpa-cima.com/resources/article/get-familiar-with-the-cpa-exam-by-practicing-with-our-sample-tests" target="_blank" rel="noopener">AICPA Sample Tests(公式・英語)</a> ・ <a href="#/compare">予備校の比較</a></p>
+        <p class="muted small">試験の形式(問題数・時間)は改訂されることがあります。学習計画を立てる前に、AICPA公式の Blueprint で確認してください。</p>
 
         <p class="muted small">本アプリの問題・解説はオリジナルの学習用教材で、AICPA の公式問題や特定の予備校の教材ではありません。税額の基準値などは毎年改正されるため、最新の公式情報を確認してください。</p>
       </article>`;
