@@ -19,7 +19,9 @@
   let locatedAt = 0; // 天気のために現在地を取った時刻
   let weatherStatus = "";
   // 設定画面の目的地作成フォーム(描き直しても入力が消えないように保持する)
-  let placeForm = { name: "", query: "", results: [], status: "" };
+  // pick: 地図で確認中の場所 { lat, lon, label }
+  let placeForm = { name: "", query: "", results: [], status: "", pick: null };
+  let pickMap = null; // 地図(Leaflet)
 
   const FOODS = [
     { name: "おにぎり", kcal: 180, unit: "個" },
@@ -400,7 +402,7 @@
     const name = (placeForm.name.trim() || placeForm.query.trim()).slice(0, 20);
     if (!name) return;
     if (!addPlace({ name, label, lat, lon })) return;
-    placeForm = { name: "", query: "", results: [], status: `「${name}」を登録しました` };
+    placeForm = { name: "", query: "", results: [], status: `「${name}」を登録しました`, pick: null };
     render();
   }
 
@@ -408,15 +410,101 @@
     const q = placeForm.query.trim();
     if (!q) return;
     placeForm.results = [];
+    placeForm.pick = null;
     placeForm.status = "検索しています…";
     render();
     try {
-      placeForm.results = await Geocode.search(q);
-      placeForm.status = placeForm.results.length ? "候補をタップして登録します" : "見つかりませんでした。住所を詳しく入れるか、別の書き方で試してください";
+      placeForm.results = await Geocode.search(q, nearPoint() || (await locateOnce()));
+      placeForm.status = placeForm.results.length
+        ? "近い順に表示しています。候補をタップすると地図で位置を確認できます"
+        : "見つかりませんでした。住所で探すか、「地図で場所を選ぶ」から選んでください";
     } catch (e) {
       placeForm.status = "検索できませんでした。通信状況を確認するか、Googleマップの「緯度,経度」を貼り付けてください";
     }
     render();
+  }
+
+  // 現在地を1回だけ取る(取れなければ null)
+  function locateOnce() {
+    return new Promise((resolve) => {
+      if (!("geolocation" in navigator)) return resolve(null);
+      navigator.geolocation.getCurrentPosition(
+        (p) => {
+          Store.setLastPos({ lat: p.coords.latitude, lon: p.coords.longitude });
+          resolve(Store.lastPos);
+        },
+        () => resolve(null),
+        { enableHighAccuracy: false, maximumAge: 10 * 60 * 1000, timeout: 8000 }
+      );
+    });
+  }
+
+  // 検索で近くを優先するための基準地点
+  function nearPoint() {
+    return Store.lastPos || pos || (Store.places[0] ? { lat: Store.places[0].lat, lon: Store.places[0].lon } : null);
+  }
+
+  // ---------- 地図で場所を確認・選択(Leaflet + OpenStreetMap) ----------
+  let leafletLoading = null;
+  function loadLeaflet() {
+    if (window.L) return Promise.resolve();
+    if (leafletLoading) return leafletLoading;
+    leafletLoading = new Promise((resolve, reject) => {
+      const css = document.createElement("link");
+      css.rel = "stylesheet";
+      css.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+      document.head.appendChild(css);
+      const js = document.createElement("script");
+      js.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+      js.onload = resolve;
+      js.onerror = () => {
+        leafletLoading = null;
+        reject(new Error("leaflet"));
+      };
+      document.head.appendChild(js);
+    });
+    return leafletLoading;
+  }
+
+  function openPick(pick) {
+    placeForm.pick = pick;
+    render();
+    const el = document.getElementById("pick-box");
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  // 描き直しのたびに、地図の入れ物があれば地図を作り直す
+  async function mountPickMap() {
+    if (pickMap) {
+      pickMap.remove();
+      pickMap = null;
+    }
+    const el = document.getElementById("pick-map");
+    if (!el || !placeForm.pick) return;
+    try {
+      await loadLeaflet();
+    } catch (e) {
+      el.innerHTML = `<p class="muted small">地図を読み込めませんでした。通信状況を確認してください</p>`;
+      return;
+    }
+    if (!document.body.contains(el)) return;
+    const p = placeForm.pick;
+    pickMap = L.map(el, { zoomControl: true }).setView([p.lat, p.lon], 17);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "© OpenStreetMap",
+    }).addTo(pickMap);
+    const marker = L.marker([p.lat, p.lon], { draggable: true }).addTo(pickMap);
+    const move = (ll) => {
+      p.lat = ll.lat;
+      p.lon = ll.lng;
+      p.moved = true;
+      marker.setLatLng(ll);
+      const note = document.getElementById("pick-note");
+      if (note) note.textContent = "ピンの位置で登録します";
+    };
+    pickMap.on("click", (e) => move(e.latlng));
+    marker.on("dragend", () => move(marker.getLatLng()));
   }
 
   function registerHere() {
@@ -455,6 +543,7 @@
     renderWake();
     renderLive();
     renderWeather();
+    mountPickMap();
     if (view === "ride" && !ride) locateForWeather();
   }
 
@@ -721,8 +810,23 @@
                 </label>
                 ${f.status ? `<p class="muted small">${esc(f.status)}</p>` : ""}
                 ${f.results
-                  .map((r, i) => `<button type="button" class="result-item" data-pick="${i}">📍 ${esc(r.label)}</button>`)
+                  .map(
+                    (r, i) =>
+                      `<button type="button" class="result-item ${f.pick && f.pick.from === i ? "on" : ""}" data-pick="${i}">📍 ${esc(r.label)}${
+                        r.dist != null ? `<span class="dist">${fmt.km(r.dist)}km</span>` : ""
+                      }</button>`
+                  )
                   .join("")}
+                ${
+                  f.pick
+                    ? `<div class="pick-box" id="pick-box">
+                        <div class="pick-map" id="pick-map"></div>
+                        <p class="muted small" id="pick-note">${f.pick.moved ? "ピンの位置で登録します" : "違っていたら、地図をタップするかピンを動かして位置を直せます"}</p>
+                        <button type="button" class="btn start" id="pick-save">この場所で登録</button>
+                        <button type="button" class="link" id="pick-cancel">やめる</button>
+                      </div>`
+                    : `<button type="button" class="btn sub" id="pick-open">🗺️ 地図で場所を選ぶ</button>`
+                }
                 <p class="muted small or">いまいる場所を登録するときは、名前を入れてから↓</p>
                 <button type="button" class="btn sub" id="register-here">📍 現在地を目的地に登録</button>
               </form>`
@@ -937,10 +1041,28 @@
     }
     app.querySelectorAll("[data-pick]").forEach((b) =>
       b.addEventListener("click", () => {
-        const r = placeForm.results[+b.dataset.pick];
-        savePlaceFromForm(r.lat, r.lon, r.label);
+        const i = +b.dataset.pick;
+        const r = placeForm.results[i];
+        openPick({ lat: r.lat, lon: r.lon, label: r.label, from: i });
       })
     );
+    on("pick-open", () => {
+      const c = nearPoint() || { lat: 35.6812, lon: 139.7671 };
+      openPick({ lat: c.lat, lon: c.lon, label: "地図で選んだ場所", moved: false });
+    });
+    on("pick-cancel", () => {
+      placeForm.pick = null;
+      render();
+    });
+    on("pick-save", () => {
+      const p = placeForm.pick;
+      if (!placeForm.name.trim() && !placeForm.query.trim()) {
+        alert("名前を入力してください");
+        document.getElementById("place-name").focus();
+        return;
+      }
+      savePlaceFromForm(p.lat, p.lon, p.moved ? `${p.label}(地図で位置を調整)` : p.label);
+    });
     app.querySelectorAll("[data-renameplace]").forEach((b) => b.addEventListener("click", () => renamePlace(b.dataset.renameplace)));
     app.querySelectorAll("[data-delplace]").forEach((b) =>
       b.addEventListener("click", () => {
@@ -1024,7 +1146,7 @@
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2026.10.15";
+  const APP_VERSION = "2026.10.16";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });

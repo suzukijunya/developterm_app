@@ -825,3 +825,38 @@ small {
 .metric.wide {
   grid-column: 1 / -1;
 }
+
+/* ---------- 地図で場所を確認 ---------- */
+.result-item .dist {
+  float: right;
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-left: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.result-item.on {
+  border-color: var(--brand);
+  background: var(--brand-bg);
+}
+
+.pick-box {
+  margin-top: 8px;
+}
+
+.pick-map {
+  height: 300px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.pick-box .btn {
+  margin: 10px 0 4px;
+}
+
+.pick-box .link {
+  display: block;
+  margin: 0 auto;
+}
