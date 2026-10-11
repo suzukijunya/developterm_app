@@ -12,7 +12,7 @@ CPA.extend("ISC-01", {
         "Configuring the hypervisor that hosts the application",
       ],
       a: 2,
-      ex: "SaaSではOS・ミドルウェア・アプリケーション・物理基盤は事業者が管理するが、利用者のアクセス権管理とデータそのものは利用企業の責任として残る。OSパッチやハイパーバイザーはIaaS以外では事業者側の責任。",
+      ex: "SaaSではOS・ミドルウェア・アプリケーション・物理基盤は事業者が管理するが、利用者のアクセス権管理とデータそのものは利用企業の責任として残る。ハイパーバイザーはどのサービスモデルでも事業者側の責任であり、OSパッチもIaaS以外では事業者側の責任。",
     },
     {
       q: "Several regional hospitals share a cloud environment that is built to meet their common HIPAA compliance requirements and is not available to the general public. This deployment model is best described as a:",
@@ -782,7 +782,7 @@ CPA.extend("ISC-03", {
         "Refer to the service auditor's qualified opinion in the user auditor's report",
       ],
       a: 1,
-      ex: "受託会社の統制に不備がある場合、利用企業の監査人は重要な虚偽表示リスクへの影響を評価し、利用企業側の補完統制のテストや実証手続の拡大で対応する。利用企業の監査報告書で受託会社監査人に言及してはならない。",
+      ex: "受託会社の統制に不備がある場合、利用企業の監査人は重要な虚偽表示リスクへの影響を評価し、利用企業側の補完統制のテストや実証手続の拡大で対応する。利用企業の監査報告書(無限定意見)で受託会社監査人の作業に言及してはならない。",
     },
     {
       q: "Before using a SOC 1 report, a user auditor has concerns about the service auditor. Which inquiry is most appropriate?",
