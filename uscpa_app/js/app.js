@@ -282,6 +282,7 @@ const App = (() => {
         <div class="sec-body"><div class="sec-name">${s.ja}<small>${s.name}</small></div>
           ${bar(sectionProgress(s), s.color)}
           <div class="sec-meta"><span>${s.chapters.length}章</span><span>MC ${s.chapters.reduce((a, c) => a + c.mcq.length, 0)}問</span><span>TBS ${CPA.tbsFor({ section: s.id }).length}問</span>${s.id === disc ? "<span class='pill'>選択中</span>" : ""}</div>
+          ${typeof CPA_TIPS !== "undefined" && CPA_TIPS[s.id] ? `<div class="tip-line">コツ:${esc(CPA_TIPS[s.id].one)}</div>` : ""}
         </div></a>`;
     const body = `
       <p class="muted">講義ノートで理解 → 単語カードで用語を固める → MC演習 → TBS の順に進めるのがおすすめです。</p>
@@ -309,6 +310,19 @@ const App = (() => {
         <div><b>${s.exam.weight.replace(" / ", "<br>")}</b><small>配点</small></div>
       </div>
       <p class="muted">${s.summary}</p>
+      ${
+        typeof CPA_TIPS !== "undefined" && CPA_TIPS[s.id]
+          ? `<details class="panel tips">
+              <summary><b>学習のコツ(タップで開く)</b><span class="muted small">${esc(CPA_TIPS[s.id].one)}</span></summary>
+              <ul>${CPA_TIPS[s.id].tips.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>
+              <dl>
+                <dt>このアプリでの進め方</dt><dd>${esc(CPA_TIPS[s.id].app)}</dd>
+                <dt>学習時間</dt><dd>${esc(CPA_TIPS[s.id].share)}</dd>
+                <dt>受験の順番</dt><dd>${esc(CPA_TIPS[s.id].pair)}</dd>
+              </dl>
+            </details>`
+          : ""
+      }
       <h2 class="h2">章</h2>
       <div class="ch-list">
         ${s.chapters

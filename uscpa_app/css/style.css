@@ -2210,3 +2210,59 @@ details.panel summary {
   width: 20px;
   height: 20px;
 }
+
+/* ---------- 学習のコツ ---------- */
+.tip-line {
+  margin-top: 6px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text);
+  background: rgba(245, 158, 11, 0.12);
+  border-radius: 8px;
+  padding: 4px 8px;
+}
+
+.tips summary {
+  display: grid;
+  gap: 2px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.tips summary::-webkit-details-marker {
+  display: none;
+}
+
+.tips summary b::after {
+  content: " ▾";
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.tips:not([open]) summary b::after {
+  content: " ▸";
+}
+
+.tips ul {
+  margin: 10px 0 6px;
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.tips dl {
+  margin: 8px 0 0;
+  font-size: 13.5px;
+}
+
+.tips dt {
+  font-weight: 700;
+  color: var(--muted);
+  font-size: 12.5px;
+  margin-top: 8px;
+}
+
+.tips dd {
+  margin: 2px 0 0;
+}
