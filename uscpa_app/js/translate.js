@@ -99,7 +99,7 @@ const QuickTranslate = (() => {
     const isTerm = hits.length && hits[0].en.toLowerCase().replace(/\s*\(.*?\)\s*/g, " ").trim() === text.toLowerCase().replace(/[.,:;?]$/, "");
     sheet.innerHTML = `
       <button class="qt-close" data-qt-close aria-label="閉じる">×</button>
-      <div class="qt-src">${esc(text.length > 120 ? text.slice(0, 120) + "…" : text)}</div>
+      <div class="qt-src">${typeof Speech !== "undefined" ? Speech.button(text, "", "small") : ""}${esc(text.length > 120 ? text.slice(0, 120) + "…" : text)}</div>
       ${hits.map((c) => `<div class="qt-term"><b>${esc(c.en)}</b><span>${esc(c.ja)}</span><small>${esc(c.desc)}</small></div>`).join("")}
       ${isTerm ? "" : `<div class="qt-ja" id="qt-ja"><span class="qt-loading">翻訳中…</span></div>`}`;
     sheet.hidden = false;

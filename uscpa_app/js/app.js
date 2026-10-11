@@ -312,6 +312,7 @@ const App = (() => {
           ${ch.cards
             .map(
               (c) => `<button class="flip" data-flip>
+                ${Speech.button(c.en, "", "corner")}
                 <span class="flip-front">${esc(c.en)}${Store.isCardMastered(c.id) ? '<i class="mastered">覚えた</i>' : ""}</span>
                 <span class="flip-back"><b>${esc(c.ja)}</b><small>${esc(c.desc)}</small></span></button>`
             )
@@ -353,6 +354,9 @@ const App = (() => {
       const el = $app.querySelector(sel);
       if (el) el.onclick = fn;
     };
+    $app.querySelectorAll(".note .en").forEach((el) => {
+      if (Speech.supported) el.dataset.say = el.textContent;
+    });
     on("[data-act=read]", () => {
       Store.markNote(id, !Store.noteRead(id));
       viewChapter(id, tab);
@@ -482,6 +486,7 @@ const App = (() => {
       </div>
       <div class="q-box">
         <p class="q-en">${esc(q.q)}</p>
+        ${Speech.button(q.q, "問題文", "inline")} ${Speech.button(q.q + " " + q.c.map((c, k) => letters[k] + ". " + c + ".").join(" "), "選択肢まで", "inline")}
         <button class="ja-toggle" data-act="ja">${showJa ? "和訳を隠す" : "和訳を表示"}</button>${Store.get().prefs.autoTranslate !== false ? `<span class="ja-hint">英文を選択するとその部分だけ訳せます</span>` : ""}
         <p class="q-ja ${showJa ? "" : "hidden"}">${esc(q.ja)}</p>
       </div>
@@ -493,7 +498,7 @@ const App = (() => {
               if (k === q.a) cls = "correct";
               else if (k === picked) cls = "wrong";
             } else if (k === picked) cls = "picked";
-            return `<button class="choice ${cls}" data-k="${k}" ${reveal ? "disabled" : ""}><span class="ck">${letters[k]}</span><span>${esc(c)}</span></button>`;
+            return `<button class="choice ${cls}" data-k="${k}" ${reveal ? 'aria-disabled="true"' : ""}><span class="ck">${letters[k]}</span><span class="ctext">${esc(c)}</span>${Speech.button(c, "", "small")}</button>`;
           })
           .join("")}
       </div>
@@ -813,7 +818,7 @@ const App = (() => {
     const g = graded ? gradeTbs(t, inputs) : null;
     return `
       <div class="tbs">
-        <div class="tbs-scenario">${t.scenario}</div>
+        <div class="tbs-scenario">${Speech.button(t.scenario.replace(/<p class="ja">[\s\S]*?<\/p>/g, "").replace(/<[^>]+>/g, " ").replace(/&[a-z]+;/g, " "), "英文を読み上げ", "inline")}${t.scenario}</div>
         <table class="tbs-table">
           <thead><tr><th>項目</th><th>解答</th>${graded ? "<th></th>" : ""}</tr></thead>
           <tbody>
@@ -903,7 +908,7 @@ const App = (() => {
       const k = $q.value.trim().toLowerCase();
       const list = CPA.allCards().filter((c) => !k || (c.en + c.ja + c.desc).toLowerCase().includes(k));
       $app.querySelector("#g-list").innerHTML = list.length
-        ? list.map((c) => `<div class="gloss-row">${tag(c.section)}<div><b>${esc(c.en)}</b><span>${esc(c.ja)}</span><small>${esc(c.desc)}</small></div></div>`).join("")
+        ? list.map((c) => `<div class="gloss-row">${tag(c.section)}<div class="gloss-body"><b>${esc(c.en)}</b><span>${esc(c.ja)}</span><small>${esc(c.desc)}</small></div>${Speech.button(c.en)}</div>`).join("")
         : `<p class="muted">見つかりませんでした</p>`;
     };
     $q.oninput = draw;
@@ -959,13 +964,26 @@ const App = (() => {
     }
     const c = cards[idx];
     current.section = c.section;
+    const prefs = Store.get().prefs;
+    const listen = Speech.supported && !!prefs.cardListen;
+    const auto = Speech.supported && (listen || !!prefs.cardAuto);
+    const hideEn = listen && !cardRun.flipped;
     const body = `
       ${bar(idx / cards.length)}
+      ${
+        Speech.supported
+          ? `<div class="chips center-chips" id="c-mode">
+              <button data-m="auto" class="${prefs.cardAuto || listen ? "on" : ""}" ${listen ? "disabled" : ""}>🔊 自動で発音</button>
+              <button data-m="listen" class="${listen ? "on" : ""}">👂 リスニング</button>
+            </div>`
+          : ""
+      }
       <div class="muted small center">${idx + 1} / ${cards.length}</div>
       <button class="bigcard ${cardRun.flipped ? "flipped" : ""}" data-act="flip">
         <span class="bc-tag">${c.section}</span>
-        <span class="bc-en">${esc(c.en)}</span>
-        ${cardRun.flipped ? `<span class="bc-ja">${esc(c.ja)}</span><span class="bc-desc">${esc(c.desc)}</span>` : `<span class="muted small">タップして意味を表示</span>`}
+        ${Speech.button(c.en, "", "corner big")}
+        ${hideEn ? `<span class="bc-listen">音声を聞いて、用語と意味を思い浮かべてください</span>` : `<span class="bc-en">${esc(c.en)}</span>`}
+        ${cardRun.flipped ? `<span class="bc-ja">${esc(c.ja)}</span><span class="bc-desc">${esc(c.desc)}</span>` : `<span class="muted small">タップして${hideEn ? "答え" : "意味"}を表示</span>`}
       </button>
       ${
         cardRun.flipped
@@ -973,6 +991,19 @@ const App = (() => {
           : ""
       }`;
     page({ title: esc(cardRun.title), back: cardRun.back, body, tab: null });
+    // 新しいカードを表示したときだけ自動で発音する(裏返しでは再生しない)
+    if (auto && cardRun.spoken !== idx) {
+      cardRun.spoken = idx;
+      Speech.speak(c.en);
+    }
+    $app.querySelectorAll("#c-mode button").forEach((b) => {
+      b.onclick = () => {
+        const key = b.dataset.m === "auto" ? "cardAuto" : "cardListen";
+        Store.setPref(key, !Store.get().prefs[key]);
+        cardRun.spoken = -1;
+        viewCardRun();
+      };
+    });
     $app.querySelector("[data-act=flip]").onclick = () => {
       cardRun.flipped = !cardRun.flipped;
       viewCardRun();
@@ -1061,6 +1092,17 @@ const App = (() => {
         <label class="field"><span>目標の総学習時間(時間)</span><input type="number" id="s-target" min="100" step="50" value="${plan.targetHours}"></label>
         <label class="field"><span>1日の目標(分)</span><input type="number" id="s-daily" min="10" step="10" value="${plan.dailyMin}"></label>
         <label class="check"><input type="checkbox" id="s-ja" ${st.prefs.showJa ? "checked" : ""}> 問題の和訳を最初から表示する</label>
+        ${
+          Speech.supported
+            ? `<div class="field"><span>読み上げの速さ</span><div class="chips" id="s-rate">${[
+                [0.75, "ゆっくり"],
+                [0.95, "ふつう"],
+                [1.15, "速め"],
+              ]
+                .map(([v, l]) => `<button data-v="${v}" class="${(st.prefs.speechRate || 0.95) === v ? "on" : ""}">${l}</button>`)
+                .join("")}</div></div>`
+            : `<p class="muted small">このブラウザは英語の読み上げに対応していません。</p>`
+        }
         <label class="check"><input type="checkbox" id="s-qt" ${st.prefs.autoTranslate !== false ? "checked" : ""}> 英文を選択したら自動で翻訳する</label>
       </div>
 
@@ -1098,6 +1140,13 @@ const App = (() => {
     $app.querySelector("#s-target").onchange = (e) => Store.setPlan({ targetHours: Math.max(1, +e.target.value || 1200) });
     $app.querySelector("#s-daily").onchange = (e) => Store.setPlan({ dailyMin: Math.max(1, +e.target.value || 120) });
     $app.querySelector("#s-ja").onchange = (e) => Store.setPref("showJa", e.target.checked);
+    $app.querySelectorAll("#s-rate button").forEach((b) => {
+      b.onclick = () => {
+        Store.setPref("speechRate", +b.dataset.v);
+        $app.querySelectorAll("#s-rate button").forEach((x) => x.classList.toggle("on", x === b));
+        Speech.speak("Relevance and faithful representation.");
+      };
+    });
     $app.querySelector("#s-qt").onchange = (e) => Store.setPref("autoTranslate", e.target.checked);
     const $box = $app.querySelector("#s-backup");
     const $text = $app.querySelector("#s-text");
@@ -1251,7 +1300,7 @@ const App = (() => {
     const idx = "1234".indexOf(k) >= 0 ? "1234".indexOf(k) : "ABCD".indexOf(k);
     if (idx >= 0) {
       const btn = $app.querySelectorAll(".choice")[idx];
-      if (btn && !btn.disabled) btn.click();
+      if (btn && btn.getAttribute("aria-disabled") !== "true") btn.click();
     } else if (e.key === "Enter" || e.key === "ArrowRight") {
       const nx = $app.querySelector("[data-act=next]");
       if (nx) nx.click();
