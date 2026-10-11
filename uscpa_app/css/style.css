@@ -2047,3 +2047,25 @@ details.panel summary {
   border-radius: 8px;
   padding: 8px 12px;
 }
+
+.warn-box {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.14);
+  border-left: 4px solid var(--accent);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.warn-box b {
+  display: block;
+  margin-bottom: 2px;
+}
+
+.steps-list ul {
+  margin: 6px 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+}

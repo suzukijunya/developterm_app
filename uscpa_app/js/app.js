@@ -1444,7 +1444,8 @@ const App = (() => {
     ["master", "大学院修了(修士)"],
     ["senior", "4年制大学に在学中(最終学年)"],
     ["junior", "4年制大学に在学中(1〜3年)"],
-    ["associate", "短大・高専・専門学校卒"],
+    ["associate", "短大・高専卒"],
+    ["vocational", "専門学校卒"],
     ["highschool", "高校卒"],
   ];
 
@@ -1489,6 +1490,7 @@ const App = (() => {
       <div class="panel">
         <p class="muted small" style="margin-top:0">学歴と単位を入れると、日本からの出願で選ばれやすい5つの州について、受験資格とライセンス要件を満たしているかの<b>目安</b>を表示します。</p>
         <label class="field"><span>最終学歴</span><select id="el-edu">${EDU.map(([v, l]) => `<option value="${v}" ${me.edu === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+        <div id="el-warn"></div>
         ${num("el-total", "取得済みの総単位数", me.total, "日本の大学の単位をそのまま入力(目安としてほぼ同数で換算)。大学院の単位も含めます")}
         ${num("el-acct", "うち会計の単位", me.acct, "簿記・財務会計・管理会計・原価計算・監査・税務など")}
         ${num("el-biz", "うちビジネスの単位", me.biz, "経済・経営・ファイナンス・商法/会社法・統計・情報など(会計は含めない)")}
@@ -1504,7 +1506,20 @@ const App = (() => {
       <div id="el-result"></div>`;
     page({ title: "受験資格チェック", back: "#/home", body, tab: "home" });
 
+    const NON_DEGREE = { vocational: "専門学校", highschool: "高校" };
+    const syncLabels = () => {
+      const edu = $app.querySelector("#el-edu").value;
+      const label = $app.querySelector("#el-total").closest(".field").querySelector("span");
+      label.textContent = NON_DEGREE[edu] ? "大学・短大などで取得した単位(専門学校の単位は含めない)" : "取得済みの総単位数";
+      $app.querySelector("#el-warn").innerHTML =
+        edu === "vocational"
+          ? `<div class="warn-box"><b>専門学校の単位は、原則として数えられません</b>
+             学歴評価機関は、学位を出せる大学などの単位を米国の大学単位に換算します。専門学校の単位は評価の対象外とされることが多いため、
+             放送大学・通信制大学・短大などで取った単位だけを入力してください(まだなければ 0)。</div>`
+          : "";
+    };
     const draw = () => {
+      syncLabels();
       const cur = {
         edu: $app.querySelector("#el-edu").value,
         total: Math.max(0, parseInt($app.querySelector("#el-total").value, 10) || 0),
@@ -1522,9 +1537,17 @@ const App = (() => {
       steps.push(`<b>学歴評価を申し込む</b>:日本の大学の単位がどう認定されるかは評価機関(NIES・FACS など)の判定で決まります。この判定の結果がすべての出発点です(目安1.5〜3か月)。`);
       if (!anyExam) {
         const best = res[0];
+        const noDegree = cur.edu === "vocational" || cur.edu === "highschool" || cur.edu === "associate";
         steps.push(
-          best.exam.miss.some((m) => m.startsWith("学士"))
-            ? `<b>学位を確保する</b>:多くの州は学士号が必要です。在学中なら卒業見込みで出願できる州(グアムなど)を、学位がない場合は学位を取得できる通信制大学などを検討します。`
+          noDegree
+            ? `<b>学士号を取る</b>:ほとんどの州で、受験かライセンスのどちらか(多くは両方)に学士号が必要です。働きながらなら、次のような方法があります。
+               <ul>
+                 <li><b>通信制大学</b>(放送大学など):1年次入学なら卒業まで4年が目安。会計・経済・経営の科目を選べば、学位と同時に会計/ビジネス単位も貯められます。</li>
+                 <li><b>3年次編入</b>:${cur.edu === "vocational" ? "修業年限2年以上などの要件を満たす専門学校を修了して「専門士」の称号がある場合、" : "短大・高専卒の場合、"}大学の3年次に編入できることがあり、卒業までの期間を約2年に短縮できます(受け入れは大学ごとに異なります)。</li>
+                 <li><b>学位授与機構</b>:大学改革支援・学位授与機構の制度で、短大・高専など(要件を満たす専門学校を含む場合あり)の修了者が、単位を積み上げて学士号を取得する方法もあります。</li>
+               </ul>どの方法でも、履修する前に、その科目が会計単位・ビジネス単位として認定されそうかを確認しておくと無駄がありません。`
+            : best.exam.miss.some((m) => m.startsWith("学士"))
+            ? `<b>学位を確保する</b>:多くの州は学士号が必要です。在学中なら卒業見込みで出願できる州(グアムなど)を検討します。`
             : `<b>不足単位を取る</b>:${esc(best.st.name)}なら ${esc(best.exam.miss.join("・"))} です。予備校の単位取得プログラムや放送大学などの科目履修が一般的です。履修前に、その科目が会計/ビジネス単位として認定されるかを確認しましょう。`
         );
       }
