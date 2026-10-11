@@ -3,8 +3,7 @@
 // 会計用語は用語集(単語カード)の訳を優先して出し、文全体は Google 翻訳の無料エンドポイントで訳す。
 
 const QuickTranslate = (() => {
-  const API = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ja&dt=t&q=";
-  const MAX_LEN = 600;
+    const MAX_LEN = 600;
   const cache = new Map();
   let sheet = null;
   let timer = null;
@@ -42,22 +41,73 @@ const QuickTranslate = (() => {
     return hits;
   }
 
-  function translate(text) {
-    if (cache.has(text)) return Promise.resolve(cache.get(text));
+  // 無料の翻訳エンドポイントは混雑時に失敗することがあるため、順に試して最初に成功したものを使う
+  const PROVIDERS = [
+    {
+      url: (q) => "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ja&dt=t&q=" + q,
+      parse: (d) => (d[0] || []).map((x) => x[0]).join(""),
+    },
+    {
+      url: (q) => "https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=en&tl=ja&q=" + q,
+      parse: (d) => (Array.isArray(d) ? (Array.isArray(d[0]) ? d[0][0] : d[0]) : ""),
+    },
+    {
+      url: (q) => "https://api.mymemory.translated.net/get?langpair=en%7Cja&q=" + q,
+      parse: (d) => (d && d.responseStatus == 200 && d.responseData ? d.responseData.translatedText : ""),
+    },
+  ];
+
+  function fetchJson(url, ms) {
     const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
-    const t = setTimeout(() => ctrl && ctrl.abort(), 7000);
-    return fetch(API + encodeURIComponent(text), ctrl ? { signal: ctrl.signal } : {})
+    const t = setTimeout(() => ctrl && ctrl.abort(), ms);
+    return fetch(url, Object.assign({ credentials: "omit", referrerPolicy: "no-referrer" }, ctrl ? { signal: ctrl.signal } : {}))
       .then((r) => {
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.json();
       })
-      .then((data) => {
-        const ja = (data[0] || []).map((x) => x[0]).join("");
-        if (!ja) throw new Error("empty");
-        cache.set(text, ja);
-        return ja;
+      .catch((e) => {
+        throw new Error(e && e.name === "AbortError" ? "タイムアウト" : (e && e.message) || "通信エラー");
       })
       .finally(() => clearTimeout(t));
+  }
+
+  async function translate(text) {
+    if (cache.has(text)) return cache.get(text);
+    const q = encodeURIComponent(text);
+    const errors = [];
+    for (const p of PROVIDERS) {
+      try {
+        const ja = String(p.parse(await fetchJson(p.url(q), 8000)) || "").trim();
+        if (ja) {
+          cache.set(text, ja);
+          return ja;
+        }
+        errors.push("空の応答");
+      } catch (e) {
+        errors.push(e.message);
+      }
+    }
+    throw new Error(errors.join(" / "));
+  }
+
+  function runTranslate(text, id, hasHits) {
+    const el = sheet.querySelector("#qt-ja");
+    if (el) el.innerHTML = `<span class="qt-loading">翻訳中…</span>`;
+    translate(text).then(
+      (ja) => {
+        if (id !== reqId) return;
+        const box = sheet.querySelector("#qt-ja");
+        if (box) box.textContent = ja;
+      },
+      (err) => {
+        if (id !== reqId) return;
+        const box = sheet.querySelector("#qt-ja");
+        if (!box) return;
+        const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+        box.innerHTML = `<span class="qt-loading">${offline ? "オフラインのため" : ""}自動翻訳を取得できませんでした${offline ? "" : `(${esc(err.message)})`}。${hasHits ? "用語集の訳を参照してください。" : ""}</span>
+          <button class="qt-retry" data-qt-retry>もう一度試す</button>`;
+      }
+    );
   }
 
   function selectedText() {
@@ -88,6 +138,10 @@ const QuickTranslate = (() => {
       sheet.setAttribute("role", "status");
       document.body.appendChild(sheet);
       sheet.addEventListener("click", (e) => {
+        if (e.target.closest("[data-qt-retry]")) {
+          runTranslate(shownText, reqId, !!sheet.querySelector(".qt-term"));
+          return;
+        }
         if (e.target.closest("[data-qt-close]")) {
           hide();
           const sel = window.getSelection && window.getSelection();
@@ -104,18 +158,7 @@ const QuickTranslate = (() => {
       ${isTerm ? "" : `<div class="qt-ja" id="qt-ja"><span class="qt-loading">翻訳中…</span></div>`}`;
     sheet.hidden = false;
     if (isTerm) return;
-    translate(text).then(
-      (ja) => {
-        if (id !== reqId) return;
-        const el = sheet.querySelector("#qt-ja");
-        if (el) el.textContent = ja;
-      },
-      () => {
-        if (id !== reqId) return;
-        const el = sheet.querySelector("#qt-ja");
-        if (el) el.innerHTML = `<span class="qt-loading">自動翻訳を取得できませんでした(オフライン、または埋め込み表示では使えません)。${hits.length ? "用語集の訳を参照してください。" : ""}</span>`;
-      }
-    );
+    runTranslate(text, id, hits.length > 0);
   }
 
   function onSelectionChange() {
@@ -125,7 +168,8 @@ const QuickTranslate = (() => {
     timer = setTimeout(() => {
       const text = selectedText();
       if (text) show(text);
-      else if (shownText) hide();
+      // 選択が外れたら閉じる。ただしポップアップ内のボタン(再試行・発音)を押して外れた場合は閉じない
+      else if (shownText && !downInSheet) hide();
     }, 550);
   }
 
@@ -135,6 +179,9 @@ const QuickTranslate = (() => {
     show(selectedText());
   }
 
+  let downInSheet = false;
+  document.addEventListener("pointerdown", (e) => (downInSheet = !!(e.target.closest && e.target.closest(".qt-sheet"))), true);
+  document.addEventListener("touchstart", (e) => (downInSheet = !!(e.target.closest && e.target.closest(".qt-sheet"))), { capture: true, passive: true });
   document.addEventListener("selectionchange", onSelectionChange);
   document.addEventListener("copy", onCopy);
   window.addEventListener("hashchange", hide);
