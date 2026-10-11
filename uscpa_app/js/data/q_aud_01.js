@@ -700,5 +700,79 @@ CPA.extend("AUD-01", {
   ],
 });
 
+CPA.tbs({ id: "TBS-AUD-09", section: "AUD", chapter: "AUD-01", title: "AICPA規程による独立性の判定",
+  scenario: `<p>Baker & Co., CPAs, is engaged to audit the calendar-year 2026 financial statements of Delta Manufacturing, Inc., a nonissuer. The audit report is expected to be dated March 15, 2027. Evaluate each situation independently under the AICPA Code of Professional Conduct.</p>
+<table><tr><th>#</th><th>Situation</th></tr>
+<tr><td>1</td><td>The audit manager's spouse holds 50 shares of Delta stock in a brokerage account. The shares are immaterial to the manager's net worth.</td></tr>
+<tr><td>2</td><td>A partner in Baker's Seattle office, who is not a covered member, owns 2% of Delta's outstanding common stock.</td></tr>
+<tr><td>3</td><td>The nondependent mother of a staff accountant on the engagement team owns Delta stock that is immaterial to her net worth. She holds no position with Delta.</td></tr>
+<tr><td>4</td><td>Baker prepares Delta's depreciation schedule using methods, lives, and salvage values approved by Delta's controller, who has suitable skill, knowledge, and experience and accepts responsibility for the results. The understanding is documented in writing.</td></tr>
+<tr><td>5</td><td>Baker designed and implemented Delta's new financial information system, which generates the general ledger.</td></tr>
+<tr><td>6</td><td>Delta has not paid Baker's fee for the 2025 audit, which was billed in January 2026, and the fee remains unpaid on March 15, 2027.</td></tr></table>
+<p class="ja">Baker & Co.は非公開会社Delta Manufacturing社の2026年12月期財務諸表監査を受嘱している。監査報告書日は2027年3月15日の予定である。各状況をAICPA職業行為規程に基づき個別に判定せよ。1. 監査マネージャーの配偶者が証券口座でDelta株50株を保有(マネージャーの純資産に対し重要でない)。2. 対象メンバーでないシアトル事務所のパートナーがDeltaの発行済普通株式の2%を保有。3. チームのスタッフの扶養されていない母親が、本人にとって重要でないDelta株を保有(Deltaでの職位なし)。4. SKEを有し結果に責任を負うコントローラーが承認した方法・耐用年数・残存価額により減価償却明細を作成、合意は書面化済み。5. 総勘定元帳を生成する新しい財務情報システムをBakerが設計・導入。6. 2026年1月に請求した2025年度監査報酬が2027年3月15日時点で未払い。</p>`,
+  rows: [
+    { label: "Situation 1(状況1)", type: "select", options: ["Impaired", "Not impaired"], answer: "Impaired" },
+    { label: "Situation 2(状況2)", type: "select", options: ["Impaired", "Not impaired"], answer: "Not impaired" },
+    { label: "Situation 3(状況3)", type: "select", options: ["Impaired", "Not impaired"], answer: "Not impaired" },
+    { label: "Situation 4(状況4)", type: "select", options: ["Impaired", "Not impaired"], answer: "Not impaired" },
+    { label: "Situation 5(状況5)", type: "select", options: ["Impaired", "Not impaired"], answer: "Impaired" },
+    { label: "Situation 6(状況6)", type: "select", options: ["Impaired", "Not impaired"], answer: "Impaired" },
   ],
+  explain: `<p>1. 配偶者は近親者であり、その保有は対象メンバー(チームのマネージャー)の直接的財務的利害とみなされる。直接的利害は金額にかかわらず独立性を損なう。</p>
+<p>2. 対象メンバーでないパートナーは発行済持分の5%超を保有しなければ問題ない。2%なので損なわれない。</p>
+<p>3. 母親は近い親族(close relative)。近い親族の財務的利害は、本人にとって重要(かつメンバーが知っている)か重要な影響力を行使できる場合に限り問題となる。重要でないため損なわれない。</p>
+<p>4. クライアント承認済みの方法による減価償却計算は、一般要件(SKEを有する担当者の指名、責任の受入れ、書面化)を満たせば許容される記帳業務である。</p>
+<p>5. 財務情報システムの設計・導入は自己レビュー・経営参加の脅威が大きく独立性を損なう。</p>
+<p>6. 過年度の業務報酬が当期報告書日の1年以上前から未払いの場合、独立性は損なわれる(請求日2026年1月から報告書日2027年3月15日まで1年超)。</p>`,
+});
+
+CPA.tbs({ id: "TBS-AUD-10", section: "AUD", chapter: "AUD-01", title: "SEC・PCAOBの独立性規則",
+  scenario: `<p>Reed LLP, a PCAOB-registered firm, audits the financial statements and internal control over financial reporting of Zenith Corp., an issuer. Zenith's audit committee has asked Reed whether it may provide the following services, and also asks about partner rotation and employment restrictions under SEC rules.</p>
+<table><tr><th>#</th><th>Item</th></tr>
+<tr><td>1</td><td>Preparing Zenith's federal and state corporate income tax returns.</td></tr>
+<tr><td>2</td><td>Performing Zenith's internal audit function on an outsourced basis.</td></tr>
+<tr><td>3</td><td>Preparing the personal income tax return of Zenith's chief financial officer.</td></tr>
+<tr><td>4</td><td>Maximum number of consecutive years the lead audit partner may serve.</td></tr>
+<tr><td>5</td><td>Number of years the lead audit partner must then be off the engagement (time-out).</td></tr>
+<tr><td>6</td><td>Minimum cooling-off period (in years) before a member of the audit engagement team may become Zenith's controller without impairing Reed's independence.</td></tr></table>
+<p class="ja">PCAOB登録事務所Reed LLPは、発行体Zenith社の財務諸表およびICFRを監査している。監査委員会は次のサービス提供の可否と、SEC規則上のパートナー・ローテーションおよび雇用制限について質問している。1. Zenith社の連邦・州法人所得税申告書の作成。2. 内部監査機能の外部委託による実施。3. Zenith社CFO個人の所得税申告書の作成。4. 筆頭監査パートナーが従事できる最長連続年数。5. その後の離脱(タイムアウト)年数。6. 監査チームのメンバーがZenith社のコントローラーに就任しても独立性が損なわれないための最低クーリングオフ期間(年)。</p>`,
+  rows: [
+    { label: "Item 1: Corporate tax return preparation(法人税申告書の作成)", type: "select", options: ["Permitted with audit committee pre-approval", "Prohibited"], answer: "Permitted with audit committee pre-approval" },
+    { label: "Item 2: Outsourced internal audit(内部監査の外部委託)", type: "select", options: ["Permitted with audit committee pre-approval", "Prohibited"], answer: "Prohibited" },
+    { label: "Item 3: CFO's personal tax return(CFO個人の税務申告書)", type: "select", options: ["Permitted with audit committee pre-approval", "Prohibited"], answer: "Prohibited" },
+    { label: "Item 4: Lead partner maximum consecutive years(筆頭パートナーの最長連続年数)", type: "num", answer: 5 },
+    { label: "Item 5: Lead partner time-out years(筆頭パートナーのタイムアウト年数)", type: "num", answer: 5 },
+    { label: "Item 6: Cooling-off period in years(クーリングオフ期間・年)", type: "num", answer: 1 },
+  ],
+  explain: `<p>1. 税務サービスはSOX法上禁止されておらず、監査委員会の事前承認(PCAOB規則3524による書面説明・協議・文書化を含む)があれば提供できる。</p>
+<p>2. 内部監査の外部委託はSOX法の禁止サービスであり、事前承認があっても提供できない。</p>
+<p>3. PCAOB規則3523により、財務報告監督職(CFOなど)にある者への税務サービスは独立性を損なう。</p>
+<p>4・5. 筆頭パートナー(および審査パートナー)は5年従事後、5年間のタイムアウトが必要である(その他の監査パートナーは7年・2年)。</p>
+<p>6. 監査チームのメンバーが財務報告監督職(コントローラー等)に就く場合、1年のクーリングオフ期間(当該者が参加した監査の期間を含む1年)が必要である。</p>`,
+});
+
+CPA.tbs({ id: "TBS-AUD-11", section: "AUD", chapter: "AUD-01", title: "品質マネジメント(SQMS 1・SQMS 2)",
+  scenario: `<p>Harper & Lane, CPAs, is designing its system of quality management under SQMS No. 1 and its engagement quality review policies under SQMS No. 2. For items 1-5, select the component of the system of quality management to which each policy or action most directly relates. For item 6, enter the number of years.</p>
+<table><tr><th>#</th><th>Policy or action</th></tr>
+<tr><td>1</td><td>All personnel must confirm their compliance with independence requirements at least annually.</td></tr>
+<tr><td>2</td><td>Before accepting a new client, the firm evaluates the integrity of the prospective client's owners and management and whether the firm has the competence and time to perform the engagement.</td></tr>
+<tr><td>3</td><td>The firm inspects selected completed engagements, evaluates identified deficiencies, and investigates their root causes.</td></tr>
+<tr><td>4</td><td>The managing partner communicates the firm's commitment to quality and ensures that quality is considered in strategic decisions and resource allocation.</td></tr>
+<tr><td>5</td><td>The firm acquires approved audit software and assigns personnel with appropriate competence and capabilities to each engagement.</td></tr>
+<tr><td>6</td><td>Minimum cooling-off period (in years) before a former engagement partner may serve as the engagement quality reviewer on the same engagement.</td></tr></table>
+<p class="ja">Harper & Lane会計事務所は、SQMS 1に基づく品質マネジメントシステムとSQMS 2に基づく審査の方針を整備している。1〜5の方針・行動が最も直接的に関係する構成要素を選択し、6は年数を入力せよ。1. 全職員に少なくとも年1回独立性の遵守を確認させる。2. 新規クライアント受嘱前に、所有者・経営者の誠実性と事務所の能力・時間を評価する。3. 完了業務を選んで検査し、識別された不備を評価して根本原因を調査する。4. マネージング・パートナーが品質へのコミットメントを伝達し、戦略的意思決定や資源配分で品質を考慮させる。5. 承認済み監査ソフトを導入し、適切な能力を持つ人員を各業務に配置する。6. 元業務執行責任者が同じ業務の審査担当者となるまでの最低クーリングオフ期間(年)。</p>`,
+  rows: [
+    { label: "Item 1(項目1)", type: "select", options: ["Governance and leadership", "Relevant ethical requirements", "Acceptance and continuance", "Engagement performance", "Resources", "Information and communication", "Monitoring and remediation process", "Risk assessment process"], answer: "Relevant ethical requirements" },
+    { label: "Item 2(項目2)", type: "select", options: ["Governance and leadership", "Relevant ethical requirements", "Acceptance and continuance", "Engagement performance", "Resources", "Information and communication", "Monitoring and remediation process", "Risk assessment process"], answer: "Acceptance and continuance" },
+    { label: "Item 3(項目3)", type: "select", options: ["Governance and leadership", "Relevant ethical requirements", "Acceptance and continuance", "Engagement performance", "Resources", "Information and communication", "Monitoring and remediation process", "Risk assessment process"], answer: "Monitoring and remediation process" },
+    { label: "Item 4(項目4)", type: "select", options: ["Governance and leadership", "Relevant ethical requirements", "Acceptance and continuance", "Engagement performance", "Resources", "Information and communication", "Monitoring and remediation process", "Risk assessment process"], answer: "Governance and leadership" },
+    { label: "Item 5(項目5)", type: "select", options: ["Governance and leadership", "Relevant ethical requirements", "Acceptance and continuance", "Engagement performance", "Resources", "Information and communication", "Monitoring and remediation process", "Risk assessment process"], answer: "Resources" },
+    { label: "Item 6: Cooling-off period in years(クーリングオフ期間・年)", type: "num", answer: 2 },
+  ],
+  explain: `<p>1. 独立性の年次確認は「職業倫理に関する規定(relevant ethical requirements)」への対応である。</p>
+<p>2. クライアントの誠実性や事務所の能力の評価は「契約の新規締結・更新(acceptance and continuance)」である。</p>
+<p>3. 完了業務の検査、不備の評価と根本原因分析は「モニタリングと改善プロセス」である。</p>
+<p>4. トップの姿勢、品質へのコミットメント、戦略・資源配分は「ガバナンスとリーダーシップ」である。</p>
+<p>5. 人的資源・技術的資源(監査ソフト)・知的資源は「資源(resources)」の構成要素で扱う。</p>
+<p>6. SQMS 2では、業務執行責任者であった者が審査担当者となるには2年(職業倫理上より長い期間が求められればその期間)のクーリングオフが必要である。</p>`,
 });
