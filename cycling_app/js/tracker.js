@@ -26,6 +26,7 @@ const Tracker = (() => {
       kcalExercise: 0,
       maxSpeed: 0, // m/s
       elevGain: 0, // m
+      start: null, // 最初の測位地点 { lat, lon }
       // 以下は計算途中の状態
       last: null, // { lat, lon, t }
       vEma: 0,
@@ -44,6 +45,7 @@ const Tracker = (() => {
   function step(ride, fix, env) {
     if (fix.accuracy > MAX_ACCURACY) return "inaccurate";
     if (!ride.last) {
+      ride.start = { lat: fix.lat, lon: fix.lon };
       ride.last = { lat: fix.lat, lon: fix.lon, t: fix.t };
       return "first";
     }
@@ -132,6 +134,11 @@ const Tracker = (() => {
       kcalExercise: ride.kcalExercise,
       maxSpeed: ride.maxSpeed,
       elevGain: ride.elevGain,
+      start: ride.start,
+      end: ride.last ? { lat: ride.last.lat, lon: ride.last.lon } : null,
+      placeId: ride.placeId || null,
+      etaMid: ride.etaMid || null,
+      arrival: ride.arrival || null,
     };
   }
 

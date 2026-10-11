@@ -309,7 +309,7 @@ small {
   color: var(--brand);
 }
 
-.ride summary {
+.ride-summary {
   list-style: none;
   display: grid;
   grid-template-columns: 1fr auto;
@@ -317,7 +317,7 @@ small {
   cursor: pointer;
 }
 
-.ride summary::-webkit-details-marker {
+.ride-summary::-webkit-details-marker {
   display: none;
 }
 
@@ -446,4 +446,257 @@ small {
 .tab.active {
   color: var(--brand);
   font-weight: 700;
+}
+
+.btn.sub {
+  background: var(--brand-bg);
+  color: var(--brand);
+  font-size: 1rem;
+  padding: 14px;
+  margin: 12px 0 0;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* ---------- 勾配 ---------- */
+.metric-value.up,
+.metric-value.up small {
+  color: var(--ng);
+}
+
+.metric-value.down,
+.metric-value.down small {
+  color: var(--ok);
+}
+
+/* ---------- 目的地までの残り時間 ---------- */
+.eta {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 2px 8px;
+  width: 100%;
+  text-align: left;
+  background: var(--card);
+  border: 2px solid var(--brand);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.eta strong {
+  font-size: 1.6rem;
+  color: var(--brand);
+  margin-left: 2px;
+}
+
+.eta-at {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.eta small {
+  grid-column: 1 / -1;
+  display: block;
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.eta.empty {
+  border-style: dashed;
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+.eta.arrived {
+  background: var(--ok-bg);
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+/* ---------- 天気 ---------- */
+.wx-now {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.wx-icon {
+  font-size: 2.6rem;
+}
+
+.wx-temp {
+  font-size: 1.8rem;
+  font-weight: 800;
+}
+
+.wx-temp span {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+.hours {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  margin: 12px -16px 4px;
+  padding: 0 16px 6px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.hour {
+  flex: 0 0 58px;
+  text-align: center;
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 8px 2px;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.hour-t {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.hour-i {
+  font-size: 1.4rem;
+  line-height: 1.5;
+}
+
+.hour-temp {
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+
+.hour-pop {
+  color: var(--muted);
+}
+
+.hour-pop.wet {
+  color: #2563eb;
+  font-weight: 700;
+}
+
+.arrow {
+  display: inline-block;
+  margin-right: 2px;
+  font-weight: 800;
+}
+
+.hour-hw {
+  margin-top: 4px;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.hour-hw.head {
+  color: var(--ng);
+  font-weight: 700;
+}
+
+.hour-hw.tail {
+  color: var(--ok);
+  font-weight: 700;
+}
+
+/* ---------- 記録の選択削除 ---------- */
+.history-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 4px 4px 8px;
+}
+
+.history-head h2 {
+  margin: 0;
+}
+
+.edit-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.chip {
+  border: 1px solid var(--line);
+  background: var(--card);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.ride.select {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.ride.select input {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  accent-color: var(--ng);
+}
+
+.ride.select .ride-summary {
+  flex: 1;
+}
+
+.ride.picked {
+  border-color: var(--ng);
+  background: var(--ng-bg);
+}
+
+.ride-time em {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--muted);
+  margin-left: 6px;
+  font-size: 0.85rem;
+}
+
+.delete-bar {
+  position: sticky;
+  bottom: calc(64px + env(safe-area-inset-bottom));
+  padding-top: 8px;
+}
+
+.delete-bar .btn {
+  background: var(--ng);
+  color: #fff;
+  margin: 8px 0;
+}
+
+/* ---------- 目的地の一覧 ---------- */
+.place {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.place small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.78rem;
+  margin: 2px 0 0;
+  font-weight: 400;
+}
+
+.place .link {
+  white-space: nowrap;
+  flex-shrink: 0;
 }

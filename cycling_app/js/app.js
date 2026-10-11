@@ -1,13 +1,12 @@
-// 画面の描画と、GPS・画面ON維持・天気(風)の取得をまとめる。
+// 画面の描画と、GPS・画面ON維持・天気・目的地の推定をまとめる。
 
 (() => {
   const app = document.getElementById("app");
 
   let view = Store.profileSet ? "ride" : "settings";
   let ride = null; // 記録中のライド(Tracker の状態)
+  let pos = null; // 現在地 { lat, lon }
   let watchId = null;
-  let wind = null; // { speed, from, temp, at }
-  let windFetching = false;
   let gpsStatus = ""; // GPSの状態メッセージ
   let lastAccuracy = null;
   let lastSaved = 0;
@@ -15,6 +14,10 @@
   let wakeLock = null;
   let wakeError = "";
   let resumed = false;
+  let editMode = false; // 記録画面の選択削除モード
+  let selected = new Set();
+  let locatedAt = 0; // 天気のために現在地を取った時刻
+  let weatherStatus = "";
 
   const FOODS = [
     { name: "おにぎり", kcal: 180, unit: "個" },
@@ -52,12 +55,15 @@
   const COMPASS = ["北", "北北東", "北東", "東北東", "東", "東南東", "南東", "南南東", "南", "南南西", "南西", "西南西", "西", "西北西", "北西", "北北西"];
   const compass = (deg) => COMPASS[Math.round(deg / 22.5) % 16];
 
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
   function dayKey(ms) {
     const d = new Date(ms);
     return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
   }
 
   const totalKcal = (r) => r.kcalBasal + r.kcalExercise;
+  const placeById = (id) => Store.places.find((p) => p.id === id) || null;
 
   // ---------- 画面ON維持(Screen Wake Lock) ----------
   function wantWake() {
@@ -104,32 +110,100 @@
   }
 
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") updateWake();
-    else if (ride) persist(true); // 画面が消える前に記録を保存しておく
+    if (document.visibilityState === "visible") {
+      updateWake();
+      if (!ride && view === "ride") locateForWeather();
+    } else if (ride) persist(true); // 画面が消える前に記録を保存しておく
   });
   document.addEventListener("pointerdown", () => {
     if (!wakeLock && wantWake()) updateWake();
   });
 
-  // ---------- 風(Open-Meteo) ----------
-  async function fetchWind(lat, lon) {
-    if (!Store.prefs.wind || windFetching) return;
-    if (wind && Date.now() - wind.at < 15 * 60 * 1000) return;
-    windFetching = true;
-    try {
-      // 位置は約1km単位に丸めて送る
-      const url =
-        "https://api.open-meteo.com/v1/forecast?latitude=" + lat.toFixed(2) + "&longitude=" + lon.toFixed(2) +
-        "&current=temperature_2m,wind_speed_10m,wind_direction_10m&wind_speed_unit=ms";
-      const res = await fetch(url);
-      const data = await res.json();
-      const c = data.current;
-      wind = { speed: c.wind_speed_10m, from: c.wind_direction_10m, temp: c.temperature_2m, at: Date.now() };
-    } catch (e) {
-      // 取得できなければ無風として計算する
-    } finally {
-      windFetching = false;
+  // ---------- 天気 ----------
+  // 走行中の計算に使う風。天気予報を使わない設定なら無風
+  function currentWind() {
+    const w = Store.prefs.wind && Weather.latest;
+    return w ? w.current : null;
+  }
+
+  function refreshWeather(p) {
+    if (!Store.prefs.wind || !p) return;
+    Weather.get(p.lat, p.lon).then(() => {
+      if (ride) renderLive();
+      else renderWeather();
+    });
+  }
+
+  // 走っていないときは、現在地を1回だけ取って天気を出す(10分に1回まで)
+  function locateForWeather() {
+    if (!Store.prefs.wind) return;
+    if (Store.lastPos) refreshWeather(Store.lastPos);
+    if (!("geolocation" in navigator) || Date.now() - locatedAt < 10 * 60 * 1000) return;
+    locatedAt = Date.now();
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        Store.setLastPos({ lat: p.coords.latitude, lon: p.coords.longitude });
+        weatherStatus = "";
+        refreshWeather(Store.lastPos);
+      },
+      (err) => {
+        if (!Store.lastPos) weatherStatus = err.code === 1 ? "位置情報を許可すると、現在地の天気を表示します" : "現在地を取得できませんでした";
+        renderWeather();
+      },
+      { enableHighAccuracy: false, maximumAge: 10 * 60 * 1000, timeout: 20000 }
+    );
+  }
+
+  // 天気カード(走っていないときのホーム画面)
+  function renderWeather() {
+    const el = document.getElementById("weather");
+    if (!el) return;
+    const w = Store.prefs.wind ? Weather.latest : null;
+    if (!w) {
+      el.innerHTML = Store.prefs.wind
+        ? `<p class="muted">${weatherStatus || "天気を取得しています…"}</p>`
+        : `<p class="muted">設定で「天気予報を使う」をオンにすると、1時間ごとの天気を表示します。</p>`;
+      return;
     }
+    const c = w.current;
+    const d = Weather.describe(c.code);
+    // 行き先の方向に対して向かい風か追い風か
+    const here = Store.lastPos;
+    const dest = here ? Eta.guess(Store.places, here) : null;
+    const heading = dest ? Physics.bearing(here.lat, here.lon, dest.lat, dest.lon) : null;
+    const rain = w.hourly.slice(0, 4).find((h) => h.pop >= 50);
+    el.innerHTML = `
+      <div class="wx-now">
+        <span class="wx-icon">${d.icon}</span>
+        <div>
+          <div class="wx-temp">${Math.round(c.temp)}°<span>${d.label}</span></div>
+          <div class="muted small">${compass(c.from)}の風 ${c.speed.toFixed(1)}m/s${dest ? `・${esc(dest.name)}へは${windWord(c, heading)}` : ""}</div>
+        </div>
+      </div>
+      ${rain ? `<p class="notice warn">🌂 ${new Date(rain.t).getHours()}時ごろ 降水確率${rain.pop}%</p>` : ""}
+      <div class="hours">
+        ${w.hourly
+          .map((h) => {
+            const hd = Weather.describe(h.code);
+            const hw = heading != null ? Physics.headwind(h.speed, h.from, heading) : 0;
+            return `
+            <div class="hour">
+              <div class="hour-t">${new Date(h.t).getHours()}時</div>
+              <div class="hour-i">${hd.icon}</div>
+              <div class="hour-temp">${Math.round(h.temp)}°</div>
+              <div class="hour-pop ${h.pop >= 50 ? "wet" : ""}">☔${h.pop}%</div>
+              <div class="hour-wind"><span class="arrow" style="transform:rotate(${(h.from + 180) % 360}deg)">↑</span>${Math.round(h.speed)}m</div>
+              ${heading != null ? `<div class="hour-hw ${hw > 0.5 ? "head" : hw < -0.5 ? "tail" : ""}">${hw > 0.5 ? "向かい" : hw < -0.5 ? "追い" : "横"}</div>` : ""}
+            </div>`;
+          })
+          .join("")}
+      </div>
+      <p class="muted small">矢印は風が吹いていく向き${dest ? `。下の段は${esc(dest.name)}へ向かうときの風` : ""}</p>`;
+  }
+
+  function windWord(w, heading) {
+    const hw = Physics.headwind(w.speed, w.from, heading);
+    return hw > 0.5 ? "向かい風" : hw < -0.5 ? "追い風" : "横風";
   }
 
   // ---------- GPS ----------
@@ -151,22 +225,26 @@
     watchId = null;
   }
 
-  function onPosition(pos) {
+  function onPosition(p) {
     if (!ride) return;
-    const c = pos.coords;
+    const c = p.coords;
     lastAccuracy = c.accuracy;
     const fix = {
       lat: c.latitude,
       lon: c.longitude,
-      t: pos.timestamp,
+      t: p.timestamp,
       accuracy: c.accuracy,
       speed: c.speed,
       altitude: c.altitude,
       altitudeAccuracy: c.altitudeAccuracy,
     };
-    const result = Tracker.step(ride, fix, { profile: Store.profile, wind: Store.prefs.wind ? wind : null });
+    const result = Tracker.step(ride, fix, { profile: Store.profile, wind: currentWind() });
     gpsStatus = result === "inaccurate" ? `GPSの精度が低いため待っています(±${Math.round(c.accuracy)}m)` : "";
-    fetchWind(c.latitude, c.longitude);
+    if (result !== "inaccurate") pos = { lat: c.latitude, lon: c.longitude };
+    // 走り始めたら、行き先を自動で選ぶ(あとでタップして変えられる)
+    if (pos && ride.placeId === undefined) ride.placeId = (Eta.guess(Store.places, pos) || {}).id || null;
+    updateEta();
+    refreshWeather(pos);
     persist(false);
     renderLive();
   }
@@ -190,6 +268,8 @@
   // ---------- ライドの開始・終了 ----------
   function startRide() {
     ride = Tracker.create(Date.now());
+    ride.placeId = undefined; // 最初の測位で自動選択する
+    pos = null;
     lastResult = null;
     resumed = false;
     Store.setActive(ride);
@@ -210,12 +290,27 @@
     stopGps();
     if (!tooShort) {
       lastResult = Tracker.summary(ride, now);
+      learnFrom(lastResult);
       Store.addRide(lastResult);
+      if (lastResult.end) Store.setLastPos(lastResult.end);
     }
     ride = null;
     Store.setActive(null);
     updateWake();
     render();
+  }
+
+  // 目的地に着いたライドなら、その目的地の所要時間の学習に加える
+  function learnFrom(r) {
+    for (const place of Store.places) {
+      const trip = Eta.tripFor(r, place);
+      if (!trip) continue;
+      Eta.addTrip(place, trip);
+      r.arrivedPlaceId = place.id;
+      Store.savePlaces();
+      return place;
+    }
+    return null;
   }
 
   // 再読み込みや画面の切り替えで中断したライドを続きから記録する(3時間以上前なら終了扱い)
@@ -226,11 +321,57 @@
     if (Date.now() - lastT < 3 * 3600 * 1000) {
       ride = a;
       resumed = true;
+      if (a.last) pos = { lat: a.last.lat, lon: a.last.lon };
       startGps();
     } else {
-      if (a.distance >= 50) Store.addRide(Tracker.summary(a, lastT));
+      if (a.distance >= 50) {
+        const r = Tracker.summary(a, lastT);
+        learnFrom(r);
+        Store.addRide(r);
+      }
       Store.setActive(null);
     }
+  }
+
+  // 走行中に行き先を切り替える(登録済みの目的地 → なし の順に回る)
+  function cycleDest() {
+    const ids = Store.places.map((p) => p.id).concat([null]);
+    const i = ids.indexOf(ride.placeId == null ? null : ride.placeId);
+    ride.placeId = ids[(i + 1) % ids.length];
+    ride.etaMid = null;
+    if (pos) updateEta();
+    persist(true);
+    renderLive();
+  }
+
+  // ---------- 目的地の登録 ----------
+  function askPlaceName(defaultName) {
+    const name = prompt("目的地の名前を入力してください(例:会社、自宅)", defaultName);
+    return name && name.trim() ? name.trim().slice(0, 20) : null;
+  }
+
+  // 終わったライドの到着地を目的地にする(そのライドから学習も始める)
+  function registerEnd(r) {
+    const name = askPlaceName(new Date(r.endedAt).getHours() < 12 ? "会社" : "自宅");
+    if (!name) return;
+    Store.addPlace({ name, lat: r.end.lat, lon: r.end.lon });
+    learnFrom(r);
+    Store.savePlaces();
+    render();
+  }
+
+  function registerHere() {
+    if (!("geolocation" in navigator)) return alert("この端末では位置情報が使えません");
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        const name = askPlaceName("");
+        if (!name) return;
+        Store.addPlace({ name, lat: p.coords.latitude, lon: p.coords.longitude });
+        render();
+      },
+      () => alert("現在地を取得できませんでした。位置情報の許可を確認してください"),
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }
+    );
   }
 
   // ---------- 描画 ----------
@@ -245,6 +386,8 @@
     bind();
     renderWake();
     renderLive();
+    renderWeather();
+    if (view === "ride" && !ride) locateForWeather();
   }
 
   function tab(id, icon, label) {
@@ -266,12 +409,13 @@
             <div class="hero-value"><span id="kcal">0</span><small>kcal</small></div>
             <div class="hero-sub" id="food"></div>
           </div>
+          <button class="eta" id="eta"></button>
           <div class="grid">
             ${metric("power", "パワー", "W")}
             ${metric("speed", "速度", "km/h")}
+            ${metric("grade", "勾配", "%")}
             ${metric("dist", "距離", "km")}
             ${metric("elapsed", "経過時間", "")}
-            ${metric("moving", "走行時間", "")}
             ${metric("stopped", "信号待ちなど", "")}
           </div>
           <div class="status">
@@ -295,9 +439,10 @@
       <button class="btn start" id="start">ライドを開始</button>
       <p class="muted center">
         ${Store.profile.weightKg}kg + バイク${Store.profile.bikeKg}kg + 荷物${Store.profile.cargoKg}kg・${Physics.POSTURES[Store.profile.posture].label}で計算
-        <br /><button class="link" data-view="settings">体格・バイクを変更</button>
+        <br /><button class="link" data-view="settings">体格・バイク・目的地を変更</button>
       </p>
-      <div class="status center"><span id="wake" class="pill"></span></div>`;
+      <div class="status center"><span id="wake" class="pill"></span></div>
+      <section class="card weather" id="weather"></section>`;
   }
 
   function metric(id, label, unit) {
@@ -311,11 +456,24 @@
 
   function resultCard(r) {
     const k = totalKcal(r);
+    const place = placeById(r.arrivedPlaceId);
+    const L = place ? Eta.learned(place) : null;
+    let placeLine = "";
+    if (place) {
+      const trip = place.trips.find((t) => t.rideId === r.id);
+      const err = trip && typeof trip.errSec === "number" ? trip.errSec / 60 : null;
+      placeLine = `<p class="notice">🏁 ${esc(place.name)}に到着。所要時間を学習しました(${L.n}回分)${
+        err != null ? `<br />途中の予測とのずれ:${Math.abs(err) < 0.5 ? "ほぼぴったり" : `${Math.abs(err).toFixed(1)}分${err > 0 ? "遅れ" : "早着"}`}` : ""
+      }</p>`;
+    } else if (r.end && r.distance >= 500) {
+      placeLine = `<button class="btn sub" id="register-end">🏁 この到着地を目的地に登録</button>`;
+    }
     return `
       <section class="card result">
         <h2>おつかれさまでした!</h2>
         <div class="result-kcal">${fmt.kcal(k)}<small>kcal</small></div>
         <p class="muted">${foodLine(k, true)}</p>
+        ${placeLine}
         ${detailTable(r)}
       </section>`;
   }
@@ -323,6 +481,7 @@
   function detailTable(r) {
     const avgSpeed = r.movingSec > 0 ? r.distance / r.movingSec : 0;
     const avgPower = r.movingSec > 0 ? r.workJ / r.movingSec : 0;
+    const place = placeById(r.arrivedPlaceId);
     const rows = [
       ["距離", fmt.km(r.distance) + " km"],
       ["走行時間", fmt.min(r.movingSec)],
@@ -334,6 +493,7 @@
       ["運動で増えた分", fmt.kcal(r.kcalExercise) + " kcal"],
       ["基礎代謝分", fmt.kcal(r.kcalBasal) + " kcal"],
     ];
+    if (place) rows.unshift(["到着地", esc(place.name)]);
     return `
       <dl class="detail">${rows.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join("")}</dl>
       ${r.gapSec > 30 ? `<p class="notice warn">画面が消えるなどで${fmt.min(r.gapSec)}ほど計測が途切れました。その間は平均速度で走ったものとして計算しています。</p>` : ""}`;
@@ -351,32 +511,51 @@
       g.rides.push(r);
     }
     const week = weekTotal();
+    const rideRow = (r) => {
+      const summary = `
+        <span class="ride-time">${fmt.time(r.startedAt)}〜${fmt.time(r.endedAt)}${placeById(r.arrivedPlaceId) ? `<em>→${esc(placeById(r.arrivedPlaceId).name)}</em>` : ""}</span>
+        <span class="ride-main">${fmt.kcal(totalKcal(r))} kcal</span>
+        <span class="ride-sub">${fmt.km(r.distance)}km・${fmt.min(r.movingSec + r.stoppedSec)}</span>`;
+      if (editMode) {
+        return `
+          <label class="card ride select ${selected.has(r.id) ? "picked" : ""}">
+            <input type="checkbox" data-select="${r.id}" ${selected.has(r.id) ? "checked" : ""} />
+            <span class="ride-summary">${summary}</span>
+          </label>`;
+      }
+      return `
+        <details class="card ride">
+          <summary class="ride-summary">${summary}</summary>
+          ${detailTable(r)}
+          <button class="link danger" data-delete="${r.id}">この記録を削除</button>
+        </details>`;
+    };
     return `
-      <section class="card">
-        <div class="today-label">直近7日間</div>
-        <div class="today-value">${fmt.kcal(week.kcal)}<small>kcal</small></div>
-        <div class="muted">${week.count}回のライド・${fmt.km(week.dist)}km・${foodLine(week.kcal, false)}</div>
-      </section>
+      <div class="history-head">
+        <h2>記録</h2>
+        <button class="link" id="edit-toggle">${editMode ? "完了" : "選択して削除"}</button>
+      </div>
+      ${
+        editMode
+          ? `<div class="edit-bar">
+              <button class="chip" id="select-short">1km未満を選択</button>
+              <button class="chip" id="select-all">すべて選択</button>
+              <button class="chip" id="select-none">選択を解除</button>
+            </div>`
+          : `<section class="card">
+              <div class="today-label">直近7日間</div>
+              <div class="today-value">${fmt.kcal(week.kcal)}<small>kcal</small></div>
+              <div class="muted">${week.count}回のライド・${fmt.km(week.dist)}km・${foodLine(week.kcal, false)}</div>
+            </section>`
+      }
       ${groups
         .map(
           (g) => `
         <h3 class="day">${fmt.date(g.date)}<span>${fmt.kcal(g.rides.reduce((s, r) => s + totalKcal(r), 0))} kcal</span></h3>
-        ${g.rides
-          .map(
-            (r) => `
-          <details class="card ride">
-            <summary>
-              <span class="ride-time">${fmt.time(r.startedAt)}〜${fmt.time(r.endedAt)}</span>
-              <span class="ride-main">${fmt.kcal(totalKcal(r))} kcal</span>
-              <span class="ride-sub">${fmt.km(r.distance)}km・${fmt.min(r.movingSec + r.stoppedSec)}</span>
-            </summary>
-            ${detailTable(r)}
-            <button class="link danger" data-delete="${r.id}">この記録を削除</button>
-          </details>`
-          )
-          .join("")}`
+        ${g.rides.map(rideRow).join("")}`
         )
-        .join("")}`;
+        .join("")}
+      ${editMode ? `<div class="delete-bar"><button class="btn stop" id="delete-selected" ${selected.size ? "" : "disabled"}>選択した${selected.size}件を削除</button></div>` : ""}`;
   }
 
   function weekTotal() {
@@ -387,6 +566,30 @@
       kcal: list.reduce((s, r) => s + totalKcal(r), 0),
       dist: list.reduce((s, r) => s + r.distance, 0),
     };
+  }
+
+  function placesSection() {
+    const rows = Store.places
+      .map((p) => {
+        const L = Eta.learned(p);
+        const acc = Eta.accuracy(p);
+        const info = L
+          ? `到着${L.n}回を学習・信号込みの平均${fmt.kmh(L.speed)}km/h${acc ? `・予測のずれ 平均${acc.minutes.toFixed(1)}分` : ""}`
+          : "まだ学習していません(ここに到着すると学習します)";
+        return `
+          <div class="place">
+            <div><strong>🏁 ${esc(p.name)}</strong><small>${info}</small></div>
+            <button class="link danger" data-delplace="${p.id}">削除</button>
+          </div>`;
+      })
+      .join("");
+    return `
+      <section class="card">
+        <h2>目的地</h2>
+        <p class="muted small">会社や自宅を登録すると、走行中に「あと何分で着くか」を表示します。到着するたびに、あなたの信号待ちを含めたペースと道の遠回り具合を学習して、予測が正確になっていきます。</p>
+        ${rows || `<p class="muted">まだ登録されていません。目的地で下のボタンを押すか、ライドの終了後に「この到着地を目的地に登録」を押してください。</p>`}
+        <button class="btn sub" id="register-here">📍 現在地を目的地に登録</button>
+      </section>`;
   }
 
   function settingsView() {
@@ -408,9 +611,9 @@
         <label class="field"><span>乗車姿勢</span><select name="posture">${options(Physics.POSTURES, p.posture)}</select></label>
         <label class="field"><span>路面・タイヤ</span><select name="surface">${options(Physics.SURFACES, p.surface)}</select></label>
 
-        <h2>計算と画面</h2>
+        <h2>天気と画面</h2>
         <label class="check"><input type="checkbox" name="wind" ${pr.wind ? "checked" : ""} />
-          <span>風を計算に入れる<small>天気予報(Open-Meteo)から現在地付近の風向き・風速を取得します。送る位置は約1km単位に丸めます</small></span></label>
+          <span>天気予報を使う<small>1時間ごとの天気の表示と、風向き・風速を使った計算に使います(Open-Meteo)。送る位置は約1km単位に丸めます</small></span></label>
         <label class="field"><span>画面を消さない</span>
           <select name="wake">
             <option value="always" ${pr.wake === "always" ? "selected" : ""}>開いている間ずっと</option>
@@ -420,10 +623,16 @@
         <button class="btn start" type="submit">保存</button>
         <p class="muted small">基礎代謝 約${Math.round(Physics.bmrPerDay(p))}kcal/日・空気抵抗係数(CdA) ${Physics.cdaFor(p).toFixed(3)}m²</p>
       </form>
+      ${placesSection()}
       <section class="card">
         <h2>計算のしくみ</h2>
         <p class="muted">GPSの速度と標高の変化から、毎秒「転がり抵抗」「坂を登る力」「加速」「空気抵抗(風を含む)」に必要なパワーを計算します。脚の筋肉の効率を25%として、そのパワーを消費カロリーに換算し、基礎代謝分を足しています。</p>
+        <p class="muted">勾配はGPSの標高から50mごとに出す目安です。標高のぶれを打ち消すため、坂に入ってから表示されるまで30秒ほど遅れ、1%未満の緩い坂は0%と表示します。</p>
         <p class="muted">パワーメーターではなく推定値です。風の強い日や、GPSが乱れやすいビル街では誤差が大きくなります。</p>
+      </section>
+      <section class="card">
+        <h2>データ</h2>
+        <button class="link danger" id="clear-rides">すべてのライド記録を削除</button>
       </section>`;
   }
 
@@ -449,8 +658,16 @@
     set("speed", fmt.kmh(moving ? ride.vEma : 0));
     set("dist", fmt.km(ride.distance));
     set("elapsed", fmt.dur((Date.now() - ride.startedAt) / 1000));
-    set("moving", fmt.dur(ride.movingSec));
     set("stopped", fmt.dur(ride.stoppedSec));
+
+    const g = document.getElementById("grade");
+    if (g) {
+      const pct = Math.round(ride.grade * 1000) / 10;
+      g.textContent = ride.altEma == null ? "–" : (pct > 0 ? "+" : "") + pct.toFixed(Math.abs(pct) < 10 ? 1 : 0);
+      g.parentElement.className = "metric-value " + (pct >= 3 ? "up" : pct <= -3 ? "down" : "");
+    }
+
+    renderEta();
 
     const gps = document.getElementById("gps");
     if (gps) {
@@ -459,12 +676,13 @@
     }
     const w = document.getElementById("windinfo");
     if (w) {
+      const wind = currentWind();
       if (!Store.prefs.wind) w.textContent = "風:計算に入れない";
       else if (!wind) w.textContent = "風:取得中…";
       else {
         const hw = ride.heading != null ? Physics.headwind(wind.speed, wind.from, ride.heading) : 0;
         const dir = hw > 0.3 ? `向かい風 ${hw.toFixed(1)}m/s` : hw < -0.3 ? `追い風 ${(-hw).toFixed(1)}m/s` : "横風";
-        w.textContent = `${compass(wind.from)}の風 ${wind.speed.toFixed(1)}m/s・${dir}`;
+        w.textContent = `${Weather.describe(wind.code).icon} ${Math.round(wind.temp)}° ${compass(wind.from)}の風 ${wind.speed.toFixed(1)}m/s・${dir}`;
       }
     }
     const gap = document.getElementById("gapwarn");
@@ -474,25 +692,139 @@
     }
   }
 
+  // 目的地までの推定を更新する。半分まで来たときの予測と、到着した時点の記録を残しておき、
+  // ライド終了後の学習と答え合わせに使う
+  function updateEta() {
+    const place = placeById(ride.placeId);
+    ride.eta = place && pos ? Object.assign(Eta.estimate(place, ride, pos), { at: Date.now() }) : null;
+    const est = ride.eta;
+    if (!est) return;
+    if (est.arrived) {
+      if (!ride.arrival || ride.arrival.placeId !== place.id) {
+        ride.arrival = {
+          placeId: place.id,
+          t: Date.now(),
+          elapsed: ride.movingSec + ride.stoppedSec + ride.gapSec,
+          distance: ride.distance,
+        };
+        persist(true);
+      }
+      return;
+    }
+    const progress = ride.distance / (ride.distance + est.remainM);
+    if (!ride.etaMid && progress >= 0.5 && ride.distance > 1000) {
+      ride.etaMid = { placeId: place.id, arriveAt: Date.now() + est.sec * 1000 };
+    }
+  }
+
+  // 目的地までの残り距離・時間
+  function renderEta() {
+    const el = document.getElementById("eta");
+    if (!el) return;
+    const place = placeById(ride.placeId);
+    if (!place) {
+      el.className = "eta empty";
+      el.innerHTML = Store.places.length
+        ? `🏁 目的地なし<small>タップで目的地を選ぶ</small>`
+        : `🏁 目的地を登録すると、到着までの残り時間を表示します<small>設定 → 目的地</small>`;
+      return;
+    }
+    const est = ride.eta;
+    if (!est) {
+      el.className = "eta";
+      el.innerHTML = `🏁 ${esc(place.name)}まで<small>現在地を確認しています…</small>`;
+      return;
+    }
+    if (est.arrived) {
+      el.className = "eta arrived";
+      el.innerHTML = `🏁 ${esc(place.name)}に到着しました<small>到着時刻を記録しました。「ライドを終了」で所要時間を学習します</small>`;
+      return;
+    }
+    const acc = Eta.accuracy(place);
+    const basis = est.learnedN
+      ? `到着${est.learnedN}回分の学習${acc ? `・予測のずれ 平均${acc.minutes.toFixed(1)}分` : ""}`
+      : "学習前の目安(到着するたびに正確になります)";
+    // 残り時間は最後の測位からの経過分を差し引く
+    const sec = Math.max(0, est.sec - (Date.now() - est.at) / 1000);
+    el.className = "eta";
+    el.innerHTML = `
+      <span class="eta-main">🏁 ${esc(place.name)}まで ${fmt.km(est.remainM)}km・あと<strong>${Math.max(1, Math.round(sec / 60))}分</strong></span>
+      <span class="eta-at">${fmt.time(est.at + est.sec * 1000)}着</span>
+      <small>${basis}${Store.places.length > 1 ? "・タップで目的地を変更" : ""}</small>`;
+  }
+
   function bind() {
+    const on = (id, fn) => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener("click", fn);
+    };
     app.querySelectorAll("[data-view]").forEach((b) =>
       b.addEventListener("click", () => {
         view = b.dataset.view;
+        editMode = false;
+        selected = new Set();
         render();
         window.scrollTo(0, 0);
       })
     );
-    const start = document.getElementById("start");
-    if (start) start.addEventListener("click", startRide);
-    const finish = document.getElementById("finish");
-    if (finish) finish.addEventListener("click", finishRide);
-    app.querySelectorAll("[data-delete]").forEach((b) =>
+    on("start", startRide);
+    on("finish", finishRide);
+    on("eta", () => {
+      if (Store.places.length) cycleDest();
+    });
+    on("register-end", () => registerEnd(lastResult));
+    on("register-here", registerHere);
+    app.querySelectorAll("[data-delplace]").forEach((b) =>
       b.addEventListener("click", () => {
-        if (!confirm("この記録を削除しますか?")) return;
-        Store.deleteRide(b.dataset.delete);
+        if (!confirm("この目的地と、学習した所要時間を削除しますか?")) return;
+        Store.deletePlace(b.dataset.delplace);
         render();
       })
     );
+
+    // 記録の削除
+    app.querySelectorAll("[data-delete]").forEach((b) =>
+      b.addEventListener("click", () => {
+        if (!confirm("この記録を削除しますか?")) return;
+        Store.deleteRides([b.dataset.delete]);
+        render();
+      })
+    );
+    on("edit-toggle", () => {
+      editMode = !editMode;
+      selected = new Set();
+      render();
+    });
+    app.querySelectorAll("[data-select]").forEach((c) =>
+      c.addEventListener("change", () => {
+        if (c.checked) selected.add(c.dataset.select);
+        else selected.delete(c.dataset.select);
+        render();
+      })
+    );
+    const pick = (fn) => () => {
+      selected = new Set(Store.rides.filter(fn).map((r) => r.id));
+      render();
+    };
+    on("select-short", pick((r) => r.distance < 1000));
+    on("select-all", pick(() => true));
+    on("select-none", pick(() => false));
+    on("delete-selected", () => {
+      if (!selected.size || !confirm(`選択した${selected.size}件の記録を削除しますか?`)) return;
+      Store.deleteRides([...selected]);
+      if (lastResult && selected.has(lastResult.id)) lastResult = null;
+      selected = new Set();
+      editMode = Store.rides.length > 0;
+      render();
+    });
+    on("clear-rides", () => {
+      if (!Store.rides.length) return alert("記録はありません");
+      if (!confirm(`すべてのライド記録(${Store.rides.length}件)を削除しますか?目的地の学習もリセットされます。`)) return;
+      Store.deleteRides(Store.rides.map((r) => r.id));
+      lastResult = null;
+      render();
+    });
+
     const form = document.getElementById("settings");
     if (form) form.addEventListener("submit", onSaveSettings);
   }
