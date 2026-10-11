@@ -1461,3 +1461,21 @@ details.panel summary {
 .note td:first-child {
   min-width: 6.5em;
 }
+
+.tbs-scenario table {
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 13.5px;
+}
+
+.tbs-scenario th,
+.tbs-scenario td {
+  border: 1px solid var(--line);
+  padding: 4px 10px;
+  text-align: right;
+}
+
+.tbs-scenario td:first-child,
+.tbs-scenario th:first-child {
+  text-align: left;
+}

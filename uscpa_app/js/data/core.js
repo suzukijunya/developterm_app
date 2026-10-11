@@ -42,6 +42,22 @@ const CPA = (() => {
     sections.push(def);
   }
 
+  // 既存の章に問題・カードを追加する。保存済みの学習記録がずれないよう、IDは既存の続き番号にする
+  function extend(chapterId, add) {
+    const ch = getChapter(chapterId);
+    if (!ch) throw new Error("unknown chapter " + chapterId);
+    (add.mcq || []).forEach((q) => {
+      q.id = ch.id + "-q" + String(ch.mcq.length + 1).padStart(2, "0");
+      balanceAnswer(q);
+      q.chapter = ch.id;
+      q.section = ch.section;
+      ch.mcq.push(q);
+    });
+    (add.cards || []).forEach((c) => {
+      ch.cards.push({ id: ch.id + "-k" + String(ch.cards.length + 1).padStart(2, "0"), en: c[0], ja: c[1], desc: c[2] || "", chapter: ch.id, section: ch.section });
+    });
+  }
+
   function tbs(def) {
     tbsList.push(def);
   }
@@ -55,5 +71,5 @@ const CPA = (() => {
   const getTbs = (id) => tbsList.find((t) => t.id === id);
   const tbsFor = (filter) => tbsList.filter((t) => (filter.section ? t.section === filter.section : true) && (filter.chapter ? t.chapter === filter.chapter : true));
 
-  return { section, tbs, sections, tbsList, getSection, allChapters, getChapter, allMcq, getMcq, allCards, getTbs, tbsFor };
+  return { section, extend, tbs, sections, tbsList, getSection, allChapters, getChapter, allMcq, getMcq, allCards, getTbs, tbsFor };
 })();
