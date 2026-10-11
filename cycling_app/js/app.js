@@ -18,6 +18,8 @@
   let selected = new Set();
   let locatedAt = 0; // 天気のために現在地を取った時刻
   let weatherStatus = "";
+  // 設定画面の目的地作成フォーム(描き直しても入力が消えないように保持する)
+  let placeForm = { name: "", query: "", results: [], status: "" };
 
   const FOODS = [
     { name: "おにぎり", kcal: 180, unit: "個" },
@@ -64,6 +66,24 @@
 
   const totalKcal = (r) => r.kcalBasal + r.kcalExercise;
   const placeById = (id) => Store.places.find((p) => p.id === id) || null;
+
+  // よく使う目的地(選んだ回数+到着した回数の多い順、同じなら作成順)
+  function favorites() {
+    const score = (p) => (p.uses || 0) + (p.trips || []).length;
+    return Store.places
+      .map((p, i) => ({ p, i }))
+      .sort((a, b) => score(b.p) - score(a.p) || a.i - b.i)
+      .slice(0, 2)
+      .map((x) => x.p);
+  }
+
+  // 次のライドの目的地。選んでいなければ、最後にわかった現在地から遠い目的地を自動で選ぶ
+  function plannedDest() {
+    const id = Store.prefs.destId;
+    if (id === "none") return null;
+    if (id) return placeById(id);
+    return Store.lastPos ? Eta.guess(Store.places, Store.lastPos) : null;
+  }
 
   // ---------- 画面ON維持(Screen Wake Lock) ----------
   function wantWake() {
@@ -169,7 +189,7 @@
     const d = Weather.describe(c.code);
     // 行き先の方向に対して向かい風か追い風か
     const here = Store.lastPos;
-    const dest = here ? Eta.guess(Store.places, here) : null;
+    const dest = here ? plannedDest() : null;
     const heading = dest ? Physics.bearing(here.lat, here.lon, dest.lat, dest.lon) : null;
     const rain = w.hourly.slice(0, 4).find((h) => h.pop >= 50);
     el.innerHTML = `
@@ -242,7 +262,10 @@
     gpsStatus = result === "inaccurate" ? `GPSの精度が低いため待っています(±${Math.round(c.accuracy)}m)` : "";
     if (result !== "inaccurate") pos = { lat: c.latitude, lon: c.longitude };
     // 走り始めたら、行き先を自動で選ぶ(あとでタップして変えられる)
-    if (pos && ride.placeId === undefined) ride.placeId = (Eta.guess(Store.places, pos) || {}).id || null;
+    if (pos && ride.placeId === undefined) {
+      ride.placeId = (Eta.guess(Store.places, pos) || {}).id || null;
+      if (ride.placeId) Store.markUsed(ride.placeId);
+    }
     updateEta();
     refreshWeather(pos);
     persist(false);
@@ -268,7 +291,10 @@
   // ---------- ライドの開始・終了 ----------
   function startRide() {
     ride = Tracker.create(Date.now());
-    ride.placeId = undefined; // 最初の測位で自動選択する
+    // 目的地を選んでいなければ、最初の測位で現在地から自動で選ぶ
+    const id = Store.prefs.destId;
+    ride.placeId = id === "none" ? null : placeById(id) ? id : undefined;
+    if (ride.placeId) Store.markUsed(ride.placeId);
     pos = null;
     lastResult = null;
     resumed = false;
@@ -296,6 +322,7 @@
     }
     ride = null;
     Store.setActive(null);
+    Store.setPrefs({ destId: null }); // 次のライドは現在地から自動で選び直す(帰り道なら自宅に切り替わる)
     updateWake();
     render();
   }
@@ -345,33 +372,73 @@
   }
 
   // ---------- 目的地の登録 ----------
-  function askPlaceName(defaultName) {
-    const name = prompt("目的地の名前を入力してください(例:会社、自宅)", defaultName);
-    return name && name.trim() ? name.trim().slice(0, 20) : null;
+  function addPlace(place) {
+    if (Store.addPlace(place)) return true;
+    alert(`目的地は${Store.MAX_PLACES}件まで登録できます。設定画面で使わない目的地を削除してください`);
+    return false;
   }
 
   // 終わったライドの到着地を目的地にする(そのライドから学習も始める)
   function registerEnd(r) {
-    const name = askPlaceName(new Date(r.endedAt).getHours() < 12 ? "会社" : "自宅");
-    if (!name) return;
-    Store.addPlace({ name, lat: r.end.lat, lon: r.end.lon });
+    const def = new Date(r.endedAt).getHours() < 12 ? "会社" : "自宅";
+    const name = prompt("目的地の名前を入力してください(例:会社、自宅)", def);
+    if (!name || !name.trim()) return;
+    if (!addPlace({ name: name.trim().slice(0, 20), label: "ライドの到着地", lat: r.end.lat, lon: r.end.lon })) return;
     learnFrom(r);
     Store.savePlaces();
     render();
   }
 
+  function formName() {
+    const name = placeForm.name.trim().slice(0, 20);
+    if (!name) alert("目的地の名前を入力してください");
+    return name;
+  }
+
+  function savePlaceFromForm(lat, lon, label) {
+    const name = formName();
+    if (!name) return;
+    if (!addPlace({ name, label, lat, lon })) return;
+    placeForm = { name: "", query: "", results: [], status: `「${name}」を登録しました` };
+    render();
+  }
+
+  async function searchPlace() {
+    const q = placeForm.query.trim();
+    if (!q) return;
+    placeForm.results = [];
+    placeForm.status = "検索しています…";
+    render();
+    try {
+      placeForm.results = await Geocode.search(q);
+      placeForm.status = placeForm.results.length ? "候補をタップして登録します" : "見つかりませんでした。住所を詳しく入れるか、別の書き方で試してください";
+    } catch (e) {
+      placeForm.status = "検索できませんでした。通信状況を確認するか、Googleマップの「緯度,経度」を貼り付けてください";
+    }
+    render();
+  }
+
   function registerHere() {
+    if (!formName()) return;
     if (!("geolocation" in navigator)) return alert("この端末では位置情報が使えません");
+    placeForm.status = "現在地を取得しています…";
+    render();
     navigator.geolocation.getCurrentPosition(
-      (p) => {
-        const name = askPlaceName("");
-        if (!name) return;
-        Store.addPlace({ name, lat: p.coords.latitude, lon: p.coords.longitude });
+      (p) => savePlaceFromForm(p.coords.latitude, p.coords.longitude, "現在地で登録"),
+      () => {
+        placeForm.status = "現在地を取得できませんでした。位置情報の許可を確認してください";
         render();
       },
-      () => alert("現在地を取得できませんでした。位置情報の許可を確認してください"),
       { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }
     );
+  }
+
+  function renamePlace(id) {
+    const p = placeById(id);
+    const name = prompt("新しい名前", p.name);
+    if (!name || !name.trim()) return;
+    Store.renamePlace(id, name.trim().slice(0, 20));
+    render();
   }
 
   // ---------- 描画 ----------
@@ -436,6 +503,7 @@
         <div class="today-value">${fmt.kcal(todayKcal)}<small>kcal</small></div>
         <div class="muted">${today.length}回のライド・${fmt.km(today.reduce((s, r) => s + r.distance, 0))}km</div>
       </section>
+      ${destPicker()}
       <button class="btn start" id="start">ライドを開始</button>
       <p class="muted center">
         ${Store.profile.weightKg}kg + バイク${Store.profile.bikeKg}kg + 荷物${Store.profile.cargoKg}kg・${Physics.POSTURES[Store.profile.posture].label}で計算
@@ -443,6 +511,50 @@
       </p>
       <div class="status center"><span id="wake" class="pill"></span></div>
       <section class="card weather" id="weather"></section>`;
+  }
+
+  // ホーム画面の目的地選択。よく使う2件は常にボタンで表示し、残りは「その他」から選ぶ
+  function destPicker() {
+    if (!Store.places.length) {
+      return `
+        <section class="card dest">
+          <div class="today-label">目的地</div>
+          <p class="muted small">設定で目的地(会社・自宅など)を作っておくと、ここで選ぶだけで到着までの残り時間を表示します。</p>
+          <button class="link" data-view="settings">目的地を作成する</button>
+        </section>`;
+    }
+    const cur = plannedDest();
+    const none = Store.prefs.destId === "none";
+    const favs = favorites();
+    const others = Store.places.filter((p) => !favs.includes(p));
+    const chip = (p) =>
+      `<button class="chip dest-chip ${cur && cur.id === p.id ? "on" : ""}" data-dest="${p.id}">🏁 ${esc(p.name)}</button>`;
+    const otherSel = others.length
+      ? `<select class="chip dest-more ${cur && others.includes(cur) ? "on" : ""}" id="dest-more">
+          <option value="">その他${others.length}件…</option>
+          ${others.map((p) => `<option value="${p.id}" ${cur && cur.id === p.id ? "selected" : ""}>${esc(p.name)}</option>`).join("")}
+        </select>`
+      : "";
+    let note = "";
+    if (cur) {
+      const est = Store.lastPos ? Eta.estimate(cur, { distance: 0, movingSec: 0, stoppedSec: 0, gapSec: 0 }, Store.lastPos) : null;
+      const auto = !Store.prefs.destId ? "現在地から自動で選びました・" : "";
+      note = est && !est.arrived ? `${auto}ここから約${Math.round(est.sec / 60)}分${est.learnedN ? `(到着${est.learnedN}回分の学習)` : "(学習前の目安)"}` : auto.replace(/・$/, "");
+    } else if (none) {
+      note = "目的地を決めずに走ります";
+    } else {
+      note = "目的地を選んでください";
+    }
+    return `
+      <section class="card dest">
+        <div class="today-label">目的地</div>
+        <div class="dest-chips">
+          ${favs.map(chip).join("")}
+          ${otherSel}
+          <button class="chip dest-chip ${none ? "on" : ""}" data-dest="none">なし</button>
+        </div>
+        <p class="muted small">${note}</p>
+      </section>`;
   }
 
   function metric(id, label, unit) {
@@ -569,26 +681,49 @@
   }
 
   function placesSection() {
+    const full = Store.places.length >= Store.MAX_PLACES;
     const rows = Store.places
       .map((p) => {
         const L = Eta.learned(p);
         const acc = Eta.accuracy(p);
         const info = L
           ? `到着${L.n}回を学習・信号込みの平均${fmt.kmh(L.speed)}km/h${acc ? `・予測のずれ 平均${acc.minutes.toFixed(1)}分` : ""}`
-          : "まだ学習していません(ここに到着すると学習します)";
+          : "まだ学習していません(到着するたびに学習します)";
         return `
           <div class="place">
-            <div><strong>🏁 ${esc(p.name)}</strong><small>${info}</small></div>
-            <button class="link danger" data-delplace="${p.id}">削除</button>
+            <div><strong>🏁 ${esc(p.name)}</strong><small>${p.label ? esc(p.label) + "<br />" : ""}${info}</small></div>
+            <div class="place-actions">
+              <button class="link" data-renameplace="${p.id}">名前</button>
+              <button class="link danger" data-delplace="${p.id}">削除</button>
+            </div>
           </div>`;
       })
       .join("");
+    const f = placeForm;
     return `
       <section class="card">
-        <h2>目的地</h2>
-        <p class="muted small">会社や自宅を登録すると、走行中に「あと何分で着くか」を表示します。到着するたびに、あなたの信号待ちを含めたペースと道の遠回り具合を学習して、予測が正確になっていきます。</p>
-        ${rows || `<p class="muted">まだ登録されていません。目的地で下のボタンを押すか、ライドの終了後に「この到着地を目的地に登録」を押してください。</p>`}
-        <button class="btn sub" id="register-here">📍 現在地を目的地に登録</button>
+        <h2>目的地 <span class="count">${Store.places.length}/${Store.MAX_PLACES}</span></h2>
+        <p class="muted small">会社・自宅・よく行くお店などを作っておくと、走る画面で選ぶだけで「あと何分で着くか」を表示します。到着するたびに、信号待ちを含めたペースと道の遠回り具合を学習して、予測が正確になっていきます。</p>
+        ${rows || `<p class="muted">まだ目的地がありません。下のフォームから作成してください。</p>`}
+        ${
+          full
+            ? `<p class="notice">目的地は${Store.MAX_PLACES}件まで登録できます。追加するには、使わない目的地を削除してください。</p>`
+            : `<form class="place-form" id="place-form">
+                <h3>目的地を追加</h3>
+                <label class="field"><span>名前</span><input type="text" id="place-name" maxlength="20" placeholder="例:会社" value="${esc(f.name)}" /></label>
+                <label class="stack"><span>場所<small>住所・駅名・施設名、またはGoogleマップの「緯度,経度」</small></span>
+                  <span class="search-row">
+                    <input type="search" id="place-query" placeholder="例:豊島区西池袋1-1-25" value="${esc(f.query)}" />
+                    <button class="chip" type="submit">検索</button>
+                  </span>
+                </label>
+                ${f.status ? `<p class="muted small">${esc(f.status)}</p>` : ""}
+                ${f.results
+                  .map((r, i) => `<button type="button" class="result-item" data-pick="${i}">📍 ${esc(r.label)}</button>`)
+                  .join("")}
+                <button type="button" class="btn sub" id="register-here">📍 現在地をこの名前で登録</button>
+              </form>`
+        }
       </section>`;
   }
 
@@ -761,6 +896,7 @@
     app.querySelectorAll("[data-view]").forEach((b) =>
       b.addEventListener("click", () => {
         view = b.dataset.view;
+        placeForm.status = "";
         editMode = false;
         selected = new Set();
         render();
@@ -774,6 +910,36 @@
     });
     on("register-end", () => registerEnd(lastResult));
     on("register-here", registerHere);
+    app.querySelectorAll("[data-dest]").forEach((b) =>
+      b.addEventListener("click", () => {
+        Store.setPrefs({ destId: b.dataset.dest });
+        render();
+      })
+    );
+    const more = document.getElementById("dest-more");
+    if (more)
+      more.addEventListener("change", () => {
+        if (more.value) Store.setPrefs({ destId: more.value });
+        render();
+      });
+    const pf = document.getElementById("place-form");
+    if (pf) {
+      const nameEl = document.getElementById("place-name");
+      const queryEl = document.getElementById("place-query");
+      nameEl.addEventListener("input", () => (placeForm.name = nameEl.value));
+      queryEl.addEventListener("input", () => (placeForm.query = queryEl.value));
+      pf.addEventListener("submit", (e) => {
+        e.preventDefault();
+        searchPlace();
+      });
+    }
+    app.querySelectorAll("[data-pick]").forEach((b) =>
+      b.addEventListener("click", () => {
+        const r = placeForm.results[+b.dataset.pick];
+        savePlaceFromForm(r.lat, r.lon, r.label);
+      })
+    );
+    app.querySelectorAll("[data-renameplace]").forEach((b) => b.addEventListener("click", () => renamePlace(b.dataset.renameplace)));
     app.querySelectorAll("[data-delplace]").forEach((b) =>
       b.addEventListener("click", () => {
         if (!confirm("この目的地と、学習した所要時間を削除しますか?")) return;

@@ -3,6 +3,7 @@
 
 const Store = (() => {
   const KEY = "cycling_app_v1";
+  const MAX_PLACES = 10;
 
   function defaults() {
     return {
@@ -18,10 +19,11 @@ const Store = (() => {
       prefs: {
         wind: true, // 天気APIの風を計算に入れる
         wake: "always", // 画面を消さない: "always" = アプリを開いている間 / "riding" = 走行中のみ
+        destId: null, // 次のライドの目的地。null = 現在地から自動で選ぶ / "none" = 目的地なし
       },
       profileSet: false,
       rides: [], // 保存したライド(新しい順)
-      places: [], // 目的地 { id, name, lat, lon, trips: [到着したライドから学習した値(新しい順)] }
+      places: [], // 目的地(最大10件) { id, name, label(住所など), lat, lon, uses(選んだ回数), trips: [到着したライドから学習した値(新しい順)] }
       lastPos: null, // 最後にわかった現在地 { lat, lon }(天気の表示用。端末の中だけに保存)
       active: null, // 記録中のライド(再読み込みしても続きから記録するため)
     };
@@ -103,13 +105,28 @@ const Store = (() => {
       for (const p of state.places) p.trips = (p.trips || []).filter((t) => !set.has(t.rideId));
       save();
     },
+    MAX_PLACES,
+    // 上限に達していれば null
     addPlace(place) {
-      state.places.push(Object.assign({ id: String(Date.now()), trips: [] }, place));
+      if (state.places.length >= MAX_PLACES) return null;
+      state.places.push(Object.assign({ id: String(Date.now()), uses: 0, trips: [] }, place));
       save();
       return state.places[state.places.length - 1];
     },
+    renamePlace(id, name) {
+      const p = state.places.find((x) => x.id === id);
+      if (p) p.name = name;
+      save();
+    },
     deletePlace(id) {
       state.places = state.places.filter((p) => p.id !== id);
+      if (state.prefs.destId === id) state.prefs.destId = null;
+      save();
+    },
+    // ライドの目的地として使った回数(よく使う目的地の並び順に使う)
+    markUsed(id) {
+      const p = state.places.find((x) => x.id === id);
+      if (p) p.uses = (p.uses || 0) + 1;
       save();
     },
     // 目的地の学習値を書き換えたあとに呼ぶ

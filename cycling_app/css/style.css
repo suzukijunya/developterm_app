@@ -700,3 +700,111 @@ small {
   white-space: nowrap;
   flex-shrink: 0;
 }
+
+/* ---------- ホームの目的地選択 ---------- */
+.dest-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 6px;
+}
+
+.dest-chip {
+  font-weight: 700;
+  padding: 10px 16px;
+  font-size: 0.95rem;
+}
+
+.chip.on {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--on-brand);
+}
+
+.dest-more {
+  font-weight: 700;
+  padding: 10px 14px;
+  font-size: 16px;
+  max-width: 100%;
+  appearance: auto;
+}
+
+.dest .muted {
+  margin: 4px 0 0;
+}
+
+/* ---------- 目的地の作成 ---------- */
+.count {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 600;
+  margin-left: 6px;
+}
+
+.place-actions {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.place-form {
+  margin-top: 16px;
+  padding-top: 4px;
+}
+
+.place-form h3 {
+  font-size: 1rem;
+  margin: 8px 0 4px;
+}
+
+.field input[type="text"] {
+  width: 60%;
+  text-align: left;
+}
+
+.stack {
+  display: block;
+  padding: 10px 0;
+}
+
+.stack > span:first-child {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.stack small {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--muted);
+  margin: 2px 0 0;
+}
+
+.search-row {
+  display: flex;
+  gap: 8px;
+}
+
+.search-row input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  padding: 10px;
+  font-size: 16px;
+}
+
+.result-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  margin: 6px 0;
+  cursor: pointer;
+  font-size: 0.92rem;
+}

@@ -56,7 +56,7 @@ const Eta = (() => {
   // 出発地から遠い目的地のうち、よく行く所を候補にする(通勤なら行き先が自動で選ばれる)
   function guess(places, pos) {
     const far = places.filter((p) => P.distance(pos.lat, pos.lon, p.lat, p.lon) > MIN_TRIP_M);
-    far.sort((a, b) => (b.trips || []).length - (a.trips || []).length);
+    far.sort((a, b) => (b.trips || []).length - (a.trips || []).length || (b.uses || 0) - (a.uses || 0));
     return far[0] || null;
   }
 
