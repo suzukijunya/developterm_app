@@ -150,6 +150,45 @@ const App = (() => {
     return steps.reduce((a, b) => a + b, 0) / steps.length;
   }
 
+  // ---- 1周にかかる時間の目安 ----
+  // 講義ノートは1分250字で読む、単語カード1枚1分、MC 1問2.5分(解説を読む時間を含む)、TBS 1問15分で計算する
+  const PACE = { noteChars: 250, card: 1, mcq: 2.5, tbs: 15 };
+  const noteLen = new Map();
+  function noteMinutes(ch) {
+    if (!noteLen.has(ch.id)) noteLen.set(ch.id, ch.note.replace(/<[^>]+>/g, "").replace(/\s+/g, "").length);
+    return Math.ceil(noteLen.get(ch.id) / PACE.noteChars);
+  }
+  function chapterMinutes(ch) {
+    const tb = CPA.tbsFor({ chapter: ch.id }).length;
+    const full = noteMinutes(ch) + ch.cards.length * PACE.card + ch.mcq.length * PACE.mcq + tb * PACE.tbs;
+    const left =
+      (Store.noteRead(ch.id) ? 0 : noteMinutes(ch)) +
+      ch.cards.filter((c) => !Store.isCardMastered(c.id)).length * PACE.card +
+      ch.mcq.filter((q) => (Store.qRec(q.id) || {}).last !== true).length * PACE.mcq +
+      CPA.tbsFor({ chapter: ch.id }).filter((t) => !((Store.tbsRec(t.id) || {}).best >= 0.7)).length * PACE.tbs;
+    return { full, left };
+  }
+  function sectionMinutes(sec) {
+    return sec.chapters.reduce(
+      (a, ch) => {
+        const m = chapterMinutes(ch);
+        return { full: a.full + m.full, left: a.left + m.left };
+      },
+      { full: 0, left: 0 }
+    );
+  }
+  function fmtDur(min) {
+    if (min < 60) return `約${Math.max(1, Math.round(min))}分`;
+    return `約${(Math.round((min / 60) * 2) / 2).toFixed(1).replace(/\.0$/, "")}時間`;
+  }
+  function daysFor(min) {
+    return Math.max(1, Math.ceil(min / Math.max(1, Store.get().plan.dailyMin)));
+  }
+  function timeLine(m) {
+    const daily = Store.get().plan.dailyMin;
+    return `1周 ${fmtDur(m.full)}(1日${daily}分で約${daysFor(m.full)}日)${m.left < m.full ? ` ・ 残り ${m.left > 0 ? fmtDur(m.left) : "なし"}` : ""}`;
+  }
+
   function sectionProgress(sec) {
     return sec.chapters.reduce((a, ch) => a + chapterProgress(ch), 0) / sec.chapters.length;
   }
@@ -281,7 +320,8 @@ const App = (() => {
         <div class="sec-id">${s.id}</div>
         <div class="sec-body"><div class="sec-name">${s.ja}<small>${s.name}</small></div>
           ${bar(sectionProgress(s), s.color)}
-          <div class="sec-meta"><span>${s.chapters.length}章</span><span>MC ${s.chapters.reduce((a, c) => a + c.mcq.length, 0)}問</span><span>TBS ${CPA.tbsFor({ section: s.id }).length}問</span>${s.id === disc ? "<span class='pill'>選択中</span>" : ""}</div>
+          <div class="sec-meta"><span class="pct-strong">進捗 ${pct(sectionProgress(s))}%</span><span>${s.chapters.length}章</span><span>MC ${s.chapters.reduce((a, c) => a + c.mcq.length, 0)}問</span><span>TBS ${CPA.tbsFor({ section: s.id }).length}問</span>${s.id === disc ? "<span class='pill'>選択中</span>" : ""}</div>
+          <div class="time-line">${timeLine(sectionMinutes(s))}</div>
           ${typeof CPA_TIPS !== "undefined" && CPA_TIPS[s.id] ? `<div class="tip-line">コツ:${esc(CPA_TIPS[s.id].one)}</div>` : ""}
         </div></a>`;
     const body = `
@@ -308,6 +348,14 @@ const App = (() => {
         <div><b>${s.exam.mcq}問</b><small>MC</small></div>
         <div><b>${s.exam.tbs}問</b><small>TBS</small></div>
         <div><b>${s.exam.weight.replace(" / ", "<br>")}</b><small>配点</small></div>
+      </div>
+      <div class="panel prog-panel">
+        <div class="prog-top"><div><div class="prog-num">${pct(sectionProgress(s))}<small>%</small></div><div class="muted small">${s.id} の進捗</div></div>
+          <div class="prog-time"><b>${fmtDur(sectionMinutes(s).full)}</b><small>1周の目安</small></div>
+          <div class="prog-time"><b>${sectionMinutes(s).left > 0 ? fmtDur(sectionMinutes(s).left) : "完了"}</b><small>残り</small></div>
+          <div class="prog-time"><b>約${daysFor(sectionMinutes(s).left || sectionMinutes(s).full)}日</b><small>1日${Store.get().plan.dailyMin}分で</small></div></div>
+        ${bar(sectionProgress(s), s.color)}
+        <p class="muted small">目安は、このアプリの教材(講義・単語・MC・TBS)を1周する時間です。本試験の対策には、問題の繰り返しや予備校の教材を含めてさらに時間がかかります。1日の目標時間は設定で変えられます。</p>
       </div>
       <p class="muted">${s.summary}</p>
       ${
@@ -337,6 +385,7 @@ const App = (() => {
               <div class="ch-body">
                 <div class="ch-title">${esc(ch.title)}</div>
                 <div class="ch-en">${esc(ch.en)}</div>
+                <div class="time-line"><b>進捗 ${pct(p)}%</b> ・ ${timeLine(chapterMinutes(ch))}</div>
                 <div class="steps">
                   <span class="${Store.noteRead(ch.id) ? "ok" : ""}">講義</span>
                   <span class="${cardOk === ch.cards.length ? "ok" : ""}">単語 ${cardOk}/${ch.cards.length}</span>
