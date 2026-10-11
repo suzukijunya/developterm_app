@@ -495,16 +495,61 @@
       attribution: "© OpenStreetMap",
     }).addTo(pickMap);
     const marker = L.marker([p.lat, p.lon], { draggable: true }).addTo(pickMap);
+    let timer = null;
     const move = (ll) => {
       p.lat = ll.lat;
       p.lon = ll.lng;
       p.moved = true;
       marker.setLatLng(ll);
-      const note = document.getElementById("pick-note");
-      if (note) note.textContent = "ピンの位置で登録します";
+      // ピンを動かし終えてから住所を調べる
+      clearTimeout(timer);
+      setPickNote("住所を調べています…");
+      timer = setTimeout(() => lookupPickAddress(p), 600);
     };
+    if (p.needAddr) lookupPickAddress(p);
     pickMap.on("click", (e) => move(e.latlng));
     marker.on("dragend", () => move(marker.getLatLng()));
+  }
+
+  function setPickNote(text) {
+    const note = document.getElementById("pick-note");
+    if (note) note.textContent = text;
+  }
+
+  // 地図で選んだ位置の住所を調べて、登録する住所にする
+  let lookupSeq = 0;
+  function lookupPickAddress(p) {
+    const seq = ++lookupSeq;
+    p.needAddr = false;
+    setPickNote("住所を調べています…");
+    p.addrPromise = Geocode.reverse(p.lat, p.lon).then((addr) => {
+      if (seq !== lookupSeq) return p.addrPromise;
+      p.label = addr || `緯度 ${p.lat.toFixed(5)}, 経度 ${p.lon.toFixed(5)}`;
+      setPickNote(`📍 ${p.label}`);
+      return p.label;
+    });
+    return p.addrPromise;
+  }
+
+  // 住所のない目的地(地図・現在地・ライドの到着地で登録したもの)に、あとから住所をつける
+  const NO_ADDR = /^(地図で選んだ場所|現在地で登録|ライドの到着地)/;
+  let backfilling = false;
+  async function backfillAddresses() {
+    if (backfilling) return;
+    backfilling = true;
+    try {
+      for (const place of Store.places.filter((x) => !x.label || NO_ADDR.test(x.label))) {
+        const addr = await Geocode.reverse(place.lat, place.lon);
+        if (!addr) continue;
+        place.label = addr;
+        Store.savePlaces();
+        // 地図を開いていなければ表示を更新する(開いていれば次に描き直したときに出る)
+        if (view === "settings" && !placeForm.pick) render();
+        await new Promise((r) => setTimeout(r, 1100)); // 検索サービスへの問い合わせは1秒に1回まで
+      }
+    } finally {
+      backfilling = false;
+    }
   }
 
   function registerHere() {
@@ -544,6 +589,7 @@
     renderLive();
     renderWeather();
     mountPickMap();
+    if (view === "settings") backfillAddresses();
     if (view === "ride" && !ride) locateForWeather();
   }
 
@@ -821,7 +867,8 @@
                   f.pick
                     ? `<div class="pick-box" id="pick-box">
                         <div class="pick-map" id="pick-map"></div>
-                        <p class="muted small" id="pick-note">${f.pick.moved ? "ピンの位置で登録します" : "違っていたら、地図をタップするかピンを動かして位置を直せます"}</p>
+                        <p class="pick-note" id="pick-note">${f.pick.label ? `📍 ${esc(f.pick.label)}` : "住所を調べています…"}</p>
+                        <p class="muted small">違っていたら、地図をタップするかピンを動かして位置を直せます</p>
                         <button type="button" class="btn start" id="pick-save">この場所で登録</button>
                         <button type="button" class="link" id="pick-cancel">やめる</button>
                       </div>`
@@ -1048,7 +1095,7 @@
     );
     on("pick-open", () => {
       const c = nearPoint() || { lat: 35.6812, lon: 139.7671 };
-      openPick({ lat: c.lat, lon: c.lon, label: "地図で選んだ場所", moved: false });
+      openPick({ lat: c.lat, lon: c.lon, label: null, moved: false, needAddr: true });
     });
     on("pick-cancel", () => {
       placeForm.pick = null;
@@ -1061,7 +1108,8 @@
         document.getElementById("place-name").focus();
         return;
       }
-      savePlaceFromForm(p.lat, p.lon, p.moved ? `${p.label}(地図で位置を調整)` : p.label);
+      // 住所を調べている途中なら、終わってから登録する
+      Promise.resolve(p.addrPromise).then(() => savePlaceFromForm(p.lat, p.lon, p.label || `緯度 ${p.lat.toFixed(5)}, 経度 ${p.lon.toFixed(5)}`));
     });
     app.querySelectorAll("[data-renameplace]").forEach((b) => b.addEventListener("click", () => renamePlace(b.dataset.renameplace)));
     app.querySelectorAll("[data-delplace]").forEach((b) =>
@@ -1146,7 +1194,7 @@
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2026.10.16";
+  const APP_VERSION = "2026.10.17";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });

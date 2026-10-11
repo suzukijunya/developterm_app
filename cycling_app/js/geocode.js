@@ -6,6 +6,7 @@
 const Geocode = (() => {
   const P = typeof Physics !== "undefined" ? Physics : require("./physics.js");
   const NEAR_DEG = 0.25; // 近くを優先して探す範囲(緯度経度で±0.25度 ≒ 25km)
+  const MAX_RESULTS = 10;
 
   function parseLatLon(q) {
     const m = q.match(/^\s*(-?\d{1,3}\.\d+)\s*[,、\s]\s*(-?\d{1,3}\.\d+)\s*$/);
@@ -54,8 +55,8 @@ const Geocode = (() => {
     const settled = await Promise.allSettled(tasks);
     let list = settled.filter((s) => s.status === "fulfilled").flatMap((s) => s.value);
     let failed = settled.filter((s) => s.status === "rejected").length;
-    // 近くで見つからなければ全国で探す
-    if (near && !list.some((r) => P.distance(near.lat, near.lon, r.lat, r.lon) < NEAR_DEG * 111000)) {
+    // 近くの候補が10件に満たなければ、全国の候補で埋める
+    if (near && list.length < MAX_RESULTS) {
       try {
         list = list.concat(await osm(q));
       } catch (e) {
@@ -72,10 +73,37 @@ const Geocode = (() => {
       for (const r of out) r.dist = P.distance(near.lat, near.lon, r.lat, r.lon);
       out.sort((a, b) => a.dist - b.dist);
     }
-    return out.slice(0, 8);
+    return out.slice(0, MAX_RESULTS);
   }
 
-  return { search, parseLatLon };
+  // 緯度経度から住所を調べる。OpenStreetMap → だめなら国土地理院(町名まで)。わからなければ null
+  async function reverse(lat, lon) {
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&zoom=18&accept-language=ja&lat=${lat.toFixed(6)}&lon=${lon.toFixed(6)}`
+      );
+      if (!res.ok) throw new Error(res.status);
+      const a = (await res.json()).address || {};
+      const town = a.quarter || a.neighbourhood || a.suburb || a.city_district || "";
+      const parts = [a.province || a.state || "", a.city || a.town || a.village || "", town, a.house_number || ""];
+      const text = parts.filter((x, i) => x && parts.indexOf(x) === i).join("");
+      // 建物や施設に名前があれば先頭につける(名前のない建物は "yes" になる)
+      const name = [a.amenity, a.shop, a.office, a.building].find((x) => x && x !== "yes");
+      if (text) return (name ? name + " " : "") + text + " 付近";
+    } catch (e) {
+      // 国土地理院で再試行
+    }
+    try {
+      const res = await fetch(`https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lat=${lat}&lon=${lon}`);
+      const r = (await res.json()).results;
+      if (r && r.lv01Nm && r.lv01Nm !== "－") return r.lv01Nm + " 付近";
+    } catch (e) {
+      // わからない
+    }
+    return null;
+  }
+
+  return { search, reverse, parseLatLon };
 })();
 
 if (typeof module !== "undefined") module.exports = Geocode;
