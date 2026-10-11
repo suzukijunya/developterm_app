@@ -267,6 +267,7 @@ const App = (() => {
           .join("")}
       </div>
       <a class="link-card" href="#/eligibility"><b>受験資格チェック</b><span>学歴と単位から、出願できる州と次にやることを判定 ›</span></a>
+      <a class="link-card" href="#/compare"><b>講座の料金比較</b><span>アビタス・CPA会計学院の受講料を、給付金・キャッシュバック込みで比較 ›</span></a>
       <a class="link-card" href="#/guide"><b>USCPA試験ガイド</b><span>試験制度・科目の選び方・おすすめの学習の流れ ›</span></a>`;
     page({ title: "ホーム", body, tab: "home" });
   }
@@ -1581,6 +1582,7 @@ const App = (() => {
         </div>
         <h2 class="h2">次にやること</h2>
         <ol class="steps-list">${steps.map((x) => `<li>${x}</li>`).join("")}</ol>
+        <a class="link-card" href="#/compare"><b>講座の料金比較</b><span>単位取得が含まれる講座を、給付金・キャッシュバック込みで比べる ›</span></a>
         <h2 class="h2">共通のポイント</h2>
         <div class="panel">${ELIGIBILITY.common.map((c) => `<p><b>${esc(c.label)}</b>:${esc(c.text)}</p>`).join("")}</div>
         <p class="muted small">この判定は${ELIGIBILITY.checkedAt}時点の公開情報(予備校・解説サイトなどの二次情報を含む)にもとづく目安です。各州の要件は改正が続いており、情報源によって食い違う点は厳しい側で判定しています。出願前に必ず各州の Board of Accountancy と学歴評価機関で最新の要件を確認してください。<br>
@@ -1590,6 +1592,109 @@ const App = (() => {
       el.oninput = draw;
       el.onchange = draw;
     });
+    draw();
+  }
+
+  // ---------- 講座の料金比較 ----------
+  const yen = (n) => Math.round(n).toLocaleString("ja-JP") + "円";
+
+  function comparePrefs() {
+    const saved = Store.get().prefs.compare || {};
+    const plans = COURSE_PRESETS.plans.map((p) => Object.assign({}, p, (saved.plans || {})[p.id] || {}));
+    return { needCredits: saved.needCredits !== false, subsidy: !!saved.subsidy, cashback: !!saved.cashback, extra: saved.extra || 0, plans };
+  }
+
+  function viewCompare() {
+    current.section = null;
+    const pr = comparePrefs();
+    const body = `
+      <div class="panel">
+        <p class="muted small" style="margin-top:0">予備校の受講料を、あなたの条件で比べます。金額は${COURSE_PRESETS.updatedAt}時点の案内をもとにした初期値で、キャンペーンに合わせて編集できます。</p>
+        <label class="check"><input type="checkbox" id="cp-credits" ${pr.needCredits ? "checked" : ""}> 会計・ビジネス単位を取る必要がある</label>
+        <label class="check"><input type="checkbox" id="cp-subsidy" ${pr.subsidy ? "checked" : ""}> 教育訓練給付金を受け取れる(雇用保険の加入期間などの要件あり)</label>
+        <label class="check"><input type="checkbox" id="cp-cashback" ${pr.cashback ? "checked" : ""}> 条件付きの還元(合格お祝い金など)も満額受け取れる前提で計算する</label>
+        <label class="field" style="margin-top:10px"><span>どの講座でも共通でかかる費用(任意)</span><input type="number" inputmode="numeric" min="0" step="1000" id="cp-extra" value="${pr.extra}"><small class="muted">受験料・日本受験の追加料金・学歴評価など。4科目で数十万円規模になります(州と為替で変わります)</small></label>
+      </div>
+      <div id="cp-result"></div>
+      <h2 class="h2">講座の金額を編集</h2>
+      <div class="cp-edit">
+        ${pr.plans
+          .map(
+            (p) => `<details class="panel det"><summary><b>${esc(p.school)}</b> ${esc(p.name)}</summary>
+              <label class="field"><span>受講料(最初に払う額)</span><input type="number" inputmode="numeric" min="0" step="10" data-plan="${p.id}" data-k="price" value="${p.price}"></label>
+              <label class="field"><span>教育訓練給付金の目安</span><input type="number" inputmode="numeric" min="0" step="10" data-plan="${p.id}" data-k="subsidy" value="${p.subsidy}"></label>
+              <label class="field"><span>条件付きの還元・補助(最大)</span><input type="number" inputmode="numeric" min="0" step="10" data-plan="${p.id}" data-k="cashback" value="${p.cashback}"></label>
+              <ul class="small muted">${p.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>
+            </details>`
+          )
+          .join("")}
+        <button class="btn block" data-act="cp-reset">初期値に戻す</button>
+      </div>
+      <p class="muted small">金額は各校の案内(${COURSE_PRESETS.updatedAt}時点)をもとにした目安です。キャンペーンの条件・給付金の対象かどうか・単位取得の有無は、申し込む前に各校で必ず確認してください。教育訓練給付金は受講修了後に支給され、前回の受給から3年以上空いていることなどの要件があります。</p>`;
+    page({ title: "講座の料金比較", back: "#/home", body, tab: "home" });
+
+    const save = (patch) => {
+      const cur = Store.get().prefs.compare || {};
+      Store.setPref("compare", Object.assign({}, cur, patch));
+    };
+    const draw = () => {
+      const c = comparePrefs();
+      const rows = c.plans.map((p) => {
+        const afterSubsidy = p.price - (c.subsidy ? p.subsidy : 0);
+        const final = afterSubsidy - (c.cashback ? p.cashback : 0) + c.extra;
+        const warn = [];
+        if (c.needCredits && p.credits === false) warn.push("単位取得が含まれません(別途必要)");
+        if (c.needCredits && p.credits === null) warn.push("単位取得が含まれるか要確認");
+        if (c.cashback && p.cashback) warn.push(`条件付きの還元 ${yen(p.cashback)} を含む`);
+        return { p, upfront: p.price + c.extra, afterSubsidy: afterSubsidy + c.extra, final, warn, usable: !(c.needCredits && p.credits === false) };
+      });
+      const usable = rows.filter((r) => r.usable);
+      const best = usable.length ? usable.reduce((a, b) => (b.final < a.final ? b : a)) : null;
+      const sorted = rows.slice().sort((a, b) => (b.usable - a.usable) || a.final - b.final);
+      $app.querySelector("#cp-result").innerHTML = `
+        <h2 class="h2">比較結果<small>安い順</small></h2>
+        <div class="cp-list">
+          ${sorted
+            .map(
+              (r) => `<div class="cp-card ${r === best ? "best" : ""} ${r.usable ? "" : "dim"}">
+                <div class="cp-head"><div><b>${esc(r.p.school)}</b><span class="muted small"> ${esc(r.p.name)}</span></div>${r === best ? `<span class="pill">最安</span>` : ""}</div>
+                <div class="cp-final">${yen(r.final)}<small> 実質負担</small></div>
+                <table class="cp-break">
+                  <tr><td>最初に払う額</td><td>${yen(r.upfront)}</td></tr>
+                  ${c.subsidy ? `<tr><td>給付金が戻った後</td><td>${yen(r.afterSubsidy)}</td></tr>` : ""}
+                  ${c.cashback ? `<tr><td>条件付き還元を満額受けた後</td><td>${yen(r.final)}</td></tr>` : ""}
+                </table>
+                ${r.warn.length ? `<ul class="cp-warn">${r.warn.map((w) => `<li>${esc(w)}</li>`).join("")}</ul>` : ""}
+              </div>`
+            )
+            .join("")}
+        </div>
+        ${
+          !c.cashback
+            ? `<p class="muted small">「条件付きの還元」は含めていません(確実に払う額で比較しています)。合格お祝い金なども見込む場合は、上のチェックを入れてください。</p>`
+            : `<p class="muted small">条件付きの還元は、合格などの条件を満たしたときだけ受け取れます。満たせなかった場合の負担も確認しておきましょう。</p>`
+        }`;
+    };
+
+    $app.querySelector("#cp-credits").onchange = (e) => (save({ needCredits: e.target.checked }), draw());
+    $app.querySelector("#cp-subsidy").onchange = (e) => (save({ subsidy: e.target.checked }), draw());
+    $app.querySelector("#cp-cashback").onchange = (e) => (save({ cashback: e.target.checked }), draw());
+    $app.querySelector("#cp-extra").oninput = (e) => (save({ extra: Math.max(0, +e.target.value || 0) }), draw());
+    $app.querySelectorAll("[data-plan]").forEach((el) => {
+      el.oninput = () => {
+        const cur = Store.get().prefs.compare || {};
+        const plans = Object.assign({}, cur.plans || {});
+        plans[el.dataset.plan] = Object.assign({}, plans[el.dataset.plan] || {}, { [el.dataset.k]: Math.max(0, +el.value || 0) });
+        save({ plans });
+        draw();
+      };
+    });
+    $app.querySelector("[data-act=cp-reset]").onclick = () => {
+      const cur = Store.get().prefs.compare || {};
+      Store.setPref("compare", Object.assign({}, cur, { plans: {} }));
+      viewCompare();
+      toast("初期値に戻しました");
+    };
     draw();
   }
 
@@ -1638,6 +1743,8 @@ const App = (() => {
         return viewGuide();
       case "eligibility":
         return viewEligibility();
+      case "compare":
+        return viewCompare();
       default:
         return viewHome();
     }

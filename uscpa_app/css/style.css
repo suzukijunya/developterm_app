@@ -2069,3 +2069,68 @@ details.panel summary {
   display: grid;
   gap: 4px;
 }
+
+/* ---------- 講座の料金比較 ---------- */
+.cp-list {
+  display: grid;
+  gap: 10px;
+}
+
+.cp-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+
+.cp-card.best {
+  border: 2px solid var(--ok);
+}
+
+.cp-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.cp-final {
+  font-size: 26px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  margin: 2px 0 6px;
+}
+
+.cp-final small {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.cp-break {
+  width: 100%;
+  font-size: 13px;
+  border-collapse: collapse;
+}
+
+.cp-break td {
+  padding: 3px 0;
+  border-top: 1px dashed var(--line);
+}
+
+.cp-break td:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.cp-warn {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+  color: var(--accent);
+}
+
+.cp-edit ul {
+  padding-left: 18px;
+  margin: 6px 0 0;
+}
