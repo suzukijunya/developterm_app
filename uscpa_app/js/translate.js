@@ -4,7 +4,33 @@
 
 const QuickTranslate = (() => {
     const MAX_LEN = 600;
+  const CACHE_KEY = "uscpa_tr_cache_v1";
   const cache = new Map();
+  try {
+    Object.entries(JSON.parse(localStorage.getItem(CACHE_KEY) || "{}")).forEach(([k, v]) => cache.set(k, v));
+  } catch (e) {
+    // 読めない場合はキャッシュなしで動く
+  }
+  let saveTimer = null;
+  function flush() {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+    try {
+      // 古いものから消して最大1500件に保つ
+      const entries = Array.from(cache.entries()).slice(-1500);
+      localStorage.setItem(CACHE_KEY, JSON.stringify(Object.fromEntries(entries)));
+    } catch (e) {
+      // 保存できない環境では起動中のみ有効
+    }
+  }
+  function remember(text, ja) {
+    cache.set(text, ja);
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(flush, 300);
+  }
+  // アプリを閉じる・切り替える直前にも保存する
+  window.addEventListener("pagehide", () => saveTimer && flush());
+  document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" && saveTimer && flush());
   let sheet = null;
   let timer = null;
   let shownText = "";
@@ -79,7 +105,7 @@ const QuickTranslate = (() => {
       try {
         const ja = String(p.parse(await fetchJson(p.url(q), 8000)) || "").trim();
         if (ja) {
-          cache.set(text, ja);
+          remember(text, ja);
           return ja;
         }
         errors.push("空の応答");
@@ -88,6 +114,37 @@ const QuickTranslate = (() => {
       }
     }
     throw new Error(errors.join(" / "));
+  }
+
+  // 用語集と完全一致する語句は用語集の訳を使う
+  function termFor(text) {
+    const norm = (x) => x.toLowerCase().replace(/\s*\(.*?\)\s*/g, " ").replace(/[.,:;?]$/, "").trim();
+    const hit = lookup(text)[0];
+    return hit && norm(hit.en) === norm(text) ? hit.ja : null;
+  }
+
+  // 選択肢などの複数の短文を訳す。未翻訳のものは改行でつないで1回の通信で訳し、行数が合わなければ1件ずつ訳す
+  async function translateLines(lines) {
+    const out = lines.map((l) => termFor(l) || cache.get(l) || null);
+    const todo = lines.filter((l, i) => !out[i]);
+    if (todo.length) {
+      let parts = null;
+      try {
+        const joined = await translate(todo.join("\n"));
+        parts = joined.split(/\n/).map((x) => x.trim()).filter(Boolean);
+      } catch (e) {
+        parts = null;
+      }
+      if (parts && parts.length === todo.length) {
+        todo.forEach((l, i) => remember(l, parts[i]));
+      } else {
+        await Promise.all(todo.map((l) => translate(l).catch(() => null)));
+      }
+      lines.forEach((l, i) => {
+        if (!out[i]) out[i] = cache.get(l) || null;
+      });
+    }
+    return out;
   }
 
   function runTranslate(text, id, hasHits) {
@@ -186,5 +243,5 @@ const QuickTranslate = (() => {
   document.addEventListener("copy", onCopy);
   window.addEventListener("hashchange", hide);
 
-  return { hide, lookup };
+  return { hide, lookup, translateLines };
 })();

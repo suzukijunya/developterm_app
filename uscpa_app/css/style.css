@@ -1784,3 +1784,15 @@ details.panel summary {
   font-size: 13px;
   font-weight: 700;
 }
+
+.c-ja {
+  display: block;
+  margin-top: 3px;
+  font-size: 13px;
+  color: var(--muted);
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+}
+
+.c-ja.fail {
+  font-style: italic;
+}

@@ -500,7 +500,7 @@ const App = (() => {
               if (k === q.a) cls = "correct";
               else if (k === picked) cls = "wrong";
             } else if (k === picked) cls = "picked";
-            return `<button class="choice ${cls}" data-k="${k}" ${reveal ? 'aria-disabled="true"' : ""}><span class="ck">${letters[k]}</span><span class="ctext">${esc(c)}</span>${Speech.button(c, "", "small")}</button>`;
+            return `<button class="choice ${cls}" data-k="${k}" ${reveal ? 'aria-disabled="true"' : ""}><span class="ck">${letters[k]}</span><span class="ctext">${esc(c)}${showJa ? `<span class="c-ja" data-cja="${k}">…</span>` : ""}</span>${Speech.button(c, "", "small")}</button>`;
           })
           .join("")}
       </div>
@@ -515,7 +515,21 @@ const App = (() => {
       }`;
   }
 
+  // 選択肢の和訳(自動翻訳)を埋める。画面が変わっていたら何もしない
+  function fillChoiceJa(q) {
+    const slots = $app.querySelectorAll("[data-cja]");
+    if (!slots.length || typeof QuickTranslate === "undefined") return;
+    QuickTranslate.translateLines(q.c).then((ja) => {
+      $app.querySelectorAll("[data-cja]").forEach((el) => {
+        const t = ja[+el.dataset.cja];
+        el.textContent = t || "(訳を取得できませんでした)";
+        el.classList.toggle("fail", !t);
+      });
+    });
+  }
+
   function bindQuestionCommon(q, rerender) {
+    fillChoiceJa(q);
     const ja = $app.querySelector("[data-act=ja]");
     if (ja)
       ja.onclick = () => {
