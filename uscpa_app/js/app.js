@@ -41,6 +41,36 @@ const App = (() => {
     return `<span class="tag" style="--c:${s.color}">${s.id}</span>`;
   };
 
+  // 埋め込み表示(claude.ai など)では confirm()/alert() が使えないため、画面内のダイアログで確認する
+  function ask(message, okLabel, danger) {
+    return new Promise((resolve) => {
+      const d = document.createElement("div");
+      d.className = "modal";
+      d.innerHTML = `<div class="modal-box" role="dialog" aria-modal="true"><p>${esc(message)}</p>
+        <div class="btn-row"><button class="btn" data-x>キャンセル</button><button class="btn ${danger ? "danger" : "primary"}" data-ok>${okLabel}</button></div></div>`;
+      const close = (v) => {
+        d.remove();
+        resolve(v);
+      };
+      d.querySelector("[data-ok]").onclick = () => close(true);
+      d.querySelector("[data-x]").onclick = () => close(false);
+      d.onclick = (e) => {
+        if (e.target === d) close(false);
+      };
+      document.body.appendChild(d);
+      d.querySelector("[data-ok]").focus();
+    });
+  }
+
+  function toast(message) {
+    const t = document.createElement("div");
+    t.className = "toast";
+    t.setAttribute("role", "status");
+    t.textContent = message;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 2600);
+  }
+
   // 本試験のスコアは非公開の方法で換算されるため、正答率からの「目安」として表示する
   function estScore(ratio) {
     const v = ratio <= 0.65 ? (ratio / 0.65) * 75 : 75 + ((ratio - 0.65) / 0.35) * 24;
@@ -678,7 +708,9 @@ const App = (() => {
   function confirmFinish() {
     const sx = session;
     const left = sx.items.filter((x) => (x.type === "mcq" ? sx.picks[x.q.id] === undefined : !Object.keys(sx.tbsInputs[x.t.id] || {}).length)).length;
-    if (confirm(left ? `未解答が ${left} 問あります。終了して採点しますか?` : "終了して採点しますか?")) finishMock();
+    ask(left ? `未解答が ${left} 問あります。終了して採点しますか?` : "終了して採点しますか?", "採点する").then((ok) => {
+      if (ok && session === sx) finishMock();
+    });
   }
 
   function finishMock() {
@@ -1035,8 +1067,13 @@ const App = (() => {
         <h2 class="h2 first">データ</h2>
         <p class="muted small">学習記録はこの端末のブラウザにだけ保存されます。機種変更の前にはバックアップを書き出してください。</p>
         <div class="btn-row">
-          <button class="btn" data-act="export">バックアップを書き出す</button>
-          <label class="btn">バックアップを読み込む<input type="file" accept="application/json,.json" id="s-import" hidden></label>
+          <button class="btn" data-act="export">バックアップを表示</button>
+          <label class="btn">ファイルから読み込む<input type="file" accept="application/json,.json" id="s-import" hidden></label>
+        </div>
+        <div id="s-backup" hidden>
+          <p class="muted small">下のテキストをコピーしてメモなどに保存してください。別の端末では、ここに貼り付けて「このテキストから読み込む」を押すと復元できます。</p>
+          <textarea class="backup" id="s-text" spellcheck="false"></textarea>
+          <div class="btn-row"><button class="btn primary" data-act="copy">コピー</button><button class="btn" data-act="load-text">このテキストから読み込む</button></div>
         </div>
         <button class="btn danger block" data-act="reset">すべての学習記録を消去</button>
       </div>
@@ -1060,32 +1097,46 @@ const App = (() => {
     $app.querySelector("#s-target").onchange = (e) => Store.setPlan({ targetHours: Math.max(1, +e.target.value || 1200) });
     $app.querySelector("#s-daily").onchange = (e) => Store.setPlan({ dailyMin: Math.max(1, +e.target.value || 120) });
     $app.querySelector("#s-ja").onchange = (e) => Store.setPref("showJa", e.target.checked);
+    const $box = $app.querySelector("#s-backup");
+    const $text = $app.querySelector("#s-text");
+    const load = (text) => {
+      try {
+        Store.importJson(text);
+        toast("学習記録を読み込みました");
+        viewSettings();
+      } catch (err) {
+        toast("読み込めませんでした。バックアップのテキストをそのまま貼り付けてください");
+      }
+    };
     $app.querySelector("[data-act=export]").onclick = () => {
-      const blob = new Blob([Store.exportJson()], { type: "application/json" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = `uscpa-backup-${Store.today()}.json`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      $text.value = Store.exportJson();
+      $box.hidden = false;
+      $text.focus();
+      $text.select();
+    };
+    $app.querySelector("[data-act=copy]").onclick = () => {
+      const fallback = () => {
+        $text.focus();
+        $text.select();
+        toast("選択しました。コピーしてください");
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText($text.value).then(() => toast("コピーしました"), fallback);
+      else fallback();
+    };
+    $app.querySelector("[data-act=load-text]").onclick = () => {
+      if ($text.value.trim()) load($text.value);
     };
     $app.querySelector("#s-import").onchange = (e) => {
       const f = e.target.files[0];
-      if (!f) return;
-      f.text().then((text) => {
-        try {
-          Store.importJson(text);
-          alert("読み込みました");
-          viewSettings();
-        } catch (err) {
-          alert("読み込めませんでした:" + err.message);
-        }
-      });
+      if (f) f.text().then(load);
     };
     $app.querySelector("[data-act=reset]").onclick = () => {
-      if (confirm("すべての学習記録を消去します。元に戻せません。よろしいですか?")) {
+      ask("すべての学習記録を消去します。元に戻せません。", "消去する", true).then((ok) => {
+        if (!ok) return;
         Store.reset();
+        toast("学習記録を消去しました");
         go("#/home");
-      }
+      });
     };
   }
 
