@@ -334,5 +334,221 @@ CPA.extend("BAR-01", {
       a: 2,
       ex: "期首仕掛品分:13,000 + 2,000 × 60% × 6 = 20,200(材料は始点投入済みで追加なし)。当期着手完成分:10,000 × (4 + 6) = 100,000。合計120,200。$125,000は期首仕掛品の残り作業を100%とした誤り。",
     },
+    {
+      q: "A company's contribution margin ratio is 35%, and fixed costs are $280,000. What sales revenue is required to earn pretax operating income of $70,000?",
+      ja: "ある会社の貢献利益率は35%、固定費は$280,000である。税引前営業利益$70,000を達成するのに必要な売上高はいくらか。",
+      c: ["$800,000", "$1,000,000", "$538,462", "$1,200,000"],
+      a: 1,
+      ex: "必要売上高 = (280,000 + 70,000) ÷ 0.35 = 1,000,000。$800,000は損益分岐点売上高(目標利益を加えていない)、$538,462は変動費率65%で割った誤り。",
+    },
+    {
+      q: "In preparing a master budget, which budget must be completed before the direct materials purchases budget can be prepared?",
+      ja: "総合予算(マスター・バジェット)の編成において、直接材料購買予算の前に完成させなければならない予算はどれか。",
+      c: ["Cash budget", "Budgeted balance sheet", "Production budget", "Selling and administrative expense budget"],
+      a: 2,
+      ex: "編成順序は販売予算 → 製造(生産)予算 → 直接材料・直接労務・製造間接費予算 → 売上原価予算 → 現金予算 → 予算財務諸表。材料購買量は生産量に基づく。現金予算や予算貸借対照表は後工程である。",
+    },
+    {
+      q: "Budgeted unit sales are 50,000 for the second quarter and 60,000 for the third quarter. The company's policy is to maintain finished goods inventory at the end of each quarter equal to 20% of the following quarter's budgeted sales. How many units should be produced in the second quarter?",
+      ja: "予算販売数量は第2四半期50,000個、第3四半期60,000個である。各四半期末の製品在庫は翌四半期の予算販売量の20%とする方針である。第2四半期の生産量はいくらか。",
+      c: ["50,000", "48,000", "62,000", "52,000"],
+      a: 3,
+      ex: "期末在庫 = 60,000 × 20% = 12,000、期首在庫 = 50,000 × 20% = 10,000。生産量 = 50,000 + 12,000 − 10,000 = 52,000。48,000は期首・期末を逆に扱った誤り。",
+    },
+    {
+      q: "Second-quarter production is budgeted at 52,000 units and third-quarter production at 58,000 units. Each unit requires 3 pounds of material costing $2 per pound. Ending raw materials inventory must equal 10% of the following quarter's production needs, and beginning raw materials inventory for the second quarter is 15,600 pounds. What is the budgeted cost of materials purchases for the second quarter?",
+      ja: "製造予算は第2四半期52,000個、第3四半期58,000個である。製品1個に材料3ポンド(1ポンド$2)を要する。材料の期末在庫は翌四半期の所要量の10%とし、第2四半期の期首材料在庫は15,600ポンドである。第2四半期の材料購入予算額はいくらか。",
+      c: ["$315,600", "$312,000", "$308,400", "$346,800"],
+      a: 0,
+      ex: "所要量 = 52,000 × 3 = 156,000ポンド。期末在庫 = 58,000 × 3 × 10% = 17,400。購入量 = 156,000 + 17,400 − 15,600 = 157,800 × $2 = 315,600。$308,400は期首・期末の加減を逆にした誤り。",
+    },
+    {
+      q: "Purchases on account are budgeted at $80,000 for April and $100,000 for May. The company pays 40% of purchases in the month of purchase, taking a 2% discount on those payments, and pays the remaining 60% in the following month (no discount). What are budgeted cash disbursements for purchases in May?",
+      ja: "掛仕入予算は4月$80,000、5月$100,000である。会社は仕入の40%を当月に支払い(その支払について2%の割引を受ける)、残り60%を翌月に支払う(割引なし)。5月の仕入に係る現金支出予算はいくらか。",
+      c: ["$88,000", "$92,000", "$87,200", "$98,000"],
+      a: 2,
+      ex: "5月仕入の当月支払 = 100,000 × 40% × 98% = 39,200。4月仕入の翌月支払 = 80,000 × 60% = 48,000。合計87,200。$88,000は割引を無視、$92,000は当月・翌月の比率を逆にした誤り。",
+    },
+    {
+      q: "For June, a company budgets a beginning cash balance of $25,000, cash receipts of $180,000, and cash disbursements of $210,000. It must maintain a minimum cash balance of $20,000 and can borrow only in multiples of $5,000. How much should the company plan to borrow in June?",
+      ja: "6月の予算は期首現金残高$25,000、現金収入$180,000、現金支出$210,000である。最低現金残高$20,000を維持する必要があり、借入は$5,000単位でのみ可能である。6月の借入予定額はいくらか。",
+      c: ["$5,000", "$25,000", "$30,000", "$20,000"],
+      a: 1,
+      ex: "資金調達前残高 = 25,000 + 180,000 − 210,000 = −5,000。最低残高20,000を確保するには25,000の借入が必要(5,000の倍数を満たす)。$5,000は不足額の補填のみで最低残高を無視した誤り。",
+    },
+    {
+      q: "A company's flexible budget formula for manufacturing costs is $80,000 per month plus $6 per unit. The static budget was based on 10,000 units. Actual production was 11,000 units, and actual manufacturing costs were $152,000. What is the flexible budget variance for manufacturing costs?",
+      ja: "製造原価の変動予算式は月$80,000 + 1個$6である。固定予算は10,000個に基づいていた。実際生産量は11,000個、実際製造原価は$152,000であった。製造原価の変動予算差異はいくらか。",
+      c: ["$12,000 unfavorable", "$6,000 favorable", "$6,000 unfavorable", "$0"],
+      a: 2,
+      ex: "実際操業度での変動予算 = 80,000 + 6 × 11,000 = 146,000。差異 = 152,000 − 146,000 = 6,000(不利)。$12,000は固定予算(140,000)との比較で、操業度の違いが混入している。",
+    },
+    {
+      q: "The difference between the flexible budget amount at actual volume and the static (master) budget amount is best described as the:",
+      ja: "実際操業度における変動予算額と固定予算(マスター・バジェット)額との差は、何と呼ばれるか。",
+      c: ["Flexible budget variance", "Sales volume (activity) variance", "Spending variance", "Efficiency variance"],
+      a: 1,
+      ex: "変動予算と固定予算の差は販売数量(操業度)差異であり、計画と異なる数量を販売した影響を示す。実際額と変動予算の差は変動予算差異(価格・効率の差異に分解される)。",
+    },
+    {
+      q: "Budgeted manufacturing overhead for March is $90,000, which includes $15,000 of depreciation on factory equipment and $5,000 of expired prepaid insurance paid in January. All other overhead is paid in the month incurred. What amount of overhead should appear as a cash disbursement in the March cash budget?",
+      ja: "3月の予算製造間接費は$90,000で、工場設備の減価償却費$15,000と1月に支払済みの前払保険料の期間経過分$5,000を含む。その他の製造間接費は発生月に支払われる。3月の現金予算に計上すべき製造間接費の現金支出額はいくらか。",
+      c: ["$70,000", "$75,000", "$85,000", "$90,000"],
+      a: 0,
+      ex: "非資金費用(減価償却15,000)と既支払分の費用化(保険5,000)を除く:90,000 − 15,000 − 5,000 = 70,000。$75,000は減価償却のみ控除した誤り。",
+    },
+    {
+      q: "The standard is 5 pounds of material per unit at $3.00 per pound. During the month, 2,000 units were produced. The company purchased 12,000 pounds for $37,200 and used 10,500 pounds. What is the direct materials quantity (usage) variance?",
+      ja: "標準は製品1個当たり材料5ポンド、1ポンド$3.00である。当月の生産量は2,000個。材料12,000ポンドを$37,200で購入し、10,500ポンドを消費した。直接材料数量差異はいくらか。",
+      c: ["$1,550 unfavorable", "$6,000 unfavorable", "$1,500 favorable", "$1,500 unfavorable"],
+      a: 3,
+      ex: "標準消費量 = 2,000 × 5 = 10,000ポンド。数量差異 = (10,500 − 10,000) × 標準価格3.00 = 1,500(不利)。$1,550は実際価格(3.10)を用いた誤り、$6,000は購入量で計算した誤り。",
+    },
+    {
+      q: "The labor standard is 2 hours per unit at $22 per hour. During the period 3,000 units were produced using 5,800 direct labor hours at a total cost of $124,700. What is the direct labor efficiency variance?",
+      ja: "労務標準は製品1個当たり2時間、時給$22である。当期は3,000個を生産し、直接作業時間5,800時間、総額$124,700を要した。直接作業時間差異(能率差異)はいくらか。",
+      c: ["$4,400 favorable", "$4,300 favorable", "$4,400 unfavorable", "$2,900 favorable"],
+      a: 0,
+      ex: "標準時間 = 3,000 × 2 = 6,000。能率差異 = (5,800 − 6,000) × 22 = 4,400(有利)。$4,300は実際賃率21.50を用いた誤り、$2,900は賃率差異(5,800 × 0.50 有利)。",
+    },
+    {
+      q: "The standard labor rate is $20 per hour. Workers worked 6,000 actual hours, and the labor rate variance was $3,000 unfavorable. What was the actual labor rate per hour?",
+      ja: "標準賃率は時給$20である。実際作業時間は6,000時間、賃率差異は$3,000(不利)であった。実際賃率はいくらか。",
+      c: ["$19.50", "$20.50", "$20.05", "$23.00"],
+      a: 1,
+      ex: "賃率差異 = 実際時間 × (実際賃率 − 標準賃率) → 3,000 = 6,000 × (AR − 20) → AR = $20.50。不利差異なので実際賃率は標準より高い($19.50は誤り)。",
+    },
+    {
+      q: "Variable overhead is applied at $6 per machine hour. During the month, 9,200 actual machine hours were used, 9,500 standard machine hours were allowed for actual output, and actual variable overhead was $57,000. What is the variable overhead spending variance?",
+      ja: "変動製造間接費は機械時間1時間当たり$6で配賦される。当月の実際機械時間は9,200時間、実際生産量に対する標準機械時間は9,500時間、実際変動製造間接費は$57,000であった。変動製造間接費の予算差異(spending variance)はいくらか。",
+      c: ["$1,800 favorable", "$0", "$3,600 unfavorable", "$1,800 unfavorable"],
+      a: 3,
+      ex: "予算差異 = 57,000 − 9,200 × 6 (55,200) = 1,800(不利)。能率差異 = (9,200 − 9,500) × 6 = 1,800(有利)。合計0であり、$0は総差異を答えた誤り。",
+    },
+    {
+      q: "Budgeted fixed manufacturing overhead is $300,000, based on a denominator activity of 50,000 direct labor hours. Actual fixed overhead was $306,000, and 46,000 standard direct labor hours were allowed for actual output. What are the fixed overhead spending (budget) and production-volume variances?",
+      ja: "予算固定製造間接費は$300,000で、基準操業度は直接作業50,000時間である。実際固定製造間接費は$306,000、実際生産量に対する標準直接作業時間は46,000時間であった。固定製造間接費の予算差異と操業度差異はいくらか。",
+      c: [
+        "Spending $6,000 U; volume $24,000 U",
+        "Spending $30,000 U; volume $0",
+        "Spending $6,000 U; volume $24,000 F",
+        "Spending $24,000 U; volume $6,000 U",
+      ],
+      a: 0,
+      ex: "予算差異 = 306,000 − 300,000 = 6,000(不利)。配賦率 = $6/時間、配賦額 = 46,000 × 6 = 276,000。操業度差異 = 300,000 − 276,000 = 24,000(不利、基準操業度を下回ったため)。",
+    },
+    {
+      q: "Which statement best describes the fixed overhead production-volume variance?",
+      ja: "固定製造間接費の操業度差異の説明として最も適切なのはどれか。",
+      c: [
+        "It measures the difference between actual and budgeted fixed overhead spending and is controllable by department managers",
+        "It arises because fixed overhead is unitized at a denominator level that differs from the standard hours allowed for actual output",
+        "It measures the efficiency with which the allocation base was used",
+        "It is always unfavorable when actual output exceeds the denominator level",
+      ],
+      a: 1,
+      ex: "操業度差異は固定費を基準操業度で単位化(配賦率化)したことにより、実際産出の標準時間と基準操業度が異なると生じる。支出の管理可能性を示すものではない(それは予算差異)。実際産出が基準を上回れば有利差異となる。",
+    },
+    {
+      q: "A company budgeted sales of 10,000 units at $50 per unit with a standard contribution margin of $18 per unit. It actually sold 9,500 units at $48 per unit. What is the sales volume variance measured in contribution margin?",
+      ja: "販売予算は10,000個、単価$50、標準単位貢献利益$18であった。実際には9,500個を単価$48で販売した。貢献利益ベースの販売数量差異はいくらか。",
+      c: ["$25,000 unfavorable", "$19,000 unfavorable", "$9,000 favorable", "$9,000 unfavorable"],
+      a: 3,
+      ex: "販売数量差異 = (9,500 − 10,000) × 標準貢献利益18 = 9,000(不利)。$25,000は売上高ベース(×50)、$19,000は販売価格差異(9,500 × 2 不利)である。",
+    },
+    {
+      q: "A company budgeted a sales mix of 60% Product A (standard contribution margin $20 per unit) and 40% Product B ($10 per unit). It actually sold 10,000 total units, 50% A and 50% B. What is the sales mix variance?",
+      ja: "予算売上構成は製品A(標準単位貢献利益$20)60%、製品B($10)40%であった。実際の総販売数量は10,000個で、A・Bが各50%であった。セールス・ミックス差異はいくらか。",
+      c: ["$10,000 favorable", "$10,000 unfavorable", "$20,000 unfavorable", "$30,000 unfavorable"],
+      a: 1,
+      ex: "ミックス差異 = 実際総数量 × (実際構成比 − 予算構成比) × 標準貢献利益:A 10,000 × (−10%) × 20 = −20,000、B 10,000 × (+10%) × 10 = +10,000。合計10,000(不利)。高貢献利益品の比率が下がったため不利となる。",
+    },
+    {
+      q: "During the month a company reported a large favorable direct materials price variance and a large unfavorable direct materials quantity variance. Which explanation is most consistent with these results?",
+      ja: "当月、大きな有利の直接材料価格差異と、大きな不利の直接材料数量差異が報告された。これらの結果と最も整合的な説明はどれか。",
+      c: [
+        "The purchasing manager bought lower-quality material at a discount, causing more waste in production",
+        "Production workers were more skilled than standard, reducing material usage",
+        "A supplier raised prices, and the company reduced scrap",
+        "Production volume was lower than budgeted",
+      ],
+      a: 0,
+      ex: "低品質の安価な材料の購入は価格差異を有利にし、仕損・歩留悪化で数量差異を不利にする典型例である。生産量の低下は数量差異の原因とならない(標準消費量は実際産出量に基づくため)。",
+    },
+    {
+      q: "The standard is 3 pounds of material per unit at $4 per pound. During the period 5,000 units were produced, and the direct materials quantity variance was $2,400 favorable. How many pounds of material were used?",
+      ja: "標準は製品1個当たり材料3ポンド、1ポンド$4である。当期の生産量は5,000個で、直接材料数量差異は$2,400(有利)であった。実際消費量は何ポンドか。",
+      c: ["15,600", "14,400", "15,000", "14,600"],
+      a: 1,
+      ex: "標準消費量 = 5,000 × 3 = 15,000。差異量 = 2,400 ÷ 4 = 600ポンド。有利なので実際消費量は少ない:15,000 − 600 = 14,400。15,600は有利・不利を逆にした誤り。",
+    },
   ],
+});
+
+CPA.tbs({ id: "TBS-BAR-12", section: "BAR", chapter: "BAR-01", title: "総合原価計算(平均法とFIFO)",
+  scenario: `<p>Kurobe Co. manufactures a single product in one department. Materials are added at the beginning of the process; conversion costs are incurred evenly. Data for March:</p>
+<table><tr><th>Item</th><th>Units</th><th>Conversion % complete</th><th>Materials cost</th><th>Conversion cost</th></tr>
+<tr><td>Beginning WIP</td><td>4,000</td><td>50%</td><td>$16,000</td><td>$9,000</td></tr>
+<tr><td>Started during March</td><td>36,000</td><td>—</td><td>$162,000</td><td>$287,000</td></tr>
+<tr><td>Ending WIP</td><td>5,000</td><td>40%</td><td>—</td><td>—</td></tr></table>
+<p>Round cost per equivalent unit to the nearest cent.</p>
+<p class="ja">黒部社は単一工程で単一製品を製造している。材料は工程の始点で投入され、加工費は均等に発生する。3月のデータは上表のとおり(期首仕掛品4,000個・加工進捗度50%・材料費$16,000・加工費$9,000、当期着手36,000個・当期材料費$162,000・当期加工費$287,000、期末仕掛品5,000個・加工進捗度40%)。換算量当たり単価はセント単位に四捨五入する。</p>`,
+  rows: [
+    { label: "Equivalent units for conversion — weighted average(平均法の加工費換算量)", type: "num", answer: 37000 },
+    { label: "Equivalent units for conversion — FIFO(FIFOの加工費換算量)", type: "num", answer: 35000 },
+    { label: "Materials cost per equivalent unit — weighted average(平均法の材料費単価)", type: "num", answer: 4.45, tol: 0.01 },
+    { label: "Conversion cost per equivalent unit — FIFO(FIFOの加工費単価)", type: "num", answer: 8.2, tol: 0.01 },
+    { label: "Cost of units transferred out — weighted average(平均法の完成品原価)", type: "num", answer: 435750, tol: 1 },
+    { label: "Cost of ending WIP — weighted average(平均法の期末仕掛品原価)", type: "num", answer: 38250, tol: 1 },
+  ],
+  explain: `<p>完成品 = 4,000 + 36,000 − 5,000 = 35,000個。</p>
+<p>平均法の換算量:材料 = 35,000 + 5,000 = 40,000、加工費 = 35,000 + 5,000 × 40% = 37,000。</p>
+<p>FIFOの加工費換算量 = 期首分 4,000 × 50% = 2,000 + 当期着手完成 31,000 + 期末 2,000 = 35,000(平均法との差は期首仕掛品の前期作業分2,000)。</p>
+<p>平均法の単価:材料 (16,000 + 162,000) ÷ 40,000 = $4.45、加工費 (9,000 + 287,000) ÷ 37,000 = $8.00。FIFOの加工費単価 = 287,000 ÷ 35,000 = $8.20。</p>
+<p>平均法の完成品原価 = 35,000 × (4.45 + 8.00) = 435,750。期末仕掛品 = 5,000 × 4.45 + 2,000 × 8.00 = 22,250 + 16,000 = 38,250。検算:435,750 + 38,250 = 474,000 = 原価合計。</p>`,
+});
+
+CPA.tbs({ id: "TBS-BAR-13", section: "BAR", chapter: "BAR-01", title: "複数製品のCVP分析",
+  scenario: `<p>Aoba Inc. sells two products in a constant sales mix of 3 units of Standard for every 1 unit of Deluxe.</p>
+<table><tr><th></th><th>Standard</th><th>Deluxe</th></tr>
+<tr><td>Selling price per unit</td><td>$40</td><td>$70</td></tr>
+<tr><td>Variable cost per unit</td><td>$24</td><td>$40</td></tr></table>
+<p>Annual fixed costs are $468,000, and the income tax rate is 30%. Management's target after-tax income is $109,200. The current sales plan is 30,000 units of Standard and 10,000 units of Deluxe.</p>
+<p class="ja">青葉社は2製品をStandard 3個に対しDeluxe 1個の一定構成で販売している。販売単価はStandard $40・Deluxe $70、単位変動費は$24・$40。年間固定費は$468,000、税率30%。経営者の目標税引後利益は$109,200。現行の販売計画はStandard 30,000個、Deluxe 10,000個である。</p>`,
+  rows: [
+    { label: "Breakeven units of Standard(損益分岐点のStandard販売数量)", type: "num", answer: 18000 },
+    { label: "Breakeven units of Deluxe(損益分岐点のDeluxe販売数量)", type: "num", answer: 6000 },
+    { label: "Breakeven sales in dollars(損益分岐点売上高)", type: "num", answer: 1140000 },
+    { label: "Units of Standard needed to earn the target after-tax income(目標税引後利益達成に必要なStandard数量)", type: "num", answer: 24000 },
+    { label: "Degree of operating leverage at the current sales plan(現行計画での営業レバレッジ係数)", type: "num", answer: 2.5, tol: 0.01 },
+    { label: "Margin of safety ratio at the current sales plan, in % (現行計画での安全余裕率、%)", type: "num", answer: 40, tol: 0.1 },
+  ],
+  explain: `<p>単位貢献利益:Standard $16、Deluxe $30。1セット(S3・D1)の貢献利益 = 48 + 30 = $78。</p>
+<p>損益分岐点セット数 = 468,000 ÷ 78 = 6,000 → Standard 18,000個、Deluxe 6,000個。売上高 = 18,000 × 40 + 6,000 × 70 = 720,000 + 420,000 = 1,140,000。</p>
+<p>目標税引前利益 = 109,200 ÷ 0.7 = 156,000。必要セット数 = (468,000 + 156,000) ÷ 78 = 8,000 → Standard 24,000個。</p>
+<p>現行計画 = 10,000セット:貢献利益780,000、営業利益312,000。DOL = 780,000 ÷ 312,000 = 2.5。安全余裕率 = (10,000 − 6,000) ÷ 10,000 = 40%(= 1 ÷ DOL で検算可)。</p>`,
+});
+
+CPA.tbs({ id: "TBS-BAR-14", section: "BAR", chapter: "BAR-01", title: "直接材料・直接労務費の差異分析と販売数量差異",
+  scenario: `<p>Minato Corp. uses a standard costing system. Standards per unit of product:</p>
+<table><tr><th>Input</th><th>Standard quantity</th><th>Standard price</th></tr>
+<tr><td>Direct materials</td><td>4 pounds</td><td>$5.00 per pound</td></tr>
+<tr><td>Direct labor</td><td>1.5 hours</td><td>$24.00 per hour</td></tr></table>
+<p>The master budget called for sales of 8,000 units; the standard contribution margin is $45 per unit. Actual results for the period:</p>
+<ul><li>Produced and sold 8,400 units.</li>
+<li>Purchased 36,000 pounds of material for $176,400; used 34,200 pounds. The materials price variance is recognized at the time of purchase.</li>
+<li>Worked 12,300 direct labor hours at a total cost of $300,120.</li></ul>
+<p>Enter variance amounts as positive numbers.</p>
+<p class="ja">湊社は標準原価計算を採用している。製品1個当たりの標準は直接材料4ポンド(@$5.00)、直接作業1.5時間(@$24.00)。マスター・バジェットの販売数量は8,000個、標準単位貢献利益は$45。実績:8,400個を生産・販売。材料36,000ポンドを$176,400で購入し34,200ポンドを消費(価格差異は購入時に認識)。直接作業12,300時間、総額$300,120。差異は正の数で入力する。</p>`,
+  rows: [
+    { label: "Direct materials price variance (favorable)(直接材料価格差異・有利)", type: "num", answer: 3600 },
+    { label: "Direct materials quantity variance (unfavorable)(直接材料数量差異・不利)", type: "num", answer: 3000 },
+    { label: "Direct labor rate variance (unfavorable)(賃率差異・不利)", type: "num", answer: 4920 },
+    { label: "Direct labor efficiency variance (favorable)(作業時間差異・有利)", type: "num", answer: 7200 },
+    { label: "Net direct labor variance(直接労務費差異の純額の方向)", type: "select", options: ["Favorable", "Unfavorable", "Zero"], answer: "Favorable" },
+    { label: "Sales volume variance in contribution margin (favorable)(貢献利益ベースの販売数量差異・有利)", type: "num", answer: 18000 },
+  ],
+  explain: `<p>材料:実際購入単価 = 176,400 ÷ 36,000 = $4.90。価格差異(購入時)= 36,000 × (5.00 − 4.90) = 3,600 有利。標準消費量 = 8,400 × 4 = 33,600、数量差異 = (34,200 − 33,600) × 5 = 3,000 不利。</p>
+<p>労務:実際賃率 = 300,120 ÷ 12,300 = $24.40。賃率差異 = 12,300 × 0.40 = 4,920 不利。標準時間 = 8,400 × 1.5 = 12,600、作業時間差異 = (12,300 − 12,600) × 24 = 7,200 有利。純額 = 2,280 有利。</p>
+<p>販売数量差異 = (8,400 − 8,000) × 45 = 18,000 有利。</p>`,
 });
