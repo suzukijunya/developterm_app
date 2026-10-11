@@ -808,3 +808,16 @@ small {
   cursor: pointer;
   font-size: 0.92rem;
 }
+
+.stack > input[type="text"] {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  padding: 10px;
+  font-size: 16px;
+}
+
+.place-form .or {
+  margin: 16px 0 0;
+}

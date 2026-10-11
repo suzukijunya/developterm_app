@@ -395,8 +395,9 @@
     return name;
   }
 
+  // 名前が空欄なら、入力した住所・駅名をそのまま名前にする
   function savePlaceFromForm(lat, lon, label) {
-    const name = formName();
+    const name = (placeForm.name.trim() || placeForm.query.trim()).slice(0, 20);
     if (!name) return;
     if (!addPlace({ name, label, lat, lon })) return;
     placeForm = { name: "", query: "", results: [], status: `「${name}」を登録しました` };
@@ -710,18 +711,21 @@
             ? `<p class="notice">目的地は${Store.MAX_PLACES}件まで登録できます。追加するには、使わない目的地を削除してください。</p>`
             : `<form class="place-form" id="place-form">
                 <h3>目的地を追加</h3>
-                <label class="field"><span>名前</span><input type="text" id="place-name" maxlength="20" placeholder="例:会社" value="${esc(f.name)}" /></label>
-                <label class="stack"><span>場所<small>住所・駅名・施設名、またはGoogleマップの「緯度,経度」</small></span>
+                <label class="stack"><span>住所・駅名・施設名<small>Googleマップの「緯度,経度」も貼り付けられます</small></span>
                   <span class="search-row">
-                    <input type="search" id="place-query" placeholder="例:豊島区西池袋1-1-25" value="${esc(f.query)}" />
+                    <input type="search" id="place-query" placeholder="例:荻窪1-33-12" value="${esc(f.query)}" />
                     <button class="chip" type="submit">検索</button>
                   </span>
+                </label>
+                <label class="stack"><span>名前<small>空欄なら入力した住所が名前になります</small></span>
+                  <input type="text" id="place-name" maxlength="20" placeholder="例:会社" value="${esc(f.name)}" />
                 </label>
                 ${f.status ? `<p class="muted small">${esc(f.status)}</p>` : ""}
                 ${f.results
                   .map((r, i) => `<button type="button" class="result-item" data-pick="${i}">📍 ${esc(r.label)}</button>`)
                   .join("")}
-                <button type="button" class="btn sub" id="register-here">📍 現在地をこの名前で登録</button>
+                <p class="muted small or">いまいる場所を登録するときは、名前を入れてから↓</p>
+                <button type="button" class="btn sub" id="register-here">📍 現在地を目的地に登録</button>
               </form>`
         }
       </section>`;
@@ -1019,6 +1023,27 @@
   setInterval(() => {
     if (ride) renderLive();
   }, 1000);
+
+  // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
+  // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
+  const APP_VERSION = "2026.10.14";
+  async function checkUpdate() {
+    try {
+      const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });
+      const latest = (await res.json()).version;
+      if (ride) return;
+      if (latest && latest !== APP_VERSION && sessionStorage.getItem("cycling_reloaded") !== latest) {
+        sessionStorage.setItem("cycling_reloaded", latest); // 読み込み直しを繰り返さないように
+        location.replace(location.pathname + "?v=" + latest);
+      }
+    } catch (e) {
+      // オフラインなどで確認できなければ今のまま使う
+    }
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") checkUpdate();
+  });
+  checkUpdate();
 
   restoreActive();
   render();
