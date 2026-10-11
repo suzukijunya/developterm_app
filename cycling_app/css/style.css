@@ -1,35 +1,44 @@
 :root {
-  --bg: #f7f5f2;
+  /* ブルー×ホワイト×ブラックのロードバイクらしい配色 */
+  --bg: #f1f4f9;
   --card: #ffffff;
-  --text: #1c1917;
-  --muted: #6b635c;
-  --line: #e7e2dc;
-  --brand: #c2410c;
-  --brand-2: #ea580c;
-  --brand-bg: #fff1e8;
+  --text: #0b1220;
+  --muted: #586379;
+  --line: #dbe2ee;
+  --brand: #0047ab;
+  --brand-2: #1f6fe5;
+  --brand-bg: #e5eefc;
   --on-brand: #ffffff;
+  --navy: #0a1a3a;
+  --hero-a: #0a1a3a;
+  --hero-b: #0047ab;
+  --hero-c: #1f6fe5;
   --ok: #047857;
   --ok-bg: #e6f6ef;
-  --ng: #b91c1c;
+  --ng: #c81e1e;
   --ng-bg: #fdecec;
   --warn-bg: #fff6db;
   --warn-text: #7a5300;
-  --shadow: 0 1px 2px rgba(28, 25, 23, 0.06), 0 2px 8px rgba(28, 25, 23, 0.05);
-  --radius: 16px;
+  --shadow: 0 1px 2px rgba(10, 26, 58, 0.06), 0 2px 8px rgba(10, 26, 58, 0.06);
+  --radius: 10px;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #12100e;
-    --card: #1e1a17;
-    --text: #f2ede8;
-    --muted: #a59d95;
-    --line: #322b26;
-    --brand: #fb923c;
-    --brand-2: #f97316;
-    --brand-bg: #2d1a0e;
-    --on-brand: #1c1917;
+    --bg: #070b14;
+    --card: #101827;
+    --text: #eef2f9;
+    --muted: #94a1ba;
+    --line: #1f2b42;
+    --brand: #5b9bff;
+    --brand-2: #3d82f5;
+    --brand-bg: #0d1e3d;
+    --on-brand: #06101f;
+    --navy: #050c1c;
+    --hero-a: #050c1c;
+    --hero-b: #123a86;
+    --hero-c: #1f55c0;
     --ok: #34d399;
     --ok-bg: #0f2a20;
     --ng: #f87171;
@@ -897,4 +906,151 @@ small {
   color: var(--text);
   text-decoration: none;
   font-weight: 600;
+}
+
+/* ================================================================
+   ロードバイクメーカー風のテーマ(ブルー×ホワイト×ブラック、斜体の太い数字、斜めのストライプ)
+   ================================================================ */
+
+/* 上部のバー */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--navy);
+  color: #fff;
+  padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+  overflow: hidden;
+}
+
+.topbar::after {
+  content: "";
+  position: absolute;
+  right: -20px;
+  top: 0;
+  bottom: 0;
+  width: 160px;
+  background: repeating-linear-gradient(115deg, transparent 0 14px, rgba(31, 111, 229, 0.85) 14px 22px, transparent 22px 30px);
+  pointer-events: none;
+}
+
+.topbar-inner {
+  max-width: 560px;
+  margin: 0 auto;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: 0.08em;
+  font-size: 1.05rem;
+  position: relative;
+  z-index: 1;
+}
+
+.topbar-inner span {
+  color: #5b9bff;
+}
+
+/* 見出し */
+h2 {
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  border-left: 4px solid var(--brand);
+  padding-left: 8px;
+}
+
+/* 数字は太い斜体 */
+.hero-value,
+.metric-value,
+.today-value,
+.result-kcal,
+.wx-temp,
+.eta strong,
+.eta-at,
+.ride-main,
+.day span {
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+/* 消費カロリーの大きな表示 */
+.hero {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(115deg, var(--hero-a) 0%, var(--hero-b) 62%, var(--hero-c) 100%);
+  color: #fff;
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(115deg, transparent 0 46px, rgba(255, 255, 255, 0.07) 46px 58px);
+  pointer-events: none;
+}
+
+.hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.hero-label {
+  color: #a9c8ff;
+  letter-spacing: 0.08em;
+}
+
+.hero-value,
+.hero-value small {
+  color: #fff;
+}
+
+.hero-sub {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* ボタン */
+.btn {
+  border-radius: var(--radius);
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.btn.start {
+  background: linear-gradient(115deg, var(--brand) 0%, var(--brand-2) 100%);
+  color: var(--on-brand);
+  box-shadow: 0 4px 14px rgba(0, 71, 171, 0.25);
+}
+
+.btn.sub {
+  font-style: normal;
+  letter-spacing: 0;
+}
+
+.metric {
+  border-radius: var(--radius);
+  border-left: 3px solid var(--brand);
+}
+
+.metric-label,
+.today-label {
+  letter-spacing: 0.04em;
+}
+
+.result {
+  border: 0;
+  border-top: 4px solid var(--brand);
+}
+
+.eta {
+  border-radius: var(--radius);
+}
+
+.chip.on {
+  font-style: italic;
+}
+
+/* 下のタブ: 選択中は上に青い線 */
+.tab.active {
+  box-shadow: inset 0 3px 0 var(--brand);
 }
