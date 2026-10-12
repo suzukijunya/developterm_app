@@ -684,3 +684,58 @@ CPA.extend("ISC-01", {
     },
   ],
 });
+
+CPA.tbs({ id: "TBS-ISC-11", section: "ISC", chapter: "ISC-01", title: "入力エラーと検出する入力統制の対応",
+  scenario: `<p>A distributor is redesigning the input edit checks in its order entry and inventory systems. For each input error below, select the application control that would most directly detect or prevent the error at the time of entry. Each control may be used once, more than once, or not at all.</p>
+<p class="ja">ある卸売業者は受注・在庫システムの入力エディット・チェックを再設計している。以下の各入力エラーについて、入力時にそのエラーを最も直接的に発見または防止するアプリケーション統制を選択せよ。各統制は1回使用しても、複数回使用しても、使用しなくてもよい。</p>`,
+  rows: [
+    { label: "Customer account 40372 is keyed as 40327, which is also a valid-looking five-digit number(顧客番号40372が40327と入力された。どちらも5桁の数字である)", type: "select", options: ["Validity check", "Limit check", "Field (format) check", "Check digit", "Completeness check", "Sequence check"], answer: "Check digit" },
+    { label: "Hours worked of 400 is entered for a weekly time card; company policy caps weekly hours at 60(週次タイムカードに400時間と入力された。社内方針で週の上限は60時間)", type: "select", options: ["Validity check", "Limit check", "Field (format) check", "Check digit", "Completeness check", "Sequence check"], answer: "Limit check" },
+    { label: "The required ship-to postal code is left blank on a sales order(受注の必須項目である出荷先郵便番号が空欄のままである)", type: "select", options: ["Validity check", "Limit check", "Field (format) check", "Check digit", "Completeness check", "Sequence check"], answer: "Completeness check" },
+    { label: "Prenumbered receiving report 1052 is missing from a batch numbered 1048 through 1060(番号1048~1060のバッチから連番付き受入報告書1052が欠落している)", type: "select", options: ["Validity check", "Limit check", "Field (format) check", "Check digit", "Completeness check", "Sequence check"], answer: "Sequence check" },
+    { label: "Warehouse code W9 is entered, but only W1 through W5 exist in the warehouse master table(倉庫コードW9が入力されたが、倉庫マスタにはW1~W5しか存在しない)", type: "select", options: ["Validity check", "Limit check", "Field (format) check", "Check digit", "Completeness check", "Sequence check"], answer: "Validity check" },
+    { label: "The letters \"ten\" are typed in the numeric quantity field(数値の数量欄に文字\"ten\"が入力された)", type: "select", options: ["Validity check", "Limit check", "Field (format) check", "Check digit", "Completeness check", "Sequence check"], answer: "Field (format) check" },
+  ],
+  explain: `<p>チェック・ディジットは番号の転記・転置ミスを検出する(40372→40327は形式上は有効な番号に見えるため、妥当性チェックや形式チェックでは検出しにくい)。限度チェックは上限・下限を超える値を、完全性チェックは必須項目の欠落を、順序チェックは連番の欠番・重複を検出する。妥当性チェックは入力値をマスタ等の許容値と照合し、形式(フィールド)チェックは数値欄への文字入力など項目の型の誤りを検出する。</p>`,
+});
+
+CPA.tbs({ id: "TBS-ISC-12", section: "ISC", chapter: "ISC-01", title: "RTO・RPOに基づく復旧戦略の選択",
+  scenario: `<p>A retailer has completed its business impact analysis and must choose a recovery strategy for each system. Management will select the <strong>least costly</strong> strategy that meets <strong>both</strong> the system's RTO and RPO. Available strategies (listed from most to least costly):</p>
+<table><tr><th>Strategy</th><th>Achievable RTO</th><th>Achievable RPO</th></tr>
+<tr><td>A: Active mirrored hot site (synchronous replication)</td><td>15 minutes or less</td><td>Zero</td></tr>
+<tr><td>B: Hot site with asynchronous replication every 15 minutes</td><td>4 hours or less</td><td>15 minutes or less</td></tr>
+<tr><td>C: Warm site with nightly backups taken at 11:00 p.m.</td><td>48 hours or less</td><td>24 hours or less</td></tr>
+<tr><td>D: Cold site with weekly full backups stored offsite</td><td>2 weeks or less</td><td>7 days or less</td></tr></table>
+<table><tr><th>System</th><th>RTO</th><th>RPO</th></tr>
+<tr><td>Online payment processing</td><td>5 minutes</td><td>Zero</td></tr>
+<tr><td>Order management</td><td>2 hours</td><td>30 minutes</td></tr>
+<tr><td>General ledger</td><td>48 hours</td><td>24 hours</td></tr>
+<tr><td>Archived HR records</td><td>3 weeks</td><td>7 days</td></tr>
+<tr><td>Payroll</td><td>72 hours</td><td>4 hours</td></tr></table>
+<p class="ja">ある小売業者は事業影響度分析を完了し、各システムの復旧戦略を選択しなければならない。経営者は、そのシステムのRTOとRPOの<strong>両方</strong>を満たす<strong>最も低コスト</strong>の戦略を選択する。利用可能な戦略(コストの高い順)は、A:同期レプリケーションによるミラー化ホットサイト(RTO15分以内、RPOゼロ)、B:15分ごとの非同期レプリケーションを伴うホットサイト(RTO4時間以内、RPO15分以内)、C:毎晩午後11時にバックアップを取得するウォームサイト(RTO48時間以内、RPO24時間以内)、D:週次フルバックアップをオフサイト保管するコールドサイト(RTO2週間以内、RPO7日以内)である。各システムの要件は、オンライン決済(RTO5分・RPOゼロ)、受注管理(2時間・30分)、総勘定元帳(48時間・24時間)、HR記録アーカイブ(3週間・7日)、給与計算(72時間・4時間)である。</p>`,
+  rows: [
+    { label: "Online payment processing(オンライン決済)", type: "select", options: ["A", "B", "C", "D"], answer: "A" },
+    { label: "Order management(受注管理)", type: "select", options: ["A", "B", "C", "D"], answer: "B" },
+    { label: "General ledger(総勘定元帳)", type: "select", options: ["A", "B", "C", "D"], answer: "C" },
+    { label: "Archived HR records(HR記録アーカイブ)", type: "select", options: ["A", "B", "C", "D"], answer: "D" },
+    { label: "Payroll(給与計算)", type: "select", options: ["A", "B", "C", "D"], answer: "B" },
+    { label: "Under strategy C, if the general ledger server fails at 5:00 p.m. on Wednesday, how many hours of data are lost?(戦略Cの下で、総勘定元帳サーバーが水曜日の午後5時に故障した場合、失われるデータは何時間分か)", type: "num", answer: 18 },
+  ],
+  explain: `<p>オンライン決済はRPOゼロ・RTO5分のため同期ミラーリングのAしか満たさない。受注管理はRPO30分を満たす必要があり、C(24時間)では不足するためB。総勘定元帳はCで要件をちょうど満たす。HR記録アーカイブはRTO3週間・RPO7日のためDで足りる。給与計算はRTO72時間だけ見るとCで足りるが、RPO4時間を夜間バックアップ(最大24時間の損失)では満たせないため、両方を満たす最も低コストの戦略はBとなる(RTOとRPOの双方を確認する必要がある)。</p>
+<p>データ損失:直近のバックアップは火曜日午後11時。水曜日午後5時までの経過は 1時間(午前0時まで)+17時間=18時間分が失われる。</p>`,
+});
+
+CPA.tbs({ id: "TBS-ISC-13", section: "ISC", chapter: "ISC-01", title: "移行方法とSDLCフェーズの識別",
+  scenario: `<p>A company is completing several system projects. For rows 1-3, select the most appropriate conversion method for the situation described. For rows 4-6, select the SDLC phase in which the described activity is primarily performed.</p>
+<p class="ja">ある会社は複数のシステム・プロジェクトを進めている。1~3行目は記述された状況に最も適した移行方法を、4~6行目は記述された活動が主に行われるSDLCのフェーズを選択せよ。</p>`,
+  rows: [
+    { label: "A credit union replaces its loan servicing system. Interest calculation errors would be costly, and staff can run both systems for one month and compare results.(信用組合が貸付管理システムを入れ替える。利息計算の誤りは大きな損失となり、職員は1か月間両システムを運用して結果を比較できる)", type: "select", options: ["Direct (plunge) cutover", "Parallel conversion", "Pilot conversion", "Phased conversion"], answer: "Parallel conversion" },
+    { label: "The vendor's support for the old timekeeping system ends Friday, the old and new systems use incompatible hardware, and operating both is not possible.(旧勤怠システムのベンダー・サポートが金曜日に終了し、新旧システムのハードウェアに互換性がなく、両方の運用は不可能である)", type: "select", options: ["Direct (plunge) cutover", "Parallel conversion", "Pilot conversion", "Phased conversion"], answer: "Direct (plunge) cutover" },
+    { label: "A bank with 80 branches installs a new teller system at 3 branches, resolves problems, and then rolls it out to the remaining branches.(80支店を持つ銀行が新しい窓口システムをまず3支店に導入し、問題を解決した後に残りの支店へ展開する)", type: "select", options: ["Direct (plunge) cutover", "Parallel conversion", "Pilot conversion", "Phased conversion"], answer: "Pilot conversion" },
+    { label: "Analysts evaluate technical, economic, and operational feasibility and prepare a cost-benefit analysis to decide whether to proceed.(アナリストが技術的・経済的・運用上の実現可能性を評価し、続行の可否を決めるために費用便益分析を作成する)", type: "select", options: ["Planning and feasibility", "Requirements analysis", "System design", "Implementation", "Operations and maintenance"], answer: "Planning and feasibility" },
+    { label: "Analysts interview users to document what the system must do, including required reports and the control objectives the system must meet.(アナリストがユーザーにインタビューし、必要な帳票やシステムが満たすべき統制目的を含め、システムが何をしなければならないかを文書化する)", type: "select", options: ["Planning and feasibility", "Requirements analysis", "System design", "Implementation", "Operations and maintenance"], answer: "Requirements analysis" },
+    { label: "The team specifies database tables, input screen layouts, and the specific edit checks to be programmed for each field.(チームがデータベースのテーブル、入力画面のレイアウト、各項目にプログラムするエディット・チェックを具体的に定める)", type: "select", options: ["Planning and feasibility", "Requirements analysis", "System design", "Implementation", "Operations and maintenance"], answer: "System design" },
+  ],
+  explain: `<p>誤りの影響が大きく二重運用が可能な場合はパラレル移行が最もリスクが低い。旧システムを継続できない場合は直接切替しか選べない。一部の拠点で先行導入してから展開するのはパイロット移行である(機能単位で順次導入するのが段階的移行)。</p>
+<p>実現可能性と費用便益の評価は計画・実現可能性調査フェーズ、ユーザー要件と統制要件の文書化(「何を」するか)は要件分析フェーズ、テーブル・画面・エディット・チェックの具体的な仕様(「どのように」実現するか)はシステム設計フェーズで行う。</p>`,
+});
