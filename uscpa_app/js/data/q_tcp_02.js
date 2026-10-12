@@ -224,9 +224,9 @@ CPA.extend("TCP-02", {
     {
       q: "A calendar-year corporation incurred $53,000 of organizational expenditures and began business on July 1. Assume an immediate deduction of up to $5,000, reduced dollar for dollar by expenditures exceeding $50,000, with the remainder amortized over 180 months. What is the maximum deduction for organizational expenditures for the year?",
       ja: "暦年法人は創立費$53,000を支出し、7月1日に事業を開始した。最大$5,000の即時控除(支出が$50,000を超える額だけ1ドルずつ減額)と、残額の180か月償却を前提とする。当年の創立費の最大控除額はいくらか。",
-      c: ["$5,000", "$3,700", "$2,000", "$6,567"],
+      c: ["$5,000", "$3,700", "$2,000", "$6,600"],
       a: 1,
-      ex: "即時控除 = 5,000 − (53,000 − 50,000) = 2,000。残額51,000 ÷ 180 × 6か月 = 1,700。合計3,700。$6,567は即時控除を減額せず5,000 + 48,000/180×6とした誤り(さらに月数も混同)である。",
+      ex: "即時控除 = 5,000 − (53,000 − 50,000) = 2,000。残額51,000 ÷ 180 × 6か月 = 1,700。合計3,700。$6,600は即時控除を減額せず5,000とし、残額48,000/180×6 = 1,600を加えた誤りである。",
     },
     {
       q: "A calendar-year corporation incurred $62,000 of start-up expenditures before beginning business on April 1. Assume an immediate deduction of up to $5,000, reduced dollar for dollar by start-up expenditures exceeding $50,000, with the remainder amortized over 180 months. What is the start-up cost deduction for the year?",

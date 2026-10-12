@@ -629,3 +629,71 @@ CPA.extend("ISC-02", {
     },
   ],
 });
+
+CPA.tbs({
+  id: "TBS-ISC-14",
+  section: "ISC",
+  chapter: "ISC-02",
+  title: "インシデント対応フェーズの分類",
+  scenario: `<p>Harbor Distribution Co. follows the NIST incident response life cycle: (1) Preparation; (2) Detection and Analysis; (3) Containment, Eradication, and Recovery; (4) Post-Incident Activity. During a recent ransomware incident, the following actions were taken. For each action, select the phase to which it belongs.</p>
+<p class="ja">Harbor Distribution社はNISTのインシデント対応ライフサイクル((1)準備、(2)検知と分析、(3)封じ込め・根絶・復旧、(4)事後活動)に従っている。最近のランサムウェア事案で以下の措置が取られた。各措置が属するフェーズを選択せよ。</p>`,
+  rows: [
+    { label: "Before the incident, the company had prepared an incident response plan, contact list, and ransomware playbook(事案前に対応計画・連絡先リスト・ランサムウェア用プレイブックを整備していた)", type: "select", options: ["Preparation", "Detection and Analysis", "Containment, Eradication, and Recovery", "Post-Incident Activity"], answer: "Preparation" },
+    { label: "SIEM alerts on mass file renaming were reviewed and validated as a true positive, and the scope was assessed(大量のファイル名変更に関するSIEMアラートを確認し真陽性と判断、影響範囲を評価した)", type: "select", options: ["Preparation", "Detection and Analysis", "Containment, Eradication, and Recovery", "Post-Incident Activity"], answer: "Detection and Analysis" },
+    { label: "Infected servers were disconnected from the network and compromised accounts were disabled(感染サーバーをネットワークから切断し、侵害されたアカウントを無効化した)", type: "select", options: ["Preparation", "Detection and Analysis", "Containment, Eradication, and Recovery", "Post-Incident Activity"], answer: "Containment, Eradication, and Recovery" },
+    { label: "Malware was removed, the exploited VPN vulnerability was patched, and systems were restored from immutable backups(マルウェアを除去し、悪用されたVPNの脆弱性を修正し、改ざん不能バックアップから復元した)", type: "select", options: ["Preparation", "Detection and Analysis", "Containment, Eradication, and Recovery", "Post-Incident Activity"], answer: "Containment, Eradication, and Recovery" },
+    { label: "The team met to analyze root cause and updated the playbook and detection rules(チームで根本原因を分析し、プレイブックと検知ルールを更新した)", type: "select", options: ["Preparation", "Detection and Analysis", "Containment, Eradication, and Recovery", "Post-Incident Activity"], answer: "Post-Incident Activity" },
+    { label: "Evidence was retained per the retention policy and incident metrics (time to detect, time to contain) were reported to the audit committee(証拠を保存方針に従い保管し、検知・封じ込めまでの時間等の指標を監査委員会に報告した)", type: "select", options: ["Preparation", "Detection and Analysis", "Containment, Eradication, and Recovery", "Post-Incident Activity"], answer: "Post-Incident Activity" },
+  ],
+  explain: `<p>準備:計画・連絡体制・プレイブック・訓練など事前の整備。検知と分析:アラートの確認、真陽性の判定、影響範囲の評価。</p>
+<p>封じ込め・根絶・復旧:隔離やアカウント無効化(封じ込め)、マルウェア除去と脆弱性修正(根絶)、バックアップからの復元(復旧)。</p>
+<p>事後活動:教訓(lessons learned)会議、手順・検知ルールの改善、証拠の保管、指標の報告。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-ISC-15",
+  section: "ISC",
+  chapter: "ISC-02",
+  title: "プライバシー規制と要件の対応付け",
+  scenario: `<p>Crestview Health & Retail Inc. operates U.S. pharmacies (a HIPAA covered entity), an online store that accepts payment cards, and an e-commerce site serving EU and California residents. The privacy officer has listed the following situations. For each, select the law or standard that most directly imposes the requirement described.</p>
+<p class="ja">Crestview Health & Retail社は、米国内の薬局(HIPAAの対象事業者)、カード決済を受け付けるオンラインストア、EU居住者とカリフォルニア州居住者向けのECサイトを運営している。プライバシー責任者が以下の状況を挙げた。各状況について、記載された要件を最も直接的に課す法令・基準を選択せよ。</p>`,
+  rows: [
+    { label: "A personal data breach must be reported to the supervisory authority within 72 hours of becoming aware of it(個人データ侵害を認識してから72時間以内に監督機関へ報告しなければならない)", type: "select", options: ["GDPR", "HIPAA", "PCI DSS", "CCPA/CPRA"], answer: "GDPR" },
+    { label: "The website must provide a \"Do Not Sell or Share My Personal Information\" link(ウェブサイトに「個人情報を販売・共有しない」リンクを設けなければならない)", type: "select", options: ["GDPR", "HIPAA", "PCI DSS", "CCPA/CPRA"], answer: "CCPA/CPRA" },
+    { label: "A business associate agreement must be signed with the cloud vendor hosting prescription records(処方記録を保管するクラウド業者と事業提携契約(BAA)を締結しなければならない)", type: "select", options: ["GDPR", "HIPAA", "PCI DSS", "CCPA/CPRA"], answer: "HIPAA" },
+    { label: "Card verification codes may not be stored after authorization, and quarterly external vulnerability scans by an approved scanning vendor are required(カード確認コードはオーソリ後に保存できず、承認スキャンベンダーによる四半期ごとの外部脆弱性スキャンが必要である)", type: "select", options: ["GDPR", "HIPAA", "PCI DSS", "CCPA/CPRA"], answer: "PCI DSS" },
+    { label: "A data protection impact assessment is required before large-scale processing of health data of EU residents(EU居住者の健康データを大規模に処理する前にデータ保護影響評価(DPIA)が必要である)", type: "select", options: ["GDPR", "HIPAA", "PCI DSS", "CCPA/CPRA"], answer: "GDPR" },
+    { label: "Consumers may request correction of inaccurate personal information and limit the use of their sensitive personal information(消費者は不正確な個人情報の訂正とセンシティブ個人情報の利用制限を求めることができる)", type: "select", options: ["GDPR", "HIPAA", "PCI DSS", "CCPA/CPRA"], answer: "CCPA/CPRA" },
+  ],
+  explain: `<p>GDPR:監督機関への72時間以内の侵害通知(第33条)、高リスク処理前のDPIA(第35条)。</p>
+<p>CCPA/CPRA:販売・共有のオプトアウトリンク、CPRAで追加された訂正権とセンシティブ個人情報の利用制限権。</p>
+<p>HIPAA:PHIを扱う業者(ビジネスアソシエイト)との BAA 締結。PCI DSS:センシティブ認証データ(CVV2等)のオーソリ後保存禁止、ASVによる四半期外部スキャン。PCI DSSは法律ではなくカードブランドが契約で求める業界基準である。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-ISC-16",
+  section: "ISC",
+  chapter: "ISC-02",
+  title: "ランサムウェア対策の費用対効果(ALE)",
+  scenario: `<p>Northgate Logistics is evaluating whether to deploy endpoint detection and response (EDR) together with immutable off-site backups to mitigate ransomware risk. The IT risk team provides the following estimates:</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Value of affected systems and data (asset value)</td><td>$2,000,000</td></tr>
+<tr><td>Exposure factor per incident — current</td><td>30%</td></tr>
+<tr><td>Annualized rate of occurrence — current</td><td>0.25</td></tr>
+<tr><td>Exposure factor per incident — with new controls</td><td>10%</td></tr>
+<tr><td>Annualized rate of occurrence — with new controls</td><td>0.05</td></tr>
+<tr><td>Annual cost of the new controls</td><td>$60,000</td></tr></table>
+<p>Use SLE = asset value × exposure factor and ALE = SLE × ARO.</p>
+<p class="ja">Northgate Logistics社は、ランサムウェアのリスク軽減のため、EDRと改ざん不能なオフサイトバックアップの導入を検討している。資産価値$2,000,000、現状の損失率30%・年間発生率0.25、新統制導入後の損失率10%・年間発生率0.05、新統制の年間コスト$60,000。SLE=資産価値×損失率、ALE=SLE×ARO を用いる。</p>`,
+  rows: [
+    { label: "Single loss expectancy — current($)(現状の単一損失予測額)", type: "num", answer: 600000 },
+    { label: "Annualized loss expectancy — current($)(現状の年間損失予測額)", type: "num", answer: 150000 },
+    { label: "Single loss expectancy — with new controls($)(新統制導入後の単一損失予測額)", type: "num", answer: 200000 },
+    { label: "Annualized loss expectancy — with new controls($)(新統制導入後の年間損失予測額)", type: "num", answer: 10000 },
+    { label: "Net annual benefit of the new controls($)(新統制の年間純便益)", type: "num", answer: 80000 },
+    { label: "Recommendation(推奨)", type: "select", options: ["Implement the controls", "Do not implement the controls", "Transfer all risk by paying any future ransom"], answer: "Implement the controls" },
+  ],
+  explain: `<p>現状:SLE = 2,000,000 × 30% = 600,000、ALE = 600,000 × 0.25 = 150,000。</p>
+<p>導入後:SLE = 2,000,000 × 10% = 200,000、ALE = 200,000 × 0.05 = 10,000。</p>
+<p>純便益 = (150,000 − 10,000) − 60,000 = 80,000 > 0 のため導入を推奨する。身代金の支払いはリスク移転ではなく、データ復旧や再攻撃防止の保証もない。</p>`,
+});
