@@ -244,3 +244,60 @@ CPA.extend("FAR-04", {
       ex: "リースバックがファイナンス・リースとなる場合は売却不成立で、売手・借手は資産を引き続き認識し受領額を金融負債とし、買手・貸手は資産を認識せず支払額を金融資産(貸付金)として処理する。建物を認識する選択肢は誤りである。" },
   ],
 });
+
+CPA.tbs({ id: "TBS-FAR-25", section: "FAR", chapter: "FAR-04", title: "プレミアム発行社債の償却表(実効金利法)",
+  scenario: `<p>On January 1, Year 1, Kato Corp. issued $500,000 face value, 5-year bonds with a 10% stated rate, paying interest semiannually on June 30 and December 31. The market rate at issuance was 8% (4% per semiannual period). Kato uses the effective interest method. Round all amounts to the nearest dollar.</p>
+<table><tr><th>Factor (4%, 10 periods)</th><th>Value</th></tr>
+<tr><td>PV of $1</td><td>0.6756</td></tr>
+<tr><td>PV of an ordinary annuity of $1</td><td>8.1109</td></tr></table>
+<p class="ja">第1年度1月1日、Kato社は額面$500,000、5年満期、表面利率10%(6月30日と12月31日の年2回利払い)の社債を発行した。発行時の市場利率は8%(半期4%)。実効金利法を採用する。金額は1ドル未満を四捨五入する。4%・10期の$1の現価係数0.6756、通常年金現価係数8.1109。</p>`,
+  rows: [
+    { label: "Issue price of the bonds(社債の発行価額)", type: "num", answer: 540573, tol: 2 },
+    { label: "Interest expense for the period ended June 30, Year 1(第1年度6月30日までの支払利息)", type: "num", answer: 21623, tol: 2 },
+    { label: "Premium amortization on June 30, Year 1(第1年度6月30日のプレミアム償却額)", type: "num", answer: 3377, tol: 2 },
+    { label: "Interest expense for the period ended December 31, Year 1(第1年度12月31日までの半期の支払利息)", type: "num", answer: 21488, tol: 2 },
+    { label: "Total interest expense for Year 1(第1年度の支払利息合計)", type: "num", answer: 43111, tol: 3 },
+    { label: "Carrying amount of the bonds at December 31, Year 1(第1年度12月31日の社債帳簿価額)", type: "num", answer: 533684, tol: 3 },
+  ],
+  explain: `<p>発行価額 = 500,000 × 0.6756 + 25,000 × 8.1109 = 337,800 + 202,773 = 540,573。</p>
+<p>6/30:利息費用 540,573 × 4% = 21,623、現金支払 25,000、償却 3,377 → 帳簿価額 537,196。</p>
+<p>12/31:利息費用 537,196 × 4% = 21,488、償却 3,512 → 帳簿価額 533,684。</p>
+<p>第1年度の支払利息合計 = 21,623 + 21,488 = 43,111(現金支払50,000よりプレミアム償却分だけ少ない)。</p>`,
+});
+
+CPA.tbs({ id: "TBS-FAR-26", section: "FAR", chapter: "FAR-04", title: "借手のファイナンス・リース(初年度の金額)",
+  scenario: `<p>On January 1, Year 1, Mori Inc. (lessee) leased equipment with a fair value of $230,000 and an economic life of 8 years. The 5-year lease requires annual payments of $50,000 at the beginning of each year, the first paid on January 1, Year 1. There is no transfer of ownership, no purchase option, and no residual value guarantee, and the equipment is not specialized. The rate implicit in the lease, known to Mori, is 6%. Mori paid $3,000 of initial direct costs. Mori amortizes right-of-use assets on a straight-line basis. Round to the nearest dollar.</p>
+<p>PV of an annuity due of $1 for 5 periods at 6% = 4.4651.</p>
+<p class="ja">第1年度1月1日、Mori社(借手)は公正価値$230,000、経済的耐用年数8年の設備をリースした。リース期間5年、毎年期首に$50,000を支払い、初回は第1年度1月1日に支払った。所有権移転、購入オプション、残価保証はなく、設備は特殊なものではない。Mori社が知り得る計算利子率は6%。当初直接費用$3,000を支払った。使用権資産は定額法で償却する。1ドル未満四捨五入。6%・5期の期首払年金現価係数4.4651。</p>`,
+  rows: [
+    { label: "Lease classification(リースの分類)", type: "select", options: ["Finance lease", "Operating lease", "Short-term lease"], answer: "Finance lease" },
+    { label: "Lease liability at commencement(開始日のリース負債)", type: "num", answer: 223255, tol: 2 },
+    { label: "Right-of-use asset at commencement(開始日の使用権資産)", type: "num", answer: 226255, tol: 2 },
+    { label: "Interest expense for Year 1(第1年度の支払利息)", type: "num", answer: 10395, tol: 2 },
+    { label: "Amortization expense for Year 1(第1年度の使用権資産償却費)", type: "num", answer: 45251, tol: 2 },
+    { label: "Right-of-use asset carrying amount at December 31, Year 1(第1年度末の使用権資産帳簿価額)", type: "num", answer: 181004, tol: 3 },
+  ],
+  explain: `<p>リース負債 = 50,000 × 4.4651 = 223,255。公正価値230,000の97%で「ほぼすべて」に該当するためファイナンス・リース(リース期間5/8 = 62.5%は主要部分に満たない)。</p>
+<p>使用権資産 = 223,255 + 当初直接費用3,000 = 226,255。</p>
+<p>初回支払後の負債 173,255 × 6% = 10,395 が第1年度の支払利息。</p>
+<p>所有権移転・購入オプションがないため、リース期間5年で償却:226,255 ÷ 5 = 45,251。期末帳簿価額 226,255 − 45,251 = 181,004。</p>`,
+});
+
+CPA.tbs({ id: "TBS-FAR-27", section: "FAR", chapter: "FAR-04", title: "貸手の販売型リース(無保証残存価値あり)",
+  scenario: `<p>On January 1, Year 1, Sato Manufacturing (lessor) leased a machine it manufactured at a cost (carrying amount) of $120,000. The machine's fair value is $160,053. The 4-year lease requires payments of $45,000 at the end of each year. The machine is expected to have an unguaranteed residual value of $10,000 at the end of the lease term. The rate implicit in the lease is 7%, and collectibility is probable. Round to the nearest dollar.</p>
+<table><tr><th>Factor (7%, 4 periods)</th><th>Value</th></tr>
+<tr><td>PV of an ordinary annuity of $1</td><td>3.3872</td></tr>
+<tr><td>PV of $1</td><td>0.7629</td></tr></table>
+<p class="ja">第1年度1月1日、Sato製造(貸手)は製造原価(帳簿価額)$120,000の機械をリースした。機械の公正価値は$160,053。リース期間4年、毎年末に$45,000を受け取る。リース終了時の無保証残存価値は$10,000と見込まれる。計算利子率は7%で、回収可能性は高い。1ドル未満四捨五入。7%・4期の通常年金現価係数3.3872、$1の現価係数0.7629。</p>`,
+  rows: [
+    { label: "Lease classification by the lessor(貸手のリース分類)", type: "select", options: ["Sales-type lease", "Direct financing lease", "Operating lease"], answer: "Sales-type lease" },
+    { label: "Sales revenue at commencement(開始日の売上高)", type: "num", answer: 152424, tol: 2 },
+    { label: "Cost of goods sold at commencement(開始日の売上原価)", type: "num", answer: 112371, tol: 2 },
+    { label: "Selling profit at commencement(開始日の販売利益)", type: "num", answer: 40053, tol: 3 },
+    { label: "Interest income for Year 1(第1年度の受取利息)", type: "num", answer: 11204, tol: 2 },
+    { label: "Net investment in the lease at December 31, Year 1(第1年度末のリース投資純額)", type: "num", answer: 126257, tol: 3 },
+  ],
+  explain: `<p>リース料の現在価値 = 45,000 × 3.3872 = 152,424(公正価値の約95%で「ほぼすべて」→販売型リース)。無保証残存価値の現在価値 = 10,000 × 0.7629 = 7,629。</p>
+<p>売上高 = 公正価値とリース料現在価値のいずれか低い方 = 152,424。売上原価 = 120,000 − 7,629 = 112,371。販売利益 = 40,053(= 160,053 − 120,000)。</p>
+<p>正味投資 = 152,424 + 7,629 = 160,053。受取利息 = 160,053 × 7% = 11,204。期末正味投資 = 160,053 + 11,204 − 45,000 = 126,257。</p>`,
+});
