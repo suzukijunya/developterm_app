@@ -599,3 +599,74 @@ CPA.extend("BAR-02", {
     },
   ],
 });
+
+CPA.tbs({ id: "TBS-BAR-18", section: "BAR", chapter: "BAR-02", title: "取得法の適用:条件付対価・IPR&D・測定期間の修正",
+  scenario: `<p>On January 1, Year 1, Alpha Corp. acquired 80% of Beta Inc. Alpha paid <b>$2,400,000</b> cash and agreed to pay additional cash if Beta meets revenue targets over the next two years; this liability-classified contingent consideration had an acquisition-date fair value of <b>$200,000</b>. The fair value of the noncontrolling interest was <b>$640,000</b>. Alpha paid <b>$60,000</b> of legal and valuation fees related to the acquisition.</p>
+<p>Provisional acquisition-date fair values of Beta's identifiable items:</p>
+<table><tr><th>Item</th><th>Fair value</th></tr>
+<tr><td>Identifiable assets (including a customer list of $300,000 and an IPR&amp;D project of $250,000)</td><td>$3,500,000</td></tr>
+<tr><td>Liabilities (including a lawsuit contingency of $50,000)</td><td>$900,000</td></tr></table>
+<p>On April 30, Year 1, Alpha received a final appraisal based on facts existing at January 1 showing that the customer list's acquisition-date fair value was <b>$340,000</b>. At December 31, Year 1, because Beta's revenue exceeded expectations after the acquisition, the fair value of the contingent consideration increased to <b>$260,000</b>.</p>
+<p class="ja">Year 1の1月1日、Alpha社はBeta社の80%を取得した。Alpha社は現金$2,400,000を支払い、今後2年間にBeta社が売上目標を達成した場合に追加の現金を支払うことに合意した。この負債に分類される条件付対価の取得日公正価値は$200,000である。非支配持分の公正価値は$640,000、Alpha社は取得に関する法務・評価費用$60,000を支払った。Beta社の識別可能資産の暫定公正価値は$3,500,000(顧客リスト$300,000とIPR&amp;Dプロジェクト$250,000を含む)、負債は$900,000(訴訟偶発負債$50,000を含む)。4月30日、1月1日時点の事実に基づく最終鑑定により顧客リストの取得日公正価値は$340,000と判明した。12月31日、取得後にBeta社の売上が予想を上回ったため、条件付対価の公正価値は$260,000に増加した。</p>`,
+  rows: [
+    { label: "Goodwill recognized provisionally at January 1, Year 1(1月1日に暫定的に認識したのれん)", type: "num", answer: 640000 },
+    { label: "Goodwill after the April 30 measurement-period adjustment(4月30日の測定期間修正後ののれん)", type: "num", answer: 600000 },
+    { label: "Acquisition-related costs expensed in Year 1(Year 1に費用処理する取得関連費用)", type: "num", answer: 60000 },
+    { label: "Loss recognized in Year 1 earnings on remeasuring the contingent consideration(条件付対価の再測定によりYear 1の損益に計上する損失)", type: "num", answer: 60000 },
+    { label: "Contingent consideration liability at December 31, Year 1(Year 1末の条件付対価負債)", type: "num", answer: 260000 },
+    { label: "Accounting for the acquired IPR&D project after the acquisition date(取得後のIPR&Dの会計処理)", type: "select", options: ["Expensed immediately as R&D", "Indefinite-lived intangible, not amortized until completion or abandonment, tested for impairment", "Amortized over 5 years from the acquisition date", "Included in goodwill"], answer: "Indefinite-lived intangible, not amortized until completion or abandonment, tested for impairment" },
+  ],
+  explain: `<p>識別可能純資産(暫定)= 3,500,000 − 900,000 = 2,600,000。のれん = (2,400,000 + 200,000 + 640,000) − 2,600,000 = 640,000。条件付対価は取得日公正価値で対価に含め、訴訟偶発負債も公正価値で負債に含める。</p>
+<p>顧客リストの修正は取得日時点の事実に関する測定期間中の情報なので、無形資産を40,000増やしのれんを同額減らす:640,000 − 40,000 = 600,000。</p>
+<p>取得関連費用60,000は発生時に費用処理する。負債分類の条件付対価の取得後の事象による変動(260,000 − 200,000 = 60,000)はのれんを修正せず損益に計上し、負債は260,000となる。</p>
+<p>企業結合で取得したIPR&amp;Dは耐用年数を確定できない無形資産として計上し、完了・放棄まで償却せず減損テストを行う。</p>`,
+});
+
+CPA.tbs({ id: "TBS-BAR-19", section: "BAR", chapter: "BAR-02", title: "内部取引の消去と連結純利益の帰属",
+  scenario: `<p>Paxton Co. owns 80% of Sorrel Co., acquired several years ago. The noncontrolling interest was measured at fair value, and an equipment fair value adjustment is being amortized at <b>$10,000</b> per year. Data for the current year:</p>
+<table><tr><th>Item</th><th>Paxton</th><th>Sorrel</th></tr>
+<tr><td>Sales</td><td>$3,000,000</td><td>$1,200,000</td></tr>
+<tr><td>Separate net income (Paxton's excludes dividend income from Sorrel)</td><td>$600,000</td><td>$300,000</td></tr></table>
+<ul><li>Sorrel sold merchandise to Paxton for <b>$200,000</b> at a gross margin of 30% on selling price. At year-end, 25% of these goods remain in Paxton's inventory. There was no intercompany inventory at the beginning of the year.</li>
+<li>On January 1, Paxton sold equipment with a carrying amount of <b>$50,000</b> to Sorrel for <b>$70,000</b>. Remaining useful life: 4 years, straight-line, no salvage. Paxton's $600,000 includes the gain.</li>
+<li>Sorrel paid dividends of $40,000.</li></ul>
+<p class="ja">Paxton社は数年前に取得したSorrel社の80%を所有している。非支配持分は公正価値で測定され、設備の公正価値修正を年$10,000ずつ償却している。当期の売上高はPaxton社$3,000,000、Sorrel社$1,200,000。個別純利益はPaxton社$600,000(Sorrel社からの受取配当を除く)、Sorrel社$300,000。Sorrel社はPaxton社に商品を$200,000(売価に対する粗利率30%)で販売し、期末にその25%がPaxton社の在庫に残っている(期首の内部在庫はない)。1月1日にPaxton社は帳簿価額$50,000の設備をSorrel社に$70,000で売却した(残存耐用年数4年、定額法、残存価額なし。Paxton社の$600,000には売却益が含まれる)。Sorrel社は配当$40,000を支払った。</p>`,
+  rows: [
+    { label: "Consolidated sales(連結売上高)", type: "num", answer: 4000000 },
+    { label: "Unrealized profit in ending inventory to be eliminated(消去すべき期末棚卸資産の未実現利益)", type: "num", answer: 15000 },
+    { label: "Consolidated net income(連結純利益)", type: "num", answer: 860000 },
+    { label: "Net income attributable to the noncontrolling interest(非支配持分に帰属する純利益)", type: "num", answer: 55000 },
+    { label: "Net income attributable to Paxton(親会社株主に帰属する純利益)", type: "num", answer: 805000 },
+    { label: "Effect of the intercompany equipment gain on NCI income(設備売却益の消去が非支配持分利益に与える影響)", type: "select", options: ["Reduces NCI income by 20% of the net unrealized gain", "Reduces NCI income by 80% of the net unrealized gain", "No effect on NCI income"], answer: "No effect on NCI income" },
+  ],
+  explain: `<p>連結売上高 = 3,000,000 + 1,200,000 − 200,000 = 4,000,000。</p>
+<p>未実現利益(アップストリーム)= 200,000 × 25% × 30% = 15,000。</p>
+<p>設備(ダウンストリーム):売却益20,000を消去し、超過減価償却 20,000 ÷ 4 = 5,000 を戻す。純額15,000は親会社のみの修正で、非支配持分には影響しない。</p>
+<p>Sorrel社の修正後利益 = 300,000 − 10,000 − 15,000 = 275,000。非支配持分 = 275,000 × 20% = 55,000。</p>
+<p>連結純利益 = (600,000 − 20,000 + 5,000) + 275,000 = 860,000。親会社帰属 = 860,000 − 55,000 = 805,000(検算:585,000 + 275,000 × 80% = 805,000)。配当は内部取引として消去され、利益の計算には影響しない。</p>`,
+});
+
+CPA.tbs({ id: "TBS-BAR-20", section: "BAR", chapter: "BAR-02", title: "持分変動:追加取得と支配喪失",
+  scenario: `<p>On January 1, Year 1, Pine Corp. acquired 70% of Spruce Co. for <b>$1,400,000</b> cash. The fair value of the 30% noncontrolling interest was <b>$600,000</b>, and Spruce's identifiable net assets had a fair value (equal to book value) of <b>$1,700,000</b>. No goodwill impairment has occurred.</p>
+<table><tr><th>Event</th><th>Amount</th></tr>
+<tr><td>Spruce net income, Year 1</td><td>$200,000</td></tr>
+<tr><td>Spruce dividends declared and paid, Year 1</td><td>$50,000</td></tr>
+<tr><td>Jan. 1, Year 2: Pine buys an additional 10% of Spruce from noncontrolling shareholders for cash</td><td>$240,000</td></tr>
+<tr><td>Spruce net income, Year 2 (no dividends)</td><td>$150,000</td></tr>
+<tr><td>Dec. 31, Year 2: Pine sells 60% of Spruce's shares to an unrelated buyer for cash</td><td>$1,800,000</td></tr>
+<tr><td>Fair value of Pine's retained 20% interest at Dec. 31, Year 2 (significant influence)</td><td>$600,000</td></tr></table>
+<p class="ja">Year 1の1月1日、Pine社はSpruce社の70%を現金$1,400,000で取得した。30%の非支配持分の公正価値は$600,000、Spruce社の識別可能純資産の公正価値(簿価と同額)は$1,700,000である。のれんの減損は生じていない。Spruce社のYear 1純利益$200,000、配当$50,000。Year 2の1月1日、Pine社は非支配株主から追加の10%を現金$240,000で取得。Year 2の純利益$150,000(配当なし)。Year 2の12月31日、Pine社はSpruce社株式の60%を第三者に現金$1,800,000で売却し、保持する20%持分(重要な影響力あり)の公正価値は$600,000である。</p>`,
+  rows: [
+    { label: "Goodwill at January 1, Year 1(Year 1期首ののれん)", type: "num", answer: 300000 },
+    { label: "Noncontrolling interest at December 31, Year 1(Year 1末の非支配持分)", type: "num", answer: 645000 },
+    { label: "Decrease in additional paid-in capital from the January 1, Year 2 purchase(Year 2期首の追加取得による資本剰余金の減少額)", type: "num", answer: 25000 },
+    { label: "Noncontrolling interest immediately after the January 1, Year 2 purchase(追加取得直後の非支配持分)", type: "num", answer: 430000 },
+    { label: "Gain recognized on the loss of control at December 31, Year 2(Year 2末の支配喪失に伴い認識する利益)", type: "num", answer: 560000 },
+    { label: "Initial measurement of the retained 20% interest(保持する20%持分の当初測定)", type: "select", options: ["Fair value of $600,000 at the date control is lost", "Carrying amount of 20% of Spruce's net assets", "Original cost of the shares", "Zero until sold"], answer: "Fair value of $600,000 at the date control is lost" },
+  ],
+  explain: `<p>のれん = (1,400,000 + 600,000) − 1,700,000 = 300,000。連結上のSpruce社純資産(のれん含む)= 2,000,000。</p>
+<p>Year 1末の非支配持分 = 600,000 + 200,000 × 30% − 50,000 × 30% = 645,000(= 2,150,000 × 30%)。</p>
+<p>追加取得は資本取引:振替える非支配持分 = 645,000 × 10/30 = 215,000、支払額との差額 240,000 − 215,000 = 25,000 を資本剰余金から減額。非支配持分 = 645,000 − 215,000 = 430,000。</p>
+<p>Year 2末:Spruce社純資産 = 2,150,000 + 150,000 = 2,300,000、非支配持分 = 430,000 + 150,000 × 20% = 460,000。支配喪失益 = (1,800,000 + 600,000 + 460,000) − 2,300,000 = 560,000。</p>
+<p>保持持分は支配喪失日の公正価値$600,000で測定し、以後の持分法の基礎とする。</p>`,
+});
