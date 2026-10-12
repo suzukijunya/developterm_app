@@ -724,3 +724,64 @@ CPA.extend("ISC-03", {
     },
   ],
 });
+
+CPA.tbs({ id: "TBS-ISC-17", section: "ISC", chapter: "ISC-03", title: "SOC 1 Type 2における逸脱の評価と意見",
+  scenario: `<p>Harbor CPAs is performing a SOC 1 Type 2 examination of PayGrid, a payroll service organization, for the year ended September 30. PayGrid uses the carve-out method for its data center provider. Selected results:</p>
+<table><tr><th>Control objective</th><th>Results</th></tr>
+<tr><td>CO1 Payroll input is authorized</td><td>2 deviations in a sample of 40; a compensating supervisory review operated effectively, and the auditor concludes the objective was achieved.</td></tr>
+<tr><td>CO2 Logical access is restricted</td><td>Terminated-user access removal control was not performed for 5 of 25 terminations; no compensating control; the effect is limited to CO2.</td></tr>
+<tr><td>CO3 Rate changes are approved</td><td>No rate changes occurred during the period, so the approval control did not operate.</td></tr>
+<tr><td>CO4 Payroll output is complete</td><td>No deviations; the objective depends on user entities reviewing payroll registers (a CUEC).</td></tr></table>
+<p>Other objectives had no exceptions. Data center physical security is performed by the subservice organization.</p>
+<p class="ja">Harbor CPAsは給与計算受託会社PayGridの9月30日終了年度のSOC 1 Type 2検証業務を実施している。PayGridはデータセンター事業者についてカーブアウト方式を採用している。CO1:サンプル40件中2件の逸脱があるが、補完的な上司レビューが有効に運用され統制目的は達成されたと結論。CO2:退職者アクセス削除統制が25件中5件で未実施、補完統制なし、影響はCO2に限定。CO3:期間中にレート変更がなく、承認統制は運用されなかった。CO4:逸脱なし、ユーザー企業による給与台帳レビュー(CUEC)に依存。その他の統制目的に例外はない。データセンターの物理的セキュリティは再受託会社が実施している。</p>`,
+  rows: [
+    { label: "CO1 deviation rate in the sample, in percent(CO1のサンプル逸脱率・%)", type: "num", answer: 5 },
+    { label: "Effect of CO1 deviations on the opinion(CO1の逸脱の意見への影響)", type: "select", options: ["None; deviations described in Section 4", "Qualified opinion", "Adverse opinion", "Disclaimer of opinion"], answer: "None; deviations described in Section 4" },
+    { label: "Effect of CO2 results on the opinion(CO2の結果の意見への影響)", type: "select", options: ["None; deviations described in Section 4", "Qualified opinion", "Adverse opinion", "Disclaimer of opinion"], answer: "Qualified opinion" },
+    { label: "Reporting of CO3(CO3の報告方法)", type: "select", options: ["Report as a deviation", "State that the control did not operate, so no operating effectiveness testing was performed", "Remove the control from the description", "Qualify the opinion"], answer: "State that the control did not operate, so no operating effectiveness testing was performed" },
+    { label: "Effect of the CUEC on the CO4 opinion wording(CUECのCO4に関する意見文言への影響)", type: "select", options: ["Opinion is conditioned on user entities applying the CUEC", "Service auditor tests the CUEC at user entities", "Opinion is qualified", "No effect on wording"], answer: "Opinion is conditioned on user entities applying the CUEC" },
+    { label: "Who tests the subservice organization's physical security controls(再受託会社の物理的セキュリティ統制をテストするのは誰か)", type: "select", options: ["Harbor CPAs", "Not tested in this engagement; user auditors consider other evidence", "PayGrid's user entities' management", "The AICPA"], answer: "Not tested in this engagement; user auditors consider other evidence" },
+  ],
+  explain: `<p>CO1:逸脱率 = 2 ÷ 40 = 5%。補完統制により統制目的が達成されているため意見は無限定で、逸脱はセクション4(運用評価手続と結果)に記載する。</p>
+<p>CO2:統制目的が達成されず、影響はCO2に限定されるため、重要だが広範でない → 限定意見。</p>
+<p>CO3:統制を発動させる事象がなかった場合は逸脱ではなく、テストを実施できなかった旨を記載する。</p>
+<p>CO4:意見は「ユーザー企業がCUECを適用した場合に」統制目的が達成される旨の条件付き文言となる。CUECのテストはユーザー監査人の責任である。</p>
+<p>カーブアウト方式では再受託会社の統制は受託会社監査人のテスト範囲外であり、ユーザー監査人が再受託会社のSOC報告書等で証拠を得る。</p>`,
+});
+
+CPA.tbs({ id: "TBS-ISC-18", section: "ISC", chapter: "ISC-03", title: "SOC 2統制のトラストサービス規準への対応付け",
+  scenario: `<p>CloudLedger, a SaaS provider, is preparing for a SOC 2 Type 2 examination covering security, availability, processing integrity, and confidentiality. For each control below, select the Trust Services Criteria category to which it most directly maps.</p>
+<p class="ja">SaaS事業者CloudLedgerは、セキュリティ、可用性、処理のインテグリティ、機密保持を対象とするSOC 2 Type 2検証業務の準備をしている。以下の各統制について、最も直接対応するトラストサービス規準を選択せよ。</p>`,
+  rows: [
+    { label: "Production changes require peer review, testing evidence, and approval before deployment(本番変更はデプロイ前にピアレビュー・テスト証跡・承認を要する)", type: "select", options: ["CC1", "CC6", "CC7", "CC8", "CC9", "A1", "PI1", "C1"], answer: "CC8" },
+    { label: "Security information and event management alerts are triaged and incidents handled under a response plan(SIEMアラートを選別し、対応計画に従いインシデントを処理する)", type: "select", options: ["CC1", "CC6", "CC7", "CC8", "CC9", "A1", "PI1", "C1"], answer: "CC7" },
+    { label: "Access is revoked within 24 hours of employee termination(退職後24時間以内にアクセス権を削除する)", type: "select", options: ["CC1", "CC6", "CC7", "CC8", "CC9", "A1", "PI1", "C1"], answer: "CC6" },
+    { label: "Critical vendors' SOC 2 reports are obtained and reviewed annually(重要ベンダーのSOC 2報告書を毎年入手・レビューする)", type: "select", options: ["CC1", "CC6", "CC7", "CC8", "CC9", "A1", "PI1", "C1"], answer: "CC9" },
+    { label: "Failover to the secondary region is tested semiannually(セカンダリリージョンへのフェイルオーバーを半年ごとにテストする)", type: "select", options: ["CC1", "CC6", "CC7", "CC8", "CC9", "A1", "PI1", "C1"], answer: "A1" },
+    { label: "Customer data designated confidential is purged at contract end per retention policy(機密指定の顧客データを契約終了時に保持方針に従い消去する)", type: "select", options: ["CC1", "CC6", "CC7", "CC8", "CC9", "A1", "PI1", "C1"], answer: "C1" },
+  ],
+  explain: `<p>CC8は変更管理(変更の承認・テスト・実装)。CC7はシステム運用(異常の検知、インシデント対応・復旧)。CC6は論理的・物理的アクセス(登録・削除を含む)。CC9はリスク軽減(ベンダー管理、事業中断リスク)。</p>
+<p>A1は可用性の追加規準(キャパシティ、バックアップ・復旧、復旧計画のテスト)。C1は機密保持の追加規準(機密情報の識別・保持・廃棄)。</p>
+<p>CC1(統制環境)やPI1(処理の完全性・正確性)に該当する統制は本設問には含まれない。</p>`,
+});
+
+CPA.tbs({ id: "TBS-ISC-19", section: "ISC", chapter: "ISC-03", title: "ユーザー監査人によるSOC 1報告書の評価(AU-C 402)",
+  scenario: `<p>Maple Corp. (calendar-year end, December 31, 20X6) outsources accounts receivable processing to RevServ. The user auditor obtained RevServ's SOC 1 Type 2 report covering October 1, 20X5 through September 30, 20X6, and a bridge letter from RevServ's management for the remaining period. Findings:</p>
+<ul><li>The report lists a CUEC requiring user entities to review monthly aging reports for unusual items.</li>
+<li>RevServ uses the carve-out method for a hosting provider whose controls are relevant to Maple's AR assertions.</li>
+<li>A deviation was reported for a control over RevServ's lockbox service, which Maple does not use.</li>
+<li>The service auditor's opinion is unmodified.</li></ul>
+<p class="ja">Maple社(12月31日決算、20X6年)は売掛金処理をRevServに委託している。ユーザー監査人は20X5年10月1日〜20X6年9月30日を対象とするRevServのSOC 1 Type 2報告書と、残りの期間に関する経営者のブリッジレターを入手した。報告書には月次年齢調べ表のレビューを求めるCUECが記載されている。RevServはMapleの売掛金アサーションに関連するホスティング事業者についてカーブアウト方式を採用している。Mapleが利用していないロックボックス・サービスの統制で逸脱が報告されている。受託会社監査人の意見は無限定である。</p>`,
+  rows: [
+    { label: "Number of months of Maple's fiscal year not covered by the SOC report(SOC報告書でカバーされないMapleの会計年度の月数)", type: "num", answer: 3 },
+    { label: "Nature of the bridge letter(ブリッジレターの性質)", type: "select", options: ["Management representation with no auditor assurance", "Type 2 opinion by the service auditor", "Type 1 opinion by the service auditor", "Agreed-upon procedures report"], answer: "Management representation with no auditor assurance" },
+    { label: "Required response to the CUEC(CUECへの対応)", type: "select", options: ["Test the CUEC at Maple", "Rely on the service auditor's testing", "No action needed", "Request a SOC 3 report"], answer: "Test the CUEC at Maple" },
+    { label: "Response to the carve-out hosting provider(カーブアウトのホスティング事業者への対応)", type: "select", options: ["Obtain evidence such as the hosting provider's SOC report or perform other procedures", "Rely on RevServ's unmodified opinion", "Disclaim an opinion", "Ignore because Maple has no contract with it"], answer: "Obtain evidence such as the hosting provider's SOC report or perform other procedures" },
+    { label: "Effect of the lockbox deviation(ロックボックスの逸脱の影響)", type: "select", options: ["No effect on Maple's risk assessment", "Increase substantive testing of AR", "Qualify the opinion on Maple's statements", "Report cannot be used"], answer: "No effect on Maple's risk assessment" },
+    { label: "Reference to the service auditor in Maple's unmodified audit report(Mapleの無限定監査報告書における受託会社監査人への言及)", type: "select", options: ["Do not refer to the service auditor's report", "Refer and share responsibility", "Refer in an emphasis-of-matter paragraph", "Attach the SOC 1 report"], answer: "Do not refer to the service auditor's report" },
+  ],
+  explain: `<p>ギャップ期間:20X6年10月1日〜12月31日の3か月。ブリッジレターは受託会社経営者の表明にすぎず保証はないため、ギャップの長さやユーザー企業の統制等を考慮して追加手続の要否を判断する。</p>
+<p>CUECは受託会社監査人の意見の前提であり、依拠する場合はユーザー監査人がMaple社でテストする。</p>
+<p>カーブアウトされた再受託会社の統制が関連する場合、その再受託会社のSOC報告書の入手等により証拠を得る。RevServの無限定意見はCSOCの有効性を前提としている。</p>
+<p>利用していないサービスの逸脱はMaple社のリスク評価に影響しない。無限定意見の監査報告書では受託会社監査人の報告書に言及しない(AU-C 402)。</p>`,
+});
