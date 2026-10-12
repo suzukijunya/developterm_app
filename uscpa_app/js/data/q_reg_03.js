@@ -664,3 +664,74 @@ CPA.extend("REG-02", {
     },
   ],
 });
+
+CPA.tbs({ id: "TBS-REG-16", section: "REG", chapter: "REG-02", title: "第7章破産における配当の計算",
+  scenario: `<p>Ridge Co. filed a voluntary Chapter 7 petition. The trustee liquidated all nonexempt property for <b>$300,000</b>, including equipment sold for <b>$80,000</b> that was subject to First Bank's perfected security interest securing a <b>$100,000</b> loan. Other claims:</p>
+<table><tr><th>Claim</th><th>Amount</th></tr>
+<tr><td>Trustee's fees and administrative expenses</td><td>$25,000</td></tr>
+<tr><td>Wages earned within 180 days before the petition — Employee A</td><td>$6,000</td></tr>
+<tr><td>Wages earned within 180 days before the petition — Employee B</td><td>$9,000</td></tr>
+<tr><td>Wages earned within 180 days before the petition — Employee C</td><td>$20,000</td></tr>
+<tr><td>Federal income taxes for the prior year</td><td>$15,000</td></tr>
+<tr><td>General unsecured trade creditors</td><td>$175,000</td></tr></table>
+<p>Assume the wage priority limit is <b>$15,000</b> per employee. There are no domestic support obligations.</p>
+<p class="ja">Ridge社は任意の第7章申立てを行った。管財人は非免除財産をすべて$300,000で換価した。この中には、First Bankの$100,000の融資を担保する対抗要件具備済み担保権の目的である設備の売却代金$80,000が含まれる。その他の債権は表のとおり(管財人報酬・管理費用$25,000、申立前180日以内の賃金 A $6,000・B $9,000・C $20,000、前年の連邦所得税$15,000、一般無担保の取引債権$175,000)。賃金の優先上限は従業員1人当たり$15,000とし、家族扶養債務はない。</p>`,
+  rows: [
+    { label: "Amount available for general unsecured claims after secured and priority claims(担保・優先債権支払後の一般無担保債権への配当可能額)", type: "num", answer: 150000 },
+    { label: "Total general unsecured claims(一般無担保債権の総額)", type: "num", answer: 200000 },
+    { label: "Total amount received by First Bank(First Bankの受取総額)", type: "num", answer: 95000 },
+    { label: "Total amount received by Employee C(従業員Cの受取総額)", type: "num", answer: 18750 },
+    { label: "Amount received by a trade creditor with a $40,000 claim($40,000の取引債権者の受取額)", type: "num", answer: 30000 },
+    { label: "Treatment of the $5,000 of Employee C's wages above the limit(従業員Cの上限超過分$5,000の扱い)", type: "select", options: ["Priority wage claim", "General unsecured claim", "Not allowed", "Administrative expense"], answer: "General unsecured claim" },
+  ],
+  explain: `<p>担保権者:First Bankは設備の売却代金$80,000を受け取り、不足額$20,000は一般無担保債権となる。残余 300,000 − 80,000 = 220,000。</p>
+<p>優先債権:管理費用25,000 → 賃金(A 6,000 + B 9,000 + C 15,000)= 30,000 → 租税15,000。220,000 − 70,000 = 150,000が一般無担保へ。</p>
+<p>一般無担保債権:取引債権175,000 + 銀行不足額20,000 + C超過分5,000 = 200,000。配当率 150,000 ÷ 200,000 = 75%。</p>
+<p>First Bank = 80,000 + 20,000 × 75% = 95,000。従業員C = 15,000 + 5,000 × 75% = 18,750。$40,000の取引債権者 = 40,000 × 75% = 30,000。</p>
+<p>検算:80,000 + 25,000 + 30,000 + 15,000 + 150,000 = 300,000。</p>`,
+});
+
+CPA.tbs({ id: "TBS-REG-17", section: "REG", chapter: "REG-02", title: "UCC第9編:担保権の対抗要件と優先順位",
+  scenario: `<p>Home Appliance Co. ("HAC") is a retailer of household appliances. The following events occurred during the year:</p>
+<ol>
+<li>January 5: First Bank lent HAC $200,000 under a signed security agreement covering all of HAC's present and after-acquired inventory and equipment, and filed a financing statement the same day.</li>
+<li>February 20: Supplier filed a financing statement covering refrigerators it would sell to HAC on credit, retaining a purchase money security interest. On February 22, Supplier sent First Bank an authenticated notice of its PMSI. HAC received the refrigerators on March 1.</li>
+<li>April 10: Ann bought one of the refrigerators from HAC's showroom for her home. Ann knew First Bank had filed a financing statement against HAC's inventory.</li>
+<li>May 2: HAC sold a dishwasher on credit to Ben for his home, taking a signed security agreement. HAC did not file a financing statement.</li>
+<li>June 1: Ben sold the dishwasher to his neighbor Cal for Cal's home use. Cal did not know of HAC's security interest.</li>
+<li>July 1: Equip Finance lent HAC the purchase price of new display racks (equipment) and took a PMSI. HAC received the racks on July 3, and Equip Finance filed a financing statement on July 15.</li>
+</ol>
+<p class="ja">HAC社は家電の小売業者である。①1月5日、First BankはHAC社の現在・将来の棚卸資産と設備を対象とする担保契約により$200,000を融資し、同日登録した。②2月20日、仕入先はHAC社に掛売りする冷蔵庫についてPMSIを留保して登録し、2月22日にFirst Bankへ認証済み通知を送付した。HAC社は3月1日に冷蔵庫を受領した。③4月10日、AnnはHAC社の店頭で家庭用に冷蔵庫を購入した。AnnはFirst Bankの登録を知っていた。④5月2日、HAC社はBenに家庭用の食器洗い機を掛売りし、署名済み担保契約を取得したが登録しなかった。⑤6月1日、Benは隣人Calに家庭用として売却した。CalはHAC社の担保権を知らなかった。⑥7月1日、Equip Financeは陳列棚(設備)の購入資金を融資しPMSIを取得した。HAC社は7月3日に受領し、Equip Financeは7月15日に登録した。</p>`,
+  rows: [
+    { label: "Priority in the refrigerators HAC received March 1(3月1日受領の冷蔵庫に対する優先権)", type: "select", options: ["First Bank", "Supplier", "Shared pro rata"], answer: "Supplier" },
+    { label: "Ann's rights in her refrigerator(Annの冷蔵庫に対する権利)", type: "select", options: ["Takes free of First Bank's interest", "Subject to First Bank's interest because she knew of the filing", "Subject to Supplier's interest only"], answer: "Takes free of First Bank's interest" },
+    { label: "When HAC's security interest in Ben's dishwasher was perfected(Benの食器洗い機に対するHAC社の担保権の対抗要件具備時期)", type: "select", options: ["Upon attachment, without filing", "Only upon filing", "Never, because HAC lacked possession"], answer: "Upon attachment, without filing" },
+    { label: "Cal's rights in the dishwasher(Calの食器洗い機に対する権利)", type: "select", options: ["Takes free of HAC's interest", "Subject to HAC's interest because it was perfected", "Subject to HAC's interest only if Ben defaults"], answer: "Takes free of HAC's interest" },
+    { label: "Priority in the display racks(陳列棚に対する優先権)", type: "select", options: ["First Bank", "Equip Finance", "Shared pro rata"], answer: "Equip Finance" },
+    { label: "Upon HAC's default, First Bank's right to repossess remaining inventory(HAC社の不履行時のFirst Bankによる在庫回収)", type: "select", options: ["Self-help permitted if no breach of the peace", "Court order always required", "Not permitted until 90 days after default"], answer: "Self-help permitted if no breach of the peace" },
+  ],
+  explain: `<p>① 棚卸資産のPMSIは、債務者の受領前に対抗要件を具備し、先行登録者に認証済み通知を送れば優先する。仕入先は2月20日登録・2月22日通知・3月1日受領なので仕入先が優先。</p>
+<p>② Annは通常の営業過程の買主(BIOC)であり、売主が設定した担保権について、登録を知っていてもその負担を受けない。</p>
+<p>③ 消費財のPMSIは付着と同時に自動的に対抗要件を具備する(登録不要)。</p>
+<p>④ しかし登録していないため、善意・有償で家庭用に購入した消費者(Cal)には対抗できない(garage sale rule)。</p>
+<p>⑤ 棚卸資産以外のPMSIは、債務者の受領後20日以内(7月3日→7月15日は12日後)に対抗要件を具備すれば先行登録者に優先する。</p>
+<p>⑥ 担保権者は平穏を害しない限り、裁判手続によらず自力で担保物を回収できる。</p>`,
+});
+
+CPA.tbs({ id: "TBS-REG-18", section: "REG", chapter: "REG-02", title: "共同保証人の分担と保証人の権利",
+  scenario: `<p>Delta Inc. borrowed <b>$240,000</b> from Lender, secured by Delta's inventory. Three co-sureties guaranteed the loan: <b>X</b> up to <b>$120,000</b>, <b>Y</b> up to <b>$80,000</b>, and <b>Z</b> up to <b>$200,000</b>. When the unpaid balance was <b>$200,000</b>, Delta defaulted, and Lender collected the entire <b>$200,000</b> from Z. X and Y are solvent.</p>
+<p class="ja">Delta社は棚卸資産を担保として貸手から$240,000を借り入れた。3名の共同保証人が保証しており、Xは$120,000まで、Yは$80,000まで、Zは$200,000までである。未返済残高が$200,000の時点でDelta社は不履行となり、貸手はZから$200,000全額を回収した。XとYは支払能力がある。</p>`,
+  rows: [
+    { label: "Amount Z may recover from X through contribution(ZがXに分担請求できる額)", type: "num", answer: 60000 },
+    { label: "Amount Z may recover from Y through contribution(ZがYに分担請求できる額)", type: "num", answer: 40000 },
+    { label: "Amount Z may seek from Delta through reimbursement(ZがDelta社に求償できる額)", type: "num", answer: 200000 },
+    { label: "Alternative: if Lender had released X before default without the others' consent or a reservation of rights, the maximum Lender could collect from Y and Z combined(別例:不履行前に貸手が同意・権利留保なくXを免除していた場合、貸手がYとZから合計で回収できる最大額)", type: "num", answer: 140000 },
+    { label: "Right allowing Z to enforce Lender's security interest in Delta's inventory(Delta社の棚卸資産に対する貸手の担保権をZが行使できる権利)", type: "select", options: ["Exoneration", "Subrogation", "Contribution", "Reimbursement"], answer: "Subrogation" },
+    { label: "Right Z could have used before paying, to compel Delta to pay Lender when due(支払前に、期日にDelta社に弁済させるためZが使えた権利)", type: "select", options: ["Exoneration", "Subrogation", "Contribution", "Reimbursement"], answer: "Exoneration" },
+  ],
+  explain: `<p>分担割合は保証限度額の比率:合計 120,000 + 80,000 + 200,000 = 400,000。X 30%、Y 20%、Z 50%。</p>
+<p>X = 200,000 × 30% = 60,000、Y = 200,000 × 20% = 40,000(Z自身の負担は100,000)。</p>
+<p>保証人は主債務者に対して弁済額全額を求償(reimbursement)できる → 200,000。</p>
+<p>共同保証人の一人を免除すると、他の保証人は免除された者の分担部分(60,000)の範囲で免責される → 200,000 − 60,000 = 140,000。</p>
+<p>代位(subrogation)により、弁済した保証人は債権者の担保権等を行使できる。求償免除請求(exoneration)は、弁済前に債務者へ支払を強制する権利である。</p>`,
+});
