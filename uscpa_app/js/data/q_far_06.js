@@ -404,14 +404,14 @@ CPA.extend("FAR-05", {
       ja: "会社の普通株式は1月1日に80,000株であった。3月1日に24,000株を発行し、7月1日に自己株式9,000株を取得し、11月1日に10%の株式配当を交付した。基本的EPSの加重平均株式数はいくらか。",
       c: ["95,500", "97,083", "105,050", "114,400"],
       a: 2,
-      ex: "株式配当前:80,000 + 24,000 × 10/12 − 9,000 × 6/12 = 95,500。株式配当は期首に遡って調整するため × 1.1 = 105,050。株式配当を11月1日から加重した$97,083は誤り。",
+      ex: "株式配当前:80,000 + 24,000 × 10/12 − 9,000 × 6/12 = 95,500。株式配当は期首に遡って調整するため × 1.1 = 105,050。株式配当を11月1日から加重した97,083株は誤り。",
     },
     {
       q: "On April 1, a company granted 20,000 stock options with an exercise price of $30. The average market price of the common stock from April 1 through December 31 was $40, and the year-end market price was $45. Using the treasury stock method, how many incremental shares should be included in the weighted-average shares for diluted EPS for the year?",
       ja: "4月1日、会社は行使価格$30のストック・オプション20,000個を付与した。4月1日から12月31日までの平均株価は$40、期末株価は$45であった。自己株式法により、当期の希薄化後EPSの加重平均株式数に含める増加株式数はいくらか。",
       c: ["5,000", "3,750", "6,667", "15,000"],
       a: 1,
-      ex: "増加株式数 = 20,000 − 20,000 × 30 ÷ 40 = 5,000。期中付与のため9/12を乗じて3,750。希薄化後EPSでは平均株価を用い、期末株価による$6,667は誤り。",
+      ex: "増加株式数 = 20,000 − 20,000 × 30 ÷ 40 = 5,000。期中付与のため9/12を乗じて3,750。希薄化後EPSでは平均株価を用い、期末株価による6,667株(9/12前)は誤り。",
     },
     {
       q: "A company reported net income of $400,000 and had 200,000 weighted-average common shares outstanding. It also had $1,000,000 of 5% convertible bonds, issued at par, outstanding all year and convertible into 40,000 common shares. The tax rate is 25%. What is diluted EPS?",
