@@ -690,5 +690,66 @@ CPA.extend("AUD-02", {
       a: 0,
       ex: "構成単位の監査人が独立性の要件を満たさない場合、その作業を利用することも報告書で言及することもできず、グループ監査チーム自身が実施するなど他の方法で構成単位の財務情報について十分かつ適切な証拠を入手する。",
     },
+    {
+      q: "Under SAS No. 145, an auditor assessing inherent risk for the valuation of a client's Level 3 investments considers the inherent risk factors. Which of the following is NOT one of the inherent risk factors described in the standard?",
+      ja: "SAS No. 145において、監査人は顧客のレベル3投資の評価に関する固有リスクを評価する際に固有リスク要因を考慮する。次のうち、基準に示された固有リスク要因に該当しないものはどれか。",
+      c: [
+        "Subjectivity in the inputs and assumptions used in the fair value measurement",
+        "A deficiency in the entity's controls over the review of the valuation model",
+        "Estimation uncertainty in the unobservable inputs",
+        "Susceptibility to misstatement due to management bias",
+      ],
+      a: 1,
+      ex: "SAS 145の固有リスク要因は複雑性・主観性・変化・不確実性・経営者の偏向または不正による虚偽表示の起こりやすさである。内部統制の不備は統制リスク(または内部統制の理解)に関する事項であり、固有リスクは統制を考慮する前に評価する。",
+    },
   ],
+});
+
+CPA.tbs({ id: "TBS-AUD-12", section: "AUD", chapter: "AUD-02", title: "重要性の基準値・手続実施上の重要性の計算",
+  scenario: `<p>Hayashi Manufacturing, a nonissuer, is audited for the year ended December 31, Year 2. Preliminary financial data:</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Total revenue</td><td>$48,000,000</td></tr>
+<tr><td>Pretax income from continuing operations</td><td>$3,200,000</td></tr>
+<tr><td>Total assets</td><td>$30,000,000</td></tr></table>
+<p>The audit firm's methodology sets overall materiality at <b>5% of pretax income from continuing operations</b>. Because of a moderate history of audit adjustments, performance materiality is set at <b>70%</b> of overall materiality. The clearly trivial threshold is <b>4%</b> of overall materiality. A specific (lower) materiality of <b>$40,000</b> is set for related party transactions. Uncorrected misstatements identified at year-end total <b>$118,000</b> (all above the clearly trivial threshold).</p>
+<p class="ja">非公開会社のHayashi Manufacturingの2年目12月31日終了年度の監査。予備的財務数値は、売上高$48,000,000、継続事業からの税引前利益$3,200,000、総資産$30,000,000である。監査事務所の方針では、重要性の基準値は継続事業からの税引前利益の5%とする。過去に中程度の監査修正があったため、手続実施上の重要性は重要性の基準値の70%とする。明らかに僅少な金額の基準は重要性の基準値の4%とする。関連当事者取引には特定の(より低い)重要性$40,000を設定する。期末に識別された未修正の虚偽表示の合計は$118,000(すべて明らかに僅少な基準を超える)。</p>`,
+  rows: [
+    { label: "Overall materiality(重要性の基準値)", type: "num", answer: 160000 },
+    { label: "Performance materiality(手続実施上の重要性)", type: "num", answer: 112000 },
+    { label: "Clearly trivial threshold(明らかに僅少な金額の基準)", type: "num", answer: 6400 },
+    { label: "Do the uncorrected misstatements of $118,000, in total, exceed overall materiality?(未修正の虚偽表示合計は重要性の基準値を超えるか)", type: "select", options: ["Yes", "No"], answer: "No" },
+    { label: "A $45,000 unrecorded related party payment, considered alone, is(単独の$45,000の未記録の関連当事者支払は)", type: "select", options: ["Material because it exceeds the specific materiality for related party transactions", "Immaterial because it is below overall materiality", "Clearly trivial", "Immaterial because it is below performance materiality"], answer: "Material because it exceeds the specific materiality for related party transactions" },
+  ],
+  explain: `<p>重要性の基準値 = $3,200,000 × 5% = $160,000。手続実施上の重要性 = $160,000 × 70% = $112,000。明らかに僅少な基準 = $160,000 × 4% = $6,400。</p>
+<p>未修正虚偽表示$118,000は重要性の基準値$160,000を下回る(手続実施上の重要性$112,000は超えるが、PMは手続の設計に用いる値であり、虚偽表示の評価は重要性の基準値および特定の重要性と比較する。ただし基準値に近いため集計リスクに留意する)。関連当事者取引の$45,000は全体の基準値未満でも、特定の重要性$40,000を超えるため重要と判断する。</p>`,
+});
+
+CPA.tbs({ id: "TBS-AUD-13", section: "AUD", chapter: "AUD-02", title: "不正リスク要因と監査上の対応",
+  scenario: `<p>During planning for the audit of Okada Retail Inc., the engagement team identified the conditions listed below. For each condition, select the fraud risk factor category under AU-C 240 (fraud triangle) or the most appropriate audit response, as indicated.</p>
+<p class="ja">Okada Retail社の監査計画において、監査チームは以下の状況を識別した。各状況について、AU-C 240(不正のトライアングル)上の不正リスク要因の区分、または最も適切な監査上の対応を選択せよ。</p>`,
+  rows: [
+    { label: "Management's bonuses are based almost entirely on meeting quarterly EPS targets — category(経営者賞与がほぼ四半期EPS目標の達成のみに基づく — 区分)", type: "select", options: ["Incentive/pressure", "Opportunity", "Attitude/rationalization"], answer: "Incentive/pressure" },
+    { label: "A single individual dominates management with no effective oversight by the board — category(1人が経営を支配し取締役会による有効な監視がない — 区分)", type: "select", options: ["Incentive/pressure", "Opportunity", "Attitude/rationalization"], answer: "Opportunity" },
+    { label: "Management repeatedly justifies aggressive accounting as \"industry practice\" and disputes auditor positions — category(経営者が積極的な会計処理を「業界慣行」と正当化し監査人と対立 — 区分)", type: "select", options: ["Incentive/pressure", "Opportunity", "Attitude/rationalization"], answer: "Attitude/rationalization" },
+    { label: "Response to a presumed risk of improper revenue recognition near year-end(期末付近の不適切な収益認識の推定リスクへの対応)", type: "select", options: ["Perform cutoff testing of sales and confirm terms of significant year-end sales, including side agreements", "Rely solely on management's representations", "Reduce substantive testing of revenue", "Perform tests of controls only at an interim date"], answer: "Perform cutoff testing of sales and confirm terms of significant year-end sales, including side agreements" },
+    { label: "Response to risk of management override of controls (required in every audit)(経営者による内部統制の無効化リスクへの対応:すべての監査で必須)", type: "select", options: ["Test journal entries, review estimates for bias, and evaluate the business rationale for significant unusual transactions", "Assign additional staff to inventory observation", "Increase the sample size for tests of payroll controls", "Obtain a legal letter from outside counsel"], answer: "Test journal entries, review estimates for bias, and evaluate the business rationale for significant unusual transactions" },
+    { label: "Overall response at the financial statement level(財務諸表全体レベルの全般的な対応)", type: "select", options: ["Incorporate an element of unpredictability in the selection of procedures", "Lower the materiality threshold to zero", "Issue a disclaimer of opinion", "Withdraw from the engagement immediately"], answer: "Incorporate an element of unpredictability in the selection of procedures" },
+  ],
+  explain: `<p>業績連動賞与は動機・プレッシャー、監視の欠如した支配は機会、積極的会計の正当化や監査人との対立は姿勢・正当化に該当する。</p>
+<p>収益認識は不正リスクと推定され、期末のカットオフテストや重要取引の条件(サイドアグリーメント含む)の確認で対応する。経営者による内部統制の無効化には、仕訳テスト、見積りの偏向の検討、通例でない重要な取引の事業上の合理性の評価が常に要求される。全般的対応として、人員配置・会計方針の評価のほか、手続の選択に予測不能性の要素を組み込む。</p>`,
+});
+
+CPA.tbs({ id: "TBS-AUD-14", section: "AUD", chapter: "AUD-02", title: "監査契約書の記載事項と前任監査人とのコミュニケーション",
+  scenario: `<p>Mori &amp; Co., CPAs, has been asked to audit the financial statements of Ueda Corp., a nonissuer, for the first time. Ueda's prior-year financial statements were audited by another firm. For each item below, select the most appropriate answer under AU-C 210 (terms of engagement) and AU-C 510 (opening balances/predecessor communication).</p>
+<p class="ja">Mori &amp; Co.(CPA事務所)は、非公開会社であるUeda社の財務諸表監査を初めて依頼された。Ueda社の前年度財務諸表は他の事務所が監査した。各項目について、AU-C 210(監査契約の条件)およびAU-C 510(期首残高・前任監査人とのコミュニケーション)に基づき最も適切な答えを選択せよ。</p>`,
+  rows: [
+    { label: "Identification of the applicable financial reporting framework(適用される財務報告の枠組みの特定)", type: "select", options: ["Required in the engagement letter", "Not required in the engagement letter"], answer: "Required in the engagement letter" },
+    { label: "Management's responsibility for internal control relevant to preparation of the financial statements(財務諸表作成に関連する内部統制に対する経営者の責任)", type: "select", options: ["Required in the engagement letter", "Not required in the engagement letter"], answer: "Required in the engagement letter" },
+    { label: "A list of the specific audit procedures and sample sizes to be applied(実施する具体的な監査手続とサンプル数の一覧)", type: "select", options: ["Required in the engagement letter", "Not required in the engagement letter"], answer: "Not required in the engagement letter" },
+    { label: "Reference to the expected form and content of the auditor's report and a statement that it may differ(予想される監査報告書の様式と内容、及びそれが異なりうる旨)", type: "select", options: ["Required in the engagement letter", "Not required in the engagement letter"], answer: "Required in the engagement letter" },
+    { label: "Before accepting, Mori should communicate with the predecessor auditor(受嘱前に前任監査人とコミュニケーションを行う際)", type: "select", options: ["Only after obtaining Ueda's permission, and inquire about disagreements with management and the reasons for the change", "Without Ueda's permission, because the inquiry is required", "Only after accepting the engagement, by reviewing the predecessor's documentation", "Only if Ueda's management asks Mori to do so"], answer: "Only after obtaining Ueda's permission, and inquire about disagreements with management and the reasons for the change" },
+    { label: "If Ueda refuses to permit the predecessor to respond fully(Ueda社が前任監査人の十分な回答を許可しない場合)", type: "select", options: ["Mori should consider the implications in deciding whether to accept the engagement", "Mori must issue a disclaimer of opinion", "Mori may ignore it because the predecessor communication is optional", "Mori should report Ueda to the state board of accountancy"], answer: "Mori should consider the implications in deciding whether to accept the engagement" },
+  ],
+  explain: `<p>AU-C 210により、監査契約書には監査の目的と範囲、監査人の責任、経営者の責任(財務諸表作成、内部統制、情報へのアクセス提供等)、適用される財務報告の枠組み、予想される報告書の様式と内容(状況により異なりうる旨)を記載する。具体的手続やサンプル数は監査人の判断事項であり記載は不要である。</p>
+<p>前任監査人とのコミュニケーションは受嘱前に、顧客の許可を得て行い、経営者の誠実性、経営者との意見の相違、不正・違法行為の伝達、監査人交代の理由等を質問する。顧客が十分な回答を許可しない場合、その理由と受嘱可否への影響を検討する。</p>`,
 });

@@ -544,3 +544,61 @@ CPA.extend("FAR-03", {
     },
   ],
 });
+
+CPA.tbs({ id: "TBS-FAR-22", section: "FAR", chapter: "FAR-03", title: "減価償却の見積りの変更と除却損益",
+  scenario: `<p>On January 1, Year 1, Kurata Corp. purchased a machine for <b>$250,000</b>. Kurata estimated a 10-year useful life and a salvage value of $25,000, and uses the straight-line method.</p>
+<p>On January 1, Year 3, based on new information, Kurata revised its estimates: the machine's <b>remaining</b> useful life is 5 years and its salvage value is $15,000. The method remains straight-line.</p>
+<p>On December 31, Year 4, after recording Year 4 depreciation, Kurata sold the machine for <b>$120,000</b> cash.</p>
+<p class="ja">Kurata社は第1年度1月1日に機械を$250,000で購入した。耐用年数10年、残存価額$25,000、定額法で償却する。第3年度1月1日、新たな情報に基づき見積りを改訂し、残存耐用年数を5年、残存価額を$15,000とした(償却方法は定額法のまま)。第4年度12月31日、同年度の減価償却を計上した後、機械を現金$120,000で売却した。</p>`,
+  rows: [
+    { label: "Year 1 depreciation expense(第1年度の減価償却費)", type: "num", answer: 22500 },
+    { label: "Carrying amount at January 1, Year 3(第3年度1月1日の帳簿価額)", type: "num", answer: 205000 },
+    { label: "How is the change in estimate reported?(見積りの変更の会計処理)", type: "select", options: ["Retrospective restatement of prior years", "Prospectively in the current and future periods", "Cumulative-effect adjustment to Year 3 opening retained earnings"], answer: "Prospectively in the current and future periods" },
+    { label: "Year 3 depreciation expense(第3年度の減価償却費)", type: "num", answer: 38000 },
+    { label: "Carrying amount at December 31, Year 4(第4年度12月31日の帳簿価額)", type: "num", answer: 129000 },
+    { label: "Loss on sale of the machine — enter as a positive number(機械売却損、正の数で入力)", type: "num", answer: 9000 },
+  ],
+  explain: `<p>当初の年償却額 = (250,000 − 25,000) ÷ 10 = 22,500。第3年度期首の帳簿価額 = 250,000 − 22,500 × 2 = 205,000。</p>
+<p>耐用年数・残存価額の変更は会計上の見積りの変更であり、過年度修正は行わず当期以降に将来に向かって反映する(prospective)。第3年度以降の年償却額 = (205,000 − 15,000) ÷ 5 = 38,000。</p>
+<p>第4年度末の帳簿価額 = 205,000 − 38,000 × 2 = 129,000。売却損 = 129,000 − 120,000 = 9,000。</p>`,
+});
+
+CPA.tbs({ id: "TBS-FAR-23", section: "FAR", chapter: "FAR-03", title: "長期性資産の減損(保有使用 vs 売却目的保有)",
+  scenario: `<p>At December 31, Year 5, Minato Inc. identified indicators of impairment for an asset group with the following data:</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Cost</td><td>$1,200,000</td></tr>
+<tr><td>Accumulated depreciation</td><td>$400,000</td></tr>
+<tr><td>Sum of undiscounted future cash flows</td><td>$750,000</td></tr>
+<tr><td>Fair value</td><td>$600,000</td></tr>
+<tr><td>Estimated costs to sell</td><td>$30,000</td></tr></table>
+<p>Consider two independent cases. <b>Case A:</b> the asset group continues to be held and used; its remaining useful life is 5 years with no salvage value (straight-line). <b>Case B:</b> on December 31, Year 5, the asset group meets all criteria to be classified as held for sale. At December 31, Year 6, its fair value less costs to sell has increased to <b>$590,000</b>.</p>
+<p class="ja">Minato社は第5年度12月31日、ある資産グループに減損の兆候を識別した。取得原価$1,200,000、減価償却累計額$400,000、割引前将来キャッシュフロー合計$750,000、公正価値$600,000、見積売却費用$30,000。次の2つの独立したケースを検討する。ケースA:引き続き保有・使用し、残存耐用年数5年、残存価額ゼロ(定額法)。ケースB:第5年度12月31日に売却目的保有の要件をすべて満たした。第6年度12月31日には売却費用控除後の公正価値が$590,000に上昇した。</p>`,
+  rows: [
+    { label: "Case A: Impairment loss for Year 5(ケースA:第5年度の減損損失)", type: "num", answer: 200000 },
+    { label: "Case A: Depreciation expense for Year 6(ケースA:第6年度の減価償却費)", type: "num", answer: 120000 },
+    { label: "Case A: If fair value recovers in Year 6, the impairment loss is…(ケースA:第6年度に公正価値が回復した場合の減損損失の扱い)", type: "select", options: ["Reversed up to the original loss", "Not reversed", "Reversed through other comprehensive income"], answer: "Not reversed" },
+    { label: "Case B: Impairment loss for Year 5(ケースB:第5年度の減損損失)", type: "num", answer: 230000 },
+    { label: "Case B: Depreciation expense for Year 6(ケースB:第6年度の減価償却費)", type: "num", answer: 0 },
+    { label: "Case B: Gain recognized in Year 6(ケースB:第6年度に認識する利得)", type: "num", answer: 20000 },
+  ],
+  explain: `<p>帳簿価額 = 1,200,000 − 400,000 = 800,000。</p>
+<p>ケースA(保有使用):回収可能性テストで割引前CF 750,000 < 帳簿価額 800,000 のため減損あり。減損損失 = 800,000 − 公正価値 600,000 = 200,000(売却費用は控除しない)。600,000が新たな取得原価となり、第6年度償却費 = 600,000 ÷ 5 = 120,000。保有使用資産の減損損失の戻入れは禁止される。</p>
+<p>ケースB(売却目的保有):帳簿価額と売却費用控除後公正価値の低い方で測定し、減損損失 = 800,000 − (600,000 − 30,000) = 230,000。売却目的保有に分類された資産は減価償却しない。その後の公正価値(売却費用控除後)の上昇は、過去に認識した減損損失累計額を上限に利得として認識する:590,000 − 570,000 = 20,000(上限230,000以内)。</p>`,
+});
+
+CPA.tbs({ id: "TBS-FAR-24", section: "FAR", chapter: "FAR-03", title: "資産除去債務(ARO)の当初測定と利息費用",
+  scenario: `<p>On January 1, Year 1, Kaigan Energy Co. completed construction of an offshore platform at a cost of <b>$2,000,000</b>. The platform has a 10-year useful life with no salvage value and is depreciated using the straight-line method. Kaigan is legally required to dismantle the platform at the end of its useful life.</p>
+<p>Kaigan estimates the expected (probability-weighted) cash outflow for dismantling at the end of Year 10 to be <b>$500,000</b>. Kaigan's credit-adjusted risk-free rate is <b>8%</b>. The present value of $1 for 10 periods at 8% is <b>0.4632</b>.</p>
+<p class="ja">Kaigan Energy社は第1年度1月1日に洋上プラットフォームを$2,000,000で完成させた。耐用年数10年、残存価額ゼロ、定額法で償却する。耐用年数終了時に撤去する法的義務がある。第10年度末の撤去に係る期待キャッシュアウトフロー(確率加重)は$500,000と見積られる。信用調整後リスクフリーレートは8%、10期間8%の現価係数は0.4632である。</p>`,
+  rows: [
+    { label: "Initial asset retirement obligation(資産除去債務の当初計上額)", type: "num", answer: 231600 },
+    { label: "Total capitalized cost of the platform at January 1, Year 1(第1年度1月1日のプラットフォームの資産計上額合計)", type: "num", answer: 2231600 },
+    { label: "Year 1 accretion expense(第1年度の利息費用(accretion))", type: "num", answer: 18528 },
+    { label: "Year 1 depreciation expense(第1年度の減価償却費)", type: "num", answer: 223160 },
+    { label: "ARO liability balance at December 31, Year 1(第1年度12月31日の資産除去債務残高)", type: "num", answer: 250128 },
+    { label: "Income statement classification of accretion expense(accretion費用の損益計算書上の区分)", type: "select", options: ["Interest expense", "Operating expense (not interest)", "Other comprehensive income"], answer: "Operating expense (not interest)" },
+  ],
+  explain: `<p>AROは期待現在価値法により信用調整後リスクフリーレートで割り引いて公正価値で当初測定する:500,000 × 0.4632 = 231,600。同額を資産除去費用として関連資産の帳簿価額に加算する:2,000,000 + 231,600 = 2,231,600。</p>
+<p>第1年度のaccretion = 231,600 × 8% = 18,528。期末債務残高 = 231,600 + 18,528 = 250,128。減価償却費 = 2,231,600 ÷ 10 = 223,160。</p>
+<p>accretion費用は営業費用として表示し、利息費用には含めない(資本化利息の対象にもならない)。</p>`,
+});

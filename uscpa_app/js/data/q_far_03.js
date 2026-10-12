@@ -229,8 +229,8 @@ CPA.extend("FAR-03", {
       ex: "値下を分母から除くと分母が大きくなり原価率が低くなるため、期末棚卸高は低く算定され、低価法(LCM)に近似する。平均原価法は値下も含めるので原価率が高くなる。",
     },
     {
-      q: "A company adopted dollar-value LIFO on January 1, Year 1, when inventory was $200,000 (index 1.00). At December 31, Year 2, inventory at current cost was $264,000 (index 1.10). At December 31, Year 3, inventory at current cost was $276,000 (index 1.20). What is the dollar-value LIFO inventory at December 31, Year 3?",
-      ja: "会社は第1年度1月1日、棚卸資産$200,000(指数1.00)の時点でドル価値LIFOを採用した。第2年度12月31日の当期原価による棚卸資産は$264,000(指数1.10)、第3年度12月31日は$276,000(指数1.20)であった。第3年度12月31日のドル価値LIFOによる棚卸資産はいくらか。",
+      q: "A company adopted dollar-value LIFO on January 1, Year 2, when inventory was $200,000 (index 1.00). At December 31, Year 2, inventory at current cost was $264,000 (index 1.10). At December 31, Year 3, inventory at current cost was $276,000 (index 1.20). What is the dollar-value LIFO inventory at December 31, Year 3?",
+      ja: "会社は第2年度1月1日、棚卸資産$200,000(指数1.00)の時点でドル価値LIFOを採用した。第2年度12月31日の当期原価による棚卸資産は$264,000(指数1.10)、第3年度12月31日は$276,000(指数1.20)であった。第3年度12月31日のドル価値LIFOによる棚卸資産はいくらか。",
       c: ["$233,000", "$276,000", "$236,000", "$244,000"],
       a: 0,
       ex: "第2年度:基準年価格240,000 → 層40,000 × 1.10 = 44,000、合計244,000。第3年度:276,000 ÷ 1.20 = 230,000 → 10,000減少し第2年度層から取り崩す。200,000 + 30,000 × 1.10 = 233,000。残存層に当期指数1.20を使うと$236,000。",

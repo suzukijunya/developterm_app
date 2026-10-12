@@ -244,3 +244,66 @@ CPA.extend("REG-02", {
       a: 3, ex: "不渡り小切手等の詐欺で取得した者は取り消しうる権原(voidable title)を持ち、善意有償の購入者に完全な権原を移転できる。盗人の権原は無効(void)であり、善意の購入者でも所有権を取得できない。" },
   ],
 });
+
+CPA.tbs({
+  id: "TBS-REG-13",
+  section: "REG",
+  chapter: "REG-02",
+  title: "契約の成立・抗弁・詐欺防止法",
+  scenario: `<p>For each independent situation, determine whether a contract was formed, which defense (if any) applies, or whether the statute of frauds requires a writing.</p>
+<p class="ja">各独立した状況について、契約が成立したか、どの抗弁が適用されるか(適用なしを含む)、または詐欺防止法により書面が必要かを判断しなさい。</p>`,
+  rows: [
+    { label: "Lee mailed an offer to Kim on Day 1. Lee mailed a revocation on Day 2, which Kim received on Day 4. Kim mailed an acceptance on Day 3.(Leeは1日目にKimへ申込みを郵送した。Leeは2日目に撤回を郵送し、Kimは4日目に受領した。Kimは3日目に承諾を郵送した)", type: "select", options: ["Contract formed", "No contract"], answer: "Contract formed" },
+    { label: "Buyer signed a contract after Seller's agent threatened to physically harm Buyer's family.(売主の代理人が買主の家族への危害を脅したため、買主は契約に署名した)", type: "select", options: ["Fraud", "Duress", "Undue influence", "Unilateral mistake", "None — enforceable"], answer: "Duress" },
+    { label: "An elderly, dependent patient sold his house at a low price to his live-in caregiver, who controlled his daily affairs and urged the sale.(依存関係にある高齢の患者が、日常生活を支配し売却を勧めた住み込み介護者に自宅を安値で売却した)", type: "select", options: ["Fraud", "Duress", "Undue influence", "Unilateral mistake", "None — enforceable"], answer: "Undue influence" },
+    { label: "A contractor made an addition error in its bid; the owner accepted without knowing or having reason to know of the error.(建設業者が入札額に計算ミスをしたが、発注者はそれを知らず知り得べき理由もなく承諾した)", type: "select", options: ["Fraud", "Duress", "Undue influence", "Unilateral mistake", "None — enforceable"], answer: "None — enforceable" },
+    { label: "An oral agreement to employ a manager for 18 months beginning next week(来週から18か月間マネージャーを雇用する口頭の合意)", type: "select", options: ["Writing required", "Writing not required"], answer: "Writing required" },
+    { label: "An oral order for $8,000 of specially manufactured goods unsuitable for sale to others; the seller has made a substantial beginning on production(他者に販売できない$8,000の特注品の口頭注文。売主は製造に実質的に着手済み)", type: "select", options: ["Writing required", "Writing not required"], answer: "Writing not required" },
+  ],
+  explain: `<p>承諾は発信時に効力を生じ(発信主義)、撤回は到達時に効力を生じる。Kimが3日目に承諾を発信した時点で撤回は未到達のため、契約は成立している。</p>
+<p>身体的危害の脅迫 → 強迫(duress)。信頼・支配関係を利用した不当な説得 → 不当威圧(undue influence)。相手方が知らず知り得べき理由もない一方的錯誤は原則として抗弁にならない。</p>
+<p>履行に1年超を要する契約は書面が必要。$500以上の物品売買でも、特注品で売主が実質的に着手していれば書面は不要(UCC §2-201(3)(a))。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-REG-14",
+  section: "REG",
+  chapter: "REG-02",
+  title: "UCCにおける危険負担と保証",
+  scenario: `<p>For each independent sale of goods, identify who bears the risk of loss when the goods are destroyed without the fault of either party, or which warranty (if any) is breached.</p>
+<p class="ja">各独立した物品売買について、当事者いずれにも過失なく物品が滅失した場合に危険を負担するのは誰か、またはどの保証に違反するか(違反なしを含む)を判断しなさい。</p>`,
+  rows: [
+    { label: "Conforming goods shipped FOB shipping point are destroyed while in the carrier's possession.(FOB船積地条件で発送された適合品が運送人の占有中に滅失した)", type: "select", options: ["Seller", "Buyer"], answer: "Buyer" },
+    { label: "Conforming goods shipped FOB destination are destroyed while in the carrier's possession.(FOB仕向地条件で発送された適合品が運送人の占有中に滅失した)", type: "select", options: ["Seller", "Buyer"], answer: "Seller" },
+    { label: "Seller ships goods that do not conform to the contract, FOB shipping point; they are destroyed in transit before Buyer could reject them.(売主が契約不適合品をFOB船積地条件で発送し、買主が拒絶する前に輸送中に滅失した)", type: "select", options: ["Seller", "Buyer"], answer: "Seller" },
+    { label: "Goods are held by a warehouse; Seller delivers a negotiable warehouse receipt to Buyer, and the goods are destroyed the next day.(物品は倉庫に保管され、売主が流通性倉庫証券を買主に交付し、翌日物品が滅失した)", type: "select", options: ["Seller", "Buyer"], answer: "Buyer" },
+    { label: "A hardware store sells a ladder that collapses under normal use; the contract says nothing about warranties.(金物店が販売した脚立が通常の使用で崩壊した。契約に保証の定めはない)", type: "select", options: ["Express warranty", "Implied warranty of merchantability", "Implied warranty of fitness for a particular purpose", "Warranty of title", "No warranty breached"], answer: "Implied warranty of merchantability" },
+    { label: "Buyer told a non-merchant seller that she needed a coating for a boat hull below the waterline and relied on the seller to choose one; the coating dissolved in seawater.(買主が非商人の売主に船底の水面下用の塗料が必要だと伝え、売主の選択に依拠したが、塗料は海水で溶けた)", type: "select", options: ["Express warranty", "Implied warranty of merchantability", "Implied warranty of fitness for a particular purpose", "Warranty of title", "No warranty breached"], answer: "Implied warranty of fitness for a particular purpose" },
+  ],
+  explain: `<p>FOB船積地 → 運送人への引渡し時に買主へ移転。FOB仕向地 → 仕向地での提供時に移転。不適合品の場合、買主が受領するか売主が追完するまで危険は売主に残る(§2-510)。倉庫保管品で流通性証券がある場合、買主が証券を受領した時に危険が移転する。</p>
+<p>商品性の黙示保証はその種類の物品を扱う商人の売主にのみ生じる。特定目的適合性の黙示保証は、売主が買主の特定目的と売主の技能への依拠を知っていれば、商人でない売主にも生じる。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-REG-15",
+  section: "REG",
+  chapter: "REG-02",
+  title: "UCCにおける損害賠償の計算",
+  scenario: `<p><b>Part A.</b> Ryu Co. agreed to buy 1,000 units from Sato Corp. at <b>$50</b> per unit for June 1 delivery. Sato repudiated. When Ryu learned of the breach, the market price was <b>$56</b> per unit. Ryu then, in good faith and without unreasonable delay, bought 1,000 substitute units at <b>$58</b>. Ryu incurred incidental expenses of <b>$1,200</b> and saved <b>$500</b> of expenses as a result of the breach.</p>
+<p><b>Part B.</b> Mori Inc. contracted to sell a machine to Abe Co. for <b>$40,000</b>. Abe wrongfully rejected the machine at tender, when its market price was <b>$36,000</b>. Mori resold it in a commercially reasonable private sale, after notice to Abe, for <b>$34,000</b>. Mori incurred incidental costs of <b>$1,500</b> and saved <b>$700</b> of delivery costs.</p>
+<p><b>Part C.</b> A contract contains a liquidated damages clause of <b>$3,000</b>, a reasonable forecast of the anticipated harm at contracting. After breach, actual damages are <b>$1,800</b>.</p>
+<p class="ja">Part A:Ryu社はSato社から1,000個を単価$50、6月1日引渡しで購入する契約をした。Satoは履行拒絶した。Ryuが違反を知った時点の市場価格は単価$56。Ryuはその後、善意で不当な遅滞なく代替品1,000個を単価$58で購入した(カバー)。付随費用$1,200が生じ、違反により$500の費用を節約した。</p>
+<p class="ja">Part B:Mori社は機械をAbe社に$40,000で売る契約をした。Abeは提供時に不当に受領を拒絶した。提供時の市場価格は$36,000。MoriはAbeに通知した上で、商業上合理的な私的売却により$34,000で再売却した。付随費用$1,500が生じ、引渡費用$700を節約した。</p>
+<p class="ja">Part C:契約に$3,000の損害賠償額の予定条項があり、締結時点で予想される損害の合理的な見積りであった。違反後の実損害は$1,800である。</p>`,
+  rows: [
+    { label: "Part A: Ryu's damages measured by cover(Part A:カバーに基づくRyuの損害賠償額)", type: "num", answer: 8700 },
+    { label: "Part A: Ryu's damages if it had not covered (market-price measure)(Part A:カバーしなかった場合の市場価格基準の損害賠償額)", type: "num", answer: 6700 },
+    { label: "Part B: Mori's damages measured by resale(Part B:再売却に基づくMoriの損害賠償額)", type: "num", answer: 6800 },
+    { label: "Part B: Mori's damages if it had not resold (market-price measure)(Part B:再売却しなかった場合の市場価格基準の損害賠償額)", type: "num", answer: 4800 },
+    { label: "Part C: Amount recoverable by the nonbreaching party(Part C:非違反当事者が回収できる金額)", type: "num", answer: 3000 },
+    { label: "Part C: If the clause instead fixed $30,000, grossly disproportionate to any foreseeable harm, the clause is(Part C:条項が予見しうる損害と著しく不均衡な$30,000であった場合、当該条項は)", type: "select", options: ["Enforceable liquidated damages", "Unenforceable penalty"], answer: "Unenforceable penalty" },
+  ],
+  explain: `<p>A(カバー):(58 − 50) × 1,000 + 付随費用 1,200 − 節約費用 500 = 8,700。市場価格基準:(56 − 50) × 1,000 + 1,200 − 500 = 6,700。</p>
+<p>B(再売却):40,000 − 34,000 + 1,500 − 700 = 6,800。市場価格基準:40,000 − 36,000 + 1,500 − 700 = 4,800。</p>
+<p>C:合理的な予定額は実損害の多寡にかかわらず執行可能であり$3,000を回収できる。予見しうる損害と著しく不均衡な金額は違約罰(penalty)として執行できず、実損害の賠償にとどまる。</p>`,
+});
