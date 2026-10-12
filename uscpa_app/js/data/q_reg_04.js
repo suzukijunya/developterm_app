@@ -31,11 +31,11 @@ CPA.extend("REG-03", {
       ex: "サービスの適格従業員割引は顧客価格の20%($1,000)まで除外される。割引額$2,000 − $1,000 = $1,000を算入する。売上総利益率の上限は商品にのみ適用される。",
     },
     {
-      q: "Under a qualified dependent care assistance program, an employer paid $7,000 directly to a day-care center for an employee's 4-year-old child. Assume the annual exclusion limit is $5,000 and the employee's earned income is well above that amount. What amount must the employee include in gross income?",
-      ja: "適格扶養家族ケア支援プログラムに基づき、雇用主は従業員の4歳の子どものために保育施設へ$7,000を直接支払った。年間除外限度額は$5,000とし、従業員の勤労所得はこれを十分に上回る。従業員が総所得に含める金額はいくらか。",
-      c: ["$0", "$7,000", "$5,000", "$2,000"],
+      q: "Under a qualified dependent care assistance program, an employer paid $9,500 directly to a day-care center for an employee's 4-year-old child. Assume the annual exclusion limit is $7,500 and the employee's earned income is well above that amount. What amount must the employee include in gross income?",
+      ja: "適格扶養家族ケア支援プログラムに基づき、雇用主は従業員の4歳の子どものために保育施設へ$9,500を直接支払った。年間除外限度額は$7,500とし、従業員の勤労所得はこれを十分に上回る。従業員が総所得に含める金額はいくらか。",
+      c: ["$0", "$9,500", "$7,500", "$2,000"],
       a: 3,
-      ex: "除外限度額$5,000を超える$2,000が給与として課税される。施設に直接支払われても雇用主提供の給付である点は変わらない。$5,000は除外額と算入額を取り違えた誤り。",
+      ex: "除外限度額$7,500(OBBBAにより2026年以降$5,000から引上げ)を超える$2,000が給与として課税される。施設に直接支払われても雇用主提供の給付である点は変わらない。$7,500は除外額と算入額を取り違えた誤り。",
     },
     {
       q: "Which of the following employer-provided benefits is excludable from the employee's gross income as a no-additional-cost service?",
@@ -158,7 +158,7 @@ CPA.extend("REG-03", {
       ja: "標準控除を選択する独身の個人が、当年$8,000のギャンブル賞金と$11,000のギャンブル損失を有した。プロのギャンブラーではない。ギャンブル活動が調整後総所得(AGI)に与える純影響はいくらか。",
       c: ["$0", "$8,000 increase", "$3,000 decrease", "$5,000 increase"],
       a: 1,
-      ex: "ギャンブル賞金は総額で総所得に算入され、損失はAGI控除ではなく項目別控除(賞金の範囲内)としてのみ控除できる。標準控除を選択する場合、損失は一切控除できず、AGIは$8,000増加する。",
+      ex: "ギャンブル賞金は総額で総所得に算入され、損失はAGI控除ではなく項目別控除(2026年以降は損失の90%を賞金の範囲内で)としてのみ控除できる。標準控除を選択する場合、損失は一切控除できず、AGIは$8,000増加する。",
     },
     {
       q: "During the year, an individual received $9,000 of state unemployment compensation, $3,000 of workers' compensation benefits for an on-the-job injury, and $1,500 of benefits from a disability insurance policy whose premiums he paid himself with after-tax dollars. What amount is included in gross income?",
@@ -333,8 +333,8 @@ CPA.extend("REG-03", {
       ex: "1986年後開始の年金では、除外額の累計は投資額が上限であり、全額回収後の支払は全額課税となる。逆に投資額を回収する前に死亡した場合、未回収額は最終申告書で控除できる。",
     },
     {
-      q: "A full-time fifth-grade teacher spent $500 of her own money on classroom supplies and was not reimbursed. Assume the maximum educator expense deduction is $300. How should the expenses be treated on her federal return?",
-      ja: "フルタイムの小学5年生担当教員が、自費で教室用品に$500を支出し、払戻しは受けていない。教育者費用控除の上限は$300とする。連邦申告書上、この支出はどう扱われるか。",
+      q: "A full-time fifth-grade teacher spent $500 of her own money on classroom supplies and was not reimbursed. She claims the standard deduction. Assume the maximum educator expense deduction is $300. How should the expenses be treated on her federal return?",
+      ja: "フルタイムの小学5年生担当教員が、自費で教室用品に$500を支出し、払戻しは受けていない。本人は標準控除を選択する。教育者費用控除の上限は$300とする。連邦申告書上、この支出はどう扱われるか。",
       c: [
         "$500 deduction for AGI",
         "$300 deduction for AGI and $200 itemized deduction",
@@ -342,7 +342,7 @@ CPA.extend("REG-03", {
         "$300 deduction for AGI; the remaining $200 is not deductible",
       ],
       a: 3,
-      ex: "幼稚園から12年生までの適格教育者は上限$300までAGI控除できる。超過額は従業員の未払戻し経費であり、雑項目控除の廃止により項目別控除としても控除できない。",
+      ex: "幼稚園から12年生までの適格教育者は上限$300までAGI控除できる。OBBBAにより2026年以降、超過額は項目別控除(2%フロアなし)として控除できるが、標準控除を選択しているため超過$200は控除できない。",
     },
     {
       q: "An individual with self-only coverage under a high-deductible health plan contributed $3,000 to his HSA during the year. His employer also contributed $1,000 to the HSA, which was excluded from his wages. Assume the annual HSA contribution limit for self-only coverage is $4,300. What is his deduction for AGI for HSA contributions?",
@@ -422,7 +422,7 @@ CPA.extend("REG-03", {
         "A retiree who moves to a warmer climate",
       ],
       a: 2,
-      ex: "引越費用控除は、現在では軍の命令による恒久的な任地変更に伴い移転する現役軍人に限られる。一般の従業員や自営業者の引越費用は控除できない。",
+      ex: "引越費用控除は、現在では軍の命令による恒久的な任地変更に伴い移転する現役軍人(2026年以降は一定の情報機関職員も含む)に限られる。一般の従業員や自営業者の引越費用は控除できない。",
     },
     {
       q: "Kate is unmarried. She paid more than half the cost of maintaining a separate apartment for her widowed mother for the entire year. Her mother's only income is nontaxable Social Security benefits, and Kate provided more than half of her mother's support. Kate has no other dependents. What is Kate's most favorable filing status?",
@@ -540,13 +540,13 @@ CPA.tbs({
 <tr><td>Salary</td><td>$90,000</td></tr>
 <tr><td>Employer-provided group-term life insurance coverage (Ken pays nothing); IRS table cost $0.10 per $1,000 per month</td><td>$200,000 coverage</td></tr>
 <tr><td>Television bought from employer: customer price $2,000, Ken paid $1,000; employer's gross profit percentage 40%</td><td></td></tr>
-<tr><td>Employer-paid dependent care assistance (assume $5,000 exclusion limit)</td><td>$6,500</td></tr>
+<tr><td>Employer-paid dependent care assistance (assume $7,500 exclusion limit)</td><td>$9,000</td></tr>
 <tr><td>Interest on corporate bonds</td><td>$1,200</td></tr>
 <tr><td>Interest on municipal bonds</td><td>$3,000</td></tr>
 <tr><td>Payments from former spouse under a 2017 divorce decree: alimony $12,000; designated child support $6,000</td><td>$18,000</td></tr>
 <tr><td>Cash inherited from his uncle</td><td>$50,000</td></tr>
 <tr><td>Refund of prior-year state income tax (prior-year itemized deductions exceeded the standard deduction by $2,000)</td><td>$900</td></tr></table>
-<p class="ja">Ken Mori(独身、45歳)は家電小売チェーンに勤務している。当年の資料:給与$90,000/雇用主提供の団体定期生命保険(保険金額$200,000、本人負担なし、IRS表コストは$1,000当たり月$0.10)/雇用主からテレビを購入(顧客価格$2,000、支払額$1,000、雇用主の売上総利益率40%)/雇用主負担の扶養家族ケア支援$6,500(除外限度額$5,000とする)/社債利息$1,200/地方債利息$3,000/2017年の離婚判決に基づく元配偶者からの受取$18,000(扶養料$12,000、指定された養育費$6,000)/叔父からの相続現金$50,000/前年の州所得税還付$900(前年の項目別控除は標準控除を$2,000上回っていた)。</p>`,
+<p class="ja">Ken Mori(独身、45歳)は家電小売チェーンに勤務している。当年の資料:給与$90,000/雇用主提供の団体定期生命保険(保険金額$200,000、本人負担なし、IRS表コストは$1,000当たり月$0.10)/雇用主からテレビを購入(顧客価格$2,000、支払額$1,000、雇用主の売上総利益率40%)/雇用主負担の扶養家族ケア支援$9,000(除外限度額$7,500とする)/社債利息$1,200/地方債利息$3,000/2017年の離婚判決に基づく元配偶者からの受取$18,000(扶養料$12,000、指定された養育費$6,000)/叔父からの相続現金$50,000/前年の州所得税還付$900(前年の項目別控除は標準控除を$2,000上回っていた)。</p>`,
   rows: [
     { label: "Taxable group-term life insurance(団体定期生命保険の算入額)", type: "num", answer: 180 },
     { label: "Total compensation income including fringe benefits(フリンジ・ベネフィットを含む報酬所得合計)", type: "num", answer: 91880 },
@@ -556,7 +556,7 @@ CPA.tbs({
     { label: "Total gross income(総所得合計)", type: "num", answer: 105980 },
   ],
   explain: `<p>団体定期生命保険:$50,000超の$150,000 → 150 × 0.10 × 12 = $180。</p>
-<p>従業員割引:除外上限 = 2,000 × 40% = 800、割引1,000 − 800 = $200を算入。扶養家族ケア:6,500 − 5,000 = $1,500を算入。報酬合計 = 90,000 + 180 + 200 + 1,500 = $91,880。</p>
+<p>従業員割引:除外上限 = 2,000 × 40% = 800、割引1,000 − 800 = $200を算入。扶養家族ケア:9,000 − 7,500 = $1,500を算入。報酬合計 = 90,000 + 180 + 200 + 1,500 = $91,880。</p>
 <p>利息:地方債利息は除外、社債利息$1,200のみ。扶養料:2019年前の離婚証書のため$12,000を算入、養育費$6,000は除外。相続は除外。州税還付:前年に便益を受けた範囲(2,000)内のため$900全額を算入。</p>
 <p>総所得 = 91,880 + 1,200 + 12,000 + 900 = $105,980。</p>`,
 });
