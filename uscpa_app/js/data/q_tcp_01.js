@@ -136,8 +136,8 @@ CPA.extend("TCP-01", {
       ex: "代替評価日は総遺産額と遺産税(およびGST税)の両方を減少させる場合にのみ選択できる。したがって遺産税がかからない遺産が取得価額を引き上げる目的で選択することはできない。",
     },
     {
-      q: "A married couple's itemized deductions each year consist of $10,000 of state and local taxes (fully deductible), $12,000 of mortgage interest, and $6,000 of cash charitable contributions. Their standard deduction is $32,200 in both years. If, instead of giving $6,000 each year, they give $12,000 in Year 1 and nothing in Year 2, by how much do their total deductions for the two years increase? Ignore any percentage-of-AGI floor on charitable contributions.",
-      ja: "ある夫婦の毎年の項目別控除は、州・地方税$10,000(全額控除可)、住宅ローン利息$12,000、現金寄附$6,000である。標準控除は両年とも$32,200である。毎年$6,000を寄附する代わりに、1年目に$12,000を寄附し2年目は寄附しない場合、2年間の控除合計はいくら増加するか。寄附金のAGI比率による足切りは無視する。",
+      q: "A married couple's itemized deductions each year consist of $10,000 of state and local taxes (fully deductible), $12,000 of mortgage interest, and $6,000 of cash charitable contributions. Their standard deduction is $32,200 in both years. If, instead of giving $6,000 each year, they give $12,000 in Year 1 and nothing in Year 2, by how much do their total deductions for the two years increase? Ignore any percentage-of-AGI floor on charitable contributions and the charitable deduction available to taxpayers who do not itemize.",
+      ja: "ある夫婦の毎年の項目別控除は、州・地方税$10,000(全額控除可)、住宅ローン利息$12,000、現金寄附$6,000である。標準控除は両年とも$32,200である。毎年$6,000を寄附する代わりに、1年目に$12,000を寄附し2年目は寄附しない場合、2年間の控除合計はいくら増加するか。寄附金のAGI比率による足切り、および項目別控除を選択しない納税者向けの寄附金控除は無視する。",
       c: ["$0", "$6,000", "$1,800", "$3,600"],
       a: 2,
       ex: "通常:項目別28,000 < 標準32,200のため毎年標準控除、2年で64,400。バンチング:1年目項目別 10,000 + 12,000 + 12,000 = 34,000、2年目標準32,200、合計66,200。増加額は$1,800。",
@@ -276,8 +276,8 @@ CPA.extend("TCP-01", {
       ex: "Roth分配の順序は通常拠出 → 転換額 → 運用益。30,000は拠出の回収で非課税・ペナルティなし。続く10,000は転換額で課税済みのため所得にはならないが、転換後5年未満かつ59½歳未満なので10%の追加税$1,000が課される。",
     },
     {
-      q: "Victor reaches his required minimum distribution (RMD) age in Year 1 and delays his first RMD from his traditional IRA until March 15, Year 2, the latest permissible date. What is the consequence of this delay?",
-      ja: "Victorは1年目にRMD開始年齢に達し、伝統的IRAからの最初のRMDを許容される最終期限内の2年目3月15日まで遅らせた。この遅延の帰結はどれか。",
+      q: "Victor reaches his required minimum distribution (RMD) age in Year 1 and delays his first RMD from his traditional IRA until March 15, Year 2, which is before his April 1, Year 2 required beginning date. What is the consequence of this delay?",
+      ja: "Victorは1年目にRMD開始年齢に達し、伝統的IRAからの最初のRMDを必要開始日(2年目4月1日)より前の2年目3月15日まで遅らせた。この遅延の帰結はどれか。",
       c: [
         "A 25% excise tax applies to the Year 1 RMD",
         "Both the Year 1 and Year 2 RMDs are includible in his Year 2 gross income",

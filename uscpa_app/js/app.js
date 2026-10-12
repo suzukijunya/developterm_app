@@ -280,6 +280,7 @@ const App = (() => {
 
       <h2 class="h2">今日やること</h2>
       <div class="actions">
+        ${resumeCard()}
         ${
           last
             ? `<a class="action" href="#/ch/${last.id}/${st.last.tab || "note"}"><span class="ai">▶</span><span><b>続きから</b><small>${last.section} ${esc(last.title)}</small></span></a>`
@@ -447,7 +448,8 @@ const App = (() => {
         <div class="btn-row"><a class="btn primary" href="#/cards/run/ch/${id}">この章のカードを復習</a><a class="btn" href="#/ch/${id}/mcq">MC演習へ ›</a></div>`;
     } else if (tab === "mcq") {
       const unsolved = ch.mcq.filter((q) => (Store.qRec(q.id) || {}).last !== true);
-      inner = `<div class="q-list">
+      const resume = resumeCard(`#/ch/${id}/mcq`);
+      inner = `${resume ? `<div class="actions">${resume}</div>` : ""}<div class="q-list">
           ${ch.mcq
             .map((q, i) => {
               const r = Store.qRec(q.id);
@@ -503,7 +505,9 @@ const App = (() => {
     current.section = null;
     const opts = CPA.sections.map((s) => `<option value="${s.id}">${s.id} ${s.ja}</option>`).join("");
     const weak = CPA.allMcq().filter((q) => Store.isWeak(q.id));
+    const resume = resumeCard();
     const body = `
+      ${resume ? `<div class="actions">${resume}</div>` : ""}
       <div class="panel">
         <h2 class="h2 first">問題演習(MC)</h2>
         <label class="field"><span>科目</span><select id="p-sec"><option value="">すべての科目</option>${opts}</select></label>
@@ -593,9 +597,50 @@ const App = (() => {
   }
 
   // ---------- MC演習セッション ----------
+  // 途中経過(出題リスト・何問目か・選んだ選択肢)は解答のたびに保存し、
+  // 中断ボタンを押さずにアプリを閉じても「続きから」で再開できるようにする
+  const SESSION_KEY = "uscpa_session_v1";
+  function persistSession() {
+    if (!session || session.kind !== "practice") return;
+    try {
+      const { title, back, qs, idx, picks, start } = session;
+      localStorage.setItem(SESSION_KEY, JSON.stringify({ title, back, qids: qs.map((q) => q.id), idx, picks, start }));
+    } catch (e) {}
+  }
+  function clearSavedSession() {
+    try {
+      localStorage.removeItem(SESSION_KEY);
+    } catch (e) {}
+  }
+  function savedSession() {
+    try {
+      const s = JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
+      if (!s || !Array.isArray(s.qids)) return null;
+      const qs = s.qids.map((id) => CPA.getMcq(id)).filter(Boolean);
+      if (!qs.length || s.idx >= qs.length) return null;
+      return { kind: "practice", title: s.title, back: s.back || "#/practice", qs, idx: Math.max(0, s.idx | 0), picks: s.picks || {}, start: Date.now() };
+    } catch (e) {
+      return null;
+    }
+  }
+  function resumeCard(onlyBack) {
+    const s = savedSession();
+    if (!s || (onlyBack && s.back !== onlyBack)) return "";
+    const done = Object.keys(s.picks).length;
+    return `<a class="action resume" href="#/resume"><span class="ai">⏯</span><span><b>MC演習の続きから</b><small>${esc(s.title)} ・ 問題 ${s.idx + 1} / ${s.qs.length}(解答済み ${done} 問)</small></span></a>`;
+  }
+  function resumeSession() {
+    const s = savedSession();
+    if (!s) return go("#/practice");
+    session = s;
+    if (location.hash === "#/quiz") viewQuiz();
+    else location.replace("#/quiz");
+  }
+
   function startPractice({ title, qs, back }) {
     if (!qs.length) return;
     session = { kind: "practice", title, qs, back: back || "#/practice", idx: 0, picks: {}, start: Date.now() };
+    persistSession();
     if (location.hash === "#/quiz") viewQuiz();
     else go("#/quiz");
   }
@@ -806,7 +851,10 @@ const App = (() => {
   }
 
   function viewQuiz() {
-    if (!session) return go("#/practice");
+    if (!session) {
+      session = savedSession();
+      if (!session) return go("#/practice");
+    }
     if (session.kind === "mock") return viewMockRun();
     const { qs, idx } = session;
     if (idx >= qs.length) return viewQuizResult();
@@ -841,6 +889,7 @@ const App = (() => {
       session.pending = null;
       session.picks[q.id] = k;
       Store.answer(q.id, k === q.a);
+      persistSession();
       keepScroll();
     };
     $app.querySelectorAll(".choice").forEach((b) => {
@@ -859,6 +908,7 @@ const App = (() => {
     if (nx)
       nx.onclick = () => {
         session.idx += 1;
+        persistSession();
         viewQuiz();
       };
   }
@@ -869,6 +919,7 @@ const App = (() => {
     const done = qs.filter((q) => picks[q.id] !== undefined).length;
     if (!session.saved) {
       session.saved = true;
+      clearSavedSession();
       Store.pushHistory({ kind: "practice", title: session.title, ok, n: done, secs: Math.round((Date.now() - session.start) / 1000) });
     }
     const wrong = qs.filter((q) => picks[q.id] !== undefined && picks[q.id] !== q.a);
@@ -1896,6 +1947,8 @@ const App = (() => {
         return viewReview();
       case "quiz":
         return viewQuiz();
+      case "resume":
+        return resumeSession();
       case "mock":
         return viewMockSetup(b);
       case "tbs":
