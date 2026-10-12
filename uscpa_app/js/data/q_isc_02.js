@@ -708,11 +708,11 @@ CPA.tbs({ id: "TBS-ISC-12", section: "ISC", chapter: "ISC-01", title: "RTO・RPO
 <tr><td>D: Cold site with weekly full backups stored offsite</td><td>2 weeks or less</td><td>7 days or less</td></tr></table>
 <table><tr><th>System</th><th>RTO</th><th>RPO</th></tr>
 <tr><td>Online payment processing</td><td>5 minutes</td><td>Zero</td></tr>
-<tr><td>Order management</td><td>2 hours</td><td>30 minutes</td></tr>
+<tr><td>Order management</td><td>4 hours</td><td>30 minutes</td></tr>
 <tr><td>General ledger</td><td>48 hours</td><td>24 hours</td></tr>
 <tr><td>Archived HR records</td><td>3 weeks</td><td>7 days</td></tr>
 <tr><td>Payroll</td><td>72 hours</td><td>4 hours</td></tr></table>
-<p class="ja">ある小売業者は事業影響度分析を完了し、各システムの復旧戦略を選択しなければならない。経営者は、そのシステムのRTOとRPOの<strong>両方</strong>を満たす<strong>最も低コスト</strong>の戦略を選択する。利用可能な戦略(コストの高い順)は、A:同期レプリケーションによるミラー化ホットサイト(RTO15分以内、RPOゼロ)、B:15分ごとの非同期レプリケーションを伴うホットサイト(RTO4時間以内、RPO15分以内)、C:毎晩午後11時にバックアップを取得するウォームサイト(RTO48時間以内、RPO24時間以内)、D:週次フルバックアップをオフサイト保管するコールドサイト(RTO2週間以内、RPO7日以内)である。各システムの要件は、オンライン決済(RTO5分・RPOゼロ)、受注管理(2時間・30分)、総勘定元帳(48時間・24時間)、HR記録アーカイブ(3週間・7日)、給与計算(72時間・4時間)である。</p>`,
+<p class="ja">ある小売業者は事業影響度分析を完了し、各システムの復旧戦略を選択しなければならない。経営者は、そのシステムのRTOとRPOの<strong>両方</strong>を満たす<strong>最も低コスト</strong>の戦略を選択する。利用可能な戦略(コストの高い順)は、A:同期レプリケーションによるミラー化ホットサイト(RTO15分以内、RPOゼロ)、B:15分ごとの非同期レプリケーションを伴うホットサイト(RTO4時間以内、RPO15分以内)、C:毎晩午後11時にバックアップを取得するウォームサイト(RTO48時間以内、RPO24時間以内)、D:週次フルバックアップをオフサイト保管するコールドサイト(RTO2週間以内、RPO7日以内)である。各システムの要件は、オンライン決済(RTO5分・RPOゼロ)、受注管理(4時間・30分)、総勘定元帳(48時間・24時間)、HR記録アーカイブ(3週間・7日)、給与計算(72時間・4時間)である。</p>`,
   rows: [
     { label: "Online payment processing(オンライン決済)", type: "select", options: ["A", "B", "C", "D"], answer: "A" },
     { label: "Order management(受注管理)", type: "select", options: ["A", "B", "C", "D"], answer: "B" },
@@ -721,7 +721,7 @@ CPA.tbs({ id: "TBS-ISC-12", section: "ISC", chapter: "ISC-01", title: "RTO・RPO
     { label: "Payroll(給与計算)", type: "select", options: ["A", "B", "C", "D"], answer: "B" },
     { label: "Under strategy C, if the general ledger server fails at 5:00 p.m. on Wednesday, how many hours of data are lost?(戦略Cの下で、総勘定元帳サーバーが水曜日の午後5時に故障した場合、失われるデータは何時間分か)", type: "num", answer: 18 },
   ],
-  explain: `<p>オンライン決済はRPOゼロ・RTO5分のため同期ミラーリングのAしか満たさない。受注管理はRPO30分を満たす必要があり、C(24時間)では不足するためB。総勘定元帳はCで要件をちょうど満たす。HR記録アーカイブはRTO3週間・RPO7日のためDで足りる。給与計算はRTO72時間だけ見るとCで足りるが、RPO4時間を夜間バックアップ(最大24時間の損失)では満たせないため、両方を満たす最も低コストの戦略はBとなる(RTOとRPOの双方を確認する必要がある)。</p>
+  explain: `<p>オンライン決済はRPOゼロ・RTO5分のため同期ミラーリングのAしか満たさない。受注管理はRTO4時間・RPO30分を満たす必要があり、C(RPO24時間)では不足するためB(RTO4時間以内・RPO15分以内)。総勘定元帳はCで要件をちょうど満たす。HR記録アーカイブはRTO3週間・RPO7日のためDで足りる。給与計算はRTO72時間だけ見るとCで足りるが、RPO4時間を夜間バックアップ(最大24時間の損失)では満たせないため、両方を満たす最も低コストの戦略はBとなる(RTOとRPOの双方を確認する必要がある)。</p>
 <p>データ損失:直近のバックアップは火曜日午後11時。水曜日午後5時までの経過は 1時間(午前0時まで)+17時間=18時間分が失われる。</p>`,
 });
 
