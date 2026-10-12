@@ -574,3 +574,70 @@ CPA.extend("TCP-01", {
     },
   ],
 });
+
+CPA.tbs({ id: "TBS-TCP-09", section: "TCP", chapter: "TCP-01", title: "贈与分割・529按分選択・クラミーなしの信託贈与",
+  scenario: `<p>Ken and Mari are married U.S. citizens. During Year 1, <b>Ken alone</b> made the following transfers; Mari made no transfers. The spouses validly elect <b>gift splitting</b>, and each spouse elects to treat his or her share of the §529 contribution as made ratably over five years. Assume an annual exclusion of <b>$19,000</b> per donee in all years.</p>
+<table><tr><th>Transfer by Ken</th><th>Amount</th></tr>
+<tr><td>Cash to adult daughter</td><td>$80,000</td></tr>
+<tr><td>Contribution to a §529 plan for grandson</td><td>$95,000</td></tr>
+<tr><td>Tuition paid directly to grandson's university</td><td>$45,000</td></tr>
+<tr><td>Cash to an irrevocable trust for niece (income accumulates; niece has no withdrawal rights; distribution at age 30)</td><td>$30,000</td></tr></table>
+<p class="ja">KenとMariは米国市民の夫婦である。1年目にKenのみが上表の移転を行い、Mariは移転を行っていない。夫婦は有効に贈与分割を選択し、各配偶者は自己の持分の§529拠出を5年間に按分する選択をした。年間非課税枠は各年・受贈者1人当たり$19,000とする。移転内容:成人の娘への現金$80,000、孫の§529プランへの拠出$95,000、孫の大学への授業料直接支払い$45,000、姪のための取消不能信託への現金$30,000(収益は留保、姪に引出権なし、30歳で分配)。</p>`,
+  rows: [
+    { label: "Ken's taxable gift to daughter in Year 1(娘への1年目のKenの課税贈与額)", type: "num", answer: 21000 },
+    { label: "Amount of the 529 contribution treated as Ken's gift in Year 1, before the exclusion(1年目にKenの贈与とみなされる529拠出額・非課税枠控除前)", type: "num", answer: 9500 },
+    { label: "Ken's taxable gift from the tuition payment(授業料支払いに係るKenの課税贈与額)", type: "num", answer: 0 },
+    { label: "Ken's taxable gift to the niece's trust(姪の信託へのKenの課税贈与額)", type: "num", answer: 15000 },
+    { label: "Ken's total taxable gifts for Year 1(Kenの1年目の課税贈与合計)", type: "num", answer: 36000 },
+    { label: "Must Mari file her own Form 709 for Year 1?(Mariは1年目に自身のForm 709を提出しなければならないか)", type: "select", options: ["No — gift splitting allows Ken to report all gifts on one joint return", "No — Mari made no transfers herself", "Yes — she has taxable gifts and must make her own 529 election"], answer: "Yes — she has taxable gifts and must make her own 529 election" },
+  ],
+  explain: `<p>贈与分割により、Kenの贈与は各配偶者が半分ずつ行ったものとみなされる。</p>
+<p>娘:80,000 ÷ 2 = 40,000 − 19,000 = <b>21,000</b>。</p>
+<p>529:95,000 ÷ 2 = 47,500(非課税枠の5倍95,000以内)を5年按分 → 1年目 <b>9,500</b>。授業料の直接支払いは§2503(e)で非課税かつ年間非課税枠を使わないため、孫への非課税枠19,000で全額相殺され課税贈与はゼロ。</p>
+<p>授業料:教育機関への直接支払いは金額無制限で非課税 → <b>0</b>。</p>
+<p>姪の信託:引出権がなく将来権利のため非課税枠なし → 30,000 ÷ 2 = <b>15,000</b>。</p>
+<p>Kenの合計:21,000 + 0 + 15,000 = <b>36,000</b>(Mariも同額)。贈与税の共同申告は存在せず、課税贈与があり529の按分選択も各自の申告書で行うため、Mariも自身のForm 709の提出が必要である。</p>`,
+});
+
+CPA.tbs({ id: "TBS-TCP-10", section: "TCP", chapter: "TCP-01", title: "退職口座からの分配の課税額と10%追加税",
+  scenario: `<p>Taro, age 57, separated from service with his employer in June of Year 1. During Year 1 he received the following distributions, all used for personal living expenses:</p>
+<table><tr><th>Account</th><th>Facts</th></tr>
+<tr><td>Former employer's 401(k)</td><td>Distribution of $60,000, all pre-tax; not rolled over</td></tr>
+<tr><td>Traditional IRA</td><td>Distribution of $20,000. Total nondeductible contributions (basis) to date: $30,000. Value of the IRA on December 31, Year 1: $130,000. Taro has no other traditional IRAs.</td></tr>
+<tr><td>Roth IRA (opened 10 years ago)</td><td>Distribution of $10,000. Account consists of $25,000 of regular contributions and $15,000 of earnings before the distribution.</td></tr></table>
+<p>No exception to the 10% additional tax applies other than those evident from the facts.</p>
+<p class="ja">57歳のTaroは1年目の6月に勤務先を退職した。1年目に次の分配を受け、すべて生活費に充てた。前勤務先の401(k):$60,000(全額税引前、ロールオーバーなし)。伝統的IRA:$20,000(これまでの非控除拠出=取得価額$30,000、1年目12月31日のIRA残高$130,000、他の伝統的IRAなし)。Roth IRA(10年前に開設):$10,000(分配前の内訳は通常拠出$25,000、運用益$15,000)。事実から明らかなもの以外に10%追加税の例外はない。</p>`,
+  rows: [
+    { label: "Taxable amount of the 401(k) distribution(401(k)分配の課税額)", type: "num", answer: 60000 },
+    { label: "Nontaxable portion of the traditional IRA distribution(伝統的IRA分配の非課税部分)", type: "num", answer: 4000 },
+    { label: "Taxable portion of the traditional IRA distribution(伝統的IRA分配の課税部分)", type: "num", answer: 16000 },
+    { label: "Taxable amount of the Roth IRA distribution(Roth IRA分配の課税額)", type: "num", answer: 0 },
+    { label: "Total 10% additional tax on early distributions(早期分配に対する10%追加税の合計)", type: "num", answer: 1600 },
+    { label: "Why is the 401(k) distribution exempt from the 10% additional tax?(401(k)分配が10%追加税を免除される理由)", type: "select", options: ["Separation from service in or after the year he reached age 55", "Substantially equal periodic payments", "Distributions after age 55 are always exempt from all plans and IRAs"], answer: "Separation from service in or after the year he reached age 55" },
+  ],
+  explain: `<p>401(k):全額税引前のため<b>60,000</b>が課税。55歳以上の年に離職した場合の例外により追加税なし(この例外はIRAには適用されない)。</p>
+<p>伝統的IRA:プロラタ計算の分母は年末残高+当年分配 = 130,000 + 20,000 = 150,000。非課税割合 30,000 ÷ 150,000 = 20% → 非課税 <b>4,000</b>、課税 <b>16,000</b>。</p>
+<p>Roth IRA:59½歳未満のため適格分配ではないが、通常拠出から先に引き出されたとみなされ(拠出25,000 ≥ 10,000)、課税額 <b>0</b>、追加税もなし。</p>
+<p>10%追加税:IRAの課税部分のみ 16,000 × 10% = <b>1,600</b>。</p>`,
+});
+
+CPA.tbs({ id: "TBS-TCP-11", section: "TCP", chapter: "TCP-01", title: "賃貸損失の$25,000特別枠と停止損失の解放",
+  scenario: `<p>Mina, single, owns two rental properties outright and actively participates in both. She is not a real estate professional. Her modified AGI for purposes of the rental real estate allowance is <b>$116,000</b>. Assume the $25,000 special allowance is reduced by 50% of modified AGI in excess of $100,000. She has no other passive activities.</p>
+<table><tr><th>Activity</th><th>Year 1 facts</th></tr>
+<tr><td>Rental A</td><td>Operating loss of $30,000</td></tr>
+<tr><td>Rental B</td><td>Sold on January 2 of Year 1 to an unrelated buyer in a fully taxable sale at a gain of $5,000. Suspended passive losses from prior years: $9,000. No operating income or loss in Year 1.</td></tr></table>
+<p class="ja">独身のMinaは2つの賃貸物件を全額自己所有し、いずれにも積極的に関与している。不動産専門家ではない。賃貸不動産特別枠の判定に用いる修正AGIは$116,000。$25,000の特別枠は修正AGIの$100,000超過額の50%だけ減額されるとする。他のパッシブ活動はない。賃貸A:営業損失$30,000。賃貸B:1年目1月2日に無関係の買主へ完全な課税取引で売却し、売却益$5,000。過年度からの停止パッシブ損失$9,000。1年目の営業損益なし。</p>`,
+  rows: [
+    { label: "Special allowance available after the phase-out(フェーズアウト後の特別枠)", type: "num", answer: 17000 },
+    { label: "Rental B: net loss deductible against nonpassive income on disposition(賃貸B:処分により非パッシブ所得から控除できる純損失)", type: "num", answer: 4000 },
+    { label: "Rental A: loss deductible in Year 1(賃貸A:1年目に控除できる損失)", type: "num", answer: 17000 },
+    { label: "Rental A: suspended loss carried forward(賃貸A:繰り越される停止損失)", type: "num", answer: 13000 },
+    { label: "Rental A loss deductible if Mina instead qualified as a real estate professional and materially participated(Minaが不動産専門家で実質的関与がある場合の賃貸Aの控除可能損失)", type: "num", answer: 30000 },
+    { label: "If Rental B had instead been sold to Mina's brother, the $9,000 suspended loss would:(賃貸Bを弟に売却した場合、停止損失$9,000は)", type: "select", options: ["Be fully deductible in Year 1", "Remain suspended until the brother disposes of the property to an unrelated party", "Be added to the brother's basis in the property"], answer: "Remain suspended until the brother disposes of the property to an unrelated party" },
+  ],
+  explain: `<p>特別枠:25,000 − (116,000 − 100,000) × 50% = <b>17,000</b>。</p>
+<p>賃貸B:無関係者への完全処分により、その活動の損益を通算:売却益5,000 − 停止損失9,000 = 純損失 <b>4,000</b>は非パッシブとして全額控除できる。</p>
+<p>賃貸A:他にパッシブ所得はないため特別枠の範囲で <b>17,000</b>を控除し、30,000 − 17,000 = <b>13,000</b>を繰り越す。</p>
+<p>不動産専門家として実質的に関与していれば賃貸Aは非パッシブとなり <b>30,000</b>全額を控除できる。</p>
+<p>関連当事者(兄弟)への売却では停止損失は解放されず、関連当事者が無関係者に処分するまで停止されたままとなる。</p>`,
+});
