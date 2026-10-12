@@ -689,3 +689,81 @@ CPA.extend("AUD-05", {
     },
   ],
 });
+
+CPA.tbs({ id: "TBS-AUD-27", section: "AUD", chapter: "AUD-05", title: "単一監査:主要プログラムの決定とカバー率",
+  scenario: `<p>Riverside County expended <b>$12,000,000</b> of federal awards during the year. Assume the single audit threshold is $1,000,000 and the Type A threshold is <b>$1,000,000</b>. Riverside is <b>not</b> a low-risk auditee because a material weakness was reported in the prior year's financial statement audit.</p>
+<table><tr><th>Program</th><th>Expenditures</th><th>Type</th><th>Auditor's risk assessment</th></tr>
+<tr><td>P1</td><td>$3,000,000</td><td>A</td><td>Audited as major last year, no audit findings (low-risk)</td></tr>
+<tr><td>P2</td><td>$2,000,000</td><td>A</td><td>Audited as major last year, no audit findings (low-risk)</td></tr>
+<tr><td>P3</td><td>$1,500,000</td><td>A</td><td>Audited as major two years ago, no audit findings (low-risk)</td></tr>
+<tr><td>P4</td><td>$1,200,000</td><td>A</td><td>Audited as major last year, no audit findings (low-risk)</td></tr>
+<tr><td>P5</td><td>$2,500,000</td><td>A</td><td>Prior-year material noncompliance reported</td></tr>
+<tr><td>P6</td><td>$800,000</td><td>B</td><td>High-risk</td></tr>
+<tr><td>P7</td><td>$700,000</td><td>B</td><td>High-risk</td></tr>
+<tr><td>Other Type B</td><td>$300,000</td><td>B</td><td>Below risk-assessment level</td></tr></table>
+<p>The auditor elects to audit as major the minimum number of high-risk Type B programs and selects P6.</p>
+<p class="ja">Riverside郡は当年度に連邦補助金$12,000,000を支出した。単一監査基準額とタイプA基準額はともに$1,000,000とする。前年度の財務諸表監査で重大な欠陥が報告されたため、低リスク被監査体ではない。各プログラムの支出額・タイプ・リスク評価は表のとおり(P1〜P4は低リスクのタイプA、P5は前年に重要な不遵守が報告されたタイプA、P6・P7は高リスクのタイプB)。監査人は高リスクのタイプBを最少数だけ主要プログラムとして監査することとし、P6を選択した。</p>`,
+  rows: [
+    { label: "Classification of P5(P5の区分)", type: "select", options: ["Low-risk Type A — need not be major", "High-risk Type A — must be audited as major", "Type B — not assessed", "Excluded from the single audit"], answer: "High-risk Type A — must be audited as major" },
+    { label: "Number of low-risk Type A programs(低リスクのタイプAプログラムの数)", type: "num", answer: 4 },
+    { label: "Minimum number of high-risk Type B programs to audit as major(主要プログラムとして監査する高リスクのタイプBの最少数)", type: "num", answer: 1 },
+    { label: "Minimum federal expenditures that major programs must cover ($)(主要プログラムがカバーすべき連邦支出の最低額)", type: "num", answer: 4800000 },
+    { label: "Shortfall in coverage after auditing P5 and P6 ($)(P5とP6を監査した場合のカバー不足額)", type: "num", answer: 1500000 },
+    { label: "Smallest single additional program that eliminates the shortfall(不足を単独で解消する最小の追加プログラム)", type: "select", options: ["P1", "P3", "P4", "P7"], answer: "P3" },
+  ],
+  explain: `<p>P5は前年に重要な不遵守が報告されているため低リスクではなく、高リスクのタイプAとして必ず主要プログラムになる。</p>
+<p>低リスクのタイプAはP1〜P4の4つ。高リスクのタイプBは低リスクのタイプA数の4分の1以上を監査すればよく、4 × 1/4 = 1(P6)。</p>
+<p>低リスク被監査体ではないためカバー率は40%:12,000,000 × 40% = 4,800,000。P5 + P6 = 2,500,000 + 800,000 = 3,300,000 で、不足額は 4,800,000 − 3,300,000 = 1,500,000。</p>
+<p>単独で1,500,000以上を満たす最小のプログラムはP3($1,500,000)。P4($1,200,000)やP7($700,000)では不足し、P1も条件を満たすが最小ではない。</p>`,
+});
+
+CPA.tbs({ id: "TBS-AUD-28", section: "AUD", chapter: "AUD-05", title: "SSARS・証明業務:状況に応じた報告形態の選択",
+  scenario: `<p>Hale &amp; Co., CPAs, provides services to several nonissuer clients. For each independent situation, select the appropriate action or report. Each option may be used once, more than once, or not at all.</p>
+<ol>
+<li>Client A wants a review for its bank. Hale's engagement partner's spouse holds a material direct financial interest in Client A, and the threat cannot be eliminated.</li>
+<li>In a review of Client B, Hale identifies a material, but not pervasive, departure from GAAP that management will not correct.</li>
+<li>In a review of Client C, substantial doubt about going concern exists and is adequately disclosed.</li>
+<li>Client D asks Hale to compile financial statements from which management has elected to omit substantially all disclosures, with no intent to mislead.</li>
+<li>Client E asks Hale to prepare financial statements for the owner's internal use; Hale is engaged under AR-C 70.</li>
+<li>Client F asks Hale to perform agreed-upon procedures on its inventory schedule; a Hale partner on the engagement has a material financial interest in Client F that cannot be eliminated.</li>
+</ol>
+<p class="ja">Hale会計事務所は複数の非公開企業の顧客に業務を提供している。各状況(独立)について適切な対応または報告書を選択せよ。①A社が銀行向けにレビューを希望しているが、業務執行パートナーの配偶者がA社に重要な直接的財務利害を有し脅威を除去できない。②B社のレビューで、重要だが広範ではないGAAP逸脱があり経営者は修正しない。③C社のレビューで継続企業の前提に重要な疑義があり、適切に開示されている。④D社は、誤導の意図なく開示のほぼすべてを省略した財務諸表のコンピレーションを依頼。⑤E社はオーナーの内部利用目的の財務諸表作成をAR-C 70で依頼。⑥F社は棚卸資産明細表のAUPを依頼したが、担当パートナーがF社に重要な財務利害を有し除去できない。</p>`,
+  rows: [
+    { label: "Situation 1 — Client A(状況① A社)", type: "select", options: ["Unmodified review report", "Review report with qualified conclusion", "Review report with emphasis-of-matter paragraph", "Compilation report disclosing lack of independence", "Compilation report noting omission of substantially all disclosures", "No report; 'no assurance' statement on each page", "Decline or withdraw"], answer: "Compilation report disclosing lack of independence" },
+    { label: "Situation 2 — Client B(状況② B社)", type: "select", options: ["Unmodified review report", "Review report with qualified conclusion", "Review report with emphasis-of-matter paragraph", "Compilation report disclosing lack of independence", "Compilation report noting omission of substantially all disclosures", "No report; 'no assurance' statement on each page", "Decline or withdraw"], answer: "Review report with qualified conclusion" },
+    { label: "Situation 3 — Client C(状況③ C社)", type: "select", options: ["Unmodified review report", "Review report with qualified conclusion", "Review report with emphasis-of-matter paragraph", "Compilation report disclosing lack of independence", "Compilation report noting omission of substantially all disclosures", "No report; 'no assurance' statement on each page", "Decline or withdraw"], answer: "Review report with emphasis-of-matter paragraph" },
+    { label: "Situation 4 — Client D(状況④ D社)", type: "select", options: ["Unmodified review report", "Review report with qualified conclusion", "Review report with emphasis-of-matter paragraph", "Compilation report disclosing lack of independence", "Compilation report noting omission of substantially all disclosures", "No report; 'no assurance' statement on each page", "Decline or withdraw"], answer: "Compilation report noting omission of substantially all disclosures" },
+    { label: "Situation 5 — Client E(状況⑤ E社)", type: "select", options: ["Unmodified review report", "Review report with qualified conclusion", "Review report with emphasis-of-matter paragraph", "Compilation report disclosing lack of independence", "Compilation report noting omission of substantially all disclosures", "No report; 'no assurance' statement on each page", "Decline or withdraw"], answer: "No report; 'no assurance' statement on each page" },
+    { label: "Situation 6 — Client F(状況⑥ F社)", type: "select", options: ["Unmodified review report", "Review report with qualified conclusion", "Review report with emphasis-of-matter paragraph", "Compilation report disclosing lack of independence", "Compilation report noting omission of substantially all disclosures", "No report; 'no assurance' statement on each page", "Decline or withdraw"], answer: "Decline or withdraw" },
+  ],
+  explain: `<p>① レビューは独立性が必要なため実施できない。コンピレーションなら独立性欠如を報告書で開示して実施できる。</p>
+<p>② 重要だが広範でないGAAP逸脱はレビュー報告書で限定付結論(広範なら否定的結論)。</p>
+<p>③ 継続企業の重要な疑義が適切に開示されていれば、結論は無限定のまま強調事項段落を追加する。</p>
+<p>④ 誤導の意図がなければ開示省略のコンピレーションは可能で、省略の旨を報告書に記載する。</p>
+<p>⑤ 作成業務(AR-C 70)は報告書を発行せず、各ページに「保証は提供されない」旨を表示する。独立性も不要。</p>
+<p>⑥ AUPは証明業務で独立性が必要。独立性欠如を開示して実施する方法はないため、辞退(または辞任)する。</p>`,
+});
+
+CPA.tbs({ id: "TBS-AUD-29", section: "AUD", chapter: "AUD-05", title: "政府監査基準:発見事項の要素・CPE・質問費用",
+  scenario: `<p>Martin, CPA, is performing a GAGAS financial audit and single audit of Lakeview City. The following items were noted:</p>
+<ol>
+<li>The federal grant agreement requires that equipment purchases over $5,000 be approved by the grant manager.</li>
+<li>Of 30 equipment purchases sampled, 7 (totaling $64,000) lacked grant manager approval.</li>
+<li>The grant manager's duties were reassigned to a new employee who was not informed of the approval requirement.</li>
+<li>Unallowable equipment could be charged to the grant, and the City may have to repay the funds.</li>
+</ol>
+<p>Martin's CPE for the current two-year period: 62 hours in total (at least 20 hours each year), of which 16 hours directly relate to government auditing or the government environment.</p>
+<p>For the allowable costs compliance requirement of a major program, known questioned costs are $12,000 and likely questioned costs are $27,000. Assume a reporting threshold of $25,000.</p>
+<p class="ja">Martin CPAはLakeview市のGAGAS財務諸表監査と単一監査を実施している。①連邦補助金契約は$5,000超の備品購入について補助金担当者の承認を要求している。②サンプル30件の備品購入のうち7件(計$64,000)に承認がなかった。③補助金担当者の職務が承認要件を知らされていない新任職員に引き継がれていた。④許容されない備品が補助金に計上され、市が資金を返還しなければならない可能性がある。MartinのCPEは当2年間で合計62時間(各年20時間以上)、うち政府監査・政府環境に直接関連するものは16時間。主要プログラムの許容費用要件について、既知の質問費用は$12,000、可能性の高い質問費用は$27,000で、報告基準額は$25,000とする。</p>`,
+  rows: [
+    { label: "Item 1 — element of the finding(①の要素)", type: "select", options: ["Criteria", "Condition", "Cause", "Effect"], answer: "Criteria" },
+    { label: "Item 2 — element of the finding(②の要素)", type: "select", options: ["Criteria", "Condition", "Cause", "Effect"], answer: "Condition" },
+    { label: "Item 3 — element of the finding(③の要素)", type: "select", options: ["Criteria", "Condition", "Cause", "Effect"], answer: "Cause" },
+    { label: "Item 4 — element of the finding(④の要素)", type: "select", options: ["Criteria", "Condition", "Cause", "Effect"], answer: "Effect" },
+    { label: "Minimum additional CPE hours Martin needs, assuming all are government-related(すべて政府関連とした場合に必要な追加CPEの最少時間)", type: "num", answer: 18 },
+    { label: "Reporting of the questioned costs(質問費用の報告)", type: "select", options: ["Not reported — known questioned costs are below $25,000", "Reported — likely questioned costs exceed $25,000", "Reported only in a management letter", "Reported only if known questioned costs exceed $25,000"], answer: "Reported — likely questioned costs exceed $25,000" },
+  ],
+  explain: `<p>①あるべき姿を示す契約上の要件は規準(criteria)、②実際に観察された事実は状況(condition)、③差異が生じた理由は原因(cause)、④差異から生じる結果・リスクは影響(effect)である。</p>
+<p>CPE:合計80時間以上かつ政府関連24時間以上が必要。総時間の不足 = 80 − 62 = 18、政府関連の不足 = 24 − 16 = 8。追加分をすべて政府関連とすれば、18時間で両方を満たす(政府関連 16 + 18 = 34 ≥ 24)。8時間では合計70時間で不足する。</p>
+<p>質問費用:既知または可能性の高い質問費用が$25,000を超えれば指摘事項として報告する。可能性の高い額$27,000が基準を超えるため報告対象。</p>`,
+});
