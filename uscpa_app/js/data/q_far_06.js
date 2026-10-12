@@ -267,5 +267,322 @@ CPA.extend("FAR-05", {
       a: 2,
       ex: "重要な影響力を失った場合、持分法の適用を将来に向かって中止し、過去に認識した持分損益は修正しない。その後はASC 321に従い測定する(公正価値が容易に算定可能なら公正価値)。",
     },
+    {
+      q: "An investor owns 40% of an investee and applies the equity method. The investment's carrying amount is $400,000. The investor sells one-fourth of its holding (a 10% interest in the investee) for $120,000 and retains significant influence. What gain should be recognized on the sale?",
+      ja: "投資者は被投資会社の40%を保有し持分法を適用している。投資の帳簿価額は$400,000である。保有分の4分の1(被投資会社の10%)を$120,000で売却し、重要な影響力は維持している。売却益はいくらか。",
+      c: ["$0", "$20,000", "$80,000", "$120,000"],
+      a: 1,
+      ex: "売却分の帳簿価額 = 400,000 × 1/4 = 100,000。売却益 = 120,000 − 100,000 = 20,000。残りの30%は引き続き持分法で処理する(帳簿価額300,000)。",
+    },
+    {
+      q: "An investor owns 25% of an investee's voting common stock. Which of the following, by itself, would most likely indicate that the investor does NOT have significant influence and should not apply the equity method?",
+      ja: "投資者は被投資会社の議決権付普通株式の25%を保有している。それ単独で、投資者が重要な影響力を有さず持分法を適用すべきでないことを最も強く示すものはどれか。",
+      c: [
+        "The investor has one representative on the investee's ten-member board",
+        "There are material intra-entity transactions between the investor and the investee",
+        "The investee has filed a lawsuit and complaints with regulators challenging the investor's ability to exercise influence, and the investor cannot obtain the financial information needed to apply the equity method",
+        "The investor and investee exchange managerial personnel",
+      ],
+      a: 2,
+      ex: "20%以上の保有は重要な影響力があると推定されるが、被投資会社による訴訟・規制当局への異議申立てや、持分法適用に必要な財務情報が入手できないことは反証となる。取締役の派遣・重要な内部取引・人事交流は影響力の存在を示す指標である。",
+    },
+    {
+      q: "A company issued 10,000 shares of $5 par value common stock for $18 per share and paid $6,000 of direct stock issuance costs. By what amount should additional paid-in capital increase?",
+      ja: "会社は額面$5の普通株式10,000株を1株$18で発行し、株式発行の直接費用$6,000を支払った。払込剰余金(APIC)の増加額はいくらか。",
+      c: ["$130,000", "$124,000", "$174,000", "$180,000"],
+      a: 1,
+      ex: "APIC = (18 − 5) × 10,000 − 6,000 = 124,000。株式発行費用は費用処理せず払込資本から控除する。$130,000は発行費用を控除していない。",
+    },
+    {
+      q: "A corporation issued 5,000 shares of no-par common stock that has no stated value for $15 per share. How should the proceeds be recorded?",
+      ja: "会社は表示価額(stated value)のない無額面普通株式5,000株を1株$15で発行した。払込金額はどのように記録すべきか。",
+      c: [
+        "Common stock $75,000",
+        "Common stock $5,000 and additional paid-in capital $70,000",
+        "Common stock $10,000 and additional paid-in capital $65,000",
+        "Additional paid-in capital $75,000",
+      ],
+      a: 0,
+      ex: "表示価額のない無額面株式は、払込金額の全額75,000を資本金(普通株式)に計上する。表示価額(例:$2)がある場合は表示価額部分を資本金、超過分をAPICとする。",
+    },
+    {
+      q: "A company received subscriptions for 2,000 shares of $10 par common stock at $25 per share and collected 40% of the subscription price in cash. The subscriptions receivable is reported as a contra-equity account. By what amount did total stockholders' equity increase as a result of the subscription?",
+      ja: "会社は額面$10の普通株式2,000株について1株$25で申込を受け、申込価額の40%を現金で受け取った。株式申込未収金は資本の控除項目として表示する。申込により株主資本合計はいくら増加したか。",
+      c: ["$50,000", "$30,000", "$20,000", "$0"],
+      a: 2,
+      ex: "(借)現金20,000・申込未収金30,000/(貸)申込済普通株式20,000・APIC 30,000。申込未収金30,000は資本から控除されるため、株主資本の純増は現金受領額20,000となる。",
+    },
+    {
+      q: "Using the cost method, a company reacquired 1,000 shares of its own common stock at $40 per share. It later reissued 400 shares at $45 per share and then 300 shares at $32 per share. There was no previous paid-in capital from treasury stock. By what amount is retained earnings reduced by these transactions?",
+      ja: "原価法により、会社は自己株式1,000株を1株$40で取得した。その後400株を1株$45で、さらに300株を1株$32で再発行した。それ以前の自己株式処分差益はない。これらの取引により利益剰余金はいくら減少するか。",
+      c: ["$0", "$2,400", "$2,000", "$400"],
+      a: 3,
+      ex: "最初の再発行でAPIC(自己株式)2,000が生じる。2回目の差損 (40 − 32) × 300 = 2,400は、まずAPIC(自己株式)2,000を取り崩し、不足分400を利益剰余金から減額する。",
+    },
+    {
+      q: "A company's $10 par common stock was originally issued at $16 per share. The company reacquired 2,000 of these shares at $22 per share (cost method) and later formally retired them. There is no paid-in capital from treasury stock. What amount should be debited to retained earnings upon retirement?",
+      ja: "会社の額面$10の普通株式は当初1株$16で発行された。会社はこのうち2,000株を1株$22で取得し(原価法)、その後正式に消却した。自己株式処分差益はない。消却時に利益剰余金に借記すべき金額はいくらか。",
+      c: ["$12,000", "$24,000", "$0", "$32,000"],
+      a: 0,
+      ex: "消却時:(借)普通株式20,000・APIC 12,000(当初発行時の超過額6 × 2,000)・利益剰余金12,000/(貸)自己株式44,000。$24,000はAPICの取り崩しをせず額面との差額全額を利益剰余金にした誤り。",
+    },
+    {
+      q: "A company declared a scrip dividend of $50,000 in the form of a six-month promissory note bearing 10% annual interest. The note was paid at maturity. By what total amount was retained earnings directly debited for the dividend (excluding the effect of interest on net income)?",
+      ja: "会社は$50,000のスクリップ配当(年利10%、期間6か月の約束手形)を宣言し、満期に支払った。配当として利益剰余金に直接借記された金額(利息が純利益に与える影響を除く)はいくらか。",
+      c: ["$52,500", "$55,000", "$50,000", "$47,500"],
+      a: 2,
+      ex: "宣言時に(借)利益剰余金50,000/(貸)未払手形配当50,000。利息2,500(50,000 × 10% × 6/12)は支払利息として費用処理し、配当には含めない。",
+    },
+    {
+      q: "A mining company declared and paid a cash dividend of $300,000 when its retained earnings balance was $220,000. The excess is a return of capital. What amount should be debited to additional paid-in capital?",
+      ja: "鉱業会社は利益剰余金残高が$220,000のときに$300,000の現金配当を宣言・支払った。超過分は資本の払戻しである。払込剰余金に借記すべき金額はいくらか。",
+      c: ["$0", "$80,000", "$220,000", "$300,000"],
+      a: 1,
+      ex: "利益剰余金を超える部分 300,000 − 220,000 = 80,000は清算配当(資本の払戻し)であり、APICを減額する。株主にとっても投資の回収として扱われる。",
+    },
+    {
+      q: "A company with 100,000 shares of $1 par common stock outstanding declared and distributed a 10% stock dividend when the market price was $15 per share. By what amount should additional paid-in capital increase?",
+      ja: "額面$1の普通株式100,000株が発行済の会社は、時価が1株$15のときに10%の株式配当を宣言・交付した。払込剰余金の増加額はいくらか。",
+      c: ["$150,000", "$10,000", "$0", "$140,000"],
+      a: 3,
+      ex: "小規模株式配当(20-25%未満)は時価で振り替える。利益剰余金 10,000株 × 15 = 150,000を減額し、資本金10,000、APIC 140,000を計上する。$150,000は利益剰余金の減少額である。",
+    },
+    {
+      q: "A company with 50,000 shares of $2 par common stock outstanding declared a 40% stock dividend when the market price was $20 per share. The company records the dividend at the minimum amount required by law. By what amount should retained earnings decrease?",
+      ja: "額面$2の普通株式50,000株が発行済の会社は、時価が1株$20のときに40%の株式配当を宣言した。会社は法定最低額で記録する。利益剰余金の減少額はいくらか。",
+      c: ["$40,000", "$400,000", "$0", "$360,000"],
+      a: 0,
+      ex: "大規模株式配当(20-25%超)は額面(法定資本)で振り替える。20,000株 × $2 = 40,000。時価による$400,000は小規模株式配当の処理である。",
+    },
+    {
+      q: "On December 20, a company declared a 5% stock dividend to be distributed on January 15. How should the common stock dividend distributable be reported on the December 31 balance sheet?",
+      ja: "12月20日、会社は1月15日に交付する5%の株式配当を宣言した。12月31日の貸借対照表で未交付株式配当(common stock dividend distributable)はどのように表示すべきか。",
+      c: [
+        "As a current liability",
+        "As a reduction of retained earnings in a contra-equity account",
+        "In stockholders' equity as part of paid-in capital",
+        "Only in the notes to the financial statements",
+      ],
+      a: 2,
+      ex: "株式配当は資産の流出を伴わないため負債ではなく、未交付株式配当は株主資本の払込資本区分に表示する。現金配当の未払配当金は流動負債となる点と区別する。",
+    },
+    {
+      q: "A company has 10,000 shares of $100 par, 6% cumulative, nonparticipating preferred stock and 200,000 shares of common stock outstanding. No dividends were declared in Year 1 or Year 2. In Year 3, the company declared total dividends of $200,000. What amount of the Year 3 dividends should be allocated to common shareholders?",
+      ja: "会社は額面$100、6%累積的・非参加型優先株式10,000株と普通株式200,000株を発行している。第1年度・第2年度は配当を宣言しなかった。第3年度に配当総額$200,000を宣言した。第3年度の配当のうち普通株主への配分額はいくらか。",
+      c: ["$140,000", "$80,000", "$20,000", "$200,000"],
+      a: 2,
+      ex: "優先配当は年60,000 × 3年分(延滞2年+当期)= 180,000。普通株主 = 200,000 − 180,000 = 20,000。$140,000は延滞配当を無視している。",
+    },
+    {
+      q: "A company has $500,000 par value of 5% noncumulative, fully participating preferred stock and $1,000,000 par value of common stock outstanding. It declared total dividends of $120,000. What amount should be allocated to the preferred shareholders?",
+      ja: "会社は額面総額$500,000の5%非累積的・完全参加型優先株式と額面総額$1,000,000の普通株式を発行している。配当総額$120,000を宣言した。優先株主への配分額はいくらか。",
+      c: ["$25,000", "$40,000", "$60,000", "$45,000"],
+      a: 1,
+      ex: "優先25,000、普通にも同率5%で50,000を配分。残額45,000を額面比(1:2)で参加配分し優先に15,000。優先合計 = 25,000 + 15,000 = 40,000。$25,000は参加権を無視している。",
+    },
+    {
+      q: "The board of directors appropriated $500,000 of retained earnings for future plant expansion. What is the effect of the appropriation on total retained earnings and total stockholders' equity?",
+      ja: "取締役会は将来の工場拡張のため利益剰余金$500,000を積立(appropriation)とした。この積立が利益剰余金合計および株主資本合計に与える影響はどれか。",
+      c: [
+        "Both decrease by $500,000",
+        "Retained earnings decreases; total stockholders' equity is unchanged",
+        "Retained earnings is unchanged; total stockholders' equity decreases",
+        "Neither total retained earnings nor total stockholders' equity changes",
+      ],
+      a: 3,
+      ex: "積立は利益剰余金の内部での振替(未処分→積立)にすぎず、合計額も株主資本も変わらない。工場拡張の支出を積立金に直接負担させることはできず、積立は不要になれば戻し入れる。",
+    },
+    {
+      q: "At the beginning of the year, total stockholders' equity was $900,000. During the year, net income was $150,000; cash dividends of $40,000 were declared and paid; a 10% stock dividend valued at $60,000 was distributed; treasury stock was purchased for $25,000; and treasury stock with a cost of $10,000 was reissued for $12,000. What is total stockholders' equity at year-end?",
+      ja: "期首の株主資本合計は$900,000であった。当期の純利益$150,000、現金配当$40,000を宣言・支払、評価額$60,000の10%株式配当を交付、自己株式を$25,000で取得、原価$10,000の自己株式を$12,000で再発行した。期末の株主資本合計はいくらか。",
+      c: ["$937,000", "$985,000", "$1,022,000", "$997,000"],
+      a: 3,
+      ex: "900,000 + 150,000 − 40,000 − 25,000 + 12,000 = 997,000。株式配当は株主資本内の振替で合計に影響しない($937,000は誤って控除)。自己株式の再発行は受取額12,000だけ資本を増やす。",
+    },
+    {
+      q: "A company had 80,000 common shares outstanding on January 1. It issued 24,000 shares on March 1, purchased 9,000 shares of treasury stock on July 1, and distributed a 10% stock dividend on November 1. What is the weighted-average number of common shares for basic EPS?",
+      ja: "会社の普通株式は1月1日に80,000株であった。3月1日に24,000株を発行し、7月1日に自己株式9,000株を取得し、11月1日に10%の株式配当を交付した。基本的EPSの加重平均株式数はいくらか。",
+      c: ["95,500", "97,083", "105,050", "114,400"],
+      a: 2,
+      ex: "株式配当前:80,000 + 24,000 × 10/12 − 9,000 × 6/12 = 95,500。株式配当は期首に遡って調整するため × 1.1 = 105,050。株式配当を11月1日から加重した$97,083は誤り。",
+    },
+    {
+      q: "On April 1, a company granted 20,000 stock options with an exercise price of $30. The average market price of the common stock from April 1 through December 31 was $40, and the year-end market price was $45. Using the treasury stock method, how many incremental shares should be included in the weighted-average shares for diluted EPS for the year?",
+      ja: "4月1日、会社は行使価格$30のストック・オプション20,000個を付与した。4月1日から12月31日までの平均株価は$40、期末株価は$45であった。自己株式法により、当期の希薄化後EPSの加重平均株式数に含める増加株式数はいくらか。",
+      c: ["5,000", "3,750", "6,667", "15,000"],
+      a: 1,
+      ex: "増加株式数 = 20,000 − 20,000 × 30 ÷ 40 = 5,000。期中付与のため9/12を乗じて3,750。希薄化後EPSでは平均株価を用い、期末株価による$6,667は誤り。",
+    },
+    {
+      q: "A company reported net income of $400,000 and had 200,000 weighted-average common shares outstanding. It also had $1,000,000 of 5% convertible bonds, issued at par, outstanding all year and convertible into 40,000 common shares. The tax rate is 25%. What is diluted EPS?",
+      ja: "会社の純利益は$400,000、加重平均普通株式数は200,000株である。期中を通じて、額面発行した利率5%の転換社債$1,000,000(普通株式40,000株に転換可能)が残存している。税率は25%である。希薄化後EPSはいくらか。",
+      c: ["$1.88", "$2.00", "$1.67", "$1.82"],
+      a: 3,
+      ex: "転換仮定法:分子 = 400,000 + 50,000 × (1 − 25%) = 437,500、分母 = 240,000。437,500 ÷ 240,000 = 1.82。税効果を考慮せず利息50,000を全額加算した$1.88は誤り。",
+    },
+    {
+      q: "A company's net income is $250,000, and preferred dividends of $60,000 were declared on convertible preferred stock that is convertible into 20,000 common shares. Weighted-average common shares outstanding are 100,000. There are no other potential common shares. What is diluted EPS?",
+      ja: "会社の純利益は$250,000で、普通株式20,000株に転換可能な転換優先株式に対し優先配当$60,000が宣言された。加重平均普通株式数は100,000株で、他に潜在株式はない。希薄化後EPSはいくらか。",
+      c: ["$1.90", "$2.08", "$2.50", "$1.58"],
+      a: 0,
+      ex: "基本的EPS = (250,000 − 60,000) ÷ 100,000 = 1.90。転換仮定では 250,000 ÷ 120,000 = 2.08 > 1.90となり逆希薄化のため除外し、希薄化後EPSは1.90。",
+    },
+    {
+      q: "A company has income from continuing operations available to common shareholders of $1,000,000 and 500,000 weighted-average common shares. Potential common shares: options producing 20,000 incremental shares; convertible preferred stock adding $60,000 to the numerator and 40,000 shares; and convertible bonds adding $120,000 (after tax) to the numerator and 50,000 shares. What is diluted EPS?",
+      ja: "普通株主に帰属する継続事業利益は$1,000,000、加重平均普通株式数は500,000株である。潜在株式は、増加株式数20,000株のオプション、分子に$60,000・分母に40,000株を加える転換優先株式、分子に税引後$120,000・分母に50,000株を加える転換社債である。希薄化後EPSはいくらか。",
+      c: ["$1.92", "$1.93", "$1.89", "$1.96"],
+      a: 2,
+      ex: "希薄化効果の大きい順に加える。オプション(0):1,000,000 ÷ 520,000 = 1.923。優先株(1株当たり1.50):1,060,000 ÷ 560,000 = 1.893。社債(2.40)は1.893を上回り逆希薄化のため除外。全部含めた$1.93は誤り。",
+    },
+    {
+      q: "A company agreed to issue 10,000 additional common shares to the former owners of an acquired business if the acquired business's net income exceeds $1,000,000 in each of the next two years. At the end of the first year, net income was $1,200,000. How should the 10,000 contingent shares be treated in the first year's EPS?",
+      ja: "会社は、取得した事業の純利益が今後2年間それぞれ$1,000,000を超えた場合、旧所有者に普通株式10,000株を追加発行することに合意した。1年目末の純利益は$1,200,000であった。1年目のEPSで条件付発行株式10,000株をどのように扱うべきか。",
+      c: [
+        "Included in both basic and diluted EPS",
+        "Excluded from basic EPS but included in diluted EPS",
+        "Excluded from both basic and diluted EPS",
+        "Included in basic EPS but excluded from diluted EPS",
+      ],
+      a: 1,
+      ex: "基本的EPSには全ての条件が満たされた時点から含めるため除外する。希薄化後EPSでは期末が条件期間の末日であると仮定して条件を満たしていれば含める(期末の利益が基準を超えている)。",
+    },
+    {
+      q: "A company's net income is $600,000. It has 100,000 common shares and 20,000 shares of participating preferred stock that share in dividends with common stock on a one-for-one basis. During the year, dividends of $2 per share were declared on both classes. Using the two-class method, what is basic EPS for common stock?",
+      ja: "会社の純利益は$600,000である。普通株式100,000株と、普通株式と1対1で配当に参加する参加型優先株式20,000株がある。当期、両種類に1株$2の配当を宣言した。二区分法による普通株式の基本的EPSはいくらか。",
+      c: ["$6.00", "$5.60", "$4.00", "$5.00"],
+      a: 3,
+      ex: "未分配利益 = 600,000 − 240,000 = 360,000を株式数比(100:20)で配分し普通株に300,000。普通株EPS = (200,000 + 300,000) ÷ 100,000 = 5.00。$5.60は参加型優先株への未分配利益の配分を無視している。",
+    },
+    {
+      q: "A company reported net income of $300,000 and had 75,000 weighted-average common shares for the year ended December 31. On February 10 of the following year, before the financial statements were issued, it effected a 2-for-1 stock split. There is no preferred stock. What basic EPS should be reported for the year ended December 31?",
+      ja: "12月31日に終了する年度の純利益は$300,000、加重平均普通株式数は75,000株であった。翌年2月10日、財務諸表の発行前に1対2の株式分割を実施した。優先株式はない。12月31日終了年度に報告すべき基本的EPSはいくらか。",
+      c: ["$2.00", "$4.00", "$3.00", "$1.00"],
+      a: 0,
+      ex: "期末後・財務諸表発行前の株式分割や株式配当は、表示される全期間のEPSに遡及して反映する。300,000 ÷ 150,000 = 2.00。分割を無視した$4.00は誤り。",
+    },
+    {
+      q: "On January 1, Year 1, a company granted 30,000 stock options with a grant-date fair value of $9 per option that cliff vest at the end of Year 3. The company elected to estimate forfeitures, and initially expected 10% of the options to be forfeited. At the end of Year 2, it revised the expected forfeiture rate to 5%. What compensation expense should be recognized in Year 2?",
+      ja: "第1年度1月1日、会社は付与日公正価値1個$9のストック・オプション30,000個を付与した。第3年度末に一括権利確定(クリフ・ベスティング)する。会社は失効を見積る方針を選択し、当初は10%の失効を見込んでいた。第2年度末に見込失効率を5%に修正した。第2年度に認識すべき報酬費用はいくらか。",
+      c: ["$85,500", "$81,000", "$90,000", "$171,000"],
+      a: 2,
+      ex: "第1年度 = 30,000 × 9 × 90% ÷ 3 = 81,000。第2年度末の累計 = 30,000 × 9 × 95% × 2/3 = 171,000。第2年度 = 171,000 − 81,000 = 90,000。見積の変更は累積キャッチアップで当期に反映する。",
+    },
+    {
+      q: "A company granted 10,000 equity-classified stock options that cliff vest after four years of service. The grant-date fair value was $8 per option. At the end of Year 1, the fair value of each option had increased to $11. The company accounts for forfeitures as they occur, and none occurred. What compensation expense should be recognized in Year 1?",
+      ja: "会社は4年間の勤務後に一括確定する資本分類のストック・オプション10,000個を付与した。付与日公正価値は1個$8で、第1年度末には$11に上昇した。会社は失効を発生時に処理する方針で、失効はなかった。第1年度の報酬費用はいくらか。",
+      c: ["$27,500", "$20,000", "$80,000", "$7,500"],
+      a: 1,
+      ex: "資本分類の報酬は付与日公正価値で測定し、その後再測定しない。10,000 × 8 ÷ 4 = 20,000。期末公正価値を用いた$27,500は負債分類(SARの現金決済等)の処理である。",
+    },
+    {
+      q: "On January 1, Year 1, a company granted 12,000 stock options with a grant-date fair value of $10 each. One-third of the options vest at the end of each of Years 1, 2, and 3 (graded vesting with service conditions only). The company elected the straight-line attribution policy. What compensation cost should be recognized in Year 1?",
+      ja: "第1年度1月1日、会社は付与日公正価値1個$10のストック・オプション12,000個を付与した。第1・第2・第3年度末にそれぞれ3分の1が確定する(勤務条件のみの段階的確定)。会社は定額法による配分方針を選択した。第1年度に認識すべき報酬費用はいくらか。",
+      c: ["$40,000", "$73,333", "$120,000", "$20,000"],
+      a: 0,
+      ex: "勤務条件のみの段階的確定では、全体を定額法で配分できる:120,000 ÷ 3 = 40,000(累計費用は確定済み部分40,000以上という要件も満たす)。$73,333は各トランシェを別個に配分する加速法の結果である。",
+    },
+    {
+      q: "On January 1, Year 1, a company granted 10,000 cash-settled stock appreciation rights (SARs) that vest after two years of service. The fair value of each SAR was $6 at December 31, Year 1, and $9 at December 31, Year 2. What compensation expense should be recognized in Year 2?",
+      ja: "第1年度1月1日、会社は2年間の勤務で確定する現金決済型の株式増価受益権(SAR)10,000個を付与した。各SARの公正価値は第1年度末$6、第2年度末$9であった。第2年度に認識すべき報酬費用はいくらか。",
+      c: ["$45,000", "$90,000", "$30,000", "$60,000"],
+      a: 3,
+      ex: "現金決済型SARは負債分類で、毎期末公正価値で再測定する。第2年度末の累計 = 10,000 × 9 × 2/2 = 90,000、第1年度計上額 = 10,000 × 6 × 1/2 = 30,000。第2年度 = 60,000。",
+    },
+    {
+      q: "On December 1, Year 1, a U.S. company purchased inventory from a German supplier for €100,000, payable on January 30, Year 2. Exchange rates ($ per €) were: December 1, $1.10; December 31, $1.13; January 30, $1.08. What should the company report in Year 2 related to this payable?",
+      ja: "第1年度12月1日、米国企業はドイツの仕入先から€100,000の棚卸資産を購入し、第2年度1月30日に支払う。為替レート($/€)は12月1日$1.10、12月31日$1.13、1月30日$1.08であった。この買掛金に関して第2年度に報告すべきものはどれか。",
+      c: ["Transaction gain of $2,000", "Transaction loss of $3,000", "Transaction gain of $5,000", "No gain or loss; the difference adjusts inventory"],
+      a: 2,
+      ex: "第1年度末に113,000へ換算替え(損失3,000)済み。第2年度の決済額108,000との差 = 5,000の為替差益。取引日レートとの比較による$2,000は前期計上分を考慮していない。為替差損益は棚卸資産の原価を修正しない。",
+    },
+    {
+      q: "On November 15, Year 1, a U.S. company sold goods to a Japanese customer for ¥50,000,000, to be collected in February, Year 2. The exchange rate was $0.0090 per yen on November 15 and $0.0086 per yen on December 31, Year 1. How should the effect of the rate change be reported in the Year 1 financial statements?",
+      ja: "第1年度11月15日、米国企業は日本の顧客に¥50,000,000で商品を販売し、第2年度2月に回収予定である。為替レートは11月15日$0.0090/円、第1年度12月31日$0.0086/円であった。レート変動の影響は第1年度の財務諸表でどのように報告すべきか。",
+      c: [
+        "A $20,000 transaction loss in other comprehensive income",
+        "A $20,000 transaction loss in net income",
+        "A $20,000 reduction of sales revenue",
+        "No recognition until the receivable is collected",
+      ],
+      a: 1,
+      ex: "外貨建債権は期末レートで再測定し、50,000,000 × (0.0090 − 0.0086) = 20,000の為替差損を純利益(継続事業)に計上する。OCIに計上するのは在外営業活動体の換算差額であり、売上は取引日レートで確定済み。",
+    },
   ],
+});
+
+CPA.tbs({
+  id: "TBS-FAR-28",
+  section: "FAR",
+  chapter: "FAR-05",
+  title: "負債証券投資(HTM・AFS)の償却と評価",
+  scenario: `<p>On January 1, Year 1, Mori Corp. purchased $200,000 face value, 6% bonds of another company maturing on December 31, Year 4. Interest is paid annually on December 31. Mori paid <b>$186,752</b>, a price that yields <b>8%</b>. Mori uses the effective interest method.</p>
+<p>Assume first that the bonds are classified as <b>held-to-maturity</b>. Then, alternatively, assume they are classified as <b>available-for-sale</b>; their fair value at December 31, Year 1, is <b>$193,000</b>, and there is no credit loss. Under the AFS alternative, Mori sells the bonds on January 1, Year 2, for <b>$194,000</b>.</p>
+<p class="ja">第1年度1月1日、Mori社は他社が発行した額面$200,000、利率6%、第4年度12月31日満期の社債を購入した。利息は毎年12月31日に支払われる。Mori社は利回り8%となる$186,752を支払い、実効金利法を用いる。まず満期保有目的(HTM)に分類したと仮定する。別案として売却可能(AFS)に分類したと仮定し、第1年度末の公正価値は$193,000、信用損失はないものとする。AFSの場合、第2年度1月1日に$194,000で売却する。</p>`,
+  rows: [
+    { label: "Year 1 interest revenue(第1年度の受取利息)", type: "num", answer: 14940, tol: 1 },
+    { label: "HTM carrying amount at December 31, Year 1(第1年度末のHTM帳簿価額)", type: "num", answer: 189692, tol: 1 },
+    { label: "HTM interest revenue for Year 2(第2年度のHTM受取利息)", type: "num", answer: 15175, tol: 1 },
+    { label: "AFS: unrealized holding gain for Year 1(AFS:第1年度の未実現保有利益)", type: "num", answer: 3308, tol: 2 },
+    { label: "AFS: where the Year 1 unrealized gain is reported(AFS:第1年度の未実現利益の表示区分)", type: "select", options: ["Net income", "Other comprehensive income", "Retained earnings directly", "Not recognized"], answer: "Other comprehensive income" },
+    { label: "AFS: gain recognized in net income on the January 1, Year 2 sale(AFS:第2年度1月1日の売却で純利益に認識する利益)", type: "num", answer: 4308, tol: 2 },
+  ],
+  explain: `<p>第1年度の受取利息 = 186,752 × 8% = 14,940。現金利息 12,000 との差 2,940 がディスカウント償却となり、期末帳簿価額 = 186,752 + 2,940 = 189,692。</p>
+<p>第2年度の受取利息 = 189,692 × 8% = 15,175。</p>
+<p>AFSの場合、償却原価 189,692 と公正価値 193,000 の差 3,308 を未実現保有利益としてOCIに計上する(利息は同じく実効金利法で純利益)。</p>
+<p>売却益 = 194,000 − 償却原価 189,692 = 4,308。AOCIの3,308は組替調整で純利益へ振り替えられる。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-FAR-29",
+  section: "FAR",
+  chapter: "FAR-05",
+  title: "株主資本の変動(新株発行・自己株式・株式配当)",
+  scenario: `<p>At January 1, Year 1, Sato Inc. had the following stockholders' equity: common stock, $10 par, 100,000 shares issued and outstanding, <b>$1,000,000</b>; additional paid-in capital, <b>$1,500,000</b>; retained earnings, <b>$2,000,000</b>. Year 1 transactions:</p>
+<table><tr><th>Date</th><th>Transaction</th></tr>
+<tr><td>Feb 1</td><td>Issued 10,000 shares at $32 per share; direct issuance costs were $8,000</td></tr>
+<tr><td>Apr 1</td><td>Purchased 5,000 shares of treasury stock at $35 per share (cost method)</td></tr>
+<tr><td>Jul 1</td><td>Reissued 2,000 treasury shares at $40 per share</td></tr>
+<tr><td>Sep 1</td><td>Declared and distributed a 10% stock dividend on outstanding shares; market price $38 per share</td></tr>
+<tr><td>Dec 15</td><td>Declared and paid a cash dividend of $1 per outstanding share</td></tr>
+<tr><td>Dec 31</td><td>Net income for the year was $600,000</td></tr></table>
+<p class="ja">第1年度1月1日、Sato社の株主資本は、普通株式(額面$10、発行済・流通100,000株)$1,000,000、払込剰余金$1,500,000、利益剰余金$2,000,000であった。第1年度の取引:2月1日に10,000株を1株$32で発行(直接発行費用$8,000)、4月1日に自己株式5,000株を1株$35で取得(原価法)、7月1日に自己株式2,000株を1株$40で再発行、9月1日に流通株式に対し10%の株式配当を宣言・交付(時価1株$38)、12月15日に流通株式1株当たり$1の現金配当を宣言・支払、当期純利益$600,000。払込剰余金には自己株式処分差益を含めること。</p>`,
+  rows: [
+    { label: "Common stock at December 31, Year 1(期末の普通株式)", type: "num", answer: 1207000 },
+    { label: "Additional paid-in capital (including treasury stock) at December 31(期末の払込剰余金・自己株式処分差益含む)", type: "num", answer: 2021600 },
+    { label: "Treasury stock at December 31(期末の自己株式)", type: "num", answer: 105000 },
+    { label: "Retained earnings at December 31(期末の利益剰余金)", type: "num", answer: 2075700 },
+    { label: "Total stockholders' equity at December 31(期末の株主資本合計)", type: "num", answer: 5199300 },
+  ],
+  explain: `<p>2/1:普通株式 +100,000、APIC +(320,000 − 100,000 − 8,000)= +212,000。</p>
+<p>4/1:自己株式 175,000。7/1:再発行 2,000 × (40 − 35) = APIC(自己株式)+10,000、自己株式残 3,000株 = 105,000。</p>
+<p>9/1:流通株式 = 110,000 − 3,000 = 107,000株 → 10,700株(小規模株式配当で時価)。利益剰余金 −406,600、普通株式 +107,000、APIC +299,600。</p>
+<p>12/15:流通株式 117,700株 × $1 = 117,700。</p>
+<p>普通株式 = 1,000,000 + 100,000 + 107,000 = 1,207,000。APIC = 1,500,000 + 212,000 + 10,000 + 299,600 = 2,021,600。利益剰余金 = 2,000,000 + 600,000 − 406,600 − 117,700 = 2,075,700。合計 = 1,207,000 + 2,021,600 + 2,075,700 − 105,000 = 5,199,300。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-FAR-30",
+  section: "FAR",
+  chapter: "FAR-05",
+  title: "基本的EPSと希薄化後EPS(オプション・転換社債)",
+  scenario: `<p>Kudo Corp. reported net income of <b>$900,000</b> for Year 1. The tax rate is 25%. Additional information:</p>
+<table><tr><th>Item</th><th>Details</th></tr>
+<tr><td>Common shares</td><td>200,000 outstanding on January 1; 40,000 issued on April 1; 12,000 reacquired as treasury stock on October 1</td></tr>
+<tr><td>Preferred stock</td><td>$1,000,000 par, 6% cumulative, nonconvertible; no dividends declared in Year 1</td></tr>
+<tr><td>Stock options</td><td>30,000 options outstanding all year, exercise price $25; average market price $40</td></tr>
+<tr><td>Convertible bonds</td><td>$2,000,000 of 4% bonds issued at par, outstanding all year, convertible into 50,000 common shares</td></tr></table>
+<p class="ja">Kudo社の第1年度の純利益は$900,000、税率は25%である。普通株式は1月1日に200,000株、4月1日に40,000株を発行、10月1日に12,000株を自己株式として取得した。優先株式は額面$1,000,000、6%累積的・非転換で、第1年度に配当は宣言されていない。ストック・オプション30,000個(行使価格$25、平均株価$40)が期中を通じて残存。額面発行の4%転換社債$2,000,000(普通株式50,000株に転換可能)が期中を通じて残存している。</p>`,
+  rows: [
+    { label: "Weighted-average common shares(加重平均普通株式数)", type: "num", answer: 227000 },
+    { label: "Income available to common shareholders(普通株主に帰属する利益)", type: "num", answer: 840000 },
+    { label: "Basic EPS(基本的EPS)", type: "num", answer: 3.70, tol: 0.01 },
+    { label: "Incremental shares from options(オプションによる増加株式数)", type: "num", answer: 11250 },
+    { label: "Effect of the convertible bonds(転換社債の影響)", type: "select", options: ["Dilutive", "Antidilutive"], answer: "Dilutive" },
+    { label: "Diluted EPS(希薄化後EPS)", type: "num", answer: 3.12, tol: 0.01 },
+  ],
+  explain: `<p>加重平均株式数 = 200,000 + 40,000 × 9/12 − 12,000 × 3/12 = 227,000。</p>
+<p>累積的優先株式の配当60,000は宣言の有無にかかわらず控除:900,000 − 60,000 = 840,000。基本的EPS = 840,000 ÷ 227,000 = 3.70。</p>
+<p>オプション:30,000 − 30,000 × 25 ÷ 40 = 11,250株。オプション考慮後 840,000 ÷ 238,250 = 3.53。</p>
+<p>転換社債:税引後利息 2,000,000 × 4% × 75% = 60,000、1株当たり 60,000 ÷ 50,000 = 1.20 < 3.53 のため希薄化効果あり。</p>
+<p>希薄化後EPS = (840,000 + 60,000) ÷ (227,000 + 11,250 + 50,000) = 900,000 ÷ 288,250 = 3.12。</p>`,
 });
