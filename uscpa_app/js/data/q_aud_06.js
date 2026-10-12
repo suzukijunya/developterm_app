@@ -724,3 +724,45 @@ CPA.extend("AUD-05", {
     },
   ],
 });
+
+CPA.tbs({ id: "TBS-AUD-24", section: "AUD", chapter: "AUD-05", title: "監査意見の種類の選択(非公開企業)",
+  scenario: `<p>You are the auditor of several nonissuer clients, each reporting under U.S. GAAP. For each independent scenario, select the type of opinion the auditor should express. Assume all other aspects of each audit were completed without exception and that withdrawal is not an option.</p>
+<p class="ja">あなたはUS GAAPに準拠する複数の非公開企業の監査人である。それぞれ独立した各状況について、監査人が表明すべき意見の種類を選択せよ。各監査のその他の点は例外なく完了しており、契約解除は選択肢でないものとする。</p>`,
+  rows: [
+    { label: "The auditor could not obtain audited financial information for a foreign equity-method investee; the investment is material but not pervasive(海外の持分法投資先の財務情報を入手できない。投資は重要だが広範ではない)", type: "select", options: ["Unmodified", "Qualified", "Adverse", "Disclaimer of opinion"], answer: "Qualified" },
+    { label: "Management failed to consolidate a variable interest entity of which it is the primary beneficiary; the effects are material and pervasive(主たる受益者である変動持分事業体を連結していない。影響は重要かつ広範)", type: "select", options: ["Unmodified", "Qualified", "Adverse", "Disclaimer of opinion"], answer: "Adverse" },
+    { label: "Substantial doubt about going concern exists and is adequately disclosed(継続企業の重大な疑義が存在し、適切に開示されている)", type: "select", options: ["Unmodified", "Qualified", "Adverse", "Disclaimer of opinion"], answer: "Unmodified" },
+    { label: "Management refuses to sign the written representation letter required by GAAS(GAASが要求する経営者確認書への署名を経営者が拒否した)", type: "select", options: ["Unmodified", "Qualified", "Adverse", "Disclaimer of opinion"], answer: "Disclaimer of opinion" },
+    { label: "Operating lease liabilities and right-of-use assets were not recognized; the effect is material but not pervasive(オペレーティング・リース負債と使用権資産が未計上。影響は重要だが広範ではない)", type: "select", options: ["Unmodified", "Qualified", "Adverse", "Disclaimer of opinion"], answer: "Qualified" },
+    { label: "A justified change in accounting principle was properly applied retrospectively and disclosed(正当な理由のある会計方針の変更が適切に遡及適用・開示された)", type: "select", options: ["Unmodified", "Qualified", "Adverse", "Disclaimer of opinion"], answer: "Unmodified" },
+  ],
+  explain: `<p>①証拠入手不能で重要だが広範でない → 限定付意見(可能性のある影響を除き)。②重要かつ広範な虚偽表示 → 不適正意見。③重大な疑義が適切に開示 → 無限定意見+継続企業区分。④経営者確認書の拒否は証拠の重大な欠如であり、AU-C 580により意見不表明となる。⑤重要だが広範でない虚偽表示 → 限定付意見。⑥正当な会計方針の変更 → 無限定意見(強調事項を付す)。</p>`,
+});
+
+CPA.tbs({ id: "TBS-AUD-25", section: "AUD", chapter: "AUD-05", title: "監査報告書に必要な区分・段落の識別",
+  scenario: `<p>For each independent situation in a nonissuer audit, identify the section or paragraph the auditor must add to an otherwise standard SAS No. 134 report. The auditor has not been engaged to communicate key audit matters.</p>
+<p class="ja">非公開企業の監査におけるそれぞれ独立した各状況について、SAS第134号の標準的な報告書に監査人が追加しなければならない区分または段落を識別せよ。監査人はKAMの報告を受嘱していない。</p>`,
+  rows: [
+    { label: "A justified change in accounting principle with a material effect, in the year of change(重要な影響のある正当な会計方針の変更(変更年度))", type: "select", options: ["Emphasis-of-matter paragraph", "Other-matter paragraph", "Going concern section", "Basis for qualified opinion section", "No additional paragraph required"], answer: "Emphasis-of-matter paragraph" },
+    { label: "Management omitted the required supplementary information that GAAP requires(GAAPが要求するRSIを経営者が省略)", type: "select", options: ["Emphasis-of-matter paragraph", "Other-matter paragraph", "Going concern section", "Basis for qualified opinion section", "No additional paragraph required"], answer: "Other-matter paragraph" },
+    { label: "Substantial doubt about going concern exists and is adequately disclosed(継続企業の重大な疑義が存在し適切に開示)", type: "select", options: ["Emphasis-of-matter paragraph", "Other-matter paragraph", "Going concern section", "Basis for qualified opinion section", "No additional paragraph required"], answer: "Going concern section" },
+    { label: "Prior-year statements presented comparatively were audited by a predecessor whose report is not reissued(比較表示の前年度は前任監査人が監査し、その報告書は再発行されない)", type: "select", options: ["Emphasis-of-matter paragraph", "Other-matter paragraph", "Going concern section", "Basis for qualified opinion section", "No additional paragraph required"], answer: "Other-matter paragraph" },
+    { label: "A change in the estimated useful lives of equipment, properly accounted for prospectively(設備の見積耐用年数の変更を適切に将来に向けて処理)", type: "select", options: ["Emphasis-of-matter paragraph", "Other-matter paragraph", "Going concern section", "Basis for qualified opinion section", "No additional paragraph required"], answer: "No additional paragraph required" },
+    { label: "A required disclosure of a material commitment is omitted; material but not pervasive(重要なコミットメントの必要な開示が省略。重要だが広範ではない)", type: "select", options: ["Emphasis-of-matter paragraph", "Other-matter paragraph", "Going concern section", "Basis for qualified opinion section", "No additional paragraph required"], answer: "Basis for qualified opinion section" },
+  ],
+  explain: `<p>①会計方針の変更は財務諸表に開示された事項であり、AU-C 708により強調事項区分が必要。②RSIの省略は財務諸表外の事項としてその他の事項区分(意見は修正しない)。③重大な疑義はAU-C 570により「継続企業の前提に関する重大な疑義」の独立区分。④前任監査人の報告書を再発行しない場合、その他の事項区分で前任監査人の監査・報告日・意見の種類を記載する。⑤見積りの変更は継続性の問題ではなく追加区分不要。⑥開示の省略は虚偽表示であり、限定付意見とし意見の根拠区分に記載する(可能なら省略情報も記載)。</p>`,
+});
+
+CPA.tbs({ id: "TBS-AUD-26", section: "AUD", chapter: "AUD-05", title: "PCAOBとAICPAの監査報告書の相違",
+  scenario: `<p>An audit firm issues unmodified reports both on an issuer that is not an emerging growth company (under PCAOB AS 3101) and on a nonissuer (under AICPA AU-C 700, as amended by SAS No. 134). For each report element, indicate whether it is required in the AICPA report only, the PCAOB report only, both, or neither.</p>
+<p class="ja">ある監査法人は、新興成長企業ではない上場企業(PCAOB AS 3101)と非公開企業(SAS第134号改訂後のAICPA AU-C 700)の双方について無限定意見の報告書を発行する。各記載要素が、AICPAの報告書のみ、PCAOBの報告書のみ、両方、いずれでもない、のどれで要求されるかを示せ。</p>`,
+  rows: [
+    { label: "Statement of the year the auditor began serving consecutively as the company's auditor(監査人の継続就任開始年の記載)", type: "select", options: ["AICPA (AU-C) report only", "PCAOB (AS 3101) report only", "Both", "Neither"], answer: "PCAOB (AS 3101) report only" },
+    { label: "A separate section headed \"Responsibilities of Management for the Financial Statements\"(「財務諸表に対する経営者の責任」という独立区分)", type: "select", options: ["AICPA (AU-C) report only", "PCAOB (AS 3101) report only", "Both", "Neither"], answer: "AICPA (AU-C) report only" },
+    { label: "The Opinion section appears first, followed by the Basis for Opinion section(意見区分が最初で、その後に意見の根拠区分)", type: "select", options: ["AICPA (AU-C) report only", "PCAOB (AS 3101) report only", "Both", "Neither"], answer: "Both" },
+    { label: "Statement that the firm is registered with the PCAOB(PCAOB登録事務所である旨の記載)", type: "select", options: ["AICPA (AU-C) report only", "PCAOB (AS 3101) report only", "Both", "Neither"], answer: "PCAOB (AS 3101) report only" },
+    { label: "Communication of key/critical audit matters required in every audit regardless of entity type or engagement terms(企業の種類や契約条件にかかわらず全監査でKAM/CAMの報告が必要)", type: "select", options: ["AICPA (AU-C) report only", "PCAOB (AS 3101) report only", "Both", "Neither"], answer: "Neither" },
+    { label: "Statement that the auditor concludes whether there are conditions or events that raise substantial doubt about going concern for a reasonable period of time, in the auditor's responsibilities section(監査人の責任区分における、合理的期間の継続企業の重大な疑義について結論付ける旨の記載)", type: "select", options: ["AICPA (AU-C) report only", "PCAOB (AS 3101) report only", "Both", "Neither"], answer: "AICPA (AU-C) report only" },
+  ],
+  explain: `<p>①継続就任年数はAS 3101特有。②PCAOBの報告書では経営者の責任は意見の根拠区分で一文で述べるのみで、独立区分はAICPA特有。③意見区分を先頭、次に意見の根拠区分という順序は両者共通。④PCAOB登録の記載はAS 3101特有。⑤CAMはEGC・ブローカーディーラー等には不要、AICPAのKAMは受嘱時のみであり、いずれも「全監査で必須」ではない。⑥継続企業に関する結論付けの記述はSAS 134の監査人の責任区分の要素で、AS 3101の標準報告書には含まれない。</p>`,
+});

@@ -302,7 +302,7 @@ CPA.extend("REG-04", {
     },
     {
       q: "In 2026, Fay exchanged investment land with her brother in a transaction that qualified under §1031, deferring a $60,000 realized gain. Fourteen months later, her brother sold the land he received from Fay to an unrelated buyer. Neither death nor an involuntary conversion was involved, and tax avoidance was a principal purpose. What is the tax consequence to Fay?",
-      ja: "2026年、Favは兄弟と投資用土地を交換し、§1031の要件を満たして実現利得$60,000を繰り延べた。14か月後、兄弟はFayから受け取った土地を第三者に売却した。死亡や強制収用ではなく、租税回避が主たる目的であった。Fayにとっての課税上の結果はどれか。",
+      ja: "2026年、Fayは兄弟と投資用土地を交換し、§1031の要件を満たして実現利得$60,000を繰り延べた。14か月後、兄弟はFayから受け取った土地を第三者に売却した。死亡や強制収用ではなく、租税回避が主たる目的であった。Fayにとっての課税上の結果はどれか。",
       c: [
         "No consequence, because Fay still holds the property she received",
         "Fay recognizes the $60,000 deferred gain in the year her brother sells the land",
@@ -317,7 +317,7 @@ CPA.extend("REG-04", {
       ja: "2026年3月1日、Gusは繰延型の同種交換において譲渡資産(投資用不動産)を適格仲介人に移転した。Gusが交換取得資産を特定しなければならない期限はいつか。",
       c: ["March 31, 2026", "August 28, 2026", "April 15, 2026", "April 15, 2027"],
       a: 2,
-      ex: "取得資産の特定期限は譲渡日から45日以内(3月の残り30日 + 4月15日 = 45日目)。取得の完了期限は180日以内(8月28日)または申告期限(延長含む)のいずれか早い日。$8月28日は取得期限と混同した誤り。",
+      ex: "取得資産の特定期限は譲渡日から45日以内(3月の残り30日 + 4月15日 = 45日目)。取得の完了期限は180日以内(8月28日)または申告期限(延長含む)のいずれか早い日。8月28日は取得期限と混同した誤り。",
     },
     {
       q: "Hana, a calendar-year individual, transferred relinquished property in a deferred like-kind exchange on December 1, 2026, and timely identified replacement property. Her 2026 return is due April 15, 2027. If she does not extend her return, by what date must she receive the replacement property?",
