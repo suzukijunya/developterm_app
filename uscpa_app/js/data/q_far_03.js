@@ -327,5 +327,240 @@ CPA.extend("FAR-03", {
       a: 2,
       ex: "取得原価 = 現金20,000 + 手形の現在価値100,000 × 0.7938 = 99,380。額面合計$120,000は利息部分を含むため誤り。現金部分まで割り引く($95,256)のも誤り。差額20,620は手形の割引として利息費用で償却する。",
     },
+    {
+      q: "On January 1, a company acquired equipment by issuing a note payable requiring five annual payments of $10,000 at the end of each year. The prevailing interest rate for similar notes is 10%, and the present value of an ordinary annuity of $1 for five periods at 10% is 3.7908. What is the carrying amount of the note at December 31 of the first year, after the first payment (round to the nearest dollar)?",
+      ja: "会社は1月1日、毎年末に$10,000を5回支払う手形を振り出して設備を取得した。類似の手形の市場利子率は10%で、10%・5期の通常年金現価係数は3.7908である。初年度12月31日の初回支払後の手形の帳簿価額はいくらか(ドル未満四捨五入)。",
+      c: ["$40,000", "$27,908", "$34,117", "$31,699"],
+      a: 3,
+      ex: "設備・手形の当初計上額 = 10,000 × 3.7908 = 37,908。初年度利息 = 37,908 × 10% = 3,791。期末帳簿価額 = 37,908 + 3,791 − 10,000 = 31,699。支払額全額を元本から控除すると$27,908となり誤り。",
+    },
+    {
+      q: "A company issued 10,000 shares of its $1 par common stock, which trades actively on a national exchange at $25 per share, in exchange for land. An independent appraisal valued the land at $240,000. At what amount should the land be recorded?",
+      ja: "会社は全国取引所で活発に取引され1株$25の額面$1の普通株式10,000株を発行し、土地と交換した。独立鑑定による土地の評価額は$240,000であった。土地はいくらで記録すべきか。",
+      c: ["$240,000", "$10,000", "$250,000", "$245,000"],
+      a: 2,
+      ex: "株式発行による資産取得は、発行株式と取得資産の公正価値のうちより明確に測定できる方で記録する。活発な市場価格がある株式の公正価値10,000 × 25 = 250,000の方が鑑定評価より信頼性が高い。資本金10,000、資本剰余金240,000を計上する。額面$10,000は誤り。",
+    },
+    {
+      q: "A closely held company with no market for its shares issued 5,000 shares of $1 par common stock to acquire equipment. The equipment had a reliably determined appraised fair value of $85,000 and a carrying amount of $60,000 on the seller's books. At what amount should the equipment be recorded?",
+      ja: "株式に市場が存在しない非公開会社が、額面$1の普通株式5,000株を発行して設備を取得した。設備には信頼性のある鑑定公正価値$85,000があり、売り手の帳簿価額は$60,000であった。設備はいくらで記録すべきか。",
+      c: ["$5,000", "$85,000", "$60,000", "$0"],
+      a: 1,
+      ex: "株式の公正価値が容易に測定できない場合は、取得資産の公正価値$85,000で記録し、額面超過額80,000を資本剰余金とする。株式の額面$5,000や売り手の帳簿価額$60,000は取得原価の測定基準ではない。",
+    },
+    {
+      q: "An unrelated private foundation unconditionally donated land with a fair value of $400,000 to a business enterprise to encourage it to build a training center. The enterprise paid $5,000 of legal and recording fees to transfer title. How should the enterprise record the donation?",
+      ja: "関係のない民間財団が、研修センター建設を促すため、公正価値$400,000の土地を営利企業に無条件で寄贈した。企業は所有権移転のため弁護士・登記費用$5,000を支払った。企業は寄贈をどのように記録すべきか。",
+      c: [
+        "Land $405,000; contribution revenue (gain) $400,000",
+        "Land $5,000; no revenue recognized",
+        "Land $400,000; legal fees expensed; contribution revenue $400,000",
+        "Memorandum entry only, with disclosure in the notes",
+      ],
+      a: 0,
+      ex: "営利企業が受け取った無条件の寄贈資産は公正価値で計上し、同額を寄贈収益(利得)として認識する(ASC 958-605)。所有権移転の付随費用$5,000は土地の取得原価に含めるため土地は405,000。支払額のみ($5,000)とするのは誤り。",
+    },
+    {
+      q: "A company constructed a warehouse for its own use. Costs incurred: direct materials $200,000; direct labor $150,000; incremental overhead caused by the construction $40,000; and interest capitalized under ASC 835-20 of $12,000. The lowest bid from an outside contractor was $480,000. At what amount should the warehouse be recorded?",
+      ja: "会社は自家使用の倉庫を建設した。発生原価:直接材料費$200,000、直接労務費$150,000、建設により増加した間接費$40,000、ASC 835-20に基づき資本化した利息$12,000。外部業者の最低入札額は$480,000であった。倉庫はいくらで記録すべきか。",
+      c: ["$480,000", "$402,000", "$390,000", "$362,000"],
+      a: 1,
+      ex: "自家建設資産は実際原価で記録する:200,000 + 150,000 + 40,000 + 12,000 = 402,000。外部入札額との差額を自家建設の利益として認識してはならない($480,000は誤り)。資本化利息を含めないと$390,000。",
+    },
+    {
+      q: "During the year, a company's weighted-average accumulated expenditures on a qualifying asset were $1,500,000. It had a $1,000,000 specific construction loan at 9%. Its other borrowings were a $2,000,000 note at 10% and $3,000,000 of bonds at 7.5%. Total interest incurred was $515,000. What amount of interest should be capitalized?",
+      ja: "当期、適格資産に対する加重平均累積支出額は$1,500,000であった。9%の特定建設借入金$1,000,000があり、その他の借入金は10%の手形$2,000,000と7.5%の社債$3,000,000であった。発生利息合計は$515,000である。資本化すべき利息はいくらか。",
+      c: ["$127,500", "$135,000", "$132,500", "$515,000"],
+      a: 2,
+      ex: "特定借入分:1,000,000 × 9% = 90,000。超過500,000には一般借入の加重平均利率(200,000 + 225,000)÷ 5,000,000 = 8.5%を適用 → 42,500。回避可能利息 = 132,500(発生利息515,000以下)。全額に8.5%を適用すると$127,500。",
+    },
+    {
+      q: "A company began constructing a building for its own use on January 1 and completed it on December 31. Construction expenditures were $600,000 on January 1, $900,000 on May 1, and $1,200,000 on October 1. What were the weighted-average accumulated expenditures for the year?",
+      ja: "会社は1月1日に自家使用の建物の建設を開始し、12月31日に完成させた。建設支出は1月1日$600,000、5月1日$900,000、10月1日$1,200,000であった。当期の加重平均累積支出額はいくらか。",
+      c: ["$2,700,000", "$1,350,000", "$1,800,000", "$1,500,000"],
+      a: 3,
+      ex: "600,000 × 12/12 + 900,000 × 8/12 + 1,200,000 × 3/12 = 600,000 + 600,000 + 300,000 = 1,500,000。支出総額$2,700,000をそのまま用いるのは誤り。",
+    },
+    {
+      q: "A company's weighted-average accumulated expenditures on a qualifying asset were $4,000,000. It had no specific construction borrowings, and the weighted-average rate on its general borrowings was 10%. Total interest incurred during the year was $320,000. What amount of interest should be capitalized?",
+      ja: "適格資産に対する加重平均累積支出額は$4,000,000であった。特定の建設借入金はなく、一般借入金の加重平均利率は10%であった。当期の発生利息合計は$320,000である。資本化すべき利息はいくらか。",
+      c: ["$400,000", "$320,000", "$80,000", "$360,000"],
+      a: 1,
+      ex: "回避可能利息 = 4,000,000 × 10% = 400,000だが、資本化額は当期の実際発生利息320,000を上限とする。よって320,000。上限を考慮しない$400,000は誤り。",
+    },
+    {
+      q: "A company's weighted-average accumulated expenditures on a qualifying asset were $800,000. It borrowed $1,000,000 at 8% specifically for the project, and its general borrowings carry a weighted-average rate of 9%. Total interest incurred exceeded $200,000. What amount of interest should be capitalized?",
+      ja: "適格資産に対する加重平均累積支出額は$800,000であった。会社はこのプロジェクトのために8%で$1,000,000を特定借入しており、一般借入金の加重平均利率は9%である。発生利息合計は$200,000を超えている。資本化すべき利息はいくらか。",
+      c: ["$64,000", "$80,000", "$72,000", "$0"],
+      a: 0,
+      ex: "加重平均累積支出額が特定借入額以下なので、支出額に特定借入の利率を適用する:800,000 × 8% = 64,000。特定借入の利息全額(80,000)を資本化するのは誤り。一般借入利率9%(72,000)は特定借入を超える部分にのみ用いる。",
+    },
+    {
+      q: "Under U.S. GAAP, a company temporarily invested part of the proceeds of a taxable general-purpose borrowing that is being used to finance construction of its new headquarters and earned $15,000 of interest income. How should the interest income be treated?",
+      ja: "米国GAAPにおいて、会社は新本社の建設資金に充てている課税対象の一般目的借入金の一部を一時的に運用し、受取利息$15,000を得た。この受取利息はどのように処理すべきか。",
+      c: [
+        "Offset against the interest cost capitalized",
+        "Deducted from the cost of the building",
+        "Deferred and amortized over the building's useful life",
+        "Reported as interest income; it is not offset against capitalized interest",
+      ],
+      a: 3,
+      ex: "米国GAAPでは原則として一時的運用による受取利息を資本化利息と相殺しない(非課税借入金の特定の場合を除く)。IFRSでは特定借入金の一時的運用益を資本化額から控除するため、混同しないよう注意する。",
+    },
+    {
+      q: "A company purchased land on which it is constructing its own office building. Interest capitalized during the construction period that relates to the expenditures for the land should be added to the cost of:",
+      ja: "会社は自社の事務所ビルを建設するための土地を購入した。建設期間中に資本化される利息のうち、土地への支出に係る部分はどの資産の原価に加算すべきか。",
+      c: [
+        "The land",
+        "The building",
+        "Neither; it should be expensed because land is not depreciated",
+        "Land improvements",
+      ],
+      a: 1,
+      ex: "土地自体は適格資産ではないが、建物建設のために土地を開発している場合、土地への支出も累積支出に含め、その資本化利息は建物の原価に加算する(建物を通じて減価償却される)。",
+    },
+    {
+      q: "A company exchanged a used truck (cost $60,000; accumulated depreciation $25,000; fair value $42,000) and $10,000 cash for a new truck with a fair value of $52,000. The exchange has commercial substance. At what amount should the new truck be recorded?",
+      ja: "会社は中古トラック(取得原価$60,000、減価償却累計額$25,000、公正価値$42,000)と現金$10,000を、公正価値$52,000の新しいトラックと交換した。交換には経済的実質がある。新しいトラックはいくらで記録すべきか。",
+      c: ["$52,000", "$45,000", "$42,000", "$62,000"],
+      a: 0,
+      ex: "経済的実質がある交換は公正価値で測定:42,000 + 10,000 = 52,000で記録し、利得7,000(42,000 − 35,000)を全額認識する。$45,000は帳簿価額35,000 + 現金10,000で、経済的実質がない場合の金額である。",
+    },
+    {
+      q: "A company exchanged equipment (carrying amount $35,000; fair value $42,000) plus $10,000 cash for similar equipment with a fair value of $52,000. The exchange lacks commercial substance. At what amount should the acquired equipment be recorded?",
+      ja: "会社は設備(帳簿価額$35,000、公正価値$42,000)と現金$10,000を、公正価値$52,000の類似設備と交換した。交換に経済的実質はない。取得した設備はいくらで記録すべきか。",
+      c: ["$52,000", "$35,000", "$45,000", "$42,000"],
+      a: 2,
+      ex: "経済的実質がなく現金を支払う側は利得を認識しない:新設備 = 帳簿価額35,000 + 支払現金10,000 = 45,000(利得7,000は繰り延べられる)。公正価値$52,000で記録するのは経済的実質がある場合。",
+    },
+    {
+      q: "A company exchanged equipment with a carrying amount of $60,000 and a fair value of $80,000 for similar equipment with a fair value of $70,000 plus $10,000 cash. The exchange lacks commercial substance. What gain should the company recognize?",
+      ja: "会社は帳簿価額$60,000、公正価値$80,000の設備を、公正価値$70,000の類似設備と現金$10,000と交換した。交換に経済的実質はない。会社が認識すべき利得はいくらか。",
+      c: ["$20,000", "$0", "$10,000", "$2,500"],
+      a: 3,
+      ex: "受取現金の割合 = 10,000 ÷ 80,000 = 12.5%(25%未満なので非貨幣性交換)。利得総額20,000のうち現金受取分に比例して認識:20,000 × 10,000 ÷ 80,000 = 2,500。受取現金額$10,000をそのまま利得とするのは誤り。",
+    },
+    {
+      q: "A company exchanged a machine (carrying amount $40,000; fair value $60,000) for a similar machine with a fair value of $48,000 plus $12,000 cash. The exchange lacks commercial substance. At what amount should the acquired machine be recorded?",
+      ja: "会社は機械(帳簿価額$40,000、公正価値$60,000)を、公正価値$48,000の類似機械と現金$12,000と交換した。交換に経済的実質はない。取得した機械はいくらで記録すべきか。",
+      c: ["$48,000", "$32,000", "$28,000", "$44,000"],
+      a: 1,
+      ex: "受取現金20%(25%未満)。認識利得 = 20,000 × 12,000 ÷ 60,000 = 4,000。新機械 = 40,000 − 12,000 + 4,000 = 32,000(= 公正価値48,000 − 繰延利得16,000)。利得を認識しないと$28,000となる。",
+    },
+    {
+      q: "A company exchanged equipment with a carrying amount of $60,000 and a fair value of $80,000 for other equipment with a fair value of $50,000 plus $30,000 cash. Although the assets are similar and the exchange would otherwise lack commercial substance, what gain should the company recognize?",
+      ja: "会社は帳簿価額$60,000、公正価値$80,000の設備を、公正価値$50,000の別の設備と現金$30,000と交換した。資産は類似しており、それ以外の点では経済的実質がないとしても、会社が認識すべき利得はいくらか。",
+      c: ["$20,000", "$7,500", "$0", "$12,500"],
+      a: 0,
+      ex: "受取現金の割合 = 30,000 ÷ 80,000 = 37.5%で25%以上のため、取引全体を貨幣性交換として公正価値で処理し、利得20,000(80,000 − 60,000)を全額認識する。比例計算の$7,500は25%未満の場合の方法。",
+    },
+    {
+      q: "A company exchanged equipment with a carrying amount of $50,000 and a fair value of $42,000, plus $5,000 cash, for similar equipment with a fair value of $47,000. The exchange lacks commercial substance. What should the company report?",
+      ja: "会社は帳簿価額$50,000、公正価値$42,000の設備と現金$5,000を、公正価値$47,000の類似設備と交換した。交換に経済的実質はない。会社は何を報告すべきか。",
+      c: [
+        "No loss; new equipment recorded at $55,000",
+        "Loss of $8,000; new equipment recorded at $42,000",
+        "Loss of $8,000; new equipment recorded at $47,000",
+        "Loss of $3,000; new equipment recorded at $52,000",
+      ],
+      a: 2,
+      ex: "損失は経済的実質の有無にかかわらず全額を直ちに認識する:42,000 − 50,000 = 8,000の損失。新設備 = 42,000 + 5,000 = 47,000(公正価値)。損失を繰り延べ帳簿価額+現金の$55,000とするのは誤り。",
+    },
+    {
+      q: "A company replaced the roof of its building for $90,000. The old roof's original cost of $40,000 and related accumulated depreciation of $30,000 are separately identifiable. How should the company account for the replacement?",
+      ja: "会社は建物の屋根を$90,000で交換した。旧屋根の取得原価$40,000と関連する減価償却累計額$30,000は個別に識別可能である。この交換をどのように会計処理すべきか。",
+      c: [
+        "Expense $90,000 as a repair",
+        "Debit accumulated depreciation $90,000",
+        "Capitalize $50,000, the net increase in cost",
+        "Remove the old roof and recognize a $10,000 loss, and capitalize $90,000 for the new roof",
+      ],
+      a: 3,
+      ex: "旧構成部分の帳簿価額が識別可能な場合は置換法:旧屋根の原価40,000と累計額30,000を除去し、帳簿価額10,000を損失とし、新屋根90,000を資産計上する。修繕費処理は耐用年数を延長する取替には不適切。",
+    },
+    {
+      q: "A company made a major overhaul of a machine that extended its useful life by four years but did not increase its productivity. The carrying amount of the components replaced cannot be determined. How should the overhaul cost generally be recorded?",
+      ja: "会社は機械の大規模なオーバーホールを行い、耐用年数が4年延長したが、生産能力は増加しなかった。取り替えた構成部分の帳簿価額は算定できない。オーバーホールの費用は一般にどのように記録すべきか。",
+      c: [
+        "As a debit to accumulated depreciation",
+        "As a debit to repairs and maintenance expense",
+        "As a debit to the machine account with a loss on the old components",
+        "As a deferred charge amortized over four years",
+      ],
+      a: 0,
+      ex: "耐用年数を延長する支出で旧部分の帳簿価額が不明な場合、過去の減価償却を戻す考え方で減価償却累計額を借方計上する(資産の帳簿価額が増加)。生産性・品質を向上させる改良であれば資産勘定を借方とする。",
+    },
+    {
+      q: "During the year, a company incurred the following costs on its existing plant: construction of a new wing, $300,000; an improvement that significantly increased the efficiency of a production line (old components not identifiable), $80,000; routine replacement of worn parts, $15,000; and repainting of the plant interior, $12,000. What total amount should be capitalized?",
+      ja: "当期、会社は既存工場について次の支出を行った:新棟の増築$300,000、生産ラインの効率を大幅に高める改良(旧部分は識別不能)$80,000、摩耗部品の定期的な交換$15,000、工場内部の塗装$12,000。資本化すべき合計額はいくらか。",
+      c: ["$392,000", "$395,000", "$380,000", "$300,000"],
+      a: 2,
+      ex: "増築(addition)300,000と効率を高める改良(improvement)80,000を資本化し、合計380,000。定期的な部品交換と塗装は通常の修繕で費用処理する($395,000・$392,000は誤り)。",
+    },
   ],
+});
+
+CPA.tbs({ id: "TBS-FAR-19", section: "FAR", chapter: "FAR-03", title: "ドル価値LIFO(複数年度の層の計算)",
+  scenario: `<p>Mori Co. adopted dollar-value LIFO on December 31, Year 1, when its inventory was $150,000 (base-year price index 1.00). Year-end data:</p>
+<table><tr><th>Date</th><th>Inventory at current-year cost</th><th>Price index</th></tr>
+<tr><td>Dec. 31, Year 1</td><td>$150,000</td><td>1.00</td></tr>
+<tr><td>Dec. 31, Year 2</td><td>$180,400</td><td>1.10</td></tr>
+<tr><td>Dec. 31, Year 3</td><td>$189,000</td><td>1.20</td></tr>
+<tr><td>Dec. 31, Year 4</td><td>$208,000</td><td>? (inventory at base-year cost: $160,000)</td></tr></table>
+<p class="ja">Mori社は第1年度12月31日、棚卸資産$150,000(基準年物価指数1.00)の時点でドル価値LIFOを採用した。各年度末の当期原価による棚卸資産と物価指数は上表のとおり。第4年度の指数は示されていないが、基準年原価による棚卸資産は$160,000である。</p>`,
+  rows: [
+    { label: "Dollar-value LIFO inventory, Dec. 31, Year 2(第2年度末のドル価値LIFO棚卸高)", type: "num", answer: 165400 },
+    { label: "Dollar-value LIFO inventory, Dec. 31, Year 3(第3年度末のドル価値LIFO棚卸高)", type: "num", answer: 158250 },
+    { label: "Price index for Year 4(第4年度の物価指数)", type: "num", answer: 1.3, tol: 0.001 },
+    { label: "Layer added in Year 4 at dollar-value LIFO cost(第4年度に追加された層のドル価値LIFO原価)", type: "num", answer: 3250 },
+    { label: "Dollar-value LIFO inventory, Dec. 31, Year 4(第4年度末のドル価値LIFO棚卸高)", type: "num", answer: 161500 },
+  ],
+  explain: `<p>第2年度:180,400 ÷ 1.10 = 164,000(基準年原価)→ 増加14,000 × 1.10 = 15,400。150,000 + 15,400 = 165,400。</p>
+<p>第3年度:189,000 ÷ 1.20 = 157,500 → 6,500減少。最新の第2年度層から取り崩し、残る第2年度層 7,500 × 1.10 = 8,250。150,000 + 8,250 = 158,250(取り崩した層は復活しない)。</p>
+<p>第4年度:指数 = 208,000 ÷ 160,000 = 1.30。基準年原価の増加 160,000 − 157,500 = 2,500 × 1.30 = 3,250。150,000 + 8,250 + 3,250 = 161,500。</p>`,
+});
+
+CPA.tbs({ id: "TBS-FAR-20", section: "FAR", chapter: "FAR-03", title: "利息の資本化(回避可能利息)",
+  scenario: `<p>Sato Corp. constructed a new headquarters building for its own use. Construction began January 1, Year 1, and the building was completed and ready for use on December 31, Year 1. Construction expenditures were:</p>
+<table><tr><th>Date</th><th>Expenditure</th></tr>
+<tr><td>January 1</td><td>$1,200,000</td></tr>
+<tr><td>April 1</td><td>$1,600,000</td></tr>
+<tr><td>September 1</td><td>$1,500,000</td></tr>
+<tr><td>December 31</td><td>$500,000</td></tr></table>
+<p>Debt outstanding all year: an 8% specific construction loan of $2,000,000; a 10% note payable of $3,000,000; and 6% bonds payable of $2,000,000. Sato also earned $20,000 by temporarily investing part of the construction loan proceeds (the loan is taxable).</p>
+<p class="ja">Sato社は自家使用の本社ビルを建設した。建設は第1年度1月1日に開始し、12月31日に完成・使用可能となった。建設支出は上表のとおり。年間を通じた借入金:8%の特定建設借入金$2,000,000、10%の手形$3,000,000、6%の社債$2,000,000。また、建設借入金(課税対象)の一部を一時運用して$20,000の利息を得た。</p>`,
+  rows: [
+    { label: "Weighted-average accumulated expenditures(加重平均累積支出額)", type: "num", answer: 2900000 },
+    { label: "Weighted-average interest rate on general borrowings, in %(一般借入金の加重平均利率、%)", type: "num", answer: 8.4, tol: 0.01 },
+    { label: "Interest capitalized for Year 1(第1年度の資本化利息)", type: "num", answer: 235600 },
+    { label: "Interest expense reported for Year 1(第1年度に計上する支払利息)", type: "num", answer: 344400 },
+    { label: "Capitalized cost of the building(建物の取得原価)", type: "num", answer: 5035600 },
+    { label: "Treatment of the $20,000 investment income(受取利息$20,000の処理)", type: "select", options: ["Deducted from capitalized interest", "Reported as investment (interest) income", "Deducted from the cost of the building"], answer: "Reported as investment (interest) income" },
+  ],
+  explain: `<p>加重平均累積支出額 = 1,200,000 × 12/12 + 1,600,000 × 9/12 + 1,500,000 × 4/12 + 500,000 × 0/12 = 1,200,000 + 1,200,000 + 500,000 + 0 = 2,900,000。</p>
+<p>一般借入金の加重平均利率 = (300,000 + 120,000)÷ 5,000,000 = 8.4%。</p>
+<p>回避可能利息 = 2,000,000 × 8% = 160,000 + 900,000 × 8.4% = 75,600 → 235,600。実際発生利息 = 160,000 + 300,000 + 120,000 = 580,000(上限を下回る)ため235,600を資本化し、残り344,400を費用処理する。</p>
+<p>建物原価 = 支出合計4,800,000 + 235,600 = 5,035,600。米国GAAPでは課税対象借入金の一時運用益は資本化利息と相殺せず、受取利息として計上する。</p>`,
+});
+
+CPA.tbs({ id: "TBS-FAR-21", section: "FAR", chapter: "FAR-03", title: "非貨幣性資産の交換(経済的実質・現金授受)",
+  scenario: `<p>Kato Co. completed three independent exchanges of equipment during the year:</p>
+<table><tr><th></th><th>Exchange A</th><th>Exchange B</th><th>Exchange C</th></tr>
+<tr><td>Carrying amount of asset given</td><td>$40,000</td><td>$45,000</td><td>$70,000</td></tr>
+<tr><td>Fair value of asset given</td><td>$52,000</td><td>$75,000</td><td>$62,000</td></tr>
+<tr><td>Cash paid (received)</td><td>$8,000 paid</td><td>($15,000) received</td><td>$4,000 paid</td></tr>
+<tr><td>Fair value of asset received</td><td>$60,000</td><td>$60,000</td><td>$66,000</td></tr>
+<tr><td>Commercial substance?</td><td>Yes</td><td>No</td><td>No</td></tr></table>
+<p class="ja">Kato社は当期に設備の独立した3件の交換を行った。各交換の引渡資産の帳簿価額・公正価値、現金の支払(受取)、受入資産の公正価値、経済的実質の有無は上表のとおり。</p>`,
+  rows: [
+    { label: "Exchange A — gain recognized(交換A:認識する利得)", type: "num", answer: 12000 },
+    { label: "Exchange A — cost of asset received(交換A:受入資産の取得原価)", type: "num", answer: 60000 },
+    { label: "Exchange B — gain recognized(交換B:認識する利得)", type: "num", answer: 6000 },
+    { label: "Exchange B — cost of asset received(交換B:受入資産の取得原価)", type: "num", answer: 36000 },
+    { label: "Exchange C — loss recognized(交換C:認識する損失)", type: "num", answer: 8000 },
+    { label: "Exchange C — cost of asset received(交換C:受入資産の取得原価)", type: "num", answer: 66000 },
+  ],
+  explain: `<p>交換A(経済的実質あり):公正価値で測定。利得 = 52,000 − 40,000 = 12,000。受入資産 = 52,000 + 8,000 = 60,000。</p>
+<p>交換B(経済的実質なし・現金受取):受取現金の割合 15,000 ÷ 75,000 = 20%(25%未満)。利得総額30,000 × 20% = 6,000を認識。受入資産 = 45,000 − 15,000 + 6,000 = 36,000(= 60,000 − 繰延利得24,000)。</p>
+<p>交換C(経済的実質なし):損失は常に全額認識。損失 = 70,000 − 62,000 = 8,000。受入資産 = 62,000 + 4,000 = 66,000(公正価値)。</p>`,
 });
