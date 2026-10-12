@@ -399,5 +399,268 @@ CPA.extend("TCP-02", {
       a: 2,
       ex: "BBA制度では、調整は原則としてパートナーシップ段階で調整年度に最高税率を用いたimputed underpaymentとして課される。プッシュアウト選択を行えば審査年度のパートナーに転嫁できる。IRSとの窓口は単一のパートナーシップ代表者である。",
     },
+    {
+      q: "An S corporation currently has 70 shareholders. Which of the following proposed transfers of stock would terminate its S election?",
+      ja: "あるS法人には現在70人の株主がいる。次の株式譲渡案のうち、S選択を終了させるものはどれか。",
+      c: [
+        "A sale of shares to a nonresident alien individual",
+        "A transfer of shares to an electing small business trust (ESBT)",
+        "A gift of shares to a §501(c)(3) charitable organization",
+        "A transfer of shares to the estate of a deceased shareholder",
+      ],
+      a: 0,
+      ex: "非居住外国人はS法人の適格株主ではなく、譲渡日にS選択が終了する。ESBT、§501(c)(3)団体、遺産財団はいずれも適格株主である。なお家族は1人の株主として数えられ、100人基準の判定に用いる。",
+    },
+    {
+      q: "An S corporation has two classes of common stock that are identical in all respects except that Class B shares have no voting rights. Its governing provisions give all shares identical rights to distribution and liquidation proceeds. Which statement is correct?",
+      ja: "あるS法人は、B種株式に議決権がない点を除きすべての点で同一の2種類の普通株式を有している。定款等は全株式に分配および清算時の残余財産について同一の権利を与えている。正しい記述はどれか。",
+      c: [
+        "The S election terminates because the corporation has two classes of stock",
+        "The corporation is treated as having one class of stock because differences in voting rights are disregarded",
+        "The election remains valid only if Class B shares are held by family members",
+        "Nonvoting shares are treated as debt for S corporation purposes",
+      ],
+      a: 1,
+      ex: "1種類株式要件は分配・清算時の権利の同一性で判定し、議決権の有無の差は無視される。したがって議決権株と無議決権株を併存させても1種類株式とみなされ、事業承継の設計に用いられる。",
+    },
+    {
+      q: "A calendar-year C corporation that has been in existence for several years files Form 2553, with consents from all shareholders, on April 2, 2026. Assuming no relief for late elections, when is the S election first effective?",
+      ja: "数年間存続している暦年のC法人が、全株主の同意を得て2026年4月2日にForm 2553を提出した。遅延選択の救済がないとすると、S選択が最初に有効となるのはいつか。",
+      c: ["January 1, 2026", "April 2, 2026", "January 1, 2027", "March 15, 2027"],
+      a: 2,
+      ex: "当年度から有効とするには課税年度開始後2か月15日以内(暦年なら3月15日)までに提出する必要がある。期限後の提出は翌課税年度(2027年1月1日)から有効となる。",
+    },
+    {
+      q: "A calendar-year S corporation has 1,000 outstanding shares. Shareholders owning 550 shares consent to revoke the S election, and the revocation is filed on February 20 of the current year without specifying a prospective date. Which statement is correct?",
+      ja: "暦年のS法人の発行済株式は1,000株である。550株を所有する株主がS選択の撤回に同意し、将来の日付を指定せずに当年の2月20日に撤回書を提出した。正しい記述はどれか。",
+      c: [
+        "The revocation is invalid because all shareholders must consent",
+        "The revocation is effective on February 20 of the current year",
+        "The revocation is effective on January 1 of the following year",
+        "The revocation is effective on January 1 of the current year",
+      ],
+      a: 3,
+      ex: "撤回には発行済株式の過半数を有する株主の同意が必要(550株で充足)。3月15日までに提出され将来日の指定がなければ当年度の期首(1月1日)に遡って有効となる。全員の同意が必要なのは選択(election)の方である。",
+    },
+    {
+      q: "On July 1 of the current year, a shareholder of a calendar-year S corporation sells shares to a partnership. Which statement correctly describes the result?",
+      ja: "当年7月1日、暦年のS法人の株主が株式をパートナーシップに売却した。結果を正しく説明している記述はどれか。",
+      c: [
+        "The S election terminates on July 1; the corporation files an S short-year return through June 30 and a C short-year return from July 1",
+        "The S election terminates effective January 1 of the current year",
+        "The S election terminates on January 1 of the following year",
+        "The S election is not affected if the partnership has only individual partners",
+      ],
+      a: 0,
+      ex: "パートナーシップは適格株主でないため、不適格株主の取得日(7月1日)にS選択が終了し、課税年度はS短期年度(〜6月30日)とC短期年度(7月1日〜)に分割される。パートナーの構成は関係ない。",
+    },
+    {
+      q: "An S corporation has accumulated E&P from its prior C corporation years. Which circumstance will cause its S election to terminate under the passive investment income rule?",
+      ja: "S法人はC法人時代の累積E&Pを有している。受動的投資所得の規定によりS選択が終了するのはどの場合か。",
+      c: [
+        "Passive investment income exceeds 25% of gross receipts in any single year",
+        "Passive investment income exceeds 50% of gross receipts for two consecutive years",
+        "It has accumulated C corporation E&P at the end of each of three consecutive years and passive investment income exceeding 25% of gross receipts in each of those years",
+        "It pays the excess net passive income tax in any year",
+      ],
+      a: 2,
+      ex: "C法人時代のE&Pを3年連続で期末に保有し、かつ3年連続で受動的投資所得が総収入の25%を超えた場合、4年目の期首にS選択が終了する。1年だけの超過では超過純受動的所得税が課されるのみである。",
+    },
+    {
+      q: "An S corporation with accumulated E&P from C years has gross receipts of $400,000, of which $160,000 is passive investment income. Expenses directly connected with the passive income are $20,000. The corporate tax rate is 21%, and taxable income is ample. What is the excess net passive income tax?",
+      ja: "C法人時代の累積E&Pを有するS法人の総収入は$400,000で、うち$160,000が受動的投資所得である。受動的所得に直接関連する費用は$20,000である。法人税率は21%で、課税所得は十分にある。超過純受動的所得税はいくらか。",
+      c: ["$29,400", "$12,600", "$8,400", "$11,025"],
+      a: 3,
+      ex: "純受動的所得 = 160,000 − 20,000 = 140,000。超過部分 = 140,000 × (160,000 − 400,000 × 25%) ÷ 160,000 = 52,500。税額 = 52,500 × 21% = 11,025。純受動的所得全額に課税すると$29,400と誤る。",
+    },
+    {
+      q: "At the beginning of the year, Abe's basis in his S corporation stock is $10,000, and his basis in a $5,000 loan he made to the corporation is $5,000. During the year, Abe receives a $4,000 cash distribution, and his share of the corporation's ordinary loss is $18,000. How much of the loss may Abe deduct (assuming at-risk and passive rules do not limit it)?",
+      ja: "期首において、AbeのS法人株式の基準価額は$10,000、法人への貸付金$5,000の基準価額は$5,000である。当期、Abeは現金$4,000の分配を受け、法人の通常損失のAbe負担分は$18,000である。危険負担額・受動的活動の制限がないとして、Abeが控除できる損失はいくらか。",
+      c: ["$15,000", "$11,000", "$10,000", "$18,000"],
+      a: 1,
+      ex: "株式基準価額は分配が損失より先に減額され 10,000 − 4,000 = 6,000。損失はまず株式基準価額6,000、次に貸付金基準価額5,000の範囲で控除でき計11,000、残り7,000は繰り越される。分配を後に処理すると$15,000と誤る。",
+    },
+    {
+      q: "At the beginning of the year, Kaye's S corporation stock basis is $0, and her basis in a $10,000 shareholder loan has been reduced by prior losses to $2,000. This year, Kaye's share of the corporation's net income is $12,000, with no distributions and no suspended losses. What are Kaye's stock basis and debt basis at year-end?",
+      ja: "期首において、KayeのS法人株式の基準価額は$0で、額面$10,000の株主貸付金の基準価額は過年度の損失により$2,000に減額されている。当期、法人の純利益のKaye負担分は$12,000で、分配や停止損失はない。期末のKayeの株式基準価額と貸付金基準価額はいくらか。",
+      c: [
+        "Stock $12,000; debt $2,000",
+        "Stock $10,000; debt $4,000",
+        "Stock $4,000; debt $10,000",
+        "Stock $2,000; debt $12,000",
+      ],
+      a: 2,
+      ex: "純増加額はまず減額された貸付金の基準価額を額面まで回復させる(2,000 → 10,000、8,000を使用)。残り4,000が株式基準価額を増加させる。貸付金の基準価額は額面を超えて増加しない。",
+    },
+    {
+      q: "Lin holds a $10,000 note from her S corporation, evidenced by a written instrument held for three years. Prior pass-through losses reduced her basis in the note to $6,000, and no net increase has restored it. The corporation repays the note in full this year. What does Lin recognize?",
+      ja: "Linは自身のS法人に対する$10,000の貸付金(書面による手形、3年間保有)を有している。過年度のパススルー損失により手形の基準価額は$6,000に減額されており、純増加による回復はない。当期、法人は手形を全額返済した。Linは何を認識するか。",
+      c: [
+        "$4,000 ordinary income because the loan was an open account",
+        "No gain because repayment of a loan is a return of capital",
+        "$10,000 dividend income",
+        "$4,000 long-term capital gain",
+      ],
+      a: 3,
+      ex: "減額された基準価額6,000を超える返済額4,000は利得となる。書面による手形で資本資産として長期保有していれば長期資本利得となる。書面のない開放勘定(open account)の貸付であれば通常所得となる。",
+    },
+    {
+      q: "An S corporation with accumulated E&P of $20,000 begins the year with an AAA of $10,000. During the year it earns ordinary income of $30,000 and tax-exempt interest of $5,000, and it distributes $50,000 to its sole shareholder, whose stock basis is ample. No election is made to distribute E&P first. How much of the distribution is a taxable dividend?",
+      ja: "累積E&P $20,000を有するS法人の期首AAAは$10,000である。当期、通常所得$30,000と非課税利息$5,000を稼得し、唯一の株主(株式基準価額は十分)に$50,000を分配した。E&Pを先に分配する選択は行っていない。分配のうち課税配当となるのはいくらか。",
+      c: ["$5,000", "$20,000", "$10,000", "$0"],
+      a: 2,
+      ex: "AAA = 10,000 + 30,000 = 40,000(非課税所得はAAAに含めずOAAに計上)。分配50,000のうち40,000はAAAから非課税、次の10,000は累積E&Pからの配当となる。非課税利息をAAAに含めると$5,000と誤る。",
+    },
+    {
+      q: "A C corporation elected S status three years ago, when it had a net unrealized built-in gain of $80,000. This year it sells an asset that had a $50,000 built-in gain at conversion. Its net recognized built-in gain before the taxable income limitation is $50,000, but its taxable income computed as if it were a C corporation is $30,000. The tax rate is 21%. What is the built-in gains tax for this year, and what happens to the excess?",
+      ja: "あるC法人は3年前にS選択を行い、その時点の純未実現含み益は$80,000であった。当期、転換時に$50,000の含み益を有していた資産を売却した。課税所得制限前の純認識含み益は$50,000であるが、C法人とみなして計算した課税所得は$30,000である。税率は21%である。当期の含み益税額はいくらで、超過額はどうなるか。",
+      c: [
+        "$6,300; the $20,000 excess is carried forward to later years within the recognition period",
+        "$10,500; there is no taxable income limitation",
+        "$6,300; the $20,000 excess is permanently excluded",
+        "$16,800; the tax is based on the full net unrealized built-in gain",
+      ],
+      a: 0,
+      ex: "純認識含み益は課税所得で制限され、税額は 30,000 × 21% = 6,300。制限された20,000は認識期間内の翌年以降に繰り越して課税される。純未実現含み益80,000は課税総額の上限である。",
+    },
+    {
+      q: "A calendar-year C corporation using LIFO elects S status effective January 1. At the end of its last C year, its inventory is $500,000 under FIFO and $380,000 under LIFO. The corporate rate is 21%. How much LIFO recapture tax is due with the final C corporation return?",
+      ja: "LIFOを採用する暦年のC法人が1月1日付でS選択を行った。最終C年度末の棚卸資産はFIFOで$500,000、LIFOで$380,000である。法人税率は21%である。最終C法人申告書とともに納付すべきLIFO取戻し税額はいくらか。",
+      c: ["$25,200", "$6,300", "$0, because LIFO recapture applies only on later sale", "$12,600"],
+      a: 1,
+      ex: "LIFO取戻額 = 500,000 − 380,000 = 120,000 を最終C年度の所得に含め、増加税額25,200は4回均等分割で納付する。初回(最終C年度申告期限)は 25,200 ÷ 4 = 6,300。残りはS法人が翌3年間に納付する。",
+    },
+    {
+      q: "An S corporation pays $14,000 of health insurance premiums for Dana, an employee who owns 10% of its stock. Which statement correctly describes the tax treatment?",
+      ja: "S法人は、株式の10%を所有する従業員Danaのために健康保険料$14,000を支払った。税務上の取扱いを正しく説明している記述はどれか。",
+      c: [
+        "The premiums are a tax-free fringe benefit to Dana and deductible by the corporation",
+        "The premiums are nondeductible by the corporation and treated as a distribution",
+        "The premiums are deductible by the corporation and included in Dana's W-2 wages, and Dana may claim the self-employed health insurance deduction",
+        "The premiums are included in Dana's income but no deduction is available to anyone",
+      ],
+      a: 2,
+      ex: "2%超株主は従業員フリンジ・ベネフィットについてパートナーと同様に扱われる。法人は保険料を控除し、Danaの給与(W-2)に含めるが(一定の場合FICA対象外)、Danaは自営業者健康保険料控除を受けられる。非課税福利厚生とするのは2%以下の株主の場合である。",
+    },
+    {
+      q: "The sole shareholder of a profitable S corporation works full time in the business but takes no salary, instead receiving $200,000 of distributions each year. What is the most likely consequence if the IRS examines the arrangement?",
+      ja: "利益の出ているS法人の唯一の株主は事業にフルタイムで従事しているが給与を受け取らず、代わりに毎年$200,000の分配を受けている。IRSがこの取決めを調査した場合、最も可能性の高い結果はどれか。",
+      c: [
+        "The S election is terminated for creating a second class of stock",
+        "The distributions are recharacterized as dividends taxable at ordinary rates",
+        "No consequence, because S corporation distributions are never subject to employment taxes",
+        "A portion of the distributions is recharacterized as reasonable compensation subject to FICA and employment tax withholding",
+      ],
+      a: 3,
+      ex: "S法人の役務提供株主には合理的な報酬の支払が求められ、IRSは分配の一部を給与に再分類してFICA等の雇用税を課す。給与とK-1所得の配分は自営業税負担を左右するため計画上の論点となる。",
+    },
+    {
+      q: "An entity borrows $300,000 from an unrelated bank to finance operations, and the owners do not guarantee the loan. Which statement is correct when comparing an S corporation with an LLC taxed as a partnership?",
+      ja: "事業体が無関係の銀行から運転資金として$300,000を借り入れ、所有者は保証していない。S法人とパートナーシップとして課税されるLLCを比較した場合、正しい記述はどれか。",
+      c: [
+        "The loan increases each LLC member's outside basis by their share, but it does not increase S corporation shareholders' stock or debt basis",
+        "The loan increases basis for both S corporation shareholders and LLC members",
+        "The loan increases basis only for S corporation shareholders, because the corporation is the borrower",
+        "Neither entity's owners obtain basis from entity-level debt",
+      ],
+      a: 0,
+      ex: "パートナーシップでは§752によりエンティティの負債がパートナーのoutside basisに含まれ、損失控除余地が広がる。S法人株主は株主が直接法人に貸し付けた債権についてのみ債権基準価額を得られ、保証や第三者借入では基準価額は増えない。",
+    },
+    {
+      q: "A calendar-year S corporation has ordinary income of $365,000 for the year, earned evenly. Shareholder A owned 50% of the stock for the first 146 days of the year and then sold all of her shares to B, who held them for the remaining 219 days. No election to close the books is made. How much ordinary income is allocated to A?",
+      ja: "暦年のS法人の当期通常所得は$365,000で、年間を通じて均等に稼得された。株主Aは期首から146日間株式の50%を所有し、その後全株式をBに売却し、Bが残りの219日間保有した。帳簿締切の選択は行っていない。Aに配分される通常所得はいくらか。",
+      c: ["$182,500", "$146,000", "$109,500", "$73,000"],
+      a: 3,
+      ex: "S法人は1株1日あたりの按分で配分する。365,000 × 50% × 146/365 = 73,000(Bは109,500)。パートナーシップと異なり特別配分は認められない。年間の持分50%をそのまま当てると$182,500と誤る。",
+    },
+    {
+      q: "Owen owns 10% of an existing entity whose net assets are worth $900,000. He transfers land with a basis of $20,000 and a FMV of $100,000 to the entity in exchange for an additional ownership interest; no other owners contribute property at the same time. Which statement is correct?",
+      ja: "Owenは純資産価値$900,000の既存の事業体の10%を所有している。彼は基準価額$20,000、公正価値$100,000の土地を事業体に拠出し、追加の持分を取得した。同時に財産を拠出する他の所有者はいない。正しい記述はどれか。",
+      c: [
+        "Owen recognizes no gain whether the entity is a partnership or an S corporation",
+        "Owen recognizes an $80,000 gain if the entity is a partnership, but no gain if it is an S corporation",
+        "Owen recognizes no gain if the entity is a partnership, but an $80,000 gain if it is an S corporation because the §351 control requirement is not met",
+        "Owen recognizes an $80,000 gain in either case",
+      ],
+      a: 2,
+      ex: "§721には支配要件がなく、パートナーシップへの拠出は非課税。S法人への拠出は§351が適用され、拠出者グループが拠出直後に80%以上を支配する必要があるため、Owen単独(拠出後19%)では要件を満たさず利得80,000を認識する。",
+    },
+    {
+      q: "An S corporation distributes land with a FMV of $50,000 and an adjusted basis of $20,000 to its sole shareholder, whose stock basis before the distribution is $40,000. The corporation has no E&P and no other items for the year. What is the shareholder's stock basis after the distribution?",
+      ja: "S法人は公正価値$50,000、調整後基準価額$20,000の土地を唯一の株主に分配した。分配前の株主の株式基準価額は$40,000である。法人にE&Pはなく、当期の他の項目もない。分配後の株主の株式基準価額はいくらか。",
+      c: ["$0, with a $10,000 capital gain", "$20,000", "$70,000", "$40,000"],
+      a: 1,
+      ex: "S法人は含み益のある財産の分配で利得30,000を認識し、株主にパススルーされ基準価額は70,000に増加する。その後、分配財産の公正価値50,000を減額して20,000となる(土地の基準価額は50,000)。パートナーシップであれば利得は認識されない。",
+    },
   ],
+});
+
+CPA.tbs({ id: "TBS-TCP-15", section: "TCP", chapter: "TCP-02", title: "パートナーシップの設立:§721・§752・§704(c)",
+  scenario: `<p>A, B, and C form ABC Partnership, sharing all items equally (1/3 each):</p>
+<table><tr><th>Partner</th><th>Contribution</th></tr>
+<tr><td>A</td><td>Land: adjusted basis $30,000; FMV $90,000; subject to a $30,000 recourse mortgage assumed by the partnership</td></tr>
+<tr><td>B</td><td>Cash $60,000</td></tr>
+<tr><td>C</td><td>Services with a value of $60,000 in exchange for a 1/3 capital interest</td></tr></table>
+<p>The partners share economic risk of loss on the recourse mortgage equally. Assume the partnership recognizes no gain on issuing C's interest. Three years later, the partnership sells the land for $120,000; it uses the traditional §704(c) method.</p>
+<p class="ja">A・B・CはABCパートナーシップを設立し、全項目を1/3ずつ負担する。Aは土地(基準価額$30,000、公正価値$90,000、パートナーシップが引き受ける$30,000のリコース・モーゲージ付き)、Bは現金$60,000、Cは1/3のキャピタル持分と引換えに価値$60,000の役務を提供した。リコース負債の経済的損失リスクは均等に負担する。C持分の発行によりパートナーシップに利得は生じないものとする。3年後、パートナーシップは土地を$120,000で売却した(§704(c)は伝統的方法)。</p>`,
+  rows: [
+    { label: "Gain recognized by A on formation(設立時にAが認識する利得)", type: "num", answer: 0 },
+    { label: "A's outside basis after formation(設立後のAのoutside basis)", type: "num", answer: 10000 },
+    { label: "B's outside basis after formation(設立後のBのoutside basis)", type: "num", answer: 70000 },
+    { label: "Ordinary income recognized by C(Cが認識する通常所得)", type: "num", answer: 60000 },
+    { label: "C's outside basis after formation(設立後のCのoutside basis)", type: "num", answer: 70000 },
+    { label: "Gain on the land sale allocated to A(土地売却益のうちAへの配分額)", type: "num", answer: 70000 },
+  ],
+  explain: `<p>A:30,000 − 30,000(負債の免除)+ 10,000(負債の1/3)= 10,000。基準価額がマイナスにならないため利得は0。</p>
+<p>B:60,000 + 10,000 = 70,000。C:役務の対価として受けたキャピタル持分60,000は通常所得となり、基準価額は 60,000 + 10,000 = 70,000。</p>
+<p>土地売却益 = 120,000 − 30,000 = 90,000。拠出時の含み益60,000はAに配分(§704(c))、残り30,000を1/3ずつ配分し、A = 60,000 + 10,000 = 70,000。</p>`,
+});
+
+CPA.tbs({ id: "TBS-TCP-16", section: "TCP", chapter: "TCP-02", title: "パートナーシップ持分の売却:§751と§743(b)",
+  scenario: `<p>D sells her 25% interest in DEF Partnership to E for $80,000 cash. The partnership has a §754 election in effect. Its balance sheet at the sale date:</p>
+<table><tr><th>Asset</th><th>Adjusted basis</th><th>FMV</th></tr>
+<tr><td>Cash</td><td>$40,000</td><td>$40,000</td></tr>
+<tr><td>Accounts receivable (cash basis)</td><td>$0</td><td>$40,000</td></tr>
+<tr><td>Inventory</td><td>$60,000</td><td>$80,000</td></tr>
+<tr><td>Land (capital asset)</td><td>$100,000</td><td>$200,000</td></tr>
+<tr><td>Total</td><td>$200,000</td><td>$360,000</td></tr></table>
+<p>Partnership liabilities are $40,000, shared 25% by D. D's outside basis, including her share of liabilities, is $50,000. E assumes D's share of liabilities.</p>
+<p class="ja">DはDEFパートナーシップの25%持分をEに現金$80,000で売却した。パートナーシップは§754選択を行っている。売却日の資産は上表のとおり(合計:基準価額$200,000、公正価値$360,000)。負債は$40,000で、Dは25%を負担する。負債負担分を含むDのoutside basisは$50,000であり、EはDの負債負担分を引き受ける。</p>`,
+  rows: [
+    { label: "D's amount realized(Dの実現額)", type: "num", answer: 90000 },
+    { label: "D's total recognized gain(Dの認識利得合計)", type: "num", answer: 40000 },
+    { label: "Ordinary income under §751(§751による通常所得)", type: "num", answer: 15000 },
+    { label: "Capital gain(資本利得)", type: "num", answer: 25000 },
+    { label: "E's initial outside basis(Eの当初outside basis)", type: "num", answer: 90000 },
+    { label: "E's §743(b) basis adjustment(Eの§743(b)基準価額調整額)", type: "num", answer: 40000 },
+  ],
+  explain: `<p>実現額 = 80,000 + 40,000 × 25%(10,000)= 90,000。利得 = 90,000 − 50,000 = 40,000。</p>
+<p>§751資産(売掛金と棚卸資産)の含み益 = 40,000 + 20,000 = 60,000、Dの持分25%で15,000が通常所得。残り25,000が資本利得。</p>
+<p>Eのoutside basis = 現金80,000 + 引受負債10,000 = 90,000。inside basisの持分 = 200,000 × 25% = 50,000。§743(b)調整 = 90,000 − 50,000 = 40,000(E個人にのみ帰属)。</p>`,
+});
+
+CPA.tbs({ id: "TBS-TCP-17", section: "TCP", chapter: "TCP-02", title: "S法人のAAA・分配・株主基準価額",
+  scenario: `<p>Calendar-year XY Corp., a former C corporation, has been an S corporation for several years. Ito owns 60% of the stock; Yu owns 40%. Information for the year:</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>AAA, beginning of year</td><td>$20,000</td></tr>
+<tr><td>Accumulated E&amp;P from C years, beginning of year</td><td>$30,000</td></tr>
+<tr><td>Ordinary business income</td><td>$100,000</td></tr>
+<tr><td>Tax-exempt interest income</td><td>$10,000</td></tr>
+<tr><td>Long-term capital gain</td><td>$20,000</td></tr>
+<tr><td>Nondeductible expenses (not related to tax-exempt income)</td><td>$5,000</td></tr>
+<tr><td>Cash distributions (pro rata to shareholders)</td><td>$150,000</td></tr></table>
+<p>Ito's stock basis at the beginning of the year is $40,000. No elections affecting distribution ordering are made.</p>
+<p class="ja">暦年のXY社は元C法人で、数年前からS法人である。Itoが60%、Yuが40%を所有する。期首AAA $20,000、C年度の累積E&amp;P $30,000、通常事業所得$100,000、非課税利息$10,000、長期資本利得$20,000、損金不算入費用(非課税所得に関連しない)$5,000、現金分配$150,000(持分比例)。Itoの期首株式基準価額は$40,000。分配順序に影響する選択はない。</p>`,
+  rows: [
+    { label: "AAA available before distributions(分配前のAAA)", type: "num", answer: 135000 },
+    { label: "Ito's distribution from AAA (nontaxable)(Itoへの分配のうちAAAからの部分)", type: "num", answer: 81000 },
+    { label: "Ito's dividend income(Itoの配当所得)", type: "num", answer: 9000 },
+    { label: "Ito's stock basis at year-end(Itoの期末株式基準価額)", type: "num", answer: 34000 },
+    { label: "Accumulated E&P at year-end(期末の累積E&P)", type: "num", answer: 15000 },
+    { label: "AAA at year-end(期末AAA)", type: "num", answer: 0 },
+  ],
+  explain: `<p>AAA = 20,000 + 100,000 + 20,000 − 5,000 = 135,000(非課税利息はAAAに含めない)。分配150,000のうち135,000がAAAから、残り15,000が累積E&amp;Pからの配当となる。</p>
+<p>Ito:AAA部分 135,000 × 60% = 81,000、配当 15,000 × 60% = 9,000。</p>
+<p>Itoの基準価額:40,000 + (100,000 + 10,000 + 20,000) × 60% = 118,000 → 非課税分配81,000を減額して37,000 → 損金不算入費用3,000を減額して34,000。E&amp;Pからの配当は基準価額を減額しない。</p>
+<p>期末累積E&amp;P = 30,000 − 15,000 = 15,000、期末AAA = 0。</p>`,
 });

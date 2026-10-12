@@ -79,9 +79,9 @@ CPA.extend("REG-05", {
     { q: "Teal Corp. has taxable income of $500,000 before deducting charitable contributions and the dividends-received deduction. Its DRD is $30,000, and it made $70,000 of cash contributions to qualified charities. What is Teal's charitable contribution deduction for the year?",
       ja: "Teal社の寄附金控除および受取配当控除前の課税所得は$500,000である。受取配当控除は$30,000で、適格慈善団体へ現金$70,000を寄附した。当期のTeal社の寄附金控除額はいくらか。",
       c: ["$47,000", "$50,000", "$70,000", "$53,000"], a: 1,
-      ex: "法人の寄附金控除限度額は、寄附金控除・DRD・NOL繰戻・キャピタルロス繰戻控除前の課税所得の10%で500,000 × 10% = 50,000。超過20,000は5年間繰越。$47,000はDRD控除後の所得を基礎にした誤りである。" },
-    { q: "Uno Corp. made a $10,000 charitable contribution in Year 1 that exceeded its 10% limit and was carried forward. In Year 2 its contribution limit is $25,000 and it made $20,000 of current-year contributions. What is the total Year 2 deduction, and how much of the Year 1 carryover remains?",
-      ja: "Uno社は1年目に10%限度を超えた$10,000の寄附金を繰り越した。2年目の限度額は$25,000で、当期寄附金は$20,000である。2年目の控除総額と、1年目の繰越額の残額はいくらか。",
+      ex: "法人の寄附金控除限度額は、寄附金控除・DRD・NOL繰戻・キャピタルロス繰戻控除前の課税所得の10%で500,000 × 10% = 50,000。超過20,000は5年間繰越。なお2026年以降はOBBBAにより課税所得の1%(5,000)を超える部分のみ控除可能となるが、70,000 − 5,000 = 65,000も10%限度を超えるため控除額は50,000で変わらず、10%限度超過年なので1%フロアで否認された分も含め20,000を繰り越せる。$47,000はDRD控除後の所得を基礎にした誤りである。" },
+    { q: "Uno Corp. made a $10,000 charitable contribution in Year 1 that exceeded its 10% limit and was carried forward. In Year 2 its contribution limit is $25,000 and it made $20,000 of current-year contributions. Ignore the 1% floor on corporate charitable contributions. What is the total Year 2 deduction, and how much of the Year 1 carryover remains?",
+      ja: "Uno社は1年目に10%限度を超えた$10,000の寄附金を繰り越した。2年目の限度額は$25,000で、当期寄附金は$20,000である。法人寄附金の1%フロアは無視する。2年目の控除総額と、1年目の繰越額の残額はいくらか。",
       c: ["$25,000; $5,000", "$30,000; $0", "$20,000; $10,000", "$25,000; $0"], a: 0,
       ex: "当期の寄附金が先に控除され(20,000)、残りの限度額5,000まで繰越分を控除する。控除総額25,000、1年目繰越の残額5,000は引き続き(当初年度から5年以内)繰り越せる。" },
     { q: "In 2025, Vale Corp. had capital gains of $15,000 and capital losses of $40,000. Vale reported net capital gains of $10,000 in 2022, $5,000 in 2023, and $0 in 2024. How much of the 2025 net capital loss is carried forward to 2026?",
@@ -291,7 +291,7 @@ CPA.tbs({ id: "TBS-REG-29", section: "REG", chapter: "REG-05", title: "C法人�
   ],
   explain: `<p>総所得 = 2,000,000 − 1,200,000 + 配当100,000 = 900,000(非課税利息は除外)。</p>
 <p>営業費用のうち食事の50%(10,000)と罰金15,000は控除不可 → 控除額 400,000 − 25,000 = 375,000。控除前課税所得 = 900,000 − 375,000 = 525,000。</p>
-<p>寄附金限度額 = 525,000 × 10% = 52,500(超過7,500は5年繰越)。</p>
+<p>寄附金限度額 = 525,000 × 10% = 52,500(超過7,500は5年繰越)。2026年以降の1%フロア(5,250)を適用しても60,000 − 5,250 = 54,750 > 52,500のため控除額は52,500のまま、10%限度超過年なので繰越額も7,500となる。</p>
 <p>DRD:30%所有 → 65% × 100,000 = 65,000。課税所得制限 65% × (525,000 − 52,500) = 307,125 を下回るので全額控除。</p>
 <p>課税所得 = 525,000 − 52,500 − 65,000 = 407,500、税額 = 407,500 × 21% = 85,575。</p>`,
 });
