@@ -529,3 +529,89 @@ CPA.extend("REG-03", {
     },
   ],
 });
+
+CPA.tbs({
+  id: "TBS-REG-19",
+  section: "REG",
+  chapter: "REG-03",
+  title: "従業員の総所得の計算(フリンジ・ベネフィット等)",
+  scenario: `<p>Ken Mori, single, age 45, is employed by a retail electronics chain. His records for the year show:</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Salary</td><td>$90,000</td></tr>
+<tr><td>Employer-provided group-term life insurance coverage (Ken pays nothing); IRS table cost $0.10 per $1,000 per month</td><td>$200,000 coverage</td></tr>
+<tr><td>Television bought from employer: customer price $2,000, Ken paid $1,000; employer's gross profit percentage 40%</td><td></td></tr>
+<tr><td>Employer-paid dependent care assistance (assume $5,000 exclusion limit)</td><td>$6,500</td></tr>
+<tr><td>Interest on corporate bonds</td><td>$1,200</td></tr>
+<tr><td>Interest on municipal bonds</td><td>$3,000</td></tr>
+<tr><td>Payments from former spouse under a 2017 divorce decree: alimony $12,000; designated child support $6,000</td><td>$18,000</td></tr>
+<tr><td>Cash inherited from his uncle</td><td>$50,000</td></tr>
+<tr><td>Refund of prior-year state income tax (prior-year itemized deductions exceeded the standard deduction by $2,000)</td><td>$900</td></tr></table>
+<p class="ja">Ken Mori(独身、45歳)は家電小売チェーンに勤務している。当年の資料:給与$90,000/雇用主提供の団体定期生命保険(保険金額$200,000、本人負担なし、IRS表コストは$1,000当たり月$0.10)/雇用主からテレビを購入(顧客価格$2,000、支払額$1,000、雇用主の売上総利益率40%)/雇用主負担の扶養家族ケア支援$6,500(除外限度額$5,000とする)/社債利息$1,200/地方債利息$3,000/2017年の離婚判決に基づく元配偶者からの受取$18,000(扶養料$12,000、指定された養育費$6,000)/叔父からの相続現金$50,000/前年の州所得税還付$900(前年の項目別控除は標準控除を$2,000上回っていた)。</p>`,
+  rows: [
+    { label: "Taxable group-term life insurance(団体定期生命保険の算入額)", type: "num", answer: 180 },
+    { label: "Total compensation income including fringe benefits(フリンジ・ベネフィットを含む報酬所得合計)", type: "num", answer: 91880 },
+    { label: "Taxable interest income(課税利息所得)", type: "num", answer: 1200 },
+    { label: "Alimony included in gross income(総所得に算入する扶養料)", type: "num", answer: 12000 },
+    { label: "State tax refund included in gross income(総所得に算入する州税還付)", type: "num", answer: 900 },
+    { label: "Total gross income(総所得合計)", type: "num", answer: 105980 },
+  ],
+  explain: `<p>団体定期生命保険:$50,000超の$150,000 → 150 × 0.10 × 12 = $180。</p>
+<p>従業員割引:除外上限 = 2,000 × 40% = 800、割引1,000 − 800 = $200を算入。扶養家族ケア:6,500 − 5,000 = $1,500を算入。報酬合計 = 90,000 + 180 + 200 + 1,500 = $91,880。</p>
+<p>利息:地方債利息は除外、社債利息$1,200のみ。扶養料:2019年前の離婚証書のため$12,000を算入、養育費$6,000は除外。相続は除外。州税還付:前年に便益を受けた範囲(2,000)内のため$900全額を算入。</p>
+<p>総所得 = 91,880 + 1,200 + 12,000 + 900 = $105,980。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-REG-20",
+  section: "REG",
+  chapter: "REG-03",
+  title: "別荘(バケーションホーム)の賃貸収入と費用配分",
+  scenario: `<p>Grace owns a lake house. During the year she rented it at fair rental value for <b>120 days</b> and used it personally for <b>40 days</b>. It was vacant the rest of the year. Data for the year:</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Gross rental income</td><td>$12,000</td></tr>
+<tr><td>Mortgage interest</td><td>$8,000</td></tr>
+<tr><td>Property taxes</td><td>$4,000</td></tr>
+<tr><td>Utilities and maintenance</td><td>$3,200</td></tr>
+<tr><td>Depreciation (as if rented the entire year)</td><td>$6,000</td></tr></table>
+<p>Grace allocates all expenses using the IRS method (rental days ÷ total days of use). Expenses are deducted in the required order: interest and taxes, then other operating expenses, then depreciation.</p>
+<p class="ja">Graceは湖畔の別荘を所有している。当年、公正賃料で120日間賃貸し、40日間私的に使用した。残りは空室であった。総賃貸収入$12,000、住宅ローン利子$8,000、固定資産税$4,000、光熱費・修繕費$3,200、減価償却費(年間全期間賃貸の場合)$6,000。費用はすべてIRS方式(賃貸日数 ÷ 総使用日数)で配分し、利子・税 → その他の運営費 → 減価償却の順に控除する。</p>`,
+  rows: [
+    { label: "Classification of the property(物件の分類)", type: "select", options: ["Rental property — losses subject to passive activity rules", "Personal residence — rental deductions limited to rental income", "Personal residence — rented fewer than 15 days, rental income excluded"], answer: "Personal residence — rental deductions limited to rental income" },
+    { label: "Mortgage interest and property taxes allocated to rental(賃貸に配分する利子・固定資産税)", type: "num", answer: 9000 },
+    { label: "Utilities and maintenance deductible against rental income(控除できる光熱費・修繕費)", type: "num", answer: 2400 },
+    { label: "Depreciation deductible this year(当年控除できる減価償却費)", type: "num", answer: 600 },
+    { label: "Disallowed depreciation carried forward(翌年へ繰り越す減価償却費)", type: "num", answer: 3900 },
+    { label: "Net rental income (loss) reported(報告する純賃貸所得(損失))", type: "num", answer: 0 },
+  ],
+  explain: `<p>私的使用40日は「14日または賃貸日数の10%(12日)の大きい方」を超え、かつ賃貸日数が15日以上のため、住居(バケーションホーム)扱いとなり、賃貸費用は賃貸収入を限度とする。</p>
+<p>賃貸割合 = 120 ÷ 160 = 75%。利子・税 (8,000 + 4,000) × 75% = $9,000 → 残り3,000。光熱・修繕 3,200 × 75% = $2,400 → 残り600。減価償却配分額 6,000 × 75% = 4,500のうち$600のみ控除、$3,900を繰越す。</p>
+<p>純賃貸所得 = 12,000 − 9,000 − 2,400 − 600 = $0(損失は計上できない)。私的使用分の利子・税(25%)は項目別控除の対象になり得る。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-REG-21",
+  section: "REG",
+  chapter: "REG-03",
+  title: "自営業者のAGI控除(for AGI adjustments)",
+  scenario: `<p>Maria Lopez, single, is a self-employed graphic designer with no employees. For the year:</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Schedule C net profit</td><td>$60,000</td></tr>
+<tr><td>Health insurance premiums for herself (she is not eligible for any employer-subsidized plan)</td><td>$6,000</td></tr>
+<tr><td>Contribution to her own SEP plan (she contributes the maximum allowed)</td><td>?</td></tr>
+<tr><td>Interest paid on a qualified student loan (MAGI is below the phase-out range; maximum deduction $2,500)</td><td>$2,000</td></tr>
+<tr><td>Contribution to her HSA (self-only HDHP coverage; assume a $4,300 limit)</td><td>$2,500</td></tr></table>
+<p>Assume net earnings from self-employment equal 92.35% of net profit, the self-employment tax rate is 15.3%, and the maximum SEP contribution for a self-employed person is 20% of net profit reduced by the deduction for one-half of self-employment tax. Round each amount to the nearest dollar.</p>
+<p class="ja">Maria Lopez(独身)は従業員のいない自営のグラフィックデザイナーである。Schedule Cの純利益$60,000/本人の医療保険料$6,000(雇用主の補助付きプランの加入資格なし)/本人のSEPへの拠出(上限額を拠出)/適格学生ローン利息の支払$2,000(修正AGIは縮小範囲未満、控除上限$2,500)/HSAへの拠出$2,500(自己のみのHDHP、限度額$4,300とする)。自営業純収入は純利益の92.35%、自営業税率15.3%、自営業者のSEP拠出上限は「純利益 − 自営業税の2分の1控除」の20%とする。各金額はドル未満を四捨五入する。</p>`,
+  rows: [
+    { label: "Deduction for one-half of self-employment tax(自営業税の2分の1控除)", type: "num", answer: 4239, tol: 1 },
+    { label: "Self-employed health insurance deduction(自営業者医療保険料控除)", type: "num", answer: 6000 },
+    { label: "Maximum SEP contribution deduction(SEP拠出の控除上限額)", type: "num", answer: 11152, tol: 1 },
+    { label: "Student loan interest deduction(学生ローン利息控除)", type: "num", answer: 2000 },
+    { label: "HSA deduction(HSA控除)", type: "num", answer: 2500 },
+    { label: "Total adjustments for AGI(AGI控除の合計)", type: "num", answer: 25891, tol: 2 },
+  ],
+  explain: `<p>自営業税 = 60,000 × 92.35% × 15.3% = 55,410 × 15.3% = $8,478、その半分$4,239がAGI控除。</p>
+<p>自営業者医療保険料:補助付きプランの加入資格がなく、事業純所得(60,000 − 4,239 − 11,152 = 44,609)の範囲内のため$6,000全額。SEP:(60,000 − 4,239) × 20% = $11,152。</p>
+<p>学生ローン利息:上限$2,500以内で縮小なし → $2,000。HSA:本人拠出$2,500(限度額以内)。</p>
+<p>合計 = 4,239 + 6,000 + 11,152 + 2,000 + 2,500 = $25,891。いずれもSchedule 1のAGI控除であり、事業経費ではないため自営業税の計算には影響しない。</p>`,
+});

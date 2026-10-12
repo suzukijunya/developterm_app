@@ -644,3 +644,72 @@ CPA.extend("AUD-04", {
     },
   ],
 });
+
+CPA.tbs({ id: "TBS-AUD-18", section: "AUD", chapter: "AUD-04", title: "銀行間振替表とカイティングの評価",
+  scenario: `<p>Mori Co. has a December 31 year-end and maintains accounts at First Bank and City Bank. The auditor prepared the following interbank transfer schedule for transfers made near year-end. No transfers are recorded as \"in transit\" in the general ledger.</p>
+<table><tr><th>Transfer</th><th>Amount</th><th>Disbursing account: date recorded in books</th><th>Disbursing account: date cleared bank</th><th>Receiving account: date recorded in books</th><th>Receiving account: date deposited in bank</th></tr>
+<tr><td>T1</td><td>$20,000</td><td>Dec 30</td><td>Jan 2</td><td>Dec 30</td><td>Dec 31</td></tr>
+<tr><td>T2</td><td>$35,000</td><td>Jan 2</td><td>Jan 3</td><td>Dec 31</td><td>Dec 31</td></tr>
+<tr><td>T3</td><td>$15,000</td><td>Dec 31</td><td>Jan 3</td><td>Jan 2</td><td>Jan 2</td></tr>
+<tr><td>T4</td><td>$10,000</td><td>Dec 31</td><td>Jan 3</td><td>Dec 31</td><td>Jan 2</td></tr></table>
+<p>For each transfer, evaluate whether the books properly reflect the transfer at December 31. Then compute the net misstatement of cash per books (overstatement as a positive amount) and identify the transfer that should appear as a deposit in transit on the receiving account's bank reconciliation.</p>
+<p class="ja">森社(12月31日決算)はFirst BankとCity Bankに口座を持つ。監査人は期末前後の振替について上表の銀行間振替表を作成した。総勘定元帳上、「振替未達」として記録された振替はない。各振替について12月31日の帳簿が適切に反映しているかを評価し、帳簿上の現金の純虚偽表示額(過大を正の値)を計算し、受入口座の銀行勘定調整表で未達預金として表示されるべき振替を特定せよ。</p>`,
+  rows: [
+    { label: "Transfer T1(振替T1)", type: "select", options: ["Properly recorded", "Cash overstated (kiting)", "Cash understated"], answer: "Properly recorded" },
+    { label: "Transfer T2(振替T2)", type: "select", options: ["Properly recorded", "Cash overstated (kiting)", "Cash understated"], answer: "Cash overstated (kiting)" },
+    { label: "Transfer T3(振替T3)", type: "select", options: ["Properly recorded", "Cash overstated (kiting)", "Cash understated"], answer: "Cash understated" },
+    { label: "Transfer T4(振替T4)", type: "select", options: ["Properly recorded", "Cash overstated (kiting)", "Cash understated"], answer: "Properly recorded" },
+    { label: "Net misstatement of cash per books — overstatement as positive(帳簿現金の純虚偽表示額・過大を正)", type: "num", answer: 20000 },
+    { label: "Transfer to be listed as a deposit in transit on the receiving account reconciliation(受入口座の調整表で未達預金となる振替)", type: "select", options: ["T1", "T2", "T3", "T4"], answer: "T4" },
+  ],
+  explain: `<p>帳簿上、払出と受入が同じ期に記録されていれば適切である(銀行側の日付のずれは未取付小切手・未達預金として調整表で処理する)。</p>
+<p>T1:払出・受入とも12月30日に記帳 → 適切。払出口座の調整表で未取付小切手$20,000となる(受入側は12月31日に銀行入金済みのため未達預金ではない)。</p>
+<p>T2:受入は12月31日に記帳されたが払出は1月2日 → 同じ$35,000が両口座に計上され現金が過大(カイティング)。</p>
+<p>T3:払出は12月31日に記帳されたが受入は1月2日 → 期末に$15,000がどちらの口座にも計上されず現金が過小。</p>
+<p>T4:払出・受入とも12月31日に記帳 → 適切。銀行入金は1月2日のため受入口座の未達預金、払出口座の未取付小切手となる。</p>
+<p>純虚偽表示額 = 35,000(過大)− 15,000(過小)= 20,000の過大。</p>`,
+});
+
+CPA.tbs({ id: "TBS-AUD-19", section: "AUD", chapter: "AUD-04", title: "売掛金確認の差異の評価",
+  scenario: `<p>The auditor sent positive confirmations for Hayashi Co.'s accounts receivable at December 31. The following exceptions were reported. Hayashi recognizes revenue when control transfers to the customer.</p>
+<table><tr><th>Customer</th><th>Customer's comment</th><th>Auditor's follow-up</th></tr>
+<tr><td>A</td><td>\"We mailed a check for $8,000 on December 29.\"</td><td>Check received and recorded by Hayashi on January 3.</td></tr>
+<tr><td>B</td><td>\"We had not received the $12,000 order at December 31.\"</td><td>Goods shipped FOB destination on December 30, delivered January 5; sale recorded December 30.</td></tr>
+<tr><td>C</td><td>\"Our balance is $5,000 lower; you billed above the contract price.\"</td><td>Invoice price exceeded the approved contract price by $5,000.</td></tr>
+<tr><td>D</td><td>\"We returned $3,000 of goods on December 28.\"</td><td>Goods received in Hayashi's warehouse December 28; credit memo issued January 10.</td></tr>
+<tr><td>E</td><td>\"We paid the $6,000 invoice on December 20.\"</td><td>Payment received December 22 but posted to Customer F's account.</td></tr></table>
+<p class="ja">監査人は林社の12月31日の売掛金について積極的確認を実施し、上表の差異が報告された。林社は顧客に支配が移転した時点で収益を認識する。A:12月29日に$8,000の小切手を郵送(林社は1月3日に受領・記帳)。B:12月31日時点で$12,000の注文品を未受領(着荷基準で12月30日出荷、1月5日着荷、売上は12月30日計上)。C:契約価格を超える請求で残高が$5,000少ない。D:12月28日に$3,000を返品(同日倉庫で受入、貸方票は1月10日発行)。E:12月20日に$6,000を支払済み(12月22日に受領したが顧客Fの口座に記帳)。</p>`,
+  rows: [
+    { label: "Exception A — nature(差異Aの性質)", type: "select", options: ["Timing difference — no misstatement", "Cutoff misstatement", "Pricing misstatement", "Misposting"], answer: "Timing difference — no misstatement" },
+    { label: "Exception B — nature(差異Bの性質)", type: "select", options: ["Timing difference — no misstatement", "Cutoff misstatement", "Pricing misstatement", "Misposting"], answer: "Cutoff misstatement" },
+    { label: "Exception C — nature(差異Cの性質)", type: "select", options: ["Timing difference — no misstatement", "Cutoff misstatement", "Pricing misstatement", "Misposting"], answer: "Pricing misstatement" },
+    { label: "Exception E — nature(差異Eの性質)", type: "select", options: ["Timing difference — no misstatement", "Cutoff misstatement", "Pricing misstatement", "Misposting"], answer: "Misposting" },
+    { label: "Total overstatement of accounts receivable at December 31(12月31日の売掛金の過大計上額合計)", type: "num", answer: 20000 },
+    { label: "Most appropriate additional procedure for exception E(差異Eに対する最も適切な追加手続)", type: "select", options: ["No further procedure is needed because total receivables are unaffected", "Compare remittance details on deposit slips with postings to customer accounts to test for lapping", "Send a second confirmation request to Customer E", "Recompute the aging schedule"], answer: "Compare remittance details on deposit slips with postings to customer accounts to test for lapping" },
+  ],
+  explain: `<p>A:期末時点で林社は入金を受領していないため、売掛金は期末に存在する。時間差による差異で虚偽表示ではない。</p>
+<p>B:着荷基準のため支配の移転は1月5日であり、売上・売掛金$12,000が過大(期間帰属の誤り)。</p>
+<p>C:契約価格を超える請求で$5,000過大(価格の誤り)。</p>
+<p>D:返品は12月28日に発生しており当期に計上すべきで、$3,000過大(期間帰属の誤り)。</p>
+<p>E:入金を別の顧客に記帳した誤記であり売掛金総額には影響しないが、ラッピングの兆候となりうるため、入金票の明細と顧客別記帳を照合する。</p>
+<p>過大計上額合計 = 12,000 + 5,000 + 3,000 = 20,000。</p>`,
+});
+
+CPA.tbs({ id: "TBS-AUD-20", section: "AUD", chapter: "AUD-04", title: "会計上の見積りの監査(SAS 143)",
+  scenario: `<p>Kudo Co. sells appliances with a one-year warranty. At December 31, 60,000 units were under warranty. Management recorded a warranty liability of <b>$480,000</b>. The auditor developed an independent range using tested historical data: the claim rate is between 3.0% and 3.5% of units, and the average repair cost per claim is between $280 and $300 (low end uses the lower rate and lower cost; high end uses the higher rate and higher cost).</p>
+<p>Kudo also recorded an inventory obsolescence reserve of <b>$200,000</b>. Based on sales of the slow-moving items after year-end, the auditor developed a point estimate of <b>$260,000</b>.</p>
+<p>The allowance for credit losses ($150,000) was within the auditor's range of $145,000 to $190,000, at the low end. In the prior year, all three estimates were near the midpoint of the auditor's ranges.</p>
+<p class="ja">工藤社は1年保証付きの家電を販売している。12月31日に保証期間中の製品は60,000台であり、経営者は製品保証引当金を<b>$480,000</b>計上した。監査人は検証済みの過去データを用いて独自の範囲を設定した:クレーム率は台数の3.0%〜3.5%、1件当たり平均修理費は$280〜$300(下限は低い率と低い費用、上限は高い率と高い費用を用いる)。また、陳腐化在庫引当金を<b>$200,000</b>計上しているが、監査人は期末後の滞留品の販売実績から点推定値<b>$260,000</b>を算定した。貸倒引当金($150,000)は監査人の範囲$145,000〜$190,000の下限付近にある。前期は3つの見積りはいずれも監査人の範囲の中央付近であった。</p>`,
+  rows: [
+    { label: "Low end of the auditor's warranty range(監査人の製品保証引当金の範囲の下限)", type: "num", answer: 504000 },
+    { label: "High end of the auditor's warranty range(範囲の上限)", type: "num", answer: 630000 },
+    { label: "Misstatement (understatement) of the warranty liability(製品保証引当金の虚偽表示額・過小)", type: "num", answer: 24000 },
+    { label: "Misstatement (understatement) of the obsolescence reserve(陳腐化在庫引当金の虚偽表示額・過小)", type: "num", answer: 60000 },
+    { label: "Approach used for the obsolescence reserve(陳腐化在庫引当金に用いた手法)", type: "select", options: ["Testing how management made the estimate", "Developing an independent estimate using a range", "Obtaining evidence from events occurring up to the date of the auditor's report", "Retrospective review of the prior-year estimate"], answer: "Obtaining evidence from events occurring up to the date of the auditor's report" },
+    { label: "Evaluation of the pattern across the three estimates(3つの見積りの傾向の評価)", type: "select", options: ["No implication because the allowance is within the auditor's range", "Indicator of possible management bias to be evaluated in the aggregate", "Each estimate must be adjusted to the midpoint of the auditor's range", "Scope limitation requiring a qualified opinion"], answer: "Indicator of possible management bias to be evaluated in the aggregate" },
+  ],
+  explain: `<p>下限 = 60,000 × 3.0% × 280 = 504,000。上限 = 60,000 × 3.5% × 300 = 630,000。</p>
+<p>経営者の見積り480,000は範囲外であり、虚偽表示は範囲の最も近い端との差:504,000 − 480,000 = 24,000(過小)。中央値との差を用いるのは誤りである。</p>
+<p>陳腐化在庫引当金:監査人の点推定値との差 260,000 − 200,000 = 60,000(過小)。期末後の販売実績を用いているため、監査報告書日までに発生した事象から証拠を入手する手法に該当する。</p>
+<p>貸倒引当金は範囲内だが、3つの見積りがいずれも利益を増やす方向に偏り、前期(中央付近)から変化している。これは経営者の偏向の兆候であり、虚偽表示そのものではないが、財務諸表全体への影響や不正リスクの評価への影響を総合的に評価する。</p>`,
+});
