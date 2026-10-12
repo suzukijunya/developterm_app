@@ -589,3 +589,78 @@ CPA.extend("TCP-02", {
     },
   ],
 });
+
+CPA.tbs({ id: "TBS-TCP-12", section: "TCP", chapter: "TCP-02", title: "C法人の課税所得(寄附金・受取配当控除・NOL)",
+  scenario: `<p>Hayashi Corp., a calendar-year C corporation, reports the following for the current year:</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Gross receipts</td><td>$900,000</td></tr>
+<tr><td>Cost of goods sold</td><td>$400,000</td></tr>
+<tr><td>Deductible operating expenses (excluding the items below)</td><td>$250,000</td></tr>
+<tr><td>Dividends from a 25%-owned domestic corporation</td><td>$100,000</td></tr>
+<tr><td>Cash charitable contributions to qualified charities</td><td>$50,000</td></tr>
+<tr><td>NOL carryforward arising in 2022</td><td>$260,000</td></tr></table>
+<p>Assume a 21% corporate tax rate, a 10% of taxable income limit on charitable contributions, and the 80% taxable income limitation for post-2017 NOLs.</p>
+<p class="ja">暦年C法人のHayashi社の当年の数値は、売上収入$900,000、売上原価$400,000、損金算入営業費用(下記項目を除く)$250,000、25%保有の内国法人からの受取配当$100,000、適格慈善団体への現金寄附$50,000、2022年に発生したNOL繰越額$260,000である。法人税率21%、寄附金は課税所得の10%を限度、2017年後のNOLは課税所得の80%を限度とする。</p>`,
+  rows: [
+    { label: "Charitable contribution deduction(寄附金控除額)", type: "num", answer: 35000 },
+    { label: "Dividends-received deduction(受取配当控除額)", type: "num", answer: 65000 },
+    { label: "NOL deduction(NOL控除額)", type: "num", answer: 200000 },
+    { label: "Taxable income(課税所得)", type: "num", answer: 50000 },
+    { label: "Federal income tax(連邦法人税額)", type: "num", answer: 10500 },
+    { label: "NOL carryforward to next year(翌年へのNOL繰越額)", type: "num", answer: 60000 },
+  ],
+  explain: `<p>①寄附金限度額の基礎となる課税所得(寄附金・DRD・NOL控除前)= 900,000 − 400,000 − 250,000 + 100,000 = 350,000。限度額 10% × 350,000 = 35,000(超過15,000は5年繰越)。</p>
+<p>②DRD:20%以上保有なので65% × 100,000 = 65,000。課税所得制限 65% × (350,000 − 35,000) = 204,750は超えないため全額控除。</p>
+<p>③NOL控除前の課税所得 = 315,000 − 65,000 = 250,000。NOL控除は80% × 250,000 = 200,000が上限(繰越額260,000より小さい)。</p>
+<p>④課税所得 = 250,000 − 200,000 = 50,000、税額 = 50,000 × 21% = 10,500。NOL繰越額 = 260,000 − 200,000 = 60,000(無期限)。</p>`,
+});
+
+CPA.tbs({ id: "TBS-TCP-13", section: "TCP", chapter: "TCP-02", title: "株式償還の判定(§302・§318)",
+  scenario: `<p>Mori Corp. has 1,000 shares of a single class of stock outstanding and ample E&P. The shares are owned as follows:</p>
+<table><tr><th>Shareholder</th><th>Shares</th><th>Relationship</th></tr>
+<tr><td>Ann</td><td>400</td><td>Basis $40 per share</td></tr>
+<tr><td>Ben</td><td>100</td><td>Ann's son</td></tr>
+<tr><td>Carl</td><td>200</td><td>Ann's brother; total basis $30,000</td></tr>
+<tr><td>Dana</td><td>300</td><td>Unrelated</td></tr></table>
+<p>Each share is worth $500. Mori is considering three alternative redemptions (consider each independently):</p>
+<p>Alternative 1: Mori redeems 150 of Ann's shares for $75,000.<br>Alternative 2: Mori redeems 200 of Ann's shares for $100,000.<br>Alternative 3: Mori redeems all 200 of Carl's shares for $100,000.</p>
+<p>Enter percentages as numbers rounded to two decimals (e.g., 12.34).</p>
+<p class="ja">Mori社は単一種類の株式1,000株を発行しており、十分なE&Pを有する。株主はAnn 400株(1株当たり取得価額$40)、Annの息子Ben 100株、Annの兄弟Carl 200株(取得価額合計$30,000)、無関係のDana 300株である。1株の価値は$500。次の3つの償還案を個別に検討する。案1:Annの150株を$75,000で償還。案2:Annの200株を$100,000で償還。案3:Carlの全200株を$100,000で償還。割合は小数第2位までの数値で入力する。</p>`,
+  rows: [
+    { label: "Ann's ownership percentage before any redemption, including constructive ownership (%)(償還前のAnnのみなし所有を含む持株割合)", type: "num", answer: 50, tol: 0.01 },
+    { label: "Alternative 1: Ann's ownership percentage after the redemption, including constructive ownership (%)(案1:償還後のAnnの持株割合)", type: "num", answer: 41.18, tol: 0.01 },
+    { label: "Alternative 1: Tax treatment to Ann(案1:Annの課税上の取扱い)", type: "select", options: ["Exchange (capital gain)", "Dividend", "Nontaxable return of capital"], answer: "Dividend" },
+    { label: "Alternative 2: Ann's ownership percentage after the redemption, including constructive ownership (%)(案2:償還後のAnnの持株割合)", type: "num", answer: 37.5, tol: 0.01 },
+    { label: "Alternative 2: Ann's recognized gain(案2:Annの認識利得)", type: "num", answer: 92000 },
+    { label: "Alternative 3: Tax treatment to Carl(案3:Carlの課税上の取扱い)", type: "select", options: ["Exchange (capital gain)", "Dividend", "Nontaxable return of capital"], answer: "Exchange (capital gain)" },
+  ],
+  explain: `<p>§318の家族間帰属は配偶者・子・孫・親に限られ、兄弟姉妹は含まれない。よってAnnは息子Benの100株のみをみなし所有する。償還前:(400 + 100) ÷ 1,000 = 50%。</p>
+<p>案1:償還後 (250 + 100) ÷ 850 = 41.18%。50%未満だが、償還前の80%(50% × 80% = 40%)未満ではないため実質的不均衡償還に該当せず、配当$75,000となる。</p>
+<p>案2:償還後 (200 + 100) ÷ 800 = 37.5%。50%未満かつ40%未満で交換扱い。利得 = 100,000 − 200 × 40 = 92,000(キャピタル・ゲイン)。</p>
+<p>案3:CarlはAnnの兄弟であり帰属を受けないため、全株式の償還は持分の完全終了(§302(b)(3))として交換扱い。利得は100,000 − 30,000 = 70,000。</p>`,
+});
+
+CPA.tbs({ id: "TBS-TCP-14", section: "TCP", chapter: "TCP-02", title: "州所得税の配分と割当(スローバック・二重加重売上)",
+  scenario: `<p>Sato Inc. is commercially domiciled in State A and is taxable in States A and C, but not in State B. State A follows UDITPA, uses a three-factor formula with a <b>double-weighted sales factor</b>, and applies a <b>throwback rule</b>. All goods are shipped from Sato's warehouse in State A.</p>
+<table><tr><th>Factor</th><th>State A</th><th>Everywhere</th></tr>
+<tr><td>Property (average)</td><td>$3,000,000</td><td>$5,000,000</td></tr>
+<tr><td>Payroll</td><td>$1,200,000</td><td>$2,000,000</td></tr></table>
+<table><tr><th>Sales by customer location</th><th>Amount</th></tr>
+<tr><td>State A</td><td>$2,000,000</td></tr>
+<tr><td>State B</td><td>$1,000,000</td></tr>
+<tr><td>State C</td><td>$5,000,000</td></tr></table>
+<p>Sato's federal taxable income of $4,300,000 consists of $4,000,000 of apportionable business income, $200,000 of nonbusiness rental income from real property located in State C, and $100,000 of nonbusiness dividend income. State A's tax rate is 6%. Enter percentages as numbers (e.g., 12.5).</p>
+<p class="ja">Sato社はA州に商業上の本拠を置き、A州とC州で課税対象だがB州では課税対象でない。A州はUDITPAに準拠し、売上要素を2倍加重した3要素方式とスローバック・ルールを採用している。商品はすべてA州の倉庫から出荷される。資産はA州$3,000,000/全体$5,000,000、給与はA州$1,200,000/全体$2,000,000。顧客所在地別売上はA州$2,000,000、B州$1,000,000、C州$5,000,000。連邦課税所得$4,300,000の内訳は、配分対象の事業所得$4,000,000、C州所在不動産からの非事業賃貸所得$200,000、非事業の受取配当$100,000である。A州の税率は6%。割合は数値(例:12.5)で入力する。</p>`,
+  rows: [
+    { label: "State A sales factor (%)(A州の売上要素)", type: "num", answer: 37.5, tol: 0.01 },
+    { label: "State A apportionment percentage (%)(A州の配分割合)", type: "num", answer: 48.75, tol: 0.01 },
+    { label: "Business income apportioned to State A(A州に配分される事業所得)", type: "num", answer: 1950000 },
+    { label: "Nonbusiness income allocated to State A(A州に割り当てられる非事業所得)", type: "num", answer: 100000 },
+    { label: "State A taxable income(A州の課税所得)", type: "num", answer: 2050000 },
+    { label: "State A income tax(A州の所得税額)", type: "num", answer: 123000 },
+  ],
+  explain: `<p>資産要素 3,000,000 ÷ 5,000,000 = 60%、給与要素 1,200,000 ÷ 2,000,000 = 60%。</p>
+<p>売上要素:課税されないB州向け売上1,000,000はスローバックにより出荷元A州の分子に加える。(2,000,000 + 1,000,000) ÷ 8,000,000 = 37.5%。</p>
+<p>配分割合 = (60 + 60 + 37.5 × 2) ÷ 4 = 48.75%。事業所得 4,000,000 × 48.75% = 1,950,000。</p>
+<p>非事業所得は割当:不動産賃貸所得200,000は不動産所在地のC州へ、配当100,000は商業上の本拠地A州へ。A州課税所得 = 1,950,000 + 100,000 = 2,050,000、税額 = 2,050,000 × 6% = 123,000。</p>`,
+});
