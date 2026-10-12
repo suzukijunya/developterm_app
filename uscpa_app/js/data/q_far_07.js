@@ -360,5 +360,286 @@ CPA.extend("FAR-06", {
       a: 3,
       ex: "予算ベース支出 = GAAP支出4,600,000 + 期末未決済負担額120,000 − 前年度予算に計上済みの80,000 = 4,640,000。前年度分を控除し忘れると$4,720,000となる。",
     },
+    {
+      q: "A foundation agreed to give a not-for-profit research institute $300,000 for a research program, but only if the institute hires a qualified lead researcher by June 30; any unspent amounts must be returned to the foundation. At signing in March, the foundation advanced $100,000 in cash. At the institute's March 31 year-end, no researcher had been hired. How should the institute report the $100,000?",
+      ja: "財団は非営利の研究所に研究プログラムのため$300,000を拠出することに合意したが、研究所が6月30日までに適格な主任研究者を採用することが条件で、未使用額は財団に返還しなければならない。3月の契約時に財団は$100,000を前払いした。研究所の3月31日の期末時点で研究者は採用されていない。研究所はこの$100,000をどのように報告すべきか。",
+      c: [
+        "As a refundable advance (liability) of $100,000",
+        "As contribution revenue with donor restrictions of $100,000",
+        "As contribution revenue with donor restrictions of $300,000 and a receivable of $200,000",
+        "As contribution revenue without donor restrictions of $100,000",
+      ],
+      a: 0,
+      ex: "測定可能な障壁(主任研究者の採用)と返還の権利の両方があるため条件付寄付であり、障壁が克服されるまで収益認識しない。前受した現金は返還可能前受金(負債)とする。使途制限付寄付(条件なし)と混同しないこと。",
+    },
+    {
+      q: "On December 31, Year 1, a donor made an unconditional promise to give a not-for-profit entity $100,000 at the end of each of the next three years, to be used for any purpose. The appropriate discount rate is 5%, and the present value of an ordinary annuity of $1 for 3 periods at 5% is 2.7232. How should the entity report the promise in its Year 1 statement of activities?",
+      ja: "第1年度12月31日、寄付者は非営利組織に対し、今後3年間の各年末に$100,000ずつ、使途を問わず寄付するという無条件の約束をした。適切な割引率は5%、5%・3期間の通常年金現価係数は2.7232である。組織は第1年度の活動計算書でこの約束をどのように報告すべきか。",
+      c: [
+        "Contribution revenue without donor restrictions of $272,320",
+        "Contribution revenue with donor restrictions of $272,320",
+        "Contribution revenue with donor restrictions of $300,000",
+        "No revenue until the cash is received",
+      ],
+      a: 1,
+      ex: "無条件の寄付約束は約束時に現在価値で認識する:100,000 × 2.7232 = 272,320。将来受け取る金額には暗黙の時間制約があるため、使途の指定がなくても寄付者制約付純資産に分類する。",
+    },
+    {
+      q: "Continuing the previous facts, in Year 2 the not-for-profit entity accretes the discount on the $272,320 promise receivable using the 5% rate. How should the $13,616 accretion be reported?",
+      ja: "前問の続きで、第2年度に非営利組織は$272,320の寄付約束債権の割引を5%で増額(アクリーション)する。$13,616の増額はどのように報告すべきか。",
+      c: [
+        "Interest income without donor restrictions",
+        "Investment return with donor restrictions",
+        "Contribution revenue (with donor restrictions)",
+        "A reduction of fund-raising expense",
+      ],
+      a: 2,
+      ex: "寄付約束債権の割引の償却額は利息収益ではなく寄付収益として、元の寄付と同じ純資産区分(この場合は寄付者制約付)で報告する。272,320 × 5% = 13,616。",
+    },
+    {
+      q: "Which of the following contributed services should a not-for-profit organization recognize as contribution revenue?",
+      ja: "非営利組織が寄付収益として認識すべき寄付されたサービスはどれか。",
+      c: [
+        "Volunteers who greet visitors at the organization's museum",
+        "Board members who attend monthly board meetings",
+        "Volunteers who stuff envelopes for a fund-raising mailing",
+        "A carpenter who volunteers to build a storage building for the organization",
+      ],
+      a: 3,
+      ex: "寄付サービスは①非金融資産を創出・増強する場合、または②専門技能を要し、その技能を有する者が提供し、寄付がなければ購入が必要な場合に認識する。倉庫の建設は非金融資産を創出するため認識する。受付や封入作業は専門技能を要しない。",
+    },
+    {
+      q: "A licensed electrician volunteered to rewire a not-for-profit organization's building. The fair value of the electrician's services was $5,000, and the electrician also donated materials with a fair value of $2,000. The work enhanced the building. What amount of contribution revenue should the organization recognize?",
+      ja: "資格を持つ電気技師が非営利組織の建物の配線工事をボランティアで行った。技師のサービスの公正価値は$5,000で、公正価値$2,000の資材も寄付した。この工事により建物の価値が増強された。組織が認識すべき寄付収益はいくらか。",
+      c: ["$7,000", "$5,000", "$2,000", "$0"],
+      a: 0,
+      ex: "非金融資産を増強する寄付サービス$5,000と寄付された資材$2,000はいずれも公正価値で認識する。合計7,000を建物(資本的支出)に計上し、寄付収益とする。サービスのみ・資材のみの金額は誤り。",
+    },
+    {
+      q: "A not-for-profit museum has a policy of not capitalizing its collections, and its collection items meet the definition of a collection. During the year, it used $200,000 of resources without donor restrictions to purchase a painting for its collection. How should the purchase be reported?",
+      ja: "非営利の美術館は収蔵品を資産計上しない方針を採っており、その収蔵品はコレクションの定義を満たしている。当期、寄付者制約のない資源$200,000を用いて収蔵品とする絵画を購入した。この購入はどのように報告すべきか。",
+      c: [
+        "As an asset of $200,000 in the statement of financial position",
+        "As a decrease in net assets without donor restrictions in the statement of activities, separate from expenses",
+        "As a program expense of $200,000",
+        "Only in the notes, with no effect on net assets",
+      ],
+      a: 1,
+      ex: "収蔵品を資産計上しない場合、収蔵品の購入は活動計算書で該当する純資産区分の減少として報告する(費用とは区分)。キャッシュ・フロー計算書では投資活動となる。資産計上する方針でない限り資産には載せない。",
+    },
+    {
+      q: "At the beginning of the year, a not-for-profit organization had $50,000 of net assets with donor restrictions for a literacy program. During the year, it spent $30,000 on the literacy program, satisfying the donors' restrictions to that extent. What is the net effect of these expenditures on net assets without donor restrictions for the year?",
+      ja: "期首時点で、非営利組織には識字プログラム用の寄付者制約付純資産$50,000があった。当期、識字プログラムに$30,000を支出し、その範囲で寄付者の制約が満たされた。この支出が当期の寄付者制約なし純資産に与える純影響はいくらか。",
+      c: ["Decrease of $30,000", "Increase of $30,000", "No net effect", "Decrease of $50,000"],
+      a: 2,
+      ex: "制約の解除により寄付者制約付純資産が30,000減少し、寄付者制約なし純資産が30,000増加する(released from restrictions)。費用30,000は常に寄付者制約なし純資産で報告されるため、制約なし純資産への純影響はゼロとなる。",
+    },
+    {
+      q: "A donor gave a not-for-profit organization $600,000 in cash restricted to the purchase of a building. The organization purchased the building and placed it in service during the year. The donor did not specify how long the building must be used. When should the restriction be released?",
+      ja: "寄付者は非営利組織に建物購入に使途制限された現金$600,000を寄付した。組織は当期中に建物を購入し使用を開始した。寄付者は建物の使用期間を指定していない。制約はいつ解除すべきか。",
+      c: [
+        "Over the building's useful life, in proportion to depreciation",
+        "When the cash is received",
+        "Never, because the building must be held permanently",
+        "When the building is placed in service",
+      ],
+      a: 3,
+      ex: "ASU 2016-14により、寄付者が使用期間を指定しない限り、長期性資産の取得に制約された寄付は資産が使用開始された時点で制約解除する(暗黙の時間制約を用いて減価償却に応じて解除する選択肢は廃止された)。",
+    },
+    {
+      q: "A not-for-profit organization received $40,000 from a donor with instructions to transfer the cash to a specified unaffiliated food bank. The organization has not been granted variance power and is not financially interrelated with the food bank. How should the organization report the receipt?",
+      ja: "非営利組織は、寄付者から特定の関連のないフードバンクに現金を移転するよう指示されて$40,000を受け取った。組織には変更権(variance power)が与えられておらず、フードバンクとの間に財務的相互関係もない。組織はこの受領をどのように報告すべきか。",
+      c: [
+        "As an asset and a liability of $40,000",
+        "As contribution revenue with donor restrictions of $40,000",
+        "As contribution revenue without donor restrictions of $40,000",
+        "Only in the notes",
+      ],
+      a: 0,
+      ex: "変更権がなく指定受益者へ移転する仲介者・代理人の立場では、受領資産と同額の受益者に対する負債を計上し、寄付収益は認識しない。変更権が明示的に付与されていれば寄付収益として認識する。",
+    },
+    {
+      q: "A not-for-profit organization's investments produced interest and dividends of $25,000 and net realized and unrealized gains of $40,000 during the year. It paid $5,000 of fees to an external investment advisor. What amount should be reported as investment return in the statement of activities?",
+      ja: "非営利組織の投資から当期に利息・配当$25,000、実現・未実現利益(純額)$40,000が生じた。外部の投資顧問に報酬$5,000を支払った。活動計算書で投資収益(investment return)として報告すべき金額はいくらか。",
+      c: ["$65,000", "$60,000", "$25,000", "$20,000"],
+      a: 1,
+      ex: "ASU 2016-14により、投資収益は外部および直接の内部投資費用控除後の純額で表示する:25,000 + 40,000 − 5,000 = 60,000。投資費用の開示は不要。未実現利益を除く金額は誤り。",
+    },
+    {
+      q: "A donor established a perpetual endowment with a gift of $1,000,000 to a not-for-profit organization. Because of market declines, the fair value of the endowment fund fell to $940,000 at year-end. How should the $60,000 deficiency be reported?",
+      ja: "寄付者は非営利組織に$1,000,000を寄付して永久基本財産を設定した。市場の下落により、期末の基本財産の公正価値は$940,000に減少した。$60,000の不足額はどのように報告すべきか。",
+      c: [
+        "As a reduction of net assets without donor restrictions",
+        "As a liability to the donor",
+        "As a reduction of net assets with donor restrictions, with disclosure of the underwater endowment",
+        "As an extraordinary loss",
+      ],
+      a: 2,
+      ex: "ASU 2016-14により、元本割れ(underwater)基本財産の不足額は寄付者制約付純資産の減少として報告し、当初の寄付額、公正価値、不足額、支出方針を開示する。旧基準のような制約なし純資産での計上は行わない。",
+    },
+    {
+      q: "A not-for-profit organization sent an educational mailing that also asked recipients for donations. The mailing meets the purpose, audience, and content criteria for allocating joint costs. How should the $80,000 of joint costs be reported?",
+      ja: "非営利組織は、教育目的の郵便物を送付し、その中で寄付も依頼した。この郵便物は共通費配分の目的・対象者・内容の要件を満たしている。$80,000の共通費はどのように報告すべきか。",
+      c: [
+        "Entirely as fund-raising expense",
+        "Entirely as program expense",
+        "Entirely as management and general expense",
+        "Allocated between program services and fund-raising",
+      ],
+      a: 3,
+      ex: "資金調達を含む活動の共通費は、目的・対象者・内容の3要件をすべて満たす場合に限りプログラム活動と資金調達活動などに配分できる。いずれかを満たさなければ全額を資金調達費とする。",
+    },
+    {
+      q: "A not-for-profit organization reported the following expenses: salaries of program staff, $400,000; costs of a fund-raising campaign, $80,000; salaries of the accounting department, $60,000; depreciation on the facility used solely for programs, $50,000; and the cost of meals provided to attendees at a fund-raising dinner, $20,000. What total program services expense should be reported?",
+      ja: "非営利組織の費用は次のとおり:プログラム職員の給与$400,000、資金調達キャンペーン費用$80,000、経理部門の給与$60,000、プログラム専用施設の減価償却費$50,000、資金調達ディナーの参加者に提供した食事の費用$20,000。報告すべきプログラム・サービス費用の合計はいくらか。",
+      c: ["$450,000", "$470,000", "$510,000", "$530,000"],
+      a: 0,
+      ex: "プログラム費用 = 400,000 + 50,000 = 450,000。経理部門は管理・一般費、キャンペーン費用は資金調達費。寄付者への直接便益(食事)はプログラム費用ではなく、特別行事収益と相殺表示するか費用として別掲する。",
+    },
+    {
+      q: "A not-for-profit organization sold 1,000 tickets to its annual gala at $150 each. The fair value of the dinner and entertainment provided to each attendee was $60. What amount of contribution revenue should the organization recognize from the ticket sales?",
+      ja: "非営利組織は年次ガラのチケットを1枚$150で1,000枚販売した。各参加者に提供されたディナーと余興の公正価値は$60であった。チケット販売から認識すべき寄付収益はいくらか。",
+      c: ["$150,000", "$90,000", "$60,000", "$0"],
+      a: 1,
+      ex: "チケット代のうち提供された便益の公正価値部分は交換取引の収益(1,000 × 60 = 60,000)、超過部分が寄付(1,000 × (150 − 60) = 90,000)となる。全額を寄付とするのは誤り。",
+    },
+    {
+      q: "A not-for-profit organization reports the following at year-end: cash, $200,000; accounts receivable collectible within one year, $150,000; pledges receivable due in three years, $80,000; and investments of $1,000,000, of which $700,000 is a perpetual donor-restricted endowment and $100,000 is a board-designated quasi-endowment that the board does not intend to spend within the next year. What amount of financial assets is available to meet cash needs for general expenditures within one year?",
+      ja: "非営利組織の期末の状況:現金$200,000、1年以内に回収可能な売掛金$150,000、3年後に期日が到来する寄付約束債権$80,000、投資$1,000,000(うち$700,000は寄付者制約付の永久基本財産、$100,000は理事会が翌年に支出する意図のない理事会指定の準基本財産)。1年以内の一般支出に充てるために利用可能な金融資産はいくらか。",
+      c: ["$630,000", "$650,000", "$550,000", "$1,350,000"],
+      a: 2,
+      ex: "ASU 2016-14の流動性開示では、1年以内の一般支出に利用可能な金融資産を定量的に示す。200,000 + 150,000 + (1,000,000 − 700,000 − 100,000)= 550,000。期日が1年超の寄付約束や支出意図のない理事会指定分は除く。",
+    },
+    {
+      q: "In a not-for-profit organization's statement of cash flows, how should $500,000 of cash received from a donor that is restricted by the donor to establishing a permanent endowment be classified?",
+      ja: "非営利組織のキャッシュ・フロー計算書において、寄付者が永久基本財産の設定に制約した寄付者からの現金受領$500,000はどのように区分すべきか。",
+      c: ["Operating activities", "Investing activities", "Noncash disclosure only", "Financing activities"],
+      a: 3,
+      ex: "長期目的(永久基本財産、長期性資産の取得など)に制約された現金寄付の受領は財務活動とする。制約のない寄付や当期のプログラムに制約された寄付は営業活動。",
+    },
+    {
+      q: "A not-for-profit organization received a gift of publicly traded stock with no donor restrictions and, following its policy, sold the stock within days of receipt for $45,000. How should the cash proceeds be classified in the statement of cash flows?",
+      ja: "非営利組織は寄付者制約のない上場株式の寄贈を受け、方針に従い受領後数日以内に$45,000で売却した。キャッシュ・フロー計算書でこの売却収入をどのように区分すべきか。",
+      c: ["Operating activities", "Investing activities", "Financing activities", "Not reported because the stock was donated"],
+      a: 0,
+      ex: "ASC 230では、寄付された金融資産を制限なく受領後ほぼ直ちに現金化した場合の収入は、寄付の性質に応じて区分する。制約のない寄付であれば営業活動となる(長期目的に制約されていれば財務活動)。投資活動ではない。",
+    },
+    {
+      q: "Under ASU 2016-14, a not-for-profit entity that presents its operating cash flows using the direct method:",
+      ja: "ASU 2016-14において、営業活動によるキャッシュ・フローを直接法で表示する非営利組織はどうなるか。",
+      c: [
+        "Must also present a reconciliation of the change in net assets to net cash from operating activities",
+        "Is not required to present the indirect method reconciliation",
+        "Must present the reconciliation separately for each net asset class",
+        "May not use the direct method",
+      ],
+      a: 1,
+      ex: "ASU 2016-14により、非営利組織は直接法を採用する場合でも間接法による調整表(純資産の変動から営業活動によるキャッシュ・フローへの調整)の表示は不要となった。営利企業(ASC 230)では直接法でも調整表が必要である点と異なる。",
+    },
+    {
+      q: "Under ASU 2020-07, how should a not-for-profit organization present contributed nonfinancial assets (gifts in kind), such as donated food and equipment, in its statement of activities?",
+      ja: "ASU 2020-07において、非営利組織は寄贈された食品や備品などの非金融資産の寄付(現物寄付)を活動計算書でどのように表示すべきか。",
+      c: [
+        "Combined with cash and other financial asset contributions in one line",
+        "Only in the notes, not in the statement of activities",
+        "As a line item separate from contributions of cash and other financial assets, with disaggregated disclosure by category",
+        "As a reduction of program expenses",
+      ],
+      a: 2,
+      ex: "ASU 2020-07は、非金融資産の寄付を現金その他の金融資産の寄付とは区分して活動計算書に表示し、種類別の分解情報や評価方法、使用目的・換金方針などを注記することを求める。",
+    },
+    {
+      q: "The board of trustees of a not-for-profit organization voted to set aside $200,000 of unrestricted resources for the future construction of a new facility. The board may reverse this decision at any time. How should the $200,000 be classified?",
+      ja: "非営利組織の理事会は、将来の新施設建設のために制約のない資源$200,000を確保することを決議した。理事会はいつでもこの決定を撤回できる。この$200,000はどのように分類すべきか。",
+      c: [
+        "Net assets with donor restrictions",
+        "A liability",
+        "Temporarily restricted net assets",
+        "Net assets without donor restrictions (board-designated)",
+      ],
+      a: 3,
+      ex: "理事会指定(board-designated)は寄付者による制約ではないため、寄付者制約なし純資産に含まれる(理事会指定額として内訳表示・開示は可能)。寄付者制約付純資産に分類するのは寄付者が課した制約に限られる。",
+    },
+    {
+      q: "A not-for-profit organization's net assets with donor restrictions were $500,000 at the beginning of the year. During the year: contributions with donor restrictions were $200,000; net assets released from restrictions were $150,000; and investment return on donor-restricted endowments (not yet appropriated) was $30,000. What are net assets with donor restrictions at year-end?",
+      ja: "非営利組織の期首の寄付者制約付純資産は$500,000であった。当期:寄付者制約付寄付$200,000、制約解除された純資産$150,000、寄付者制約付基本財産の投資収益(未充当)$30,000。期末の寄付者制約付純資産はいくらか。",
+      c: ["$730,000", "$550,000", "$580,000", "$880,000"],
+      a: 2,
+      ex: "500,000 + 200,000 − 150,000 + 30,000 = 580,000。寄付者制約付基本財産の投資収益は支出が充当されるまで寄付者制約付純資産に含める。制約解除を減算しないと$730,000、投資収益を除くと$550,000となる。",
+    },
   ],
+});
+
+CPA.tbs({ id: "TBS-FAR-31", section: "FAR", chapter: "FAR-06", title: "固定資産税と資本的支出(基金財務諸表と政府全体財務諸表)",
+  scenario: `<p>The City of Ashford has a December 31 fiscal year-end and uses a 60-day availability period for property taxes. Selected Year 1 information for its general fund:</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Property taxes levied for Year 1</td><td>$4,000,000</td></tr>
+<tr><td>Estimated uncollectible portion of the levy</td><td>2%</td></tr>
+<tr><td>Collections during Year 1</td><td>$3,700,000</td></tr>
+<tr><td>Expected collections January 1 – February 28, Year 2</td><td>$120,000</td></tr>
+<tr><td>Remaining collectible taxes expected after February, Year 2</td><td>$100,000</td></tr>
+<tr><td>Equipment purchased for cash on July 1, Year 1 (5-year life, no salvage value, straight-line)</td><td>$300,000</td></tr></table>
+<p class="ja">アシュフォード市は12月31日決算で、固定資産税に60日の利用可能期間を採用している。一般基金の第1年度の情報:第1年度分の固定資産税賦課額$4,000,000、回収不能見積率2%、第1年度中の回収額$3,700,000、第2年度1月1日〜2月28日の回収見込額$120,000、第2年度3月以降に回収見込みの残額$100,000、7月1日に現金で購入した備品$300,000(耐用年数5年、残存価額ゼロ、定額法)。</p>`,
+  rows: [
+    { label: "Property tax revenue — general fund (modified accrual)(一般基金の固定資産税収益・修正発生主義)", type: "num", answer: 3820000 },
+    { label: "Deferred inflows of resources for property taxes — general fund(一般基金の固定資産税に係る繰延資源流入)", type: "num", answer: 100000 },
+    { label: "Property tax revenue — government-wide statement of activities(政府全体の活動計算書の固定資産税収益)", type: "num", answer: 3920000 },
+    { label: "General fund expenditure for the equipment(一般基金の備品に係る支出)", type: "num", answer: 300000 },
+    { label: "Depreciation expense on the equipment — government-wide(政府全体の備品減価償却費)", type: "num", answer: 30000 },
+    { label: "Classification of the equipment purchase in the general fund operating statement(一般基金の運営計算書における備品購入の区分)", type: "select", options: ["Capital outlay expenditure", "Capital asset", "Other financing use", "Expense"], answer: "Capital outlay expenditure" },
+  ],
+  explain: `<p>回収可能額 = 4,000,000 × 98% = 3,920,000(回収不能見積80,000)。</p>
+<p>修正発生主義の収益 = 期中回収3,700,000 + 期末後60日以内の回収120,000 = 3,820,000。残り100,000は利用可能でないため繰延資源流入とする。</p>
+<p>政府全体財務諸表(発生主義)では賦課期間に回収可能額3,920,000の全額を収益とする。</p>
+<p>備品は一般基金では資本的支出(capital outlay expenditure)300,000として全額支出処理し、資産計上しない。政府全体では資本資産として計上し、減価償却費 = 300,000 ÷ 5 × 6/12 = 30,000。</p>`,
+});
+
+CPA.tbs({ id: "TBS-FAR-32", section: "FAR", chapter: "FAR-06", title: "基金間取引の分類",
+  scenario: `<p>The City of Brookfield had the following interfund activities during the year. For each item, select the type of interfund activity under GASB standards.</p>
+<ol>
+<li>The general fund lent $100,000 to a special revenue fund; the loan is to be repaid within 90 days.</li>
+<li>The general fund paid the electric utility enterprise fund $45,000 for electricity used by city hall, billed at standard customer rates.</li>
+<li>The general fund sent $600,000 to the debt service fund to provide resources for principal and interest payments on general obligation bonds.</li>
+<li>A special revenue fund repaid the general fund $18,000 for salaries the general fund had paid on behalf of employees working solely on the special revenue fund's program.</li>
+<li>The fleet maintenance internal service fund billed the police department (general fund) $32,000 for vehicle repairs.</li>
+<li>The general fund contributed $1,000,000 to establish a new parking enterprise fund; no repayment is expected.</li>
+</ol>
+<p class="ja">ブルックフィールド市の当期の基金間取引:①一般基金が特別収入基金に$100,000を貸付(90日以内に返済予定)。②一般基金が市庁舎の電力使用料$45,000を標準料金で電力事業基金に支払。③一般基金が一般財源保証債の元利払いの財源として$600,000を債務返済基金に送金。④特別収入基金が、同基金のプログラムに専従する職員の給与として一般基金が立て替えた$18,000を一般基金に返済。⑤車両整備の内部サービス基金が警察部門(一般基金)に車両修理代$32,000を請求。⑥一般基金が新設の駐車場事業基金の設立資金として$1,000,000を拠出(返済予定なし)。各項目についてGASB基準上の基金間取引の種類を選択せよ。</p>`,
+  rows: [
+    { label: "Item 1 — Loan to special revenue fund(①特別収入基金への貸付)", type: "select", options: ["Interfund loan", "Interfund services provided and used", "Interfund transfer", "Interfund reimbursement"], answer: "Interfund loan" },
+    { label: "Item 2 — Electricity billed at standard rates(②標準料金での電力料金)", type: "select", options: ["Interfund loan", "Interfund services provided and used", "Interfund transfer", "Interfund reimbursement"], answer: "Interfund services provided and used" },
+    { label: "Item 3 — Resources sent to the debt service fund(③債務返済基金への送金)", type: "select", options: ["Interfund loan", "Interfund services provided and used", "Interfund transfer", "Interfund reimbursement"], answer: "Interfund transfer" },
+    { label: "Item 4 — Repayment of salaries paid on behalf of another fund(④立替給与の返済)", type: "select", options: ["Interfund loan", "Interfund services provided and used", "Interfund transfer", "Interfund reimbursement"], answer: "Interfund reimbursement" },
+    { label: "Item 5 — Internal service fund billing for vehicle repairs(⑤内部サービス基金の車両修理代請求)", type: "select", options: ["Interfund loan", "Interfund services provided and used", "Interfund transfer", "Interfund reimbursement"], answer: "Interfund services provided and used" },
+    { label: "Item 6 — Contribution to establish a parking enterprise fund(⑥駐車場事業基金の設立拠出)", type: "select", options: ["Interfund loan", "Interfund services provided and used", "Interfund transfer", "Interfund reimbursement"], answer: "Interfund transfer" },
+  ],
+  explain: `<p>①返済が予定される資金移動は基金間貸付(due from/due to)。</p>
+<p>②⑤市場価格・原価回収ベースの財・サービスの売買は「基金間で提供・使用されるサービス」で、購入側は支出(費用)、販売側は収益とする。</p>
+<p>③⑥返済を予定しない一方的な資源移転は基金間振替で、政府基金ではその他の資金調達源泉・用途、事業基金では振替として表示する。</p>
+<p>④本来負担すべき基金への支出の付け替えは基金間補填で、負担基金で支出を計上し、立替基金の支出を減額する。</p>`,
+});
+
+CPA.tbs({ id: "TBS-FAR-33", section: "FAR", chapter: "FAR-06", title: "非営利組織の寄付収益と純資産区分",
+  scenario: `<p>Hope Shelter, a not-for-profit organization, had the following transactions during Year 1:</p>
+<table><tr><th>#</th><th>Transaction</th></tr>
+<tr><td>a</td><td>Received unrestricted cash gifts of $250,000.</td></tr>
+<tr><td>b</td><td>Received an unconditional promise to give $60,000 payable in Year 2, for any purpose. Its present value is $57,000.</td></tr>
+<tr><td>c</td><td>A foundation pledged $100,000 on the condition that Hope Shelter raise $100,000 in new donations by Year 2 (unmatched amounts are forfeited); the matching has not yet occurred. The foundation advanced $40,000 in cash.</td></tr>
+<tr><td>d</td><td>Received $80,000 in cash restricted to a youth counseling program; $50,000 was spent on the program in Year 1.</td></tr>
+<tr><td>e</td><td>A licensed nurse volunteered services that Hope Shelter would otherwise have purchased (fair value $12,000). General volunteers donated time valued at $20,000.</td></tr>
+<tr><td>f</td><td>Sold 400 tickets to a benefit dinner at $200 each; the fair value of the dinner was $75 per ticket.</td></tr></table>
+<p>Hope Shelter does not use the policy of reporting restricted contributions whose restrictions are met in the same period as net assets without donor restrictions.</p>
+<p class="ja">非営利組織Hope Shelterの第1年度の取引:a 制約のない現金寄付$250,000。b 第2年度払いの使途を問わない無条件寄付約束$60,000(現在価値$57,000)。c 財団が、Hope Shelterが第2年度までに新規寄付$100,000を集めることを条件に$100,000を約束(未達成分は失効)。マッチングは未達成で、財団は現金$40,000を前払い。d 青少年カウンセリングプログラムに制約された現金$80,000を受領し、第1年度に$50,000をプログラムに支出。e 資格を持つ看護師が、寄付がなければ購入していたサービスを無償提供(公正価値$12,000)。一般ボランティアの時間の評価額は$20,000。f チャリティ・ディナーのチケットを1枚$200で400枚販売(ディナーの公正価値は1枚$75)。同一期間に制約が満たされた制約付寄付を制約なし純資産で報告する方針は採用していない。</p>`,
+  rows: [
+    { label: "Contribution revenue without donor restrictions(寄付者制約なしの寄付収益)", type: "num", answer: 312000 },
+    { label: "Contribution revenue with donor restrictions(寄付者制約付の寄付収益)", type: "num", answer: 137000 },
+    { label: "Net assets released from restrictions(制約から解除された純資産)", type: "num", answer: 50000 },
+    { label: "Refundable advance (liability) at year-end(期末の返還可能前受金・負債)", type: "num", answer: 40000 },
+    { label: "Change in net assets with donor restrictions(寄付者制約付純資産の増減額)", type: "num", answer: 87000 },
+    { label: "Special event exchange revenue from the benefit dinner(ディナーの交換取引収益)", type: "num", answer: 30000 },
+  ],
+  explain: `<p>制約なし寄付 = a 250,000 + e 看護師の専門サービス12,000 + f 寄付部分400 × (200 − 75) = 50,000 → 312,000。一般ボランティアの時間は認識要件を満たさない。</p>
+<p>制約付寄付 = b 57,000(将来受取分は暗黙の時間制約)+ d 80,000 = 137,000。</p>
+<p>制約解除 = d のプログラム支出50,000。c は測定可能な障壁と権利放棄(失効)を伴う条件付寄付のため収益認識せず、前受金40,000は返還可能前受金(負債)とする。</p>
+<p>制約付純資産の増減 = 137,000 − 50,000 = 87,000。ディナーの交換取引収益 = 400 × 75 = 30,000。</p>`,
 });
