@@ -62,8 +62,8 @@ CPA.extend("REG-03", {
       ex: "適格配当や長期譲渡益を純投資収益に含める選択をすると、その分は軽減税率ではなく通常税率で課税されるが、投資利息控除の上限が増える。両方の恩恵を同時に受けることはできない。",
     },
     {
-      q: "An individual with AGI of $100,000 contributed $70,000 cash to a public charity during the year. She made no other contributions. Assume the AGI limitation for cash gifts to public charities is 60%. Which of the following is correct?",
-      ja: "AGIが$100,000の個人が、当年に公益慈善団体へ現金$70,000を寄付した。他の寄付はない。公益慈善団体への現金寄付のAGI上限は60%とする。正しいものはどれか。",
+      q: "An individual with AGI of $100,000 contributed $70,000 cash to a public charity during the year. She made no other contributions. Assume the AGI limitation for cash gifts to public charities is 60%. Ignore the 0.5%-of-AGI floor on itemized charitable contributions. Which of the following is correct?",
+      ja: "AGIが$100,000の個人が、当年に公益慈善団体へ現金$70,000を寄付した。他の寄付はない。公益慈善団体への現金寄付のAGI上限は60%とする。項目別控除の寄付金に係るAGIの0.5%の足切りは無視する。正しいものはどれか。",
       c: [
         "She deducts $70,000 in the current year",
         "She deducts $50,000 and carries $20,000 forward for 5 years",
@@ -74,29 +74,29 @@ CPA.extend("REG-03", {
       ex: "上限 = 100,000 × 60% = 60,000。超過額10,000は5年間繰越可能。50%は現金以外の寄付に適用される上限であり、超過額は消滅しない。",
     },
     {
-      q: "An individual with AGI of $100,000 donated publicly traded stock held for 4 years to a public charity. The stock had a fair market value of $50,000 and an adjusted basis of $20,000. If she makes the election to measure the contribution at the stock's basis, what is her charitable contribution deduction for the current year?",
-      ja: "AGIが$100,000の個人が、4年間保有した上場株式を公益慈善団体へ寄付した。時価は$50,000、調整後取得価額は$20,000。寄付額を取得価額で測定する選択を行った場合、当年の寄付金控除額はいくらか。",
+      q: "An individual with AGI of $100,000 donated publicly traded stock held for 4 years to a public charity. The stock had a fair market value of $50,000 and an adjusted basis of $20,000. Ignore the 0.5%-of-AGI floor on itemized charitable contributions. If she makes the election to measure the contribution at the stock's basis, what is her charitable contribution deduction for the current year?",
+      ja: "AGIが$100,000の個人が、4年間保有した上場株式を公益慈善団体へ寄付した。時価は$50,000、調整後取得価額は$20,000。項目別控除の寄付金に係るAGIの0.5%の足切りは無視する。寄付額を取得価額で測定する選択を行った場合、当年の寄付金控除額はいくらか。",
       c: ["$20,000", "$30,000", "$50,000", "$0"],
       a: 0,
       ex: "長期キャピタルゲイン資産の寄付は通常、時価で評価しAGIの30%上限(30,000)が適用されるが、取得価額で評価する選択をすると50%上限が適用される。20,000は50,000(50%上限)以内のため全額控除。選択しない場合は$30,000控除、$20,000繰越となる。",
     },
     {
-      q: "An individual donated shares of stock held for 8 months to her church. The stock had a fair market value of $10,000 and an adjusted basis of $6,000. Her AGI is $90,000. What is her charitable contribution deduction?",
-      ja: "個人が8か月保有した株式を教会に寄付した。時価は$10,000、調整後取得価額は$6,000。AGIは$90,000。寄付金控除額はいくらか。",
+      q: "An individual donated shares of stock held for 8 months to her church. The stock had a fair market value of $10,000 and an adjusted basis of $6,000. Her AGI is $90,000. Ignore the 0.5%-of-AGI floor on itemized charitable contributions. What is her charitable contribution deduction?",
+      ja: "個人が8か月保有した株式を教会に寄付した。時価は$10,000、調整後取得価額は$6,000。AGIは$90,000。項目別控除の寄付金に係るAGIの0.5%の足切りは無視する。寄付金控除額はいくらか。",
       c: ["$10,000", "$4,000", "$6,000", "$27,000"],
       a: 2,
       ex: "短期保有資産は通常所得資産であり、控除額は時価から売却時に通常所得となる部分を差し引いた額、すなわち取得価額6,000に限られる。時価$10,000は長期保有資産の場合の扱いである。",
     },
     {
-      q: "An individual donated a painting she had owned for 10 years to a hospital, which sold the painting immediately to raise funds. The painting had a fair market value of $40,000 and an adjusted basis of $15,000. Her AGI is $200,000. What is her charitable contribution deduction?",
-      ja: "個人が10年間所有していた絵画を病院に寄付し、病院は資金調達のため直ちに売却した。絵画の時価は$40,000、調整後取得価額は$15,000。AGIは$200,000。寄付金控除額はいくらか。",
+      q: "An individual donated a painting she had owned for 10 years to a hospital, which sold the painting immediately to raise funds. The painting had a fair market value of $40,000 and an adjusted basis of $15,000. Her AGI is $200,000. Ignore the 0.5%-of-AGI floor on itemized charitable contributions. What is her charitable contribution deduction?",
+      ja: "個人が10年間所有していた絵画を病院に寄付し、病院は資金調達のため直ちに売却した。絵画の時価は$40,000、調整後取得価額は$15,000。AGIは$200,000。項目別控除の寄付金に係るAGIの0.5%の足切りは無視する。寄付金控除額はいくらか。",
       c: ["$40,000", "$15,000", "$25,000", "$60,000"],
       a: 1,
       ex: "長期保有の有形動産であっても、受贈団体の本来の目的と関連しない用途(売却)に使われる場合は、控除額は取得価額15,000に限られる。美術館が展示に使うなど関連用途であれば時価$40,000となる。",
     },
     {
-      q: "An individual with AGI of $200,000 donated publicly traded stock held for 5 years to a private nonoperating foundation. The stock had a fair market value of $50,000 and an adjusted basis of $10,000. Assume the AGI limit for capital gain property given to a private nonoperating foundation is 20%. What is the current-year deduction?",
-      ja: "AGIが$200,000の個人が、5年間保有した上場株式を非事業型私立財団に寄付した。時価は$50,000、調整後取得価額は$10,000。非事業型私立財団へのキャピタルゲイン資産の寄付のAGI上限は20%とする。当年の控除額はいくらか。",
+      q: "An individual with AGI of $200,000 donated publicly traded stock held for 5 years to a private nonoperating foundation. The stock had a fair market value of $50,000 and an adjusted basis of $10,000. Assume the AGI limit for capital gain property given to a private nonoperating foundation is 20%. Ignore the 0.5%-of-AGI floor on itemized charitable contributions. What is the current-year deduction?",
+      ja: "AGIが$200,000の個人が、5年間保有した上場株式を非事業型私立財団に寄付した。時価は$50,000、調整後取得価額は$10,000。非事業型私立財団へのキャピタルゲイン資産の寄付のAGI上限は20%とする。項目別控除の寄付金に係るAGIの0.5%の足切りは無視する。当年の控除額はいくらか。",
       c: ["$10,000", "$50,000", "$60,000", "$40,000"],
       a: 3,
       ex: "上場株式(適格評価益株式)は私立財団への寄付でも時価50,000で評価できる。上限 = 200,000 × 20% = 40,000で、残り10,000は5年間繰越。取得価額$10,000は非上場株式など適格評価益株式以外の場合の扱いである。",
@@ -114,8 +114,8 @@ CPA.extend("REG-03", {
       ex: "現金以外の寄付で$5,000超を主張する場合は適格鑑定が必要だが、上場株式は例外である。現金寄付は鑑定不要($250以上は寄付先の同時期の書面受領証が必要)。$400の衣類は鑑定不要。",
     },
     {
-      q: "An individual paid $300 for a ticket to a charity's fundraising dinner. The charity's written statement disclosed that the fair market value of the dinner was $80. What is the individual's charitable contribution deduction?",
-      ja: "個人が慈善団体の資金集めの夕食会のチケットを$300で購入した。慈善団体の書面では夕食の時価は$80と開示されている。寄付金控除額はいくらか。",
+      q: "An individual paid $300 for a ticket to a charity's fundraising dinner. The charity's written statement disclosed that the fair market value of the dinner was $80. Ignore the 0.5%-of-AGI floor on itemized charitable contributions. What is the individual's charitable contribution deduction?",
+      ja: "個人が慈善団体の資金集めの夕食会のチケットを$300で購入した。慈善団体の書面では夕食の時価は$80と開示されている。項目別控除の寄付金に係るAGIの0.5%の足切りは無視する。寄付金控除額はいくらか。",
       c: ["$300", "$220", "$80", "$0"],
       a: 1,
       ex: "対価を伴う寄付(quid pro quo)は、支払額から受け取った便益の時価を差し引いた額のみ控除できる。300 − 80 = 220。",
@@ -128,11 +128,11 @@ CPA.extend("REG-03", {
       ex: "損失額 = 時価下落額60,000と取得価額200,000の小さい方60,000 − 保険金40,000 = 20,000。20,000 − 100 − 80,000 × 10% = 11,900。$19,900は10%足切りを忘れた誤り。",
     },
     {
-      q: "Jewelry worth $8,000 (adjusted basis $5,000) was stolen from an individual's home. The theft did not occur in a federally declared disaster area, and the individual had no personal casualty gains during the year. Her AGI is $60,000 and she itemizes deductions. What is her deductible theft loss?",
-      ja: "個人の自宅から時価$8,000(調整後取得価額$5,000)の宝石が盗まれた。盗難は連邦災害指定地域で発生したものではなく、当年に個人的災害利得はない。AGIは$60,000で項目別控除を選択している。控除可能な盗難損失はいくらか。",
+      q: "Jewelry worth $8,000 (adjusted basis $5,000) was stolen from an individual's home. The theft was not attributable to a federally declared or state-declared disaster, and the individual had no personal casualty gains during the year. Her AGI is $60,000 and she itemizes deductions. What is her deductible theft loss?",
+      ja: "個人の自宅から時価$8,000(調整後取得価額$5,000)の宝石が盗まれた。盗難は連邦または州が宣言した災害に起因するものではなく、当年に個人的災害利得はない。AGIは$60,000で項目別控除を選択している。控除可能な盗難損失はいくらか。",
       c: ["$4,900", "$0", "$1,900", "$5,000"],
       a: 1,
-      ex: "個人の災害・盗難損失は、連邦災害指定地域に起因するもの(または個人的災害利得の範囲内)に限り控除できる。本問はいずれにも該当しないため0。$4,900や$1,900は旧ルールの計算を当てはめた誤り。",
+      ex: "個人の災害・盗難損失は、連邦災害指定地域(2026年以降は州が宣言した災害を含む)に起因するもの(または個人的災害利得の範囲内)に限り控除できる。本問はいずれにも該当しないため0。$4,900や$1,900は旧ルールの計算を当てはめた誤り。",
     },
     {
       q: "A single taxpayer is 67 years old and legally blind. Assume the basic standard deduction for a single filer is $15,000 and the additional standard deduction for age 65 or older and for blindness is $2,000 each for an unmarried taxpayer. Ignoring any other special deductions, what is her standard deduction?",
@@ -309,7 +309,7 @@ CPA.extend("REG-03", {
         "She claims a $4,000 credit and carries the remaining $2,000 forward",
       ],
       a: 3,
-      ex: "控除額 = 20,000 × 30% = 6,000。この控除は還付不能(nonrefundable)のため当年は税額4,000まで、残り2,000は翌年以降に繰越せる。",
+      ex: "控除額 = 20,000 × 30% = 6,000。この控除は還付不能(nonrefundable)のため当年は税額4,000まで、残り2,000は翌年以降に繰越せる。なお、OBBBAにより2025年12月31日後に支出した費用は本控除の対象外となったため、本問は控除が適用される年度を前提としている。",
     },
     {
       q: "An individual's tax liability before credits is $1,000. She is entitled to a $1,500 child and dependent care credit (nonrefundable) and an $800 earned income tax credit (refundable). Her federal income tax withholding was $500. What is her refund?",
@@ -511,8 +511,8 @@ CPA.tbs({ id: "TBS-REG-22", section: "REG", chapter: "REG-03", title: "項目別
 <tr><td>Investment interest expense (net investment income is $3,000; no election)</td><td>$5,000</td></tr>
 <tr><td>Cash contribution to their church</td><td>$8,000</td></tr>
 <tr><td>Publicly traded stock held 6 years donated to a university (FMV $12,000; basis $5,000)</td><td>$12,000</td></tr></table>
-<p>Assume: medical floor 7.5% of AGI; SALT cap $10,000; acquisition debt limit $750,000; standard deduction for a joint return $31,500.</p>
-<p class="ja">Park夫妻は合算申告を行い、AGIは$200,000である。当年の支出は表のとおり:未補填の医療・歯科費$18,000(美容整形$1,000を含む)、州所得税の源泉徴収$9,000、主たる住居の固定資産税$4,500、主たる住居の取得ローン利息$24,000(残高$600,000、2021年借入)、家族旅行に充てたホームエクイティローンの利息$2,000、投資利息$5,000(純投資収益は$3,000、選択なし)、教会への現金寄付$8,000、6年保有の上場株式を大学へ寄付(時価$12,000、取得価額$5,000)。医療費の足切りはAGIの7.5%、SALT上限$10,000、取得債務上限$750,000、合算申告の標準控除$31,500とする。</p>`,
+<p>Assume: medical floor 7.5% of AGI; SALT cap $10,000; acquisition debt limit $750,000; standard deduction for a joint return $31,500; ignore the 0.5%-of-AGI floor on itemized charitable contributions.</p>
+<p class="ja">Park夫妻は合算申告を行い、AGIは$200,000である。当年の支出は表のとおり:未補填の医療・歯科費$18,000(美容整形$1,000を含む)、州所得税の源泉徴収$9,000、主たる住居の固定資産税$4,500、主たる住居の取得ローン利息$24,000(残高$600,000、2021年借入)、家族旅行に充てたホームエクイティローンの利息$2,000、投資利息$5,000(純投資収益は$3,000、選択なし)、教会への現金寄付$8,000、6年保有の上場株式を大学へ寄付(時価$12,000、取得価額$5,000)。医療費の足切りはAGIの7.5%、SALT上限$10,000、取得債務上限$750,000、合算申告の標準控除$31,500とし、寄付金に係るAGIの0.5%の足切りは無視する。</p>`,
   rows: [
     { label: "Medical expense deduction(医療費控除)", type: "num", answer: 2000 },
     { label: "Deductible taxes(控除可能な税金)", type: "num", answer: 10000 },

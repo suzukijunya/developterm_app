@@ -599,3 +599,88 @@ CPA.extend("FAR-07", {
     },
   ],
 });
+
+CPA.tbs({ id: "TBS-FAR-34", section: "FAR", chapter: "FAR-07", title: "繰延税金の計算(制定済み税率の適用と評価性引当額)",
+  scenario: `<p>Kestrel Corp. began operations in Year 1. Pretax financial income for Year 1 was <b>$500,000</b>. Information for Year 1:</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Tax depreciation in excess of book depreciation (cumulative at year-end); reverses $40,000 in Year 2 and $80,000 in Year 3</td><td>$120,000</td></tr>
+<tr><td>Warranty expense accrued for books, deductible for tax when paid in Year 2</td><td>$60,000</td></tr>
+<tr><td>Interest income on municipal bonds</td><td>$20,000</td></tr></table>
+<p>Enacted tax rates: Year 1 and Year 2 — <b>25%</b>; Year 3 and later — <b>21%</b>. Based on available evidence, it is more likely than not that $20,000 of the future warranty deduction will not be realized. All deferred items relate to the same tax jurisdiction.</p>
+<p class="ja">Kestrel社はYear 1に営業を開始した。Year 1の税引前会計利益は$500,000。税務減価償却の超過額(期末累計)$120,000はYear 2に$40,000、Year 3に$80,000解消する。製品保証費用$60,000は会計上計上済みで、支払時のYear 2に税務上損金算入される。地方債利息収入は$20,000。制定済み税率はYear 1・Year 2が25%、Year 3以降が21%。入手可能な証拠に基づくと、将来の製品保証の損金算入額のうち$20,000は実現しない可能性が高い(more likely than not)。すべての繰延項目は同一の課税管轄に属する。</p>`,
+  rows: [
+    { label: "Year 1 taxable income(Year 1の課税所得)", type: "num", answer: 420000 },
+    { label: "Current income tax expense(当期税金費用)", type: "num", answer: 105000 },
+    { label: "Deferred tax liability at end of Year 1(Year 1末の繰延税金負債)", type: "num", answer: 26800 },
+    { label: "Valuation allowance at end of Year 1(Year 1末の評価性引当額)", type: "num", answer: 5000 },
+    { label: "Total income tax expense for Year 1(Year 1の法人税等合計)", type: "num", answer: 121800 },
+    { label: "Balance sheet presentation of deferred taxes(繰延税金の貸借対照表表示)", type: "select", options: ["Current DTA $10,000 and noncurrent DTL $26,800", "Net noncurrent DTL $16,800", "Net current DTL $16,800", "Net noncurrent DTL $21,800"], answer: "Net noncurrent DTL $16,800" },
+  ],
+  explain: `<p>課税所得 = 500,000 − 20,000(地方債利息:永久差異)− 120,000(減価償却の将来加算一時差異)+ 60,000(製品保証の将来減算一時差異)= 420,000。当期税金 = 420,000 × 25% = 105,000。</p>
+<p>繰延税金負債は解消年度の制定済み税率で測定する:40,000 × 25% + 80,000 × 21% = 10,000 + 16,800 = 26,800。繰延税金資産 = 60,000 × 25% = 15,000、評価性引当額 = 20,000 × 25% = 5,000、純額10,000。</p>
+<p>繰延税金費用 = 26,800 − 10,000 = 16,800、税金費用合計 = 105,000 + 16,800 = 121,800。ASU 2015-17により繰延税金はすべて非流動に分類し、同一管轄内では相殺して純額の非流動繰延税金負債16,800を表示する。全額を25%で測定するとDTL 30,000となり誤りである。</p>`,
+});
+
+CPA.tbs({ id: "TBS-FAR-35", section: "FAR", chapter: "FAR-07", title: "間接法による営業活動キャッシュフローの調整",
+  scenario: `<p>Brightwater Inc. reported net income of <b>$300,000</b> for the year. Additional information:</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Depreciation expense</td><td>$45,000</td></tr>
+<tr><td>Amortization of patent</td><td>$5,000</td></tr>
+<tr><td>Amortization of discount on bonds payable</td><td>$2,000</td></tr>
+<tr><td>Gain on sale of equipment</td><td>$12,000</td></tr>
+<tr><td>Loss on early extinguishment of debt</td><td>$8,000</td></tr>
+<tr><td>Increase in deferred tax liability</td><td>$7,000</td></tr>
+<tr><td>Equity-method income from investee</td><td>$20,000</td></tr>
+<tr><td>Dividends received from equity-method investee</td><td>$8,000</td></tr>
+<tr><td>Increase in accounts receivable</td><td>$30,000</td></tr>
+<tr><td>Decrease in inventory</td><td>$18,000</td></tr>
+<tr><td>Increase in prepaid expenses</td><td>$4,000</td></tr>
+<tr><td>Decrease in accounts payable</td><td>$15,000</td></tr>
+<tr><td>Increase in accrued liabilities</td><td>$6,000</td></tr>
+<tr><td>Cash dividends paid to shareholders</td><td>$50,000</td></tr></table>
+<p>Enter decreases (negative adjustments) as negative numbers.</p>
+<p class="ja">Brightwater社の当期純利益は$300,000。減価償却費$45,000、特許権償却$5,000、社債発行差金(ディスカウント)の償却$2,000、設備売却益$12,000、債務の早期消滅損$8,000、繰延税金負債の増加$7,000、持分法による投資利益$20,000、持分法投資先からの受取配当$8,000、売掛金の増加$30,000、棚卸資産の減少$18,000、前払費用の増加$4,000、買掛金の減少$15,000、未払負債の増加$6,000、株主への現金配当支払$50,000。減算調整は負の数で入力すること。</p>`,
+  rows: [
+    { label: "Net adjustment for the equity-method investment(持分法投資に関する純調整額)", type: "num", answer: -12000 },
+    { label: "Net adjustment for changes in operating current assets and liabilities(営業性の流動資産・負債の増減による純調整額)", type: "num", answer: -25000 },
+    { label: "Treatment of the gain on sale of equipment(設備売却益の取扱い)", type: "select", options: ["Add $12,000 to net income", "Subtract $12,000 from net income", "Report $12,000 as an operating inflow", "No adjustment"], answer: "Subtract $12,000 from net income" },
+    { label: "Treatment of amortization of bond discount(社債ディスカウント償却の取扱い)", type: "select", options: ["Add back to net income", "Subtract from net income", "Report as a financing outflow", "No adjustment"], answer: "Add back to net income" },
+    { label: "Net cash provided by operating activities(営業活動による正味キャッシュフロー)", type: "num", answer: 318000 },
+    { label: "Classification of the $50,000 dividends paid(支払配当$50,000の区分)", type: "select", options: ["Operating", "Investing", "Financing", "Noncash disclosure only"], answer: "Financing" },
+  ],
+  explain: `<p>持分法:投資利益20,000は現金を伴わないため減算し、受取配当8,000(累積利益の範囲内=投資のリターン)は営業収入として加算する。純額 −12,000。</p>
+<p>運転資本:−30,000(売掛金増)+ 18,000(棚卸減)− 4,000(前払増)− 15,000(買掛減)+ 6,000(未払増)= −25,000。</p>
+<p>営業CF = 300,000 + 45,000 + 5,000 + 2,000 − 12,000 + 8,000 + 7,000 − 12,000 − 25,000 = 318,000。売却益は売却収入全額を投資活動に計上するため減算し、ディスカウント償却は現金支出を伴わない利息費用のため加算する。支払配当は財務活動であり営業CFに含めない(含めると268,000と誤る)。</p>`,
+});
+
+CPA.tbs({ id: "TBS-FAR-36", section: "FAR", chapter: "FAR-07", title: "直接法による営業活動キャッシュフロー",
+  scenario: `<p>Harlow Co. presents its statement of cash flows using the direct method. Selected data for the year:</p>
+<table><tr><th>Income statement</th><th>Amount</th></tr>
+<tr><td>Sales (all on credit)</td><td>$900,000</td></tr>
+<tr><td>Cost of goods sold</td><td>$540,000</td></tr>
+<tr><td>Salaries expense</td><td>$150,000</td></tr>
+<tr><td>Depreciation expense</td><td>$40,000</td></tr>
+<tr><td>Interest expense (includes $3,000 amortization of bond discount)</td><td>$30,000</td></tr>
+<tr><td>Income tax expense</td><td>$48,000</td></tr></table>
+<table><tr><th>Balance sheet</th><th>Beginning</th><th>Ending</th></tr>
+<tr><td>Accounts receivable</td><td>$70,000</td><td>$95,000</td></tr>
+<tr><td>Inventory</td><td>$110,000</td><td>$90,000</td></tr>
+<tr><td>Accounts payable (merchandise)</td><td>$60,000</td><td>$72,000</td></tr>
+<tr><td>Salaries payable</td><td>$12,000</td><td>$8,000</td></tr>
+<tr><td>Interest payable</td><td>$5,000</td><td>$7,000</td></tr>
+<tr><td>Income taxes payable</td><td>$10,000</td><td>$6,000</td></tr>
+<tr><td>Deferred tax liability</td><td>$20,000</td><td>$25,000</td></tr></table>
+<p class="ja">Harlow社は直接法でキャッシュフロー計算書を作成している。損益計算書:売上(全額掛売)$900,000、売上原価$540,000、給与費用$150,000、減価償却費$40,000、支払利息$30,000(社債ディスカウント償却$3,000を含む)、法人税等$48,000。貸借対照表(期首/期末):売掛金$70,000/$95,000、棚卸資産$110,000/$90,000、買掛金(商品)$60,000/$72,000、未払給与$12,000/$8,000、未払利息$5,000/$7,000、未払法人税$10,000/$6,000、繰延税金負債$20,000/$25,000。</p>`,
+  rows: [
+    { label: "Cash collected from customers(顧客からの現金回収額)", type: "num", answer: 875000 },
+    { label: "Cash paid to suppliers(仕入先への現金支払額)", type: "num", answer: 508000 },
+    { label: "Cash paid to employees(従業員への現金支払額)", type: "num", answer: 154000 },
+    { label: "Cash paid for interest(利息の現金支払額)", type: "num", answer: 25000 },
+    { label: "Cash paid for income taxes(法人税等の現金支払額)", type: "num", answer: 47000 },
+    { label: "Net cash provided by operating activities(営業活動による正味キャッシュフロー)", type: "num", answer: 141000 },
+  ],
+  explain: `<p>顧客からの回収 = 900,000 − 25,000(売掛金増)= 875,000。</p>
+<p>仕入高 = 540,000 − 20,000(棚卸減)= 520,000、仕入先への支払 = 520,000 − 12,000(買掛金増)= 508,000。</p>
+<p>給与支払 = 150,000 + 4,000(未払給与減)= 154,000。利息支払 = 30,000 − 3,000(ディスカウント償却)− 2,000(未払利息増)= 25,000。法人税支払 = 48,000 − 5,000(繰延税金負債増)+ 4,000(未払法人税減)= 47,000。</p>
+<p>営業CF = 875,000 − 508,000 − 154,000 − 25,000 − 47,000 = 141,000。減価償却費は現金支出を伴わないため直接法では現れない。検算:純利益92,000 + 40,000 + 3,000 + 5,000 − 25,000 + 20,000 + 12,000 − 4,000 + 2,000 − 4,000 = 141,000。</p>`,
+});
