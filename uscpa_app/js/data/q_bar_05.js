@@ -409,5 +409,301 @@ CPA.extend("BAR-02", {
       a: 1,
       ex: "販売型リースの要件を満たしても回収可能性がprobableでない場合、貸手は原資産の認識を中止せず、受け取ったリース料を預り金(負債)として計上する。回収がprobableになる等の時点で販売型リースとして処理する。",
     },
+    {
+      q: "A calendar-year company qualifies as a large accelerated filer. Within how many days after the period end must it file its annual report on Form 10-K and its first-quarter report on Form 10-Q?",
+      ja: "暦年決算の会社は大規模早期提出会社(large accelerated filer)に該当する。年次報告書Form 10-Kおよび第1四半期報告書Form 10-Qは、期末後それぞれ何日以内に提出しなければならないか。",
+      c: [
+        "Form 10-K: 90 days; Form 10-Q: 45 days",
+        "Form 10-K: 75 days; Form 10-Q: 40 days",
+        "Form 10-K: 60 days; Form 10-Q: 45 days",
+        "Form 10-K: 60 days; Form 10-Q: 40 days",
+      ],
+      a: 3,
+      ex: "大規模早期提出会社は10-Kが60日以内、10-Qが40日以内。早期提出会社は10-Kが75日・10-Qが40日、非早期提出会社は10-Kが90日・10-Qが45日である。",
+    },
+    {
+      q: "A public company's audit committee dismissed its independent registered public accounting firm on March 3. Which SEC filing is required, and by when?",
+      ja: "公開会社の監査委員会は3月3日に独立登録会計事務所を解任した。必要なSEC提出書類とその期限はどれか。",
+      c: [
+        "Form 8-K within four business days of the event",
+        "Form 10-Q for the quarter in which the dismissal occurred",
+        "Form 8-K within 15 calendar days of the event",
+        "No filing is required until the next Form 10-K",
+      ],
+      a: 0,
+      ex: "監査人の交代(Item 4.01)は重要な事象としてForm 8-Kで、原則として事象発生後4営業日以内に開示する。次回の10-Qや10-Kまで待つことはできない。",
+    },
+    {
+      q: "Under ASC 280 as amended by ASU 2023-07, which of the following is required for a public entity's reportable segments?",
+      ja: "ASU 2023-07により改訂されたASC 280において、公開企業の報告セグメントについて要求される事項はどれか。",
+      c: [
+        "Disclosure of significant segment expenses that are regularly provided to the chief operating decision maker and included in the reported measure of segment profit or loss, in both annual and interim periods",
+        "Disclosure of segment expenses only for the largest reportable segment",
+        "Segment disclosures only in annual financial statements",
+        "Exemption from all segment disclosures for an entity with a single reportable segment",
+      ],
+      a: 0,
+      ex: "ASU 2023-07は、CODMに定期的に提供されセグメント損益に含まれる重要なセグメント費用の開示を年次・四半期の両方で要求する。単一の報告セグメントの企業もASC 280の開示を全面的に適用しなければならない。CODMの役職名・肩書の開示も求められる。",
+    },
+    {
+      q: "A public company has eight operating segments. Consolidated revenue from external customers is $1,000,000. The operating segments that meet the quantitative thresholds report external revenue totaling $690,000. What must the company do?",
+      ja: "公開会社は8つの事業セグメントを有する。外部顧客からの連結売上高は$1,000,000である。量的基準を満たす事業セグメントの外部売上高合計は$690,000である。会社は何をしなければならないか。",
+      c: [
+        "Nothing; the reportable segments already exceed 50% of consolidated revenue",
+        "Identify additional operating segments as reportable, even if they do not meet the 10% thresholds, until reportable segments' external revenue is at least $750,000",
+        "Combine all remaining segments into one reportable segment regardless of their characteristics",
+        "Report all eight operating segments separately",
+      ],
+      a: 1,
+      ex: "報告セグメントの外部売上高合計は連結外部売上高の75%以上でなければならない。690,000 < 750,000のため、10%基準を満たさないセグメントも追加して75%に達するまで報告セグメントとする。50%基準は存在しない。",
+    },
+    {
+      q: "A calendar-year company reported pretax income of $200,000 in the first quarter and $300,000 in the second quarter. At the end of the first quarter, its estimated annual effective tax rate was 25%; at the end of the second quarter, the estimate was revised to 28%. What income tax expense should the company report for the second quarter?",
+      ja: "暦年決算の会社は第1四半期に税引前利益$200,000、第2四半期に$300,000を計上した。第1四半期末の見積年間実効税率は25%、第2四半期末には28%に改訂された。第2四半期に報告すべき法人税等はいくらか。",
+      c: ["$84,000", "$75,000", "$90,000", "$140,000"],
+      a: 2,
+      ex: "期中の税金費用は累計の税引前利益に最新の見積年間実効税率を適用し、前四半期までの計上額を控除する。(200,000 + 300,000) × 28% − 200,000 × 25% = 140,000 − 50,000 = 90,000。$84,000は第2四半期単独に28%を乗じた誤り。",
+    },
+    {
+      q: "A calendar-year company paid $120,000 of annual property taxes in January covering the entire year. How should the payment be reflected in the company's first-quarter interim financial statements?",
+      ja: "暦年決算の会社は1月に年間分の固定資産税$120,000を支払った。この支払は第1四半期の期中財務諸表にどのように反映すべきか。",
+      c: [
+        "$120,000 expense in the first quarter",
+        "$0 expense in the first quarter and $120,000 in the fourth quarter",
+        "$40,000 expense in the first quarter",
+        "$30,000 expense in the first quarter, with the remainder deferred as a prepaid asset",
+      ],
+      a: 3,
+      ex: "ASC 270では、複数の期中期間に便益が及ぶ費用は合理的に配分する。120,000 × 3/12 = 30,000を第1四半期の費用とし、残り90,000は前払費用とする。支払時に全額費用処理するのは誤り。",
+    },
+    {
+      q: "During the second quarter, a company that uses LIFO liquidated part of a base-period inventory layer. Management expects to replace the liquidated layer before the end of the fiscal year. How should cost of goods sold for the second quarter reflect the liquidation?",
+      ja: "LIFOを採用する会社は第2四半期に基準期間の在庫層の一部を取り崩した。経営者は会計年度末までに取り崩した層を補充する見込みである。第2四半期の売上原価には取崩しをどのように反映すべきか。",
+      c: [
+        "Use the historical cost of the liquidated layer and recognize the resulting profit",
+        "Include the expected cost of replacing the liquidated layer in cost of goods sold",
+        "Defer all cost of goods sold until year-end",
+        "Recognize the liquidation profit in other comprehensive income",
+      ],
+      a: 1,
+      ex: "期中にLIFOの基準層を一時的に取り崩し年度末までに補充が見込まれる場合、売上原価は取り崩した層の補充見込原価で計上する。低い歴史的原価を用いて一時的な利益を計上するのは誤りである。",
+    },
+    {
+      q: "A public company that is neither a smaller reporting company nor an emerging growth company files its Form 10-K. Under Regulation S-X, which audited financial statements must be included?",
+      ja: "小規模報告会社でも新興成長企業でもない公開会社がForm 10-Kを提出する。Regulation S-X上、含めなければならない監査済財務諸表はどれか。",
+      c: [
+        "Balance sheets for 3 years and statements of income, comprehensive income, cash flows and equity for 3 years",
+        "Balance sheets for 2 years and statements of income, comprehensive income, cash flows and equity for 2 years",
+        "Balance sheets for 2 years and statements of income, comprehensive income, cash flows and equity for 3 years",
+        "A balance sheet for 1 year and statements of income, comprehensive income, cash flows and equity for 2 years",
+      ],
+      a: 2,
+      ex: "Regulation S-Xでは貸借対照表2期分、損益・包括利益・キャッシュフロー・株主資本等変動計算書3期分が必要である。小規模報告会社は2期分の業績計算書で足りる。",
+    },
+    {
+      q: "Which of the following disposals is most likely to be reported as a discontinued operation under ASC 205-20?",
+      ja: "ASC 205-20上、非継続事業として報告される可能性が最も高い処分はどれか。",
+      c: [
+        "Sale of one of 40 retail stores in a region where the company continues to operate the other stores",
+        "Sale of the company's entire European operations, which generated 30% of consolidated revenue",
+        "Disposal of an obsolete production line within a product line the company continues to sell",
+        "Sale of a corporate headquarters building that will be leased back",
+      ],
+      a: 1,
+      ex: "非継続事業は、事業の構成単位の処分が企業の業務と財務成績に重大な影響を与える(または与える)戦略的転換を表す場合に該当する(主要な地域・事業分野・持分法投資の処分等)。売上の30%を占める欧州事業全体の売却がこれに当たる。1店舗の売却や生産ラインの廃棄は戦略的転換に当たらない。",
+    },
+    {
+      q: "On October 1, Year 1, a component that represents a strategic shift met the held-for-sale criteria. Its operating loss for Year 1 was $120,000. At December 31, Year 1, the component's carrying amount was $900,000, its fair value was $850,000 and estimated costs to sell were $30,000. The tax rate is 25%. What amount should be reported as loss from discontinued operations, net of tax, for Year 1?",
+      ja: "第1年度10月1日、戦略的転換を表す構成単位が売却目的保有の要件を満たした。第1年度の営業損失は$120,000であった。第1年度12月31日の構成単位の帳簿価額は$900,000、公正価値は$850,000、見積売却費用は$30,000である。税率は25%である。第1年度の非継続事業損失(税引後)はいくらか。",
+      c: ["$200,000", "$90,000", "$127,500", "$150,000"],
+      a: 3,
+      ex: "売却目的保有の処分グループは帳簿価額と公正価値−売却費用の低い方で測定する。評価損 = 900,000 − (850,000 − 30,000) = 80,000。税引前損失 = 120,000 + 80,000 = 200,000、税引後 200,000 × 75% = 150,000。$200,000は税効果を無視した誤り。",
+    },
+    {
+      q: "At December 31, a company's management had not yet approved a plan to sell a business unit. On January 20 of the following year, before the financial statements were issued, management committed to the plan and all other held-for-sale criteria were met. How should the business unit be classified in the December 31 balance sheet?",
+      ja: "12月31日時点で、経営者は事業単位の売却計画をまだ承認していなかった。翌年1月20日(財務諸表発行前)に経営者は計画を決定し、その他の売却目的保有の要件もすべて満たされた。12月31日の貸借対照表で当該事業単位はどのように分類すべきか。",
+      c: [
+        "As held for sale, because the criteria were met before the financial statements were issued",
+        "As held for sale, with a retrospective impairment measured at January 20",
+        "As held and used, with disclosure of the subsequent event",
+        "As a discontinued operation in the December 31 income statement",
+      ],
+      a: 2,
+      ex: "売却目的保有の要件が貸借対照表日後・財務諸表発行前に満たされた場合でも、期末時点では保有・使用(held and used)として分類を続け、後発事象として開示する。遡って売却目的保有とするのは誤り。",
+    },
+    {
+      q: "A company sold a major line of business in Year 3 that qualifies as a discontinued operation. Its comparative income statements present Years 1 through 3. How should the results of the business be presented?",
+      ja: "会社は第3年度に非継続事業に該当する主要な事業分野を売却した。比較損益計算書は第1年度から第3年度を表示している。当該事業の業績はどのように表示すべきか。",
+      c: [
+        "As discontinued operations in Year 3 only; Years 1 and 2 are not changed",
+        "As discontinued operations, net of tax, separately from continuing operations for all three years presented",
+        "As an extraordinary item in Year 3",
+        "As a cumulative adjustment to opening retained earnings of Year 3",
+      ],
+      a: 1,
+      ex: "非継続事業の業績(処分損益を含む)は、表示されるすべての期間について継続事業と区別し税引後で表示するため、過年度の比較情報も組み替える。異常項目の区分は廃止されている。",
+    },
+    {
+      q: "A company acquires a business that, on the acquisition date, meets the criteria to be classified as held for sale because the company intends to sell it within one year. How should the acquired business be reported?",
+      ja: "会社は事業を取得し、取得日において1年以内に売却する意図があるため売却目的保有の要件を満たした。取得した事業はどのように報告すべきか。",
+      c: [
+        "As a discontinued operation from the acquisition date, even though its disposal does not represent a strategic shift",
+        "As part of continuing operations until it is sold",
+        "As a discontinued operation only if it represents more than 10% of consolidated revenue",
+        "As an equity method investment",
+      ],
+      a: 0,
+      ex: "取得時点で売却目的保有の要件を満たす事業(または非営利活動)は、戦略的転換の要件にかかわらず取得日から非継続事業として報告する。規模基準は存在しない。",
+    },
+    {
+      q: "Which of the following statements about the fair value option under ASC 825-10 is correct?",
+      ja: "ASC 825-10の公正価値オプションに関する記述として正しいものはどれか。",
+      c: [
+        "It must be applied to all financial instruments of the same type held by the entity",
+        "It may be revoked at any time if fair value becomes difficult to measure",
+        "It may be elected for an investment in a subsidiary that the entity is required to consolidate",
+        "It is generally elected instrument by instrument, is irrevocable, and is made at specified election dates such as initial recognition",
+      ],
+      a: 3,
+      ex: "公正価値オプションは原則として金融商品ごとに選択でき、当初認識時など特定の選択日に行い、取消不能である。連結すべき子会社への投資等は対象外である。同種の全商品への一律適用は求められない。",
+    },
+    {
+      q: "A company elected the fair value option for its fixed-rate bonds payable. During the year, the fair value of the bonds decreased by $50,000, of which $20,000 resulted from a deterioration in the company's own instrument-specific credit risk. How should the $50,000 change be reported?",
+      ja: "会社は固定利付の社債に公正価値オプションを選択した。当期に社債の公正価値は$50,000減少し、そのうち$20,000は自社の商品固有の信用リスクの悪化によるものである。$50,000の変動はどのように報告すべきか。",
+      c: [
+        "$30,000 gain in net income and $20,000 gain in other comprehensive income",
+        "$50,000 gain in net income",
+        "$50,000 gain in other comprehensive income",
+        "$20,000 gain in net income and $30,000 gain in other comprehensive income",
+      ],
+      a: 0,
+      ex: "公正価値オプションを選択した金融負債の公正価値変動のうち、商品固有の信用リスクに起因する部分はOCIに、残りは純損益に計上する(ASU 2016-01)。50,000 − 20,000 = 30,000が純損益。全額を純損益とするのは改訂前の処理である。",
+    },
+    {
+      q: "A company issued preferred stock that it must redeem for cash at its $100 par value on a specified date five years from issuance. The redemption is unconditional. How should the preferred stock and its dividends be reported?",
+      ja: "会社は発行から5年後の特定日に額面$100で現金償還しなければならない優先株式を発行した。償還は無条件である。この優先株式とその配当はどのように報告すべきか。",
+      c: [
+        "As equity, with dividends charged to retained earnings",
+        "As temporary (mezzanine) equity, with dividends charged to retained earnings",
+        "As a liability, with dividends reported as interest cost",
+        "As equity until the redemption date, then reclassified to liability",
+      ],
+      a: 2,
+      ex: "ASC 480では、特定日または確実に発生する事象で現金等により償還が義務付けられた強制償還金融商品は負債に分類し、その配当は支払利息として処理する。メザニン区分は保有者の選択等による条件付償還の場合である。",
+    },
+    {
+      q: "A company agreed to settle a $1,000,000 obligation by issuing however many of its common shares are needed to equal $1,000,000 based on the share price on the settlement date. How should the obligation be classified under ASC 480?",
+      ja: "会社は$1,000,000の債務を、決済日の株価に基づき$1,000,000に相当する数の普通株式を発行することで決済することに合意した。ASC 480上、この債務はどのように分類すべきか。",
+      c: [
+        "As equity, because it will be settled in shares",
+        "As a liability, because the monetary value is predominantly fixed and does not vary with the share price",
+        "As temporary equity",
+        "As equity if the company has enough authorized unissued shares",
+      ],
+      a: 1,
+      ex: "固定金額(株価と無関係に価値が決まる)を可変数の自社株式で決済する義務は、保有者が株主としての地位にないため、株式決済であっても負債に分類する。決済手段が株式であることだけで持分とするのは誤り。",
+    },
+    {
+      q: "A company enters into a forward contract to repurchase a fixed number of its own common shares for cash at a fixed price in one year (physical settlement). Under ASC 480, how should the company initially account for the contract?",
+      ja: "会社は1年後に固定価格で一定数の自己株式を現金で買い戻す先渡契約(現物決済)を締結した。ASC 480上、会社はこの契約を当初どのように会計処理すべきか。",
+      c: [
+        "Disclose the contract only; nothing is recognized until settlement",
+        "Recognize a derivative asset or liability at fair value with changes in earnings",
+        "Recognize treasury stock and a liability at the forward price immediately, with no interest",
+        "Recognize a liability initially measured at the fair value of the shares at inception (adjusted for any consideration), with a corresponding reduction of equity",
+      ],
+      a: 3,
+      ex: "自己株式を現金で買い戻す現物決済の先渡購入契約は負債に分類し、当初は契約開始時の株式の公正価値(対価の調整後)で測定して同額の資本を減額する。その後は決済額までの増加を利息費用として認識する。",
+    },
+    {
+      q: "An SEC registrant issued preferred stock that is redeemable for cash at the option of the holder at any time after five years. How should the preferred stock be classified?",
+      ja: "SEC登録会社は、5年経過後いつでも保有者の選択により現金で償還可能な優先株式を発行した。この優先株式はどのように分類すべきか。",
+      c: [
+        "As temporary (mezzanine) equity, outside of permanent equity",
+        "As a liability under ASC 480 because it is mandatorily redeemable",
+        "As permanent equity with no special presentation",
+        "As a derivative liability",
+      ],
+      a: 0,
+      ex: "保有者の選択で償還される優先株式は償還が確実ではないため、ASC 480の強制償還金融商品(負債)には該当しない。ただしSECの規定(ASC 480-10-S99)により、発行者の支配外の償還条項を有する証券は永久資本の外(メザニン)に表示する。",
+    },
   ],
+});
+
+CPA.tbs({
+  id: "TBS-BAR-21",
+  section: "BAR",
+  chapter: "BAR-02",
+  title: "キャッシュフロー・ヘッジとAOCIの組替え",
+  scenario: `<p>On October 1, Year 1, Ridge Corp., a U.S. company with a calendar year-end, forecasted a probable purchase of inventory from a European supplier for €500,000 on February 1, Year 2. Ridge entered into a forward contract to buy €500,000 on February 1, Year 2, and designated it as a cash flow hedge of the foreign currency risk. The hedge is highly effective, and no components are excluded.</p>
+<table><tr><th>Date</th><th>Cumulative fair value of forward (asset)</th></tr>
+<tr><td>December 31, Year 1</td><td>$15,000</td></tr>
+<tr><td>February 1, Year 2</td><td>$20,000</td></tr></table>
+<p>On February 1, Year 2, Ridge settled the forward and purchased the inventory for €500,000 when the spot rate was $1.04 per euro. During Year 2, Ridge sold 75% of the inventory to customers.</p>
+<p class="ja">暦年決算の米国企業Ridge社は、第1年度10月1日に第2年度2月1日のユーロ建棚卸資産€500,000の購入を予定(発生可能性が高い)し、€500,000を購入する為替予約を締結して外貨リスクのキャッシュフロー・ヘッジに指定した。ヘッジは高度に有効で、除外部分はない。為替予約の累積公正価値(資産)は第1年度12月31日$15,000、第2年度2月1日$20,000である。第2年度2月1日に為替予約を決済し、直物レート1ユーロ$1.04で棚卸資産€500,000を購入した。第2年度中に棚卸資産の75%を販売した。</p>`,
+  rows: [
+    { label: "Year 1 gain recognized in OCI(第1年度にOCIに計上する利益)", type: "num", answer: 15000 },
+    { label: "Year 2 gain recognized in OCI before the purchase(第2年度に購入前にOCIに計上する利益)", type: "num", answer: 5000 },
+    { label: "Initial carrying amount of the inventory(棚卸資産の当初帳簿価額)", type: "num", answer: 520000 },
+    { label: "Amount reclassified from AOCI to earnings in Year 2(第2年度にAOCIから損益へ組替える金額)", type: "num", answer: 15000 },
+    { label: "Cost of goods sold reported in Year 2 for this inventory(第2年度に当該棚卸資産について報告する売上原価)", type: "num", answer: 375000 },
+    { label: "AOCI balance related to the hedge at December 31, Year 2(第2年度末のヘッジに係るAOCI残高)", type: "num", answer: 5000 },
+  ],
+  explain: `<p>高度に有効なキャッシュフロー・ヘッジでは、ヘッジ手段の公正価値変動の全額をOCIに計上する。第1年度15,000、第2年度(購入日まで)20,000 − 15,000 = 5,000。</p>
+<p>キャッシュフロー・ヘッジでは累積額を棚卸資産の取得原価に含めない(US GAAP)。棚卸資産は直物で 500,000 × 1.04 = 520,000。AOCI累計20,000は棚卸資産が売上原価として損益に影響する時点で同じ科目へ組替える。</p>
+<p>販売75%:組替額 20,000 × 75% = 15,000。売上原価 = 520,000 × 75% − 15,000 = 390,000 − 15,000 = 375,000。期末AOCI残高 = 20,000 − 15,000 = 5,000(残りの在庫が販売されたときに組替える)。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-BAR-22",
+  section: "BAR",
+  chapter: "BAR-02",
+  title: "在外子会社の換算と換算調整勘定(CTA)",
+  scenario: `<p>Pine Corp., a U.S. company, formed a wholly owned foreign subsidiary on January 1, Year 1, investing LC 500,000 for all of its common stock. The subsidiary's functional currency is its local currency (LC). Year 1 data:</p>
+<table><tr><th>Item</th><th>LC</th></tr>
+<tr><td>Total assets, December 31</td><td>900,000</td></tr>
+<tr><td>Total liabilities, December 31</td><td>250,000</td></tr>
+<tr><td>Common stock</td><td>500,000</td></tr>
+<tr><td>Net income for Year 1 (earned evenly)</td><td>200,000</td></tr>
+<tr><td>Dividends paid</td><td>50,000</td></tr></table>
+<table><tr><th>Exchange rates ($ per LC)</th><th>Rate</th></tr>
+<tr><td>January 1, Year 1</td><td>$1.00</td></tr>
+<tr><td>Average for Year 1</td><td>$1.05</td></tr>
+<tr><td>Date dividends were paid</td><td>$1.08</td></tr>
+<tr><td>December 31, Year 1</td><td>$1.10</td></tr></table>
+<p class="ja">米国企業Pine社は第1年度1月1日にLC 500,000を出資して完全子会社を設立した。子会社の機能通貨は現地通貨(LC)である。第1年度末の総資産LC 900,000、総負債LC 250,000、普通株式LC 500,000、当期純利益LC 200,000(均等に発生)、支払配当LC 50,000。レートは1月1日$1.00、期中平均$1.05、配当支払日$1.08、12月31日$1.10である。</p>`,
+  rows: [
+    { label: "Translated total assets(換算後の総資産)", type: "num", answer: 990000 },
+    { label: "Translated total liabilities(換算後の総負債)", type: "num", answer: 275000 },
+    { label: "Translated common stock(換算後の普通株式)", type: "num", answer: 500000 },
+    { label: "Translated retained earnings, December 31(換算後の期末利益剰余金)", type: "num", answer: 156000 },
+    { label: "Cumulative translation adjustment, December 31(期末の換算調整勘定)", type: "num", answer: 59000 },
+    { label: "Where is the translation adjustment reported?(換算調整額の報告区分)", type: "select", options: ["Net income", "Other comprehensive income", "Directly in retained earnings", "As a deferred charge"], answer: "Other comprehensive income" },
+  ],
+  explain: `<p>カレントレート法:資産・負債は期末レート、資本金は歴史的レート、損益は平均レート、配当は支払日レートで換算する。</p>
+<p>総資産 900,000 × 1.10 = 990,000、総負債 250,000 × 1.10 = 275,000、普通株式 500,000 × 1.00 = 500,000。</p>
+<p>利益剰余金 = 200,000 × 1.05 − 50,000 × 1.08 = 210,000 − 54,000 = 156,000。</p>
+<p>CTA = 純資産 (990,000 − 275,000) 715,000 − 500,000 − 156,000 = 59,000(貸方)。検算:500,000 × 0.10 + 200,000 × 0.05 − 50,000 × 0.02 = 50,000 + 10,000 − 1,000 = 59,000。CTAはOCIに計上しAOCIに累積する。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-BAR-23",
+  section: "BAR",
+  chapter: "BAR-02",
+  title: "段階的権利確定のストック・オプションと条件変更",
+  scenario: `<p>On January 1, Year 1, Cedar Inc. granted 6,000 stock options to employees. The options vest in three equal tranches of 2,000 options at December 31 of Year 1, Year 2 and Year 3 (service condition only). The grant-date fair value is $9 per option for every tranche. Cedar accounts for forfeitures as they occur, and no forfeitures occurred.</p>
+<p>On January 1, Year 3, Cedar reduced the exercise price of the 2,000 unvested options only. The fair value of each of those options was $5 immediately before the modification and $8 immediately after. The vesting date did not change.</p>
+<p class="ja">Cedar社は第1年度1月1日、従業員にストック・オプション6,000個を付与した。第1・第2・第3年度の12月31日に2,000個ずつ権利確定する(勤務条件のみ)。付与日公正価値は各トランシェとも1個$9である。失効は発生時に処理し、失効は生じなかった。第3年度1月1日、未確定の2,000個についてのみ行使価格を引き下げた。条件変更直前の公正価値は1個$5、直後は$8であり、権利確定日は変わらない。</p>`,
+  rows: [
+    { label: "Year 1 compensation cost — graded-vesting (accelerated) attribution(第1年度報酬費用:段階的配分法)", type: "num", answer: 33000 },
+    { label: "Year 1 compensation cost — straight-line attribution for the entire award(第1年度報酬費用:全体の定額法)", type: "num", answer: 18000 },
+    { label: "Year 2 compensation cost — graded-vesting (accelerated) attribution(第2年度報酬費用:段階的配分法)", type: "num", answer: 15000 },
+    { label: "Incremental compensation cost from the modification(条件変更による増分報酬費用)", type: "num", answer: 6000 },
+    { label: "Year 3 compensation cost — graded-vesting (accelerated) attribution(第3年度報酬費用:段階的配分法)", type: "num", answer: 12000 },
+    { label: "Type of modification(条件変更の種類)", type: "select", options: ["Probable-to-probable (Type I)", "Probable-to-improbable (Type II)", "Improbable-to-probable (Type III)", "Improbable-to-improbable (Type IV)"], answer: "Probable-to-probable (Type I)" },
+  ],
+  explain: `<p>各トランシェの公正価値 = 2,000 × 9 = 18,000、総額54,000。</p>
+<p>段階的配分法:第1年度 = 18,000 + 18,000 ÷ 2 + 18,000 ÷ 3 = 18,000 + 9,000 + 6,000 = 33,000。第2年度 = 9,000 + 6,000 = 15,000。定額法では54,000 ÷ 3 = 18,000(累計認識額が確定部分以上であることを満たす)。</p>
+<p>条件変更:増分公正価値 = (8 − 5) × 2,000 = 6,000を残存勤務期間(第3年度)で認識する。第3年度 = 第3トランシェの残り6,000 + 増分6,000 = 12,000。総費用 = 54,000 + 6,000 = 60,000。</p>
+<p>変更前後とも権利確定の可能性が高いため、probable-to-probable(Type I)の条件変更である。</p>`,
 });
