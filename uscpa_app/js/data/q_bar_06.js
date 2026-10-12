@@ -599,3 +599,98 @@ CPA.extend("BAR-03", {
     },
   ],
 });
+
+CPA.tbs({ id: "TBS-BAR-24", section: "BAR", chapter: "BAR-03", title: "政府資金の純変動額から政府活動の純ポジション変動額への調整",
+  scenario: `<p>Maple City's governmental funds reported a net change in fund balances of <b>$1,000,000</b> for the year. Additional information:</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Capital outlay expenditures (all capitalizable, including $300,000 recorded at commencement of an equipment lease)</td><td>$2,500,000</td></tr>
+<tr><td>Depreciation and amortization of capital and lease assets</td><td>$900,000</td></tr>
+<tr><td>General obligation bonds issued at a premium: face $3,000,000, premium $120,000 (issued at year-end)</td><td>$3,120,000</td></tr>
+<tr><td>Other financing source recorded at commencement of the equipment lease</td><td>$300,000</td></tr>
+<tr><td>Principal repaid on general obligation bonds</td><td>$700,000</td></tr>
+<tr><td>Principal portion of lease payments</td><td>$60,000</td></tr>
+<tr><td>Increase in accrued interest payable on long-term debt</td><td>$25,000</td></tr>
+<tr><td>Increase in long-term compensated absences liability</td><td>$40,000</td></tr>
+<tr><td>Unavailable property tax revenue (deferred inflows in the funds): beginning $180,000, ending $230,000</td><td></td></tr>
+<tr><td>Change in net position of an internal service fund serving only governmental departments</td><td>$150,000</td></tr></table>
+<p>Enter decreases as negative numbers.</p>
+<p class="ja">Maple市の政府資金の当期資金残高純変動額は$1,000,000である。追加情報:資本的支出$2,500,000(すべて資産計上対象で、設備リース開始時の$300,000を含む)、資本資産・リース資産の減価償却・償却$900,000、一般財源保証債をプレミアム付きで発行(額面$3,000,000、プレミアム$120,000、期末発行)、設備リース開始時のその他の財源$300,000、社債元本返済$700,000、リース料の元本部分$60,000、長期債務の未払利息増加$25,000、長期有給休暇債務の増加$40,000、利用不能固定資産税収益(資金の繰延インフロー)期首$180,000・期末$230,000、政府部門のみに用役提供する内部サービス基金の純ポジション変動額$150,000。減少はマイナスで入力する。</p>`,
+  rows: [
+    { label: "Net adjustment for capital outlay and depreciation/amortization(資本的支出と減価償却等の調整額)", type: "num", answer: 1600000 },
+    { label: "Net adjustment for long-term debt and lease proceeds and principal repayments(長期債務・リースの発行と元本返済の調整額)", type: "num", answer: -2660000 },
+    { label: "Net adjustment for accrued interest, compensated absences, and unavailable revenue(未払利息・有給休暇・利用不能収益の調整額)", type: "num", answer: -15000 },
+    { label: "Adjustment for the internal service fund(内部サービス基金の調整額)", type: "num", answer: 150000 },
+    { label: "Change in net position of governmental activities(政府活動の純ポジション変動額)", type: "num", answer: 75000 },
+    { label: "How is the internal service fund reported in the government-wide statements?(内部サービス基金の政府全体での表示)", type: "select", options: ["Included in governmental activities", "Reported as a business-type activity", "Reported in the fiduciary fund statements", "Excluded from the government-wide statements"], answer: "Included in governmental activities" },
+  ],
+  explain: `<p>① 資本的支出2,500,000 − 減価償却等900,000 = +1,600,000(政府全体では支出ではなく資産計上し、償却費を費用とする)。</p>
+<p>② 社債発行(額面+プレミアム)−3,120,000、リース開始時のOFS −300,000、社債元本返済 +700,000、リース元本 +60,000 → −2,660,000。発行収入は負債、元本返済は負債の減少であり、政府全体の収益・費用ではない。</p>
+<p>③ 未払利息増加 −25,000、有給休暇債務増加 −40,000、利用不能収益の増加(230,000 − 180,000)+50,000 → −15,000。</p>
+<p>④ 内部サービス基金は政府部門にのみ用役提供しているため政府活動に含め、純ポジション変動額 +150,000 を加算する。</p>
+<p>⑤ 1,000,000 + 1,600,000 − 2,660,000 − 15,000 + 150,000 = 75,000。</p>`,
+});
+
+CPA.tbs({ id: "TBS-BAR-25", section: "BAR", chapter: "BAR-03", title: "企業基金の営業成績とキャッシュ・フロー計算書",
+  scenario: `<p>Riverside City's water utility enterprise fund reported the following for the year:</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Charges for services (cash collected $5,850,000; customer receivables increased $150,000)</td><td>$6,000,000</td></tr>
+<tr><td>Salaries and benefits (all paid in cash)</td><td>$2,200,000</td></tr>
+<tr><td>Supplies and utilities (paid $950,000; accounts payable increased $50,000)</td><td>$1,000,000</td></tr>
+<tr><td>Depreciation</td><td>$800,000</td></tr>
+<tr><td>Interest received on investments</td><td>$60,000</td></tr>
+<tr><td>Interest paid on revenue bonds issued to construct the treatment plant</td><td>$400,000</td></tr>
+<tr><td>Operating grant received from the state</td><td>$300,000</td></tr>
+<tr><td>Capital contributions received in cash from developers for water mains</td><td>$500,000</td></tr>
+<tr><td>Transfer out to the general fund (paid)</td><td>$250,000</td></tr>
+<tr><td>Purchase of equipment</td><td>$1,200,000</td></tr>
+<tr><td>Principal paid on revenue bonds</td><td>$600,000</td></tr>
+<tr><td>Purchases of investments / proceeds from sales of investments (at carrying amount, no gain or loss)</td><td>$1,000,000 / $400,000</td></tr></table>
+<p>Enter all amounts as positive numbers.</p>
+<p class="ja">Riverside市の上水道企業基金の当期データ:サービス料金$6,000,000(現金回収$5,850,000、顧客売掛金$150,000増加)、給与・福利費$2,200,000(全額現金払い)、消耗品・光熱費$1,000,000(支払$950,000、買掛金$50,000増加)、減価償却費$800,000、投資の受取利息$60,000、浄水場建設のための収入債の支払利息$400,000、州からの運営補助金受領$300,000、開発業者からの水道本管用の現金による資本拠出$500,000、一般基金への振替支出$250,000、設備購入$1,200,000、収入債元本支払$600,000、投資の購入$1,000,000・売却収入$400,000(簿価、損益なし)。金額はすべて正の数で入力する。</p>`,
+  rows: [
+    { label: "Operating income(営業利益)", type: "num", answer: 2000000 },
+    { label: "Change in net position(純ポジション変動額)", type: "num", answer: 2210000 },
+    { label: "Net cash provided by operating activities(営業活動による純キャッシュ・フロー)", type: "num", answer: 2700000 },
+    { label: "Net cash provided by noncapital financing activities(非資本財務活動による純キャッシュ・フロー)", type: "num", answer: 50000 },
+    { label: "Net cash used by capital and related financing activities(資本・関連財務活動に使用された純キャッシュ・フロー)", type: "num", answer: 1700000 },
+    { label: "Net cash used by investing activities(投資活動に使用された純キャッシュ・フロー)", type: "num", answer: 540000 },
+  ],
+  explain: `<p>営業利益 = 6,000,000 − 2,200,000 − 1,000,000 − 800,000 = 2,000,000。</p>
+<p>純ポジション変動額 = 2,000,000 + 受取利息60,000 − 支払利息400,000 + 運営補助金300,000 + 資本拠出500,000 − 振替250,000 = 2,210,000。</p>
+<p>営業CF(直接法)= 5,850,000 − 2,200,000 − 950,000 = 2,700,000(調整表:2,000,000 + 800,000 − 150,000 + 50,000 で一致)。</p>
+<p>非資本財務CF = 運営補助金300,000 − 振替250,000 = 50,000。</p>
+<p>資本・関連財務CF = −1,200,000 − 600,000 − 400,000 + 500,000 = −1,700,000(資本債務の支払利息と資本拠出はこの区分)。</p>
+<p>投資CF = 60,000 − 1,000,000 + 400,000 = −540,000(受取利息は投資活動)。GASBでは直接法が必須で、営業利益からの調整表も併せて表示する。</p>`,
+});
+
+CPA.tbs({ id: "TBS-BAR-26", section: "BAR", chapter: "BAR-03", title: "単一雇用主年金制度:純年金負債と年金費用",
+  scenario: `<p>Oak County sponsors a single-employer defined benefit pension plan for its general government employees. Information for the measurement period:</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Total pension liability, beginning</td><td>$50,000,000</td></tr>
+<tr><td>Plan fiduciary net position, beginning</td><td>$42,000,000</td></tr>
+<tr><td>Service cost</td><td>$1,800,000</td></tr>
+<tr><td>Interest on the total pension liability</td><td>$3,500,000</td></tr>
+<tr><td>Benefit payments</td><td>$2,600,000</td></tr>
+<tr><td>Difference between expected and actual experience (increase in liability)</td><td>$1,000,000</td></tr>
+<tr><td>Employer contributions (all paid during the period; none due and unpaid)</td><td>$2,000,000</td></tr>
+<tr><td>Member contributions</td><td>$500,000</td></tr>
+<tr><td>Projected earnings on plan investments</td><td>$2,900,000</td></tr>
+<tr><td>Actual net investment income</td><td>$1,900,000</td></tr>
+<tr><td>Plan administrative expense</td><td>$50,000</td></tr></table>
+<p>The average expected remaining service life of all employees is 5 years. There were no deferred outflows or inflows at the beginning of the period. Ignore the timing difference between the measurement date and fiscal year-end.</p>
+<p class="ja">Oak郡は一般行政職員のための単一雇用主確定給付年金制度を設けている。測定期間のデータ:期首総年金負債$50,000,000、期首制度受託純ポジション$42,000,000、勤務費用$1,800,000、総年金負債の利息$3,500,000、給付支払$2,600,000、予測と実績の差異(負債増加)$1,000,000、雇用主拠出$2,000,000(全額当期支払、未払なし)、加入者拠出$500,000、予想運用収益$2,900,000、実際の純投資収益$1,900,000、制度管理費$50,000。全従業員の平均残存勤務期間は5年。期首の繰延アウトフロー・インフローはない。測定日と決算日のずれは無視する。</p>`,
+  rows: [
+    { label: "Total pension liability, ending(期末総年金負債)", type: "num", answer: 53700000 },
+    { label: "Plan fiduciary net position, ending(期末制度受託純ポジション)", type: "num", answer: 43750000 },
+    { label: "Net pension liability, ending(期末純年金負債)", type: "num", answer: 9950000 },
+    { label: "Pension expense in the government-wide statements(政府全体の年金費用)", type: "num", answer: 2350000 },
+    { label: "Deferred outflows of resources related to pensions, ending(期末の年金関連繰延アウトフロー)", type: "num", answer: 1600000 },
+    { label: "Pension expenditure in the general fund(一般基金の年金支出)", type: "num", answer: 2000000 },
+  ],
+  explain: `<p>総年金負債 = 50,000,000 + 1,800,000 + 3,500,000 − 2,600,000 + 1,000,000 = 53,700,000。</p>
+<p>受託純ポジション = 42,000,000 + 2,000,000 + 500,000 + 1,900,000 − 2,600,000 − 50,000 = 43,750,000。純年金負債 = 53,700,000 − 43,750,000 = 9,950,000。</p>
+<p>経験差異の償却 1,000,000 ÷ 5(平均残存勤務期間)= 200,000。投資収益差異(予想2,900,000 − 実績1,900,000 = 1,000,000)は5年償却で200,000。</p>
+<p>年金費用 = 勤務費用1,800,000 + 利息3,500,000 − 予想運用収益2,900,000 − 加入者拠出500,000 + 管理費50,000 + 200,000 + 200,000 = 2,350,000。</p>
+<p>繰延アウトフロー = (1,000,000 − 200,000) + (1,000,000 − 200,000) = 1,600,000。検算:純年金負債の増加1,950,000 = 費用2,350,000 − 拠出2,000,000 + 繰延アウトフロー1,600,000。</p>
+<p>一般基金(修正発生主義)の支出は支払済・支払期日到来の拠出額2,000,000である。</p>`,
+});

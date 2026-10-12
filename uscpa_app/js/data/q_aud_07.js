@@ -525,7 +525,7 @@ CPA.extend("AUD-05", {
         "Program N ($2,000,000), audited as a major program two years ago with no findings and with no significant changes in personnel or systems",
       ],
       a: 2,
-      ex: "直近2監査期間のいずれかで主要プログラムとして監査され、重大な欠陥・重要な不遵守・$25,000超の質問費用などの指摘がないタイプAは低リスクと判定できる。前年に重大な欠陥が報告されたMは低リスクではない(高リスク)ため主要プログラムとして監査する。",
+      ex: "直近2監査期間のいずれかで主要プログラムとして監査され、直近の監査期間に重大な欠陥・遵守意見の修正・プログラム支出額の5%超の質問費用がないタイプAは低リスクと判定できる。前年に重大な欠陥が報告されたMは低リスクではない(高リスク)ため主要プログラムとして監査する。",
     },
     {
       q: "In a single audit, the auditor identified 8 Type A programs as low-risk. The auditor's risk assessment of Type B programs identified 5 high-risk Type B programs. Under the Uniform Guidance (option of auditing high-risk Type B programs), what is the minimum number of high-risk Type B programs that must be audited as major programs?",
@@ -720,14 +720,14 @@ CPA.tbs({ id: "TBS-AUD-27", section: "AUD", chapter: "AUD-05", title: "単一監
 CPA.tbs({ id: "TBS-AUD-28", section: "AUD", chapter: "AUD-05", title: "SSARS・証明業務:状況に応じた報告形態の選択",
   scenario: `<p>Hale &amp; Co., CPAs, provides services to several nonissuer clients. For each independent situation, select the appropriate action or report. Each option may be used once, more than once, or not at all.</p>
 <ol>
-<li>Client A wants a review for its bank. Hale's engagement partner's spouse holds a material direct financial interest in Client A, and the threat cannot be eliminated.</li>
+<li>Client A wants a review for its bank. Hale's engagement partner's spouse holds a material direct financial interest in Client A, and the threat cannot be eliminated. If a review is not possible, Client A will accept a compilation.</li>
 <li>In a review of Client B, Hale identifies a material, but not pervasive, departure from GAAP that management will not correct.</li>
 <li>In a review of Client C, substantial doubt about going concern exists and is adequately disclosed.</li>
 <li>Client D asks Hale to compile financial statements from which management has elected to omit substantially all disclosures, with no intent to mislead.</li>
 <li>Client E asks Hale to prepare financial statements for the owner's internal use; Hale is engaged under AR-C 70.</li>
 <li>Client F asks Hale to perform agreed-upon procedures on its inventory schedule; a Hale partner on the engagement has a material financial interest in Client F that cannot be eliminated.</li>
 </ol>
-<p class="ja">Hale会計事務所は複数の非公開企業の顧客に業務を提供している。各状況(独立)について適切な対応または報告書を選択せよ。①A社が銀行向けにレビューを希望しているが、業務執行パートナーの配偶者がA社に重要な直接的財務利害を有し脅威を除去できない。②B社のレビューで、重要だが広範ではないGAAP逸脱があり経営者は修正しない。③C社のレビューで継続企業の前提に重要な疑義があり、適切に開示されている。④D社は、誤導の意図なく開示のほぼすべてを省略した財務諸表のコンピレーションを依頼。⑤E社はオーナーの内部利用目的の財務諸表作成をAR-C 70で依頼。⑥F社は棚卸資産明細表のAUPを依頼したが、担当パートナーがF社に重要な財務利害を有し除去できない。</p>`,
+<p class="ja">Hale会計事務所は複数の非公開企業の顧客に業務を提供している。各状況(独立)について適切な対応または報告書を選択せよ。①A社が銀行向けにレビューを希望しているが、業務執行パートナーの配偶者がA社に重要な直接的財務利害を有し脅威を除去できない(レビューが不可能ならA社はコンピレーションを受け入れる)。②B社のレビューで、重要だが広範ではないGAAP逸脱があり経営者は修正しない。③C社のレビューで継続企業の前提に重要な疑義があり、適切に開示されている。④D社は、誤導の意図なく開示のほぼすべてを省略した財務諸表のコンピレーションを依頼。⑤E社はオーナーの内部利用目的の財務諸表作成をAR-C 70で依頼。⑥F社は棚卸資産明細表のAUPを依頼したが、担当パートナーがF社に重要な財務利害を有し除去できない。</p>`,
   rows: [
     { label: "Situation 1 — Client A(状況① A社)", type: "select", options: ["Unmodified review report", "Review report with qualified conclusion", "Review report with emphasis-of-matter paragraph", "Compilation report disclosing lack of independence", "Compilation report noting omission of substantially all disclosures", "No report; 'no assurance' statement on each page", "Decline or withdraw"], answer: "Compilation report disclosing lack of independence" },
     { label: "Situation 2 — Client B(状況② B社)", type: "select", options: ["Unmodified review report", "Review report with qualified conclusion", "Review report with emphasis-of-matter paragraph", "Compilation report disclosing lack of independence", "Compilation report noting omission of substantially all disclosures", "No report; 'no assurance' statement on each page", "Decline or withdraw"], answer: "Review report with qualified conclusion" },
