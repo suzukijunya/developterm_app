@@ -740,8 +740,8 @@ CPA.tbs({ id: "TBS-AUD-13", section: "AUD", chapter: "AUD-02", title: "不正リ
 });
 
 CPA.tbs({ id: "TBS-AUD-14", section: "AUD", chapter: "AUD-02", title: "監査契約書の記載事項と前任監査人とのコミュニケーション",
-  scenario: `<p>Mori &amp; Co., CPAs, has been asked to audit the financial statements of Ueda Corp., a nonissuer, for the first time. Ueda's prior-year financial statements were audited by another firm. For each item below, select the most appropriate answer under AU-C 210 (terms of engagement) and AU-C 510 (opening balances/predecessor communication).</p>
-<p class="ja">Mori &amp; Co.(CPA事務所)は、非公開会社であるUeda社の財務諸表監査を初めて依頼された。Ueda社の前年度財務諸表は他の事務所が監査した。各項目について、AU-C 210(監査契約の条件)およびAU-C 510(期首残高・前任監査人とのコミュニケーション)に基づき最も適切な答えを選択せよ。</p>`,
+  scenario: `<p>Mori &amp; Co., CPAs, has been asked to audit the financial statements of Ueda Corp., a nonissuer, for the first time. Ueda's prior-year financial statements were audited by another firm. For each item below, select the most appropriate answer under AU-C 210 (terms of engagement and communication with the predecessor auditor) and AU-C 510 (opening balances).</p>
+<p class="ja">Mori &amp; Co.(CPA事務所)は、非公開会社であるUeda社の財務諸表監査を初めて依頼された。Ueda社の前年度財務諸表は他の事務所が監査した。各項目について、AU-C 210(監査契約の条件・前任監査人とのコミュニケーション)およびAU-C 510(期首残高)に基づき最も適切な答えを選択せよ。</p>`,
   rows: [
     { label: "Identification of the applicable financial reporting framework(適用される財務報告の枠組みの特定)", type: "select", options: ["Required in the engagement letter", "Not required in the engagement letter"], answer: "Required in the engagement letter" },
     { label: "Management's responsibility for internal control relevant to preparation of the financial statements(財務諸表作成に関連する内部統制に対する経営者の責任)", type: "select", options: ["Required in the engagement letter", "Not required in the engagement letter"], answer: "Required in the engagement letter" },
