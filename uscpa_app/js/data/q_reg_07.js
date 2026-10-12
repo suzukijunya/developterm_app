@@ -181,5 +181,133 @@ CPA.extend("REG-05", {
       ja: "次の株式分配のうち、§305(b)により株主に課税されるものはどれか。",
       c: ["A pro rata distribution of common stock to common shareholders", "A 2-for-1 stock split of common stock", "A distribution of common stock to common shareholders, each of whom may elect to receive cash instead", "A pro rata distribution of common stock rights to common shareholders"], a: 2,
       ex: "株主が現金と株式の選択権を有する場合、全員が株式を選んでも分配は課税対象となる(§305(b)(1))。持分比例の株式配当、株式分割、持分比例の新株予約権の分配は原則非課税である。" },
+    // ---- Redemptions, liquidations, penalty taxes, compliance, exempt organizations ----
+    { q: "Pia owns 60 of the 100 outstanding shares of Quay Corp.; the other 40 shares are owned by unrelated persons. Quay, which has ample E&P, redeems 30 of Pia's shares for $45,000. Pia's basis in the redeemed shares is $9,000. What are the tax consequences to Pia?",
+      ja: "PiaはQuay社の発行済株式100株のうち60株を所有し、残り40株は無関係者が所有している。十分なE&Pを有するQuay社はPiaの株式30株を$45,000で償還した。償還株式のPiaの取得価額は$9,000である。Piaの課税関係はどうなるか。",
+      c: ["$45,000 dividend income", "$36,000 dividend income", "No income; basis reduced", "$36,000 capital gain"], a: 3,
+      ex: "償還後の持分は30/70 = 42.86%で、50%未満かつ償還前持分60%の80%(48%)未満のため、§302(b)(2)の著しく不均衡な償還に該当し交換取引となる。45,000 − 9,000 = 36,000のキャピタルゲイン。" },
+    { q: "Rae owns 40 shares of Sol Corp., her son owns 30 shares, and her brother owns 30 shares. Sol redeems all 40 of Rae's shares. Disregarding any waiver of family attribution, what percentage of Sol's stock is Rae considered to own immediately after the redemption under §318?",
+      ja: "RaeはSol社株式40株、息子は30株、兄弟は30株を所有している。Sol社はRaeの40株すべてを償還した。家族間帰属の放棄を考慮しない場合、§318によりRaeが償還直後に所有するとみなされるSol社株式の割合はいくらか。",
+      c: ["0%", "50%", "100%", "30%"], a: 1,
+      ex: "§318の家族間帰属は配偶者・子・孫・親に限られ、兄弟姉妹は含まれない。償還後の発行済株式は60株で、Raeは息子の30株をみなし所有し50%となる。100%は兄弟の株式も帰属させた誤りである。" },
+    { q: "A shareholder whose stock is completely redeemed wishes to waive family attribution under §302(c)(2) so the redemption qualifies as a complete termination. Which condition must be met?",
+      ja: "株式の全部を償還された株主が、完全終了の償還として扱われるよう§302(c)(2)に基づき家族間帰属を放棄したい。満たさなければならない条件はどれか。",
+      c: ["The shareholder may remain an officer but not a director", "The shareholder must hold no interest in the corporation, other than as a creditor, for 10 years after the redemption and must file an agreement to notify the IRS of any acquisition", "The family members must also have all their shares redeemed", "The waiver also eliminates attribution from partnerships and trusts"], a: 1,
+      ex: "家族間帰属の放棄には、償還後10年間、債権者以外の利害(役員・取締役・従業員を含む)を持たないこと、および取得時にIRSへ通知する合意書の提出が必要。放棄は家族間帰属のみに適用され、事業体からの帰属には及ばない。" },
+    { q: "Gus owns all 100 shares of Tide Corp., with a total basis of $50,000. Tide, which has ample E&P, redeems 20 shares for $30,000. What is Gus's dividend income and his basis in the remaining 80 shares?",
+      ja: "GusはTide社の全株式100株(取得価額合計$50,000)を所有している。十分なE&Pを有するTide社は20株を$30,000で償還した。Gusの配当所得と残り80株の取得価額はいくらか。",
+      c: ["$30,000; $50,000", "$20,000; $40,000", "$30,000; $40,000", "$0; $20,000"], a: 0,
+      ex: "唯一の株主の一部償還は持分比率が変わらず配当と同等(§302(d))で、受取額30,000全額が配当。償還株式の取得価額10,000は残存株式に移り、残り80株の取得価額は50,000のまま。" },
+    { q: "In a complete liquidation, Uma Corp. distributes land (basis $40,000, fair market value $150,000) and its remaining cash to its sole shareholder, whose stock basis is $70,000. Before the distribution, Uma has $50,000 of cash and pays the 21% corporate tax on the liquidation gain from that cash. What gain does the shareholder recognize?",
+      ja: "完全清算において、Uma社は土地(取得価額$40,000、時価$150,000)と残余現金を唯一の株主に分配した。株主の株式の取得価額は$70,000である。分配前のUma社の現金は$50,000で、清算による利得に対する21%の法人税をこの現金から支払う。株主が認識する利得はいくらか。",
+      c: ["$130,000", "$110,000", "$106,900", "$176,900"], a: 2,
+      ex: "法人は§336により利得110,000を認識し、税金23,100を支払う。株主の受取額 = 現金26,900 + 土地150,000 = 176,900。§331による利得 = 176,900 − 70,000 = 106,900。$130,000は法人税の控除漏れである。" },
+    { q: "Parent Corp. owns 85% of Sub Corp.; unrelated individuals own the remaining 15%. Sub completely liquidates, distributing appreciated property pro rata to all shareholders. Which statement is correct?",
+      ja: "Parent社はSub社の85%を所有し、残り15%は無関係の個人が所有している。Sub社は完全清算し、含み益のある資産を全株主に持分比例で分配した。正しい記述はどれか。",
+      c: ["Sub recognizes gain on all property distributed, and Parent recognizes gain on its stock", "Parent recognizes no gain and takes a carryover basis in the property; Sub recognizes gain only on property distributed to the minority shareholders", "Sub recognizes no gain on any distribution, and the minority shareholders recognize no gain", "Parent takes a fair market value basis in the property received"], a: 1,
+      ex: "80%以上所有の親会社への清算分配は§332で親会社の利得不認識、§337で子会社も利得不認識、親会社は取得価額を引き継ぐ。少数株主への分配は§336で子会社が利得を認識し、少数株主は§331で利得を認識する。" },
+    { q: "Vine Corp. accumulated earnings beyond the reasonable needs of its business to avoid shareholder-level tax. Its accumulated taxable income, after the accumulated earnings credit, is $400,000. What is Vine's accumulated earnings tax?",
+      ja: "Vine社は株主段階の課税を回避するため、事業上の合理的な必要額を超えて利益を留保した。留保利益控除後の留保課税所得は$400,000である。Vine社の留保収益税はいくらか。",
+      c: ["$84,000", "$80,000", "$148,000", "$0"], a: 1,
+      ex: "留保収益税は留保課税所得の20%で、400,000 × 20% = 80,000。通常の法人税(21%)に追加して課される。$84,000は法人税率を適用した誤りである。" },
+    { q: "Wolf Corp. had taxable income exceeding $1 million in each of the past three years and is a \"large corporation\" for estimated tax purposes. Its prior-year tax was $300,000, and its current-year tax is $500,000. What is the minimum total of estimated tax payments Wolf must make for the current year to avoid an underpayment penalty?",
+      ja: "Wolf社は過去3年間いずれも課税所得が$1百万を超えており、予定納税上の「大法人」に該当する。前年の税額は$300,000、当年の税額は$500,000である。過少納付ペナルティを避けるために当年に必要な予定納税の最低合計額はいくらか。",
+      c: ["$300,000", "$450,000", "$500,000", "$400,000"], a: 2,
+      ex: "大法人は前年税額100%のセーフハーバーを使えず(第1回分のみ可、差額は第2回で取り戻す)、当年税額の100%=500,000を納付する必要がある。$300,000は前年基準を用いた誤り、$450,000は個人の90%基準である。" },
+    { q: "Xylo Corp. has a fiscal year ending September 30, 2026. When is its Form 1120 due without extension, and what is the extended due date if it files a timely Form 7004?",
+      ja: "Xylo社の事業年度は2026年9月30日に終了する。延長しない場合のForm 1120の申告期限と、期限内にForm 7004を提出した場合の延長後の期限はいつか。",
+      c: ["December 15, 2026; June 15, 2027", "January 15, 2027; July 15, 2027", "January 15, 2027; April 15, 2027", "February 15, 2027; August 15, 2027"], a: 1,
+      ex: "C法人の申告期限は事業年度終了後4か月目の15日で2027年1月15日、自動延長は6か月で7月15日。12月15日は旧ルール(3か月目)の誤りである。延長は申告期限のみで納付期限は延長されない。" },
+    { q: "Pine Corp. owns 100% of Spruce Corp., and they file a consolidated return. Pine's separate taxable income is $400,000, which includes a $50,000 dividend received from Spruce. Spruce has a separate operating loss of $(150,000). What is the group's consolidated taxable income?",
+      ja: "Pine社はSpruce社を100%所有し、連結申告をしている。Pine社の単体の課税所得は$400,000で、Spruce社からの受取配当$50,000を含む。Spruce社の単体の営業損失は$(150,000)である。グループの連結課税所得はいくらか。",
+      c: ["$250,000", "$350,000", "$200,000", "$400,000"], a: 2,
+      ex: "連結申告では構成員間の配当は消去され、構成員の損失は他の構成員の所得と通算できる。400,000 − 50,000 − 150,000 = 200,000。$250,000は配当消去の漏れである。" },
+    { q: "A 501(c)(3) museum operates a regularly carried-on gift shop that sells merchandise unrelated to its exempt purpose, generating net income of $50,000. Assume a $1,000 specific deduction and the 21% corporate rate. What is the museum's unrelated business income tax?",
+      ja: "501(c)(3)の美術館は、免税目的と無関係な商品を販売するギフトショップを継続的に運営し、純利益$50,000を得た。$1,000の特別控除と21%の法人税率を前提とする。美術館の非関連事業所得税(UBIT)はいくらか。",
+      c: ["$10,500", "$0", "$10,290", "$10,080"], a: 2,
+      ex: "UBIT = (50,000 − 特別控除1,000) × 21% = 10,290。$10,500は特別控除の漏れ、$0は免税団体ならすべて非課税と誤解した場合である。Form 990-Tで申告する。" },
+    { q: "Which of the following sources of income of a 501(c)(3) organization is most likely unrelated business taxable income?",
+      ja: "501(c)(3)団体の次の収入のうち、非関連事業課税所得(UBTI)となる可能性が最も高いものはどれか。",
+      c: ["Dividends and interest from its investment portfolio", "Sales of donated clothing in its thrift shop", "Advertising revenue from its regularly published monthly journal", "Income from a business in which substantially all work is performed by unpaid volunteers"], a: 2,
+      ex: "定期刊行物の広告収入は継続的な事業で免税目的と実質的な関連がなくUBTIとなる。配当・利息等の受動的所得、寄贈品の販売、実質的にすべてボランティアが行う事業は除外される。" },
+    { q: "Assume that an exempt organization may file Form 990-N if its gross receipts are normally $50,000 or less, and Form 990-EZ if its gross receipts are less than $200,000 and its total assets at year-end are less than $500,000. A 501(c)(3) public charity has gross receipts of $180,000 and year-end total assets of $600,000. Which annual information return must it file?",
+      ja: "免税団体は、総収入が通常$50,000以下ならForm 990-N、総収入が$200,000未満かつ期末総資産が$500,000未満ならForm 990-EZを提出できるものとする。総収入$180,000、期末総資産$600,000の501(c)(3)公益慈善団体が提出すべき年次情報申告書はどれか。",
+      c: ["Form 990-N", "Form 990", "Form 990-EZ", "Form 990-PF"], a: 1,
+      ex: "990-EZは総収入と総資産の両方の要件を満たす必要がある。総資産600,000が500,000以上のため990-EZは使えず、Form 990を提出する。990-PFは私立財団用である。" },
+    { q: "A private foundation has net investment income of $200,000 for the year. Assume the excise tax on net investment income is 1.39%. What is the foundation's excise tax on net investment income?",
+      ja: "私立財団の当期の純投資所得は$200,000である。純投資所得に対する物品税率を1.39%とする。財団の純投資所得に対する物品税はいくらか。",
+      c: ["$2,780", "$4,000", "$42,000", "$0"], a: 0,
+      ex: "200,000 × 1.39% = 2,780。私立財団は投資所得に物品税が課され、ほかに自己取引(初期税10%)、未分配所得(初期税30%)等の物品税がある。$42,000は法人税率21%を適用した誤りである。" },
+    { q: "Which of the following activities would jeopardize an organization's exemption under §501(c)(3)?",
+      ja: "次の活動のうち、§501(c)(3)の免税資格を危うくするものはどれか。",
+      c: ["Conducting an insubstantial amount of lobbying on legislation related to its mission", "Paying reasonable salaries to its employees", "Publishing a statement endorsing a candidate for public office", "Holding nonpartisan voter-education forums"], a: 2,
+      ex: "501(c)(3)団体は公職候補者を支持・反対する政治活動への参加が絶対的に禁止され、違反すると免税資格を失いうる。実質的でないロビー活動、合理的な給与、中立的な有権者教育は認められる。" },
   ],
+});
+
+CPA.tbs({ id: "TBS-REG-28", section: "REG", chapter: "REG-05", title: "§351による法人設立(利得・株式と資産の取得価額)",
+  scenario: `<p>Ari and Bea form Crest Corp. in a transaction they intend to qualify under §351:</p>
+<table><tr><th>Transferor</th><th>Property transferred</th><th>Adjusted basis</th><th>FMV</th><th>Consideration received</th></tr>
+<tr><td>Ari</td><td>Land, subject to a $30,000 mortgage (business purpose) assumed by Crest</td><td>$70,000</td><td>$150,000</td><td>60 shares (FMV $120,000)</td></tr>
+<tr><td>Bea</td><td>Equipment (original cost $90,000, accumulated depreciation $40,000)</td><td>$50,000</td><td>$90,000</td><td>40 shares (FMV $80,000) + $10,000 cash</td></tr></table>
+<p>Crest has 100 shares outstanding after the exchange.</p>
+<p class="ja">AriとBeaは§351の適用を意図してCrest社を設立した。Ariは取得価額$70,000、時価$150,000で$30,000の抵当債務(事業目的)付きの土地を移転し、Crest社が債務を引き受け、60株(時価$120,000)を受け取った。Beaは設備(取得原価$90,000、減価償却累計額$40,000、取得価額$50,000、時価$90,000)を移転し、40株(時価$80,000)と現金$10,000を受け取った。交換後の発行済株式は100株である。</p>`,
+  rows: [
+    { label: "Gain recognized by Ari(Ariの認識利得)", type: "num", answer: 0 },
+    { label: "Ari's basis in Crest stock(AriのCrest株式の取得価額)", type: "num", answer: 40000 },
+    { label: "Gain recognized by Bea(Beaの認識利得)", type: "num", answer: 10000 },
+    { label: "Character of Bea's recognized gain(Beaの認識利得の性格)", type: "select", options: ["Ordinary income (§1245)", "§1231 gain", "Long-term capital gain"], answer: "Ordinary income (§1245)" },
+    { label: "Bea's basis in Crest stock(BeaのCrest株式の取得価額)", type: "num", answer: 50000 },
+    { label: "Crest's basis in the equipment(Crest社の設備の取得価額)", type: "num", answer: 60000 },
+  ],
+  explain: `<p>財産移転者AriとBeaの合計持分は100%で80%支配要件を満たし、§351が適用される。</p>
+<p>Ari:実現利得80,000。引受債務30,000は取得価額70,000以下で事業目的もあるためbootとならず、認識利得0。株式の取得価額 = 70,000 − 債務30,000 = 40,000。</p>
+<p>Bea:実現利得40,000、boot 10,000 → 認識利得10,000。§1245リキャプチャー対象額40,000の範囲内なので通常所得。株式の取得価額 = 50,000 + 10,000 − 10,000 = 50,000。</p>
+<p>Crest社の設備の取得価額 = Beaの取得価額50,000 + Beaの認識利得10,000 = 60,000(土地は70,000)。</p>`,
+});
+
+CPA.tbs({ id: "TBS-REG-29", section: "REG", chapter: "REG-05", title: "C法人の課税所得と税額(寄附金・受取配当控除)",
+  scenario: `<p>Haven Corp., a calendar-year C corporation, reports the following for the year:</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Gross receipts from sales</td><td>$2,000,000</td></tr>
+<tr><td>Cost of goods sold</td><td>$1,200,000</td></tr>
+<tr><td>Dividends from a 30%-owned domestic corporation</td><td>$100,000</td></tr>
+<tr><td>Tax-exempt municipal bond interest</td><td>$10,000</td></tr>
+<tr><td>Operating expenses (includes $20,000 of business meals with clients and a $15,000 fine for a regulatory violation)</td><td>$400,000</td></tr>
+<tr><td>Cash contributions to qualified charities</td><td>$60,000</td></tr></table>
+<p>The corporate tax rate is 21%. Haven has no carryovers.</p>
+<p class="ja">暦年のC法人Haven社の当期のデータ:売上高$2,000,000、売上原価$1,200,000、30%所有の国内法人からの配当$100,000、非課税の地方債利息$10,000、営業費用$400,000(顧客との事業上の食事$20,000と規制違反の罰金$15,000を含む)、適格慈善団体への現金寄附$60,000。法人税率は21%、繰越項目はない。</p>`,
+  rows: [
+    { label: "Taxable income before charitable contributions and DRD(寄附金控除・受取配当控除前の課税所得)", type: "num", answer: 525000 },
+    { label: "Charitable contribution deduction(寄附金控除額)", type: "num", answer: 52500 },
+    { label: "Dividends-received deduction(受取配当控除)", type: "num", answer: 65000 },
+    { label: "Taxable income(課税所得)", type: "num", answer: 407500 },
+    { label: "Regular income tax(法人税額)", type: "num", answer: 85575 },
+    { label: "Charitable contribution carryover(寄附金の繰越額)", type: "num", answer: 7500 },
+  ],
+  explain: `<p>総所得 = 2,000,000 − 1,200,000 + 配当100,000 = 900,000(非課税利息は除外)。</p>
+<p>営業費用のうち食事の50%(10,000)と罰金15,000は控除不可 → 控除額 400,000 − 25,000 = 375,000。控除前課税所得 = 900,000 − 375,000 = 525,000。</p>
+<p>寄附金限度額 = 525,000 × 10% = 52,500(超過7,500は5年繰越)。</p>
+<p>DRD:30%所有 → 65% × 100,000 = 65,000。課税所得制限 65% × (525,000 − 52,500) = 307,125 を下回るので全額控除。</p>
+<p>課税所得 = 525,000 − 52,500 − 65,000 = 407,500、税額 = 407,500 × 21% = 85,575。</p>`,
+});
+
+CPA.tbs({ id: "TBS-REG-30", section: "REG", chapter: "REG-05", title: "E&Pと現物分配(配当・資本の払戻し・譲渡益)",
+  scenario: `<p>Kim is the sole shareholder of Ridge Corp. and has a stock basis of $20,000. Ridge had accumulated E&P of $20,000 on January 1 and current E&P of $50,000 for the year (this amount already reflects the gain, net of tax, on the land distributed below). On December 31, Ridge distributed to Kim:</p>
+<table><tr><th>Item</th><th>Adjusted basis</th><th>FMV</th></tr>
+<tr><td>Cash</td><td>$40,000</td><td>$40,000</td></tr>
+<tr><td>Land (no liabilities)</td><td>$25,000</td><td>$60,000</td></tr></table>
+<p class="ja">KimはRidge社の唯一の株主で、株式の取得価額は$20,000である。Ridge社の1月1日の累積E&Pは$20,000、当期E&Pは$50,000(下記の土地分配による税引後利得を反映済み)。12月31日、Ridge社はKimに現金$40,000と土地(取得価額$25,000、時価$60,000、債務なし)を分配した。</p>`,
+  rows: [
+    { label: "Gain recognized by Ridge on the distribution(Ridge社が分配により認識する利得)", type: "num", answer: 35000 },
+    { label: "Kim's dividend income(Kimの配当所得)", type: "num", answer: 70000 },
+    { label: "Return of capital (nontaxable)(資本の払戻し・非課税部分)", type: "num", answer: 20000 },
+    { label: "Kim's capital gain(Kimのキャピタルゲイン)", type: "num", answer: 10000 },
+    { label: "Kim's basis in the land(Kimにおける土地の取得価額)", type: "num", answer: 60000 },
+    { label: "Ridge's accumulated E&P on January 1 of next year(翌年1月1日のRidge社の累積E&P)", type: "num", answer: 0 },
+  ],
+  explain: `<p>Ridge社は含み益資産の分配で時価60,000 − 取得価額25,000 = 35,000の利得を認識する(§311(b))。</p>
+<p>分配額合計 = 40,000 + 60,000 = 100,000。E&P合計 = 当期50,000 + 累積20,000 = 70,000 → 配当70,000。</p>
+<p>残り30,000:株式の取得価額20,000までは資本の払戻し(取得価額は0に)、超過10,000はキャピタルゲイン。</p>
+<p>株主の土地の取得価額は時価60,000。分配によるE&Pの減少はE&Pの残高が限度となるため、翌年期首の累積E&Pは0。</p>`,
 });
