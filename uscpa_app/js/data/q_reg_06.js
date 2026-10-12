@@ -519,3 +519,72 @@ CPA.extend("REG-04", {
     },
   ],
 });
+
+CPA.tbs({ id: "TBS-REG-25", section: "REG", chapter: "REG-04", title: "同種交換(ボート・債務の引受け)",
+  scenario: `<p>Ortiz exchanged an office building held for investment for an apartment building to be held for investment in a transaction qualifying under §1031. Details:</p>
+<table><tr><th></th><th>Relinquished (given)</th><th>Received</th></tr>
+<tr><td>Fair market value</td><td>$700,000</td><td>$600,000</td></tr>
+<tr><td>Ortiz's adjusted basis</td><td>$400,000</td><td>—</td></tr>
+<tr><td>Mortgage on the property (assumed by the other party)</td><td>$250,000</td><td>$180,000</td></tr></table>
+<p>In addition to the apartment building, Ortiz received <b>$30,000 cash</b>. Each party assumed the mortgage on the property it received. There were no exchange expenses.</p>
+<p class="ja">Ortizは投資用オフィスビルを投資用アパートと交換し、§1031の要件を満たした。譲渡資産のFMV $700,000、Ortizの調整後取得価額$400,000、抵当借入金$250,000(相手方が引受け)。取得資産のFMV $600,000、抵当借入金$180,000(Ortizが引受け)。Ortizはアパートに加えて現金$30,000を受け取った。交換費用はない。</p>`,
+  rows: [
+    { label: "Realized gain(実現利得)", type: "num", answer: 300000 },
+    { label: "Net liability relief treated as boot(ボートとなる純債務免除額)", type: "num", answer: 70000 },
+    { label: "Total boot received(受取ボート合計)", type: "num", answer: 100000 },
+    { label: "Recognized gain(認識利得)", type: "num", answer: 100000 },
+    { label: "Deferred gain(繰延利得)", type: "num", answer: 200000 },
+    { label: "Basis of the apartment building received(取得したアパートの取得価額)", type: "num", answer: 400000 },
+  ],
+  explain: `<p>実現利得:受取対価 = 600,000 + 現金30,000 + 免除債務250,000 = 880,000。差引:取得価額400,000 + 引受債務180,000 = 580,000。実現利得 = 300,000(検算:FMV 700,000 − 400,000)。</p>
+<p>債務は相殺する:250,000 − 180,000 = 純債務免除70,000(ボート)。受取現金30,000は引受債務と相殺できないため加算し、ボート合計100,000。</p>
+<p>認識利得 = 実現利得300,000とボート100,000のいずれか少ない方 = 100,000。繰延利得 = 200,000。</p>
+<p>取得価額 = 400,000 + 引受債務180,000 + 認識利得100,000 − 現金30,000 − 免除債務250,000 = 400,000(検算:FMV 600,000 − 繰延利得200,000)。</p>`,
+});
+
+CPA.tbs({ id: "TBS-REG-26", section: "REG", chapter: "REG-04", title: "事業用資産売却の損益の性質(§1245・§1250・§1231)",
+  scenario: `<p>Patel, a sole proprietor, sold the following assets in 2026. All assets had been held more than one year, depreciation was straight-line for the building, and Patel has no nonrecaptured net §1231 losses from prior years.</p>
+<table><tr><th>Asset</th><th>Cost</th><th>Accumulated depreciation</th><th>Selling price</th></tr>
+<tr><td>Machinery (business)</td><td>$120,000</td><td>$70,000</td><td>$85,000</td></tr>
+<tr><td>Delivery truck (business)</td><td>$60,000</td><td>$45,000</td><td>$70,000</td></tr>
+<tr><td>Commercial building (business)</td><td>$500,000</td><td>$120,000</td><td>$450,000</td></tr>
+<tr><td>Land (business)</td><td>$100,000</td><td>—</td><td>$120,000</td></tr>
+<tr><td>Stock (investment, held 3 years)</td><td>$15,000</td><td>—</td><td>$20,000</td></tr></table>
+<p class="ja">個人事業主Patelは2026年に上表の資産を売却した。すべて保有期間1年超で、建物は定額法で償却しており、過去の未回収純§1231損失はない。</p>`,
+  rows: [
+    { label: "Total realized gain on all five sales(5件の実現利得合計)", type: "num", answer: 185000 },
+    { label: "Ordinary income from §1245 recapture(§1245による通常所得)", type: "num", answer: 80000 },
+    { label: "Net §1231 gain(純§1231利得)", type: "num", answer: 100000 },
+    { label: "Unrecaptured §1250 gain taxed at a maximum 25% rate(最高25%の未回収§1250利得)", type: "num", answer: 70000 },
+    { label: "Total long-term capital gain, including net §1231 gain(純§1231利得を含む長期キャピタルゲイン合計)", type: "num", answer: 105000 },
+    { label: "Long-term gain eligible for the 0%/15%/20% rates(0%/15%/20%税率の対象となる長期利得)", type: "num", answer: 35000 },
+  ],
+  explain: `<p>機械:調整後取得価額50,000、利得35,000 → 減価償却累計額70,000の範囲内なので全額§1245の通常所得。</p>
+<p>トラック:調整後取得価額15,000、利得55,000 → 45,000が§1245の通常所得、取得原価超過分10,000が§1231利得。</p>
+<p>建物:調整後取得価額380,000、利得70,000 → 定額法のため個人には通常所得の取戻しなし。全額§1231利得で、減価償却累計額との少ない方70,000が未回収§1250利得(25%)。</p>
+<p>土地:利得20,000(§1231)。株式:長期キャピタルゲイン5,000。</p>
+<p>実現利得合計 = 35,000 + 55,000 + 70,000 + 20,000 + 5,000 = 185,000。通常所得 = 35,000 + 45,000 = 80,000。純§1231利得 = 10,000 + 70,000 + 20,000 = 100,000(過去損失がないため全額長期キャピタルゲイン)。長期キャピタルゲイン合計 = 100,000 + 5,000 = 105,000、うち25%区分70,000を除く35,000が0/15/20%区分。</p>`,
+});
+
+CPA.tbs({ id: "TBS-REG-27", section: "REG", chapter: "REG-04", title: "贈与・相続・ウォッシュセールによる取得価額",
+  scenario: `<p>Reyes had the following property transactions. No alternate valuation applies unless stated.</p>
+<ol>
+<li><b>Gift A:</b> Reyes received stock as a gift. The donor's basis was $30,000 and the fair market value at the date of the gift was $22,000. No gift tax was paid. Reyes sold the stock for $18,000.</li>
+<li><b>Gift B:</b> Reyes received land as a gift. The donor's basis was $50,000 and the fair market value at the date of the gift was $90,000. The taxable gift (after the annual exclusion) was $72,000, and the donor paid gift tax of $14,400.</li>
+<li><b>Inheritance:</b> Reyes inherited a building from her uncle, whose basis was $60,000. The fair market value was $150,000 at the date of death and $140,000 six months later. The executor properly elected the alternate valuation date, and the building was distributed to Reyes 8 months after death. Reyes sold the building 2 months after it was distributed.</li>
+<li><b>Wash sale:</b> Reyes sold 200 shares of Kappa Corp. with a basis of $24,000 for $15,000, and 10 days later purchased 200 shares of Kappa Corp. for $16,000.</li>
+</ol>
+<p class="ja">Reyesの資産取引:①贈与A:贈与者の取得価額$30,000、贈与時FMV $22,000の株式を受贈し(贈与税なし)、$18,000で売却。②贈与B:贈与者の取得価額$50,000、贈与時FMV $90,000の土地を受贈。課税贈与額$72,000、贈与者が贈与税$14,400を納付。③相続:叔父(取得価額$60,000)から建物を相続。死亡日FMV $150,000、6か月後$140,000。代替評価日を適法に選択し、死亡8か月後に分配、分配の2か月後に売却。④ウォッシュセール:取得価額$24,000のKappa社株200株を$15,000で売却し、10日後に200株を$16,000で購入。</p>`,
+  rows: [
+    { label: "Recognized loss on the sale of Gift A stock (enter as a positive number)(贈与A株式の認識損失:正の数で入力)", type: "num", answer: 4000 },
+    { label: "Reyes's basis in the Gift B land(贈与B土地の取得価額)", type: "num", answer: 58000 },
+    { label: "Reyes's basis in the inherited building(相続した建物の取得価額)", type: "num", answer: 140000 },
+    { label: "Holding period of the inherited building when sold(売却時の相続建物の保有期間区分)", type: "select", options: ["Short-term", "Long-term"], answer: "Long-term" },
+    { label: "Recognized loss on the sale of Kappa Corp. shares(Kappa社株売却の認識損失)", type: "num", answer: 0 },
+    { label: "Basis of the 200 Kappa Corp. shares purchased(購入したKappa社株200株の取得価額)", type: "num", answer: 25000 },
+  ],
+  explain: `<p>贈与A:贈与時FMV(22,000)が贈与者の取得価額(30,000)を下回るため二重基準。売却額18,000はFMVを下回るので損失用基準22,000を用い、損失 = 22,000 − 18,000 = 4,000。</p>
+<p>贈与B:値上がり益に対応する贈与税を加算する。14,400 × (90,000 − 50,000) ÷ 72,000 = 8,000。取得価額 = 50,000 + 8,000 = 58,000。</p>
+<p>相続:代替評価日を選択し、6か月経過後に分配されたため6か月後の価値140,000(6か月以内に分配された場合は分配日の価値)。相続資産は常に長期保有として扱う。</p>
+<p>ウォッシュセール:30日以内に同一株式を同数買い戻したため損失9,000は全額否認(認識損失0)。新株の取得価額 = 16,000 + 9,000 = 25,000。</p>`,
+});
