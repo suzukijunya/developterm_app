@@ -387,9 +387,9 @@ CPA.extend("REG-03", {
     {
       q: "A sole proprietor incurred the following costs during the year: business meals with clients, $2,000; tickets to sporting events for clients, $3,000; food and beverages at the annual holiday party for all employees, $1,500; and meals while traveling away from home on business, $800. What total amount may be deducted on Schedule C?",
       ja: "個人事業主が当年に以下の費用を負担した:顧客との業務上の食事$2,000、顧客のためのスポーツ観戦チケット$3,000、全従業員向けの年次ホリデーパーティーの飲食$1,500、出張中の食事$800。Schedule Cで控除できる合計額はいくらか。",
-      c: ["$3,650", "$2,900", "$4,400", "$5,900"],
+      c: ["$3,300", "$2,900", "$4,400", "$5,900"],
       a: 1,
-      ex: "顧客との食事2,000 × 50% = 1,000、出張中の食事800 × 50% = 400、従業員全員向けのレクリエーション・パーティーは100%で1,500、娯楽(観戦チケット)は控除不可。合計2,900。パーティーを50%とすると$2,150、娯楽を50%で含めると$4,400となり誤り。",
+      ex: "顧客との食事2,000 × 50% = 1,000、出張中の食事800 × 50% = 400、従業員全員向けのレクリエーション・パーティーは100%で1,500、娯楽(観戦チケット)は控除不可。合計2,900。出張中の食事を100%とすると$3,300、娯楽を50%で含めると$4,400となり誤り。",
     },
     {
       q: "A self-employed consultant uses a 350-square-foot room in her home regularly and exclusively as her principal place of business. Her gross income from the business far exceeds her business expenses. If she uses the simplified method, assuming a rate of $5 per square foot for up to 300 square feet, what is her home office deduction?",
@@ -498,4 +498,78 @@ CPA.extend("REG-03", {
       ex: "合算給与300,000 − 閾値250,000 = 50,000 × 0.9% = 450。雇用主の源泉徴収は(220,000 − 200,000) × 0.9% = 180のみなので、不足270を申告時に納付する。$180は源泉徴収額にすぎない。",
     },
   ],
+});
+
+CPA.tbs({ id: "TBS-REG-22", section: "REG", chapter: "REG-03", title: "項目別控除(Schedule A)の計算",
+  scenario: `<p>Hugo and Lena Park file a joint return. Their AGI is <b>$200,000</b>. They paid or incurred the following during the year:</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Unreimbursed medical and dental expenses (including $1,000 for cosmetic surgery)</td><td>$18,000</td></tr>
+<tr><td>State income tax withheld</td><td>$9,000</td></tr>
+<tr><td>Real property tax on principal residence</td><td>$4,500</td></tr>
+<tr><td>Interest on acquisition mortgage on principal residence (balance $600,000, incurred 2021)</td><td>$24,000</td></tr>
+<tr><td>Interest on home equity loan used to pay for a family vacation</td><td>$2,000</td></tr>
+<tr><td>Investment interest expense (net investment income is $3,000; no election)</td><td>$5,000</td></tr>
+<tr><td>Cash contribution to their church</td><td>$8,000</td></tr>
+<tr><td>Publicly traded stock held 6 years donated to a university (FMV $12,000; basis $5,000)</td><td>$12,000</td></tr></table>
+<p>Assume: medical floor 7.5% of AGI; SALT cap $10,000; acquisition debt limit $750,000; standard deduction for a joint return $31,500.</p>
+<p class="ja">Park夫妻は合算申告を行い、AGIは$200,000である。当年の支出は表のとおり:未補填の医療・歯科費$18,000(美容整形$1,000を含む)、州所得税の源泉徴収$9,000、主たる住居の固定資産税$4,500、主たる住居の取得ローン利息$24,000(残高$600,000、2021年借入)、家族旅行に充てたホームエクイティローンの利息$2,000、投資利息$5,000(純投資収益は$3,000、選択なし)、教会への現金寄付$8,000、6年保有の上場株式を大学へ寄付(時価$12,000、取得価額$5,000)。医療費の足切りはAGIの7.5%、SALT上限$10,000、取得債務上限$750,000、合算申告の標準控除$31,500とする。</p>`,
+  rows: [
+    { label: "Medical expense deduction(医療費控除)", type: "num", answer: 2000 },
+    { label: "Deductible taxes(控除可能な税金)", type: "num", answer: 10000 },
+    { label: "Deductible interest (mortgage and investment)(控除可能な支払利息)", type: "num", answer: 27000 },
+    { label: "Charitable contribution deduction(寄付金控除)", type: "num", answer: 20000 },
+    { label: "Total itemized deductions(項目別控除合計)", type: "num", answer: 59000 },
+    { label: "Should the Parks itemize or take the standard deduction?(項目別控除と標準控除のどちらを選ぶべきか)", type: "select", options: ["Itemize", "Standard deduction", "Either; the amounts are equal"], answer: "Itemize" },
+  ],
+  explain: `<p>医療費:美容整形は対象外。(18,000 − 1,000) − 200,000 × 7.5% = 17,000 − 15,000 = 2,000。</p>
+<p>税金:9,000 + 4,500 = 13,500 → SALT上限により10,000。</p>
+<p>利息:取得ローン残高600,000は上限750,000以内のため24,000全額。旅行資金のホームエクイティローン利息は控除不可。投資利息は純投資収益3,000が上限(残り2,000は繰越)。24,000 + 3,000 = 27,000。</p>
+<p>寄付:現金8,000 + 長期保有の上場株式は時価12,000 = 20,000。上限(現金60% = 120,000、キャピタルゲイン資産30% = 60,000)内。</p>
+<p>合計 = 2,000 + 10,000 + 27,000 + 20,000 = 59,000 > 標準控除31,500のため項目別控除を選択する。</p>`,
+});
+
+CPA.tbs({ id: "TBS-REG-23", section: "REG", chapter: "REG-03", title: "個人事業(Schedule C)の純利益と自営業税",
+  scenario: `<p>Rina Ortiz is a self-employed marketing consultant with no wage income. Her business records for the year show:</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Gross receipts</td><td>$150,000</td></tr>
+<tr><td>Office supplies and software</td><td>$8,000</td></tr>
+<tr><td>Meals with clients (business discussed)</td><td>$4,000</td></tr>
+<tr><td>Golf outings with clients</td><td>$2,500</td></tr>
+<tr><td>Business miles driven in her car: 10,000 (standard mileage rate 70 cents); business parking and tolls $200</td><td>—</td></tr>
+<tr><td>Home office: 250 sq ft used regularly and exclusively (simplified method, $5 per sq ft up to 300 sq ft)</td><td>—</td></tr>
+<tr><td>Traffic fines incurred while driving to clients</td><td>$500</td></tr></table>
+<p>Assume the Social Security wage base is $176,100 and the combined self-employment tax rate is 15.3% (12.4% + 2.9%). Ignore the additional Medicare tax and the QBI deduction.</p>
+<p class="ja">Ortizは給与所得のない自営のマーケティング・コンサルタントである。当年の事業記録:総収入$150,000、事務用品・ソフトウェア$8,000、顧客との食事(業務の話あり)$4,000、顧客とのゴルフ$2,500、業務走行10,000マイル(標準単価70セント)と業務上の駐車料金・通行料$200、ホームオフィス250平方フィートを定期的かつ専用に使用(簡便法、1平方フィート$5、300平方フィートまで)、顧客訪問中の交通違反の罰金$500。社会保障税の賃金基準上限は$176,100、自営業税率は合計15.3%とする。追加メディケア税とQBI控除は無視する。</p>`,
+  rows: [
+    { label: "Deductible meals and entertainment(控除可能な食事・娯楽費)", type: "num", answer: 2000 },
+    { label: "Deductible vehicle expense(控除可能な車両費)", type: "num", answer: 7200 },
+    { label: "Home office deduction(ホームオフィス控除)", type: "num", answer: 1250 },
+    { label: "Schedule C net profit(Schedule Cの純利益)", type: "num", answer: 131550 },
+    { label: "Self-employment tax (rounded)(自営業税・四捨五入)", type: "num", answer: 18587, tol: 1 },
+    { label: "Deduction for one-half of self-employment tax (rounded)(自営業税の1/2控除・四捨五入)", type: "num", answer: 9294, tol: 1 },
+  ],
+  explain: `<p>食事:顧客との食事4,000 × 50% = 2,000。ゴルフは娯楽であり控除不可。</p>
+<p>車両費:10,000 × 0.70 + 200 = 7,200。ホームオフィス:250 × 5 = 1,250。罰金は公序に反するため控除不可。</p>
+<p>純利益 = 150,000 − 8,000 − 2,000 − 7,200 − 1,250 = 131,550。</p>
+<p>自営業純所得 = 131,550 × 92.35% = 121,486(賃金基準上限未満)。自営業税 = 121,486.43 × 15.3% ≒ 18,587。その1/2の9,294はAGI算定上の控除(for AGI)となる。</p>`,
+});
+
+CPA.tbs({ id: "TBS-REG-24", section: "REG", chapter: "REG-03", title: "個人の代替ミニマム税(AMT)の計算",
+  scenario: `<p>Dana Wu, a single taxpayer, itemizes deductions. Her regular taxable income is <b>$250,000</b> after deducting $10,000 of state and local taxes, $15,000 of qualified home mortgage interest, and $5,000 of charitable contributions. Her regular tax liability is <b>$55,000</b>. Other information for the year:</p>
+<ul><li>She exercised incentive stock options; the bargain element at exercise was $60,000. She still holds the shares at year-end.</li>
+<li>She received $8,000 of interest on specified private activity bonds and $4,000 of interest on general obligation bonds of her city.</li></ul>
+<p>Assume an AMT exemption of $88,100 (no phase-out applies), and AMT rates of 26% on the first $239,100 of the AMT base and 28% on the excess.</p>
+<p class="ja">単身のWuは項目別控除を選択している。通常の課税所得は$250,000で、州・地方税$10,000、適格住宅ローン利息$15,000、寄付金$5,000を控除した後の金額である。通常の税額は$55,000。当年にISOを行使し行使時の含み益は$60,000(株式は年末も保有)。特定私的活動債の利息$8,000と市の一般財源債の利息$4,000を受け取った。AMT免除額は$88,100(段階的縮小なし)、AMT税率はAMT課税ベースの最初の$239,100に26%、超過分に28%とする。</p>`,
+  rows: [
+    { label: "AMT adjustment for state and local taxes(州・地方税に係るAMT調整額)", type: "num", answer: 10000 },
+    { label: "AMT adjustment for the ISO exercise(ISO行使に係るAMT調整額)", type: "num", answer: 60000 },
+    { label: "Treatment of the $4,000 general obligation bond interest(一般財源債の利息$4,000の取扱い)", type: "select", options: ["Added to AMTI as a preference item", "Added to AMTI as an adjustment", "Not included in AMTI"], answer: "Not included in AMTI" },
+    { label: "Alternative minimum taxable income (AMTI)(代替ミニマム課税所得)", type: "num", answer: 328000 },
+    { label: "Tentative minimum tax(暫定ミニマム税)", type: "num", answer: 62390 },
+    { label: "Alternative minimum tax(代替ミニマム税)", type: "num", answer: 7390 },
+  ],
+  explain: `<p>AMTではSALTの控除は認められないため10,000を加算する。住宅取得ローン利息と寄付金はAMTでも控除可能で調整不要。</p>
+<p>ISOの含み益60,000は調整項目、特定私的活動債の利息8,000は優遇項目として加算。一般財源債の利息はAMTIにも含まれない。</p>
+<p>AMTI = 250,000 + 10,000 + 60,000 + 8,000 = 328,000。AMT課税ベース = 328,000 − 88,100 = 239,900。</p>
+<p>暫定ミニマム税 = 239,100 × 26% + 800 × 28% = 62,166 + 224 = 62,390。AMT = 62,390 − 55,000 = 7,390。ISOに起因する部分は将来のミニマム税額控除の対象となる。</p>`,
 });
