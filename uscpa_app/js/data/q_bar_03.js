@@ -386,5 +386,189 @@ CPA.extend("BAR-01", {
       a: 2,
       ex: "FCFF = EBIT × (1 − 税率) + 減価償却費 − 資本的支出 − 運転資本増加 = 7.5 + 2 − 3 − 1 = 5.5百万。$6.5百万は運転資本の増加を無視、$1.5百万は減価償却費を加算せず控除した誤りである。",
     },
+    {
+      q: "A retailer sells 40,000 units of a product evenly throughout the year. The cost of placing an order is $50, and the annual carrying cost is $4 per unit. What are the economic order quantity and the resulting total annual ordering and carrying cost?",
+      ja: "ある小売業者は製品を年間40,000個、年間を通じて均等に販売している。1回の発注費用は$50、年間保管費用は1個当たり$4である。経済的発注量(EOQ)と、その場合の年間発注費用と保管費用の合計はいくらか。",
+      c: ["1,000 units; $2,000", "707 units; $2,828", "1,000 units; $4,000", "1,414 units; $4,243"],
+      a: 2,
+      ex: "EOQ = √(2 × 40,000 × 50 ÷ 4) = 1,000個。発注費用 = 40回 × 50 = 2,000、保管費用 = (1,000 ÷ 2) × 4 = 2,000で合計4,000。EOQでは発注費用と保管費用が等しくなる。$2,000はどちらか一方のみである。",
+    },
+    {
+      q: "A manufacturer uses 200 units of a component per working day. The supplier's lead time is 6 working days, and the company maintains a safety stock of 500 units. At what inventory level should the company reorder?",
+      ja: "ある製造業者は部品を1稼働日当たり200個使用する。仕入先のリードタイムは6稼働日で、会社は500個の安全在庫を維持している。在庫がどの水準になったときに再発注すべきか。",
+      c: ["1,200 units", "1,700 units", "700 units", "2,200 units"],
+      a: 1,
+      ex: "発注点 = 1日当たり使用量 × リードタイム + 安全在庫 = 200 × 6 + 500 = 1,700個。1,200個は安全在庫を加え忘れた誤りである。",
+    },
+    {
+      q: "A company places 12 orders per year. Each stockout costs $1,000. The carrying cost is $4 per unit per year. The probability of a stockout during an order cycle is 30% with no safety stock, 10% with 100 units, 2% with 200 units, and 0% with 300 units. Which safety stock level minimizes total annual cost?",
+      ja: "ある会社は年12回発注する。品切れ1回当たりのコストは$1,000、保管費用は1個当たり年$4である。1発注サイクル中の品切れ確率は、安全在庫なしで30%、100個で10%、200個で2%、300個で0%である。年間総コストを最小化する安全在庫水準はどれか。",
+      c: ["0 units", "100 units", "300 units", "200 units"],
+      a: 3,
+      ex: "年間総コスト = 保管費用 + 品切れ確率 × 12回 × 1,000。0個:3,600、100個:400 + 1,200 = 1,600、200個:800 + 240 = 1,040、300個:1,200。最小は200個である。品切れを完全に防ぐ300個は保管費用が過大となる。",
+    },
+    {
+      q: "A supplier offers credit terms of 2/10, net 40. Using a 365-day year, what is the approximate annual cost of forgoing the discount and paying on day 40?",
+      ja: "仕入先が2/10, net 40の信用条件を提示している。1年を365日とした場合、割引を受けずに40日目に支払うことの年率換算のおおよそのコストはいくらか。",
+      c: ["24.8%", "24.3%", "18.6%", "2.0%"],
+      a: 0,
+      ex: "コスト = 2 ÷ 98 × 365 ÷ (40 − 10) = 24.8%。24.3%は分母に98ではなく100を用いた誤り、18.6%は信用期間全体の40日で割った誤りである。",
+    },
+    {
+      q: "A company purchases materials on terms of 1/10, net 30 and currently pays on day 30. Its bank will lend short-term funds at 15% annual interest. Using a 365-day year, what should the company do?",
+      ja: "ある会社は1/10, net 30の条件で材料を購入しており、現在は30日目に支払っている。取引銀行は年15%で短期資金を融資する。1年を365日とした場合、会社はどうすべきか。",
+      c: [
+        "Continue paying on day 30, because the 1% discount is less than the 15% bank rate",
+        "Borrow from the bank to pay on day 10, because forgoing the discount costs about 18.4% per year",
+        "Continue paying on day 30, because forgoing the discount costs about 12.2% per year",
+        "Pay on day 10 only if the bank rate is below 1%",
+      ],
+      a: 1,
+      ex: "割引を受けないコスト = 1 ÷ 99 × 365 ÷ 20 = 18.4%で、銀行借入の15%を上回るため、借入れて割引を受けるべきである。1%と15%を直接比較するのは期間を年率換算していない誤りである。",
+    },
+    {
+      q: "A company is considering factoring $300,000 of receivables each month. The factor charges a 2% fee on receivables factored, holds a 10% reserve, and charges interest of 1% per month on the amount advanced (receivables less fee and reserve). Factoring would eliminate $2,000 per month of credit department costs and bad debts equal to 1% of receivables. What is the approximate effective annual cost of factoring?",
+      ja: "ある会社は毎月$300,000の売掛金のファクタリングを検討している。ファクターは譲渡債権額の2%の手数料を課し、10%を留保金として保持し、前渡額(債権額から手数料と留保金を控除した額)に月1%の利息を課す。ファクタリングにより与信管理部門のコスト月$2,000と、債権額の1%の貸倒損失が不要になる。ファクタリングの実効年利はおおよそいくらか。",
+      c: ["39.3%", "14.6%", "12.0%", "16.5%"],
+      a: 3,
+      ex: "前渡額 = 300,000 − 6,000 − 30,000 = 264,000。月間正味コスト = 手数料6,000 + 利息2,640 − 節約2,000 − 貸倒3,000 = 3,640。年率 = 3,640 × 12 ÷ 264,000 = 16.5%。39.3%は節約額を無視、14.6%は債権総額を分母とした誤りである。",
+    },
+    {
+      q: "Under COSO's Enterprise Risk Management—Integrating with Strategy and Performance (2017), which of the following is NOT one of the five components of the framework?",
+      ja: "COSOの「全社的リスクマネジメント―戦略およびパフォーマンスとの統合」(2017年)において、次のうちフレームワークの5つの構成要素に該当しないものはどれか。",
+      c: ["Governance and Culture", "Review and Revision", "Control Activities", "Information, Communication, and Reporting"],
+      a: 2,
+      ex: "2017年版ERMの構成要素は、ガバナンスとカルチャー、戦略と目標設定、パフォーマンス、レビューと修正、情報・伝達および報告の5つである。統制活動はCOSOの内部統制フレームワーク(2013年)の構成要素である。",
+    },
+    {
+      q: "A company's board has stated that it is willing to accept moderate risk to achieve 8% annual revenue growth. Management then specifies that customer on-time delivery must remain between 95% and 98%, and any result outside this range will trigger corrective action. Under the COSO ERM framework (2017), the 95%–98% range is best described as:",
+      ja: "ある会社の取締役会は、年8%の売上成長を達成するため中程度のリスクを受け入れると表明した。経営者はこれを受け、顧客への納期遵守率を95%から98%の範囲に維持し、範囲外の結果が出れば是正措置を講じると定めた。COSO ERMフレームワーク(2017年)において、この95%~98%の範囲は何と表現するのが最も適切か。",
+      c: ["Risk appetite", "Risk capacity", "Risk profile", "Tolerance"],
+      a: 3,
+      ex: "許容度(tolerance)はパフォーマンスの許容可能な変動幅であり、具体的な業績指標の範囲として表される。リスク選好(risk appetite)は価値追求のために受け入れるリスクの総量で、取締役会による中程度のリスク受容の表明がそれに当たる。",
+    },
+    {
+      q: "After analyzing its risk profile, a company concludes that it has excess capacity to take on risk and decides to expand aggressively into an emerging market to increase growth. Under the COSO ERM framework (2017), this response is classified as:",
+      ja: "リスク・プロファイルを分析した結果、ある会社はリスクを引き受ける余力が十分にあると判断し、成長を高めるため新興市場へ積極的に進出することを決定した。COSO ERMフレームワーク(2017年)において、この対応はどれに分類されるか。",
+      c: ["Pursue", "Accept", "Share", "Avoid"],
+      a: 0,
+      ex: "2017年版ERMのリスク対応は受容、回避、追求、低減、共有の5つであり、より高いパフォーマンスを得るためにリスクを積極的に増やすのは「追求(pursue)」である。「受容」は何もしないで現状のリスクを受け入れる対応である。",
+    },
+    {
+      q: "Under the COSO ERM framework (2017), identifying risks, assessing their severity, prioritizing them, selecting responses, and developing a portfolio view are principles within which component?",
+      ja: "COSO ERMフレームワーク(2017年)において、リスクの識別、重大度の評価、優先順位付け、対応の選択、ポートフォリオ観の構築は、どの構成要素の原則か。",
+      c: ["Strategy and Objective-Setting", "Performance", "Review and Revision", "Governance and Culture"],
+      a: 1,
+      ex: "パフォーマンス(Performance)の構成要素には、リスクの識別・重大度の評価・優先順位付け・対応の実施・ポートフォリオ観の構築の5原則が含まれる。戦略と目標設定はリスク選好の定義や事業目標の策定を扱う。",
+    },
+    {
+      q: "A company holds a bond portfolio with a modified duration of 7.0. If market interest rates increase by 1 percentage point, the value of the portfolio will approximately:",
+      ja: "ある会社は修正デュレーション7.0の債券ポートフォリオを保有している。市場金利が1%ポイント上昇した場合、ポートフォリオの価値はおおよそどうなるか。",
+      c: ["Increase by 7%", "Decrease by 1%", "Decrease by 0.7%", "Decrease by 7%"],
+      a: 3,
+      ex: "価格変動率 ≒ −修正デュレーション × 金利変化 = −7.0 × 1% = −7%。金利と債券価格は逆方向に動くため、増加とする選択肢は誤りである。",
+    },
+    {
+      q: "A U.S. company must pay a supplier €1,000,000 in 90 days. Management wants to protect against a rise in the dollar cost of the euro while retaining the ability to benefit if the euro weakens. Which hedging instrument best meets this objective?",
+      ja: "ある米国企業は90日後に仕入先へ€1,000,000を支払わなければならない。経営者はユーロ高によるドル建てコストの上昇を防ぎつつ、ユーロ安になった場合の利益は享受したいと考えている。この目的に最も適したヘッジ手段はどれか。",
+      c: [
+        "Purchase a call option on €1,000,000",
+        "Enter into a forward contract to buy €1,000,000 in 90 days",
+        "Purchase a put option on €1,000,000",
+        "Enter into a forward contract to sell €1,000,000 in 90 days",
+      ],
+      a: 0,
+      ex: "ユーロのコール・オプションを購入すれば、ユーロ高の場合は権利行使で上限レートを確保し、ユーロ安の場合は放棄して有利な直物レートで購入できる(プレミアムが対価)。為替予約による買いはレートを固定するため、ユーロ安の利益を放棄することになる。",
+    },
+    {
+      q: "An investor holds a well-diversified portfolio of 40 stocks across many industries. Which type of risk remains in the portfolio and is reflected in its beta?",
+      ja: "ある投資家は、多くの業種にわたる40銘柄からなる十分に分散されたポートフォリオを保有している。このポートフォリオに残り、ベータに反映されるリスクはどれか。",
+      c: [
+        "Unsystematic (firm-specific) risk, such as a product recall",
+        "Systematic (market) risk, such as changes in interest rates and economic cycles",
+        "Business risk unique to each individual company",
+        "Default risk of individual issuers",
+      ],
+      a: 1,
+      ex: "分散投資により個別企業固有の非システマティック・リスクは除去されるが、金利や景気変動などの市場全体に起因するシステマティック・リスクは分散できず、ベータで測定される。CAPMではこのリスクのみが報酬の対象となる。",
+    },
   ],
+});
+
+CPA.tbs({ id: "TBS-BAR-15", section: "BAR", chapter: "BAR-01", title: "節税効果と運転資本を考慮したNPV",
+  scenario: `<p>Hotaka Corp. is evaluating new packaging equipment. Data:</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Equipment cost (paid at time 0)</td><td>$500,000</td></tr>
+<tr><td>Tax depreciation</td><td>Straight-line over 5 years, zero salvage value</td></tr>
+<tr><td>Annual pretax cash operating savings (years 1–5)</td><td>$150,000</td></tr>
+<tr><td>Working capital required at time 0 (fully recovered at end of year 5)</td><td>$60,000</td></tr>
+<tr><td>Expected sale price of equipment at end of year 5</td><td>$40,000</td></tr>
+<tr><td>Income tax rate</td><td>25%</td></tr>
+<tr><td>Required rate of return</td><td>10%</td></tr>
+<tr><td>PV of ordinary annuity of $1, 5 years, 10%</td><td>3.791</td></tr>
+<tr><td>PV of $1 at end of year 5, 10%</td><td>0.621</td></tr></table>
+<p>Assume all operating cash flows occur at year-end. Compute the amounts below (round NPV to the nearest dollar).</p>
+<p class="ja">穂高社は新しい包装設備を検討している。設備原価$500,000(0時点で支払)、税務上5年定額法・残存価額ゼロ、年間税引前現金営業費節約$150,000(1~5年目)、0時点で運転資本$60,000が必要(5年目末に全額回収)、5年目末の設備売却見込額$40,000、税率25%、要求収益率10%、10%・5年の年金現価係数3.791、10%・5年後の現価係数0.621。営業キャッシュフローはすべて年末に発生するものとする。以下の金額を求めよ(NPVは1ドル未満を四捨五入)。</p>`,
+  rows: [
+    { label: "Annual depreciation tax shield(年間の減価償却による節税額)", type: "num", answer: 25000 },
+    { label: "Annual after-tax operating cash flow, years 1–5(1~5年目の年間税引後営業キャッシュフロー)", type: "num", answer: 137500 },
+    { label: "Total initial cash outflow at time 0(0時点の初期キャッシュアウトフロー合計)", type: "num", answer: 560000 },
+    { label: "After-tax cash flow from sale of equipment at end of year 5(5年目末の設備売却による税引後キャッシュフロー)", type: "num", answer: 30000 },
+    { label: "Net present value of the project(プロジェクトの正味現在価値)", type: "num", answer: 17153, tol: 2 },
+    { label: "Decision(判断)", type: "select", options: ["Accept", "Reject"], answer: "Accept" },
+  ],
+  explain: `<p>年間減価償却費 = 500,000 ÷ 5 = 100,000、節税額 = 100,000 × 25% = 25,000。</p>
+<p>年間税引後営業CF = 150,000 × (1 − 0.25) + 25,000 = 137,500。</p>
+<p>初期流出 = 設備500,000 + 運転資本60,000 = 560,000。</p>
+<p>設備の税務簿価はゼロなので売却額40,000全額が課税対象:40,000 × (1 − 0.25) = 30,000。</p>
+<p>NPV = 137,500 × 3.791 + (30,000 + 60,000) × 0.621 − 560,000 = 521,263 + 55,890 − 560,000 = 17,153。NPVが正なので採用する。運転資本の回収と売却益への課税を忘れないこと。</p>`,
+});
+
+CPA.tbs({ id: "TBS-BAR-16", section: "BAR", chapter: "BAR-01", title: "自製か購入かの意思決定",
+  scenario: `<p>Tateyama Inc. manufactures 10,000 units per year of a valve used in its main product. Current unit costs of making the valve:</p>
+<table><tr><th>Cost element</th><th>Per unit</th></tr>
+<tr><td>Direct materials</td><td>$12</td></tr>
+<tr><td>Direct labor</td><td>$9</td></tr>
+<tr><td>Variable manufacturing overhead</td><td>$5</td></tr>
+<tr><td>Fixed manufacturing overhead</td><td>$8</td></tr>
+<tr><td>Total</td><td>$34</td></tr></table>
+<p>An outside supplier offers to sell the valve for $30 per unit. If the valve is purchased, $30,000 of the annual fixed overhead (a supervisor's salary) would be eliminated; the remainder is allocated depreciation and plant-wide costs that would continue. The space now used to make the valve could be rented to another company for $25,000 per year.</p>
+<p class="ja">立山社は主力製品に使用するバルブを年10,000個自製している。現在の単位原価は直接材料費$12、直接労務費$9、変動製造間接費$5、固定製造間接費$8、合計$34である。外部業者が1個$30での供給を提案している。購入に切り替えると、年間固定製造間接費のうち$30,000(監督者の給与)が削減され、残りは引き続き発生する減価償却費等の配賦額である。現在バルブ製造に使用しているスペースは他社に年$25,000で賃貸できる。</p>`,
+  rows: [
+    { label: "Avoidable (relevant) cost per unit to make(自製の回避可能(関連)単位原価)", type: "num", answer: 29 },
+    { label: "Total relevant cost to make, excluding the rental opportunity(賃貸の機会原価を除く自製の関連原価合計)", type: "num", answer: 290000 },
+    { label: "Total cost to buy(購入原価合計)", type: "num", answer: 300000 },
+    { label: "Net annual advantage of the better alternative, including the rental opportunity(賃貸機会を含めた有利な案の年間差額)", type: "num", answer: 15000 },
+    { label: "Better alternative(有利な案)", type: "select", options: ["Make", "Buy"], answer: "Buy" },
+    { label: "Maximum price per unit Tateyama could pay the supplier and be no worse off(立山社が不利にならない最高購入単価)", type: "num", answer: 31.5, tol: 0.01 },
+  ],
+  explain: `<p>回避可能な単位原価 = 12 + 9 + 5 + 30,000 ÷ 10,000 = 29。自製の関連原価 = 29 × 10,000 = 290,000。</p>
+<p>購入原価 = 30 × 10,000 = 300,000。</p>
+<p>自製すると賃貸収入25,000を失う(機会原価)ので、自製の総関連原価は315,000。購入が315,000 − 300,000 = 15,000有利である。</p>
+<p>最高購入単価 = 315,000 ÷ 10,000 = $31.50。全部原価$34との比較や、賃貸機会の無視(自製が10,000有利と誤判断)が典型的な誤りである。</p>`,
+});
+
+CPA.tbs({ id: "TBS-BAR-17", section: "BAR", chapter: "BAR-01", title: "加重平均資本コスト(WACC)",
+  scenario: `<p>Norikura Co. is computing its weighted-average cost of capital using market-value weights. Data:</p>
+<table><tr><th>Source</th><th>Data</th></tr>
+<tr><td>Bonds</td><td>20,000 bonds outstanding, $1,000 par, market price $950 each; pretax yield to maturity 8%</td></tr>
+<tr><td>Preferred stock</td><td>50,000 shares outstanding, market price $50 per share, annual dividend $4.50 per share</td></tr>
+<tr><td>Common stock</td><td>1,000,000 shares outstanding, market price $28.50 per share; beta 1.2</td></tr>
+<tr><td>Risk-free rate</td><td>4%</td></tr>
+<tr><td>Market risk premium</td><td>7%</td></tr>
+<tr><td>Income tax rate</td><td>25%</td></tr></table>
+<p>Ignore flotation costs. Enter percentages to two decimal places (e.g., 7.25 for 7.25%).</p>
+<p class="ja">乗鞍社は市場価値ウェイトで加重平均資本コストを計算している。社債:発行済20,000口、額面$1,000、市場価格1口$950、税引前最終利回り8%。優先株式:発行済50,000株、株価$50、年間配当1株$4.50。普通株式:発行済1,000,000株、株価$28.50、ベータ1.2。無リスク利子率4%、市場リスク・プレミアム7%、税率25%。発行費用は無視する。パーセントは小数第2位まで入力すること(例:7.25%なら7.25)。</p>`,
+  rows: [
+    { label: "After-tax cost of debt, %(税引後負債コスト、%)", type: "num", answer: 6.0, tol: 0.01 },
+    { label: "Cost of preferred stock, %(優先株式コスト、%)", type: "num", answer: 9.0, tol: 0.01 },
+    { label: "Cost of common equity (CAPM), %(普通株主資本コスト(CAPM)、%)", type: "num", answer: 12.4, tol: 0.01 },
+    { label: "Total market value of capital, $(資本の市場価値合計、$)", type: "num", answer: 50000000 },
+    { label: "Weighted-average cost of capital, %(加重平均資本コスト、%)", type: "num", answer: 9.80, tol: 0.01 },
+    { label: "Should an average-risk project with an IRR of 9.5% be accepted?(IRR 9.5%の平均的リスクのプロジェクトを採用すべきか)", type: "select", options: ["Yes", "No"], answer: "No" },
+  ],
+  explain: `<p>税引後負債コスト = 8% × (1 − 0.25) = 6.00%(表面利率ではなく最終利回りを用いる)。</p>
+<p>優先株式コスト = 4.50 ÷ 50 = 9.00%(税調整なし)。普通株主資本コスト = 4% + 1.2 × 7% = 12.40%。</p>
+<p>市場価値:負債20,000 × 950 = 19,000,000(38%)、優先株式2,500,000(5%)、普通株式28,500,000(57%)、合計50,000,000。</p>
+<p>WACC = 0.38 × 6% + 0.05 × 9% + 0.57 × 12.4% = 2.28% + 0.45% + 7.068% = 9.80%。IRR 9.5%はWACCを下回るため採用しない。</p>`,
 });
