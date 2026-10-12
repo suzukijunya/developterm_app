@@ -164,11 +164,11 @@ CPA.extend("TCP-02", {
       ja: "C法人の総所得は$500,000で、そのうち15%保有の内国法人からの配当が$40,000である。寄附金控除前の損金算入営業費用は$380,000である。現金による寄附金$30,000を支出した。課税所得の10%制限が適用されるとする。当年の寄附金控除額はいくらか。",
       c: ["$10,000", "$12,000", "$30,000", "$11,000"],
       a: 1,
-      ex: "限度額計算上の課税所得は寄附金控除・受取配当控除・NOL等を考慮する前の額:500,000 − 380,000 = 120,000。限度額は10% × 120,000 = 12,000で、超過18,000は5年間繰越す。$10,000はDRD(20,000)控除後の所得を基にした誤りである。",
+      ex: "限度額計算上の課税所得は寄附金控除・受取配当控除・NOL等を考慮する前の額:500,000 − 380,000 = 120,000。限度額は10% × 120,000 = 12,000で、超過18,000は5年間繰越す。$10,000はDRD(20,000)控除後の所得を基にした誤りである。なお2026年以降開始年度はOBBBAにより課税所得の1%(1,200)を超える部分のみ控除可能となるが、寄附額が10%上限を超えるため控除額は12,000のまま変わらない。",
     },
     {
-      q: "A corporation has a $8,000 charitable contribution carryover from the prior year. In the current year it contributes $15,000, and its charitable contribution limitation is $20,000. What is the amount of the charitable contribution carryover to the next year?",
-      ja: "法人は前年からの寄附金繰越額$8,000を有する。当年は$15,000を寄附し、寄附金控除限度額は$20,000である。翌年への寄附金繰越額はいくらか。",
+      q: "A corporation has a $8,000 charitable contribution carryover from the prior year. In the current year it contributes $15,000, and its charitable contribution limitation is $20,000. Ignore the 1%-of-taxable-income floor. What is the amount of the charitable contribution carryover to the next year?",
+      ja: "法人は前年からの寄附金繰越額$8,000を有する。当年は$15,000を寄附し、寄附金控除限度額は$20,000である。課税所得の1%フロアは無視する。翌年への寄附金繰越額はいくらか。",
       c: ["$0", "$8,000", "$3,000", "$5,000"],
       a: 2,
       ex: "当年の寄附金が先に控除され(15,000)、残りの限度額5,000を繰越額から控除する。繰越残高 = 8,000 − 5,000 = 3,000(当初年度から5年以内なら引き続き繰越可能)。",
@@ -345,9 +345,9 @@ CPA.extend("TCP-02", {
     {
       q: "Under the §318 constructive ownership rules, stock owned by Ann is attributed to all of the following persons EXCEPT:",
       ja: "§318のみなし所有ルールの下で、Annが保有する株式は次のうち誰に帰属しないか。",
-      c: ["Ann's spouse", "Ann's grandchild", "Ann's brother", "Ann's mother"],
+      c: ["Ann's spouse", "Ann's grandparent", "Ann's brother", "Ann's mother"],
       a: 2,
-      ex: "家族間帰属の対象は配偶者、子、孫、親に限られ、兄弟姉妹や祖父母は含まれない。",
+      ex: "個人は配偶者・子・孫・親の株式をみなし所有する。したがってAnnの株式は配偶者・親(母)・祖父母(Annは孫)・子に帰属するが、兄弟姉妹には帰属しない(孫や兄弟姉妹の株式が祖父母・兄弟に帰属する方向とは異なる点に注意)。",
     },
     {
       q: "Ann owns a 30% interest in a partnership that owns 200 shares of Y Corp. She also owns 40% of the stock of X Corp, which owns 100 shares of Y Corp. Ann owns no Y shares directly. Under §318, how many Y shares does Ann constructively own?",
@@ -612,7 +612,8 @@ CPA.tbs({ id: "TBS-TCP-12", section: "TCP", chapter: "TCP-02", title: "C法人�
   explain: `<p>①寄附金限度額の基礎となる課税所得(寄附金・DRD・NOL控除前)= 900,000 − 400,000 − 250,000 + 100,000 = 350,000。限度額 10% × 350,000 = 35,000(超過15,000は5年繰越)。</p>
 <p>②DRD:20%以上保有なので65% × 100,000 = 65,000。課税所得制限 65% × (350,000 − 35,000) = 204,750は超えないため全額控除。</p>
 <p>③NOL控除前の課税所得 = 315,000 − 65,000 = 250,000。NOL控除は80% × 250,000 = 200,000が上限(繰越額260,000より小さい)。</p>
-<p>④課税所得 = 250,000 − 200,000 = 50,000、税額 = 50,000 × 21% = 10,500。NOL繰越額 = 260,000 − 200,000 = 60,000(無期限)。</p>`,
+<p>④課税所得 = 250,000 − 200,000 = 50,000、税額 = 50,000 × 21% = 10,500。NOL繰越額 = 260,000 − 200,000 = 60,000(無期限)。</p>
+<p>注:2026年以降開始年度はOBBBAにより寄附金は課税所得の1%(3,500)を超える部分のみ控除可能となるが、50,000 − 3,500 = 46,500は10%上限35,000を超えるため、控除額35,000は変わらない。</p>`,
 });
 
 CPA.tbs({ id: "TBS-TCP-13", section: "TCP", chapter: "TCP-02", title: "株式償還の判定(§302・§318)",
