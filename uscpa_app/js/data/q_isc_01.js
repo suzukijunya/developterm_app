@@ -604,3 +604,71 @@ CPA.extend("ISC-01", {
     },
   ],
 });
+
+CPA.tbs({ id: "TBS-ISC-08", section: "ISC", chapter: "ISC-01", title: "SQLクエリの結果の読み取り",
+  scenario: `<p>An auditor extracts the following tables from a client's sales database. CustID is the primary key of Customers and a foreign key in Orders.</p>
+<table><tr><th>CustID</th><th>Name</th><th>Region</th></tr>
+<tr><td>C1</td><td>Alpha</td><td>East</td></tr>
+<tr><td>C2</td><td>Beta</td><td>West</td></tr>
+<tr><td>C3</td><td>Gamma</td><td>East</td></tr>
+<tr><td>C4</td><td>Delta</td><td>North</td></tr>
+<tr><td>C5</td><td>Epsilon</td><td>West</td></tr></table>
+<table><tr><th>OrderID</th><th>CustID</th><th>Amount</th><th>Status</th></tr>
+<tr><td>101</td><td>C1</td><td>4,000</td><td>Shipped</td></tr>
+<tr><td>102</td><td>C2</td><td>7,500</td><td>Open</td></tr>
+<tr><td>103</td><td>C1</td><td>2,500</td><td>Open</td></tr>
+<tr><td>104</td><td>C3</td><td>9,000</td><td>Shipped</td></tr>
+<tr><td>105</td><td>C2</td><td>1,200</td><td>Shipped</td></tr>
+<tr><td>106</td><td>C3</td><td>3,000</td><td>Open</td></tr></table>
+<p>Determine the result of each query below.</p>
+<p class="ja">監査人はクライアントの販売データベースから上記のテーブル(Customers、Orders)を抽出した。CustIDはCustomersの主キーであり、Ordersでは外部キーである。各クエリの結果を求めよ。</p>`,
+  rows: [
+    { label: "Rows returned: SELECT OrderID FROM Orders WHERE Status = 'Open' AND Amount > 2800;(返される行数)", type: "num", answer: 2 },
+    { label: "Value returned: SELECT SUM(o.Amount) FROM Orders o INNER JOIN Customers c ON o.CustID = c.CustID WHERE c.Region = 'East';(返される合計額)", type: "num", answer: 18500 },
+    { label: "Rows returned: SELECT c.CustID FROM Customers c LEFT JOIN Orders o ON c.CustID = o.CustID WHERE o.OrderID IS NULL;(返される行数)", type: "num", answer: 2 },
+    { label: "Rows returned: SELECT CustID, SUM(Amount) FROM Orders GROUP BY CustID HAVING SUM(Amount) > 6000;(返される行数)", type: "num", answer: 3 },
+    { label: "Rows returned: SELECT * FROM Customers c INNER JOIN Orders o ON c.CustID = o.CustID;(返される行数)", type: "num", answer: 6 },
+    { label: "West total: SELECT c.Region, SUM(o.Amount) FROM Customers c INNER JOIN Orders o ON c.CustID = o.CustID GROUP BY c.Region;(Westの合計額)", type: "num", answer: 8700 },
+  ],
+  explain: `<p>① Openかつ2,800超:102(7,500)と106(3,000)の2行。103は2,500のため除外。</p>
+<p>② East地域の顧客はC1とC3:4,000 + 2,500 + 9,000 + 3,000 = 18,500。</p>
+<p>③ LEFT JOINで注文のない顧客を抽出:C4とC5の2行。</p>
+<p>④ 顧客別合計はC1 6,500、C2 8,700、C3 12,000で、いずれも6,000超のため3行(HAVINGは集計後に適用)。</p>
+<p>⑤ すべての注文に対応する顧客が存在するため、INNER JOINの結果は注文数と同じ6行(注文のないC4・C5は含まれない)。</p>
+<p>⑥ West地域はC2(C5は注文なし):7,500 + 1,200 = 8,700。</p>`,
+});
+
+CPA.tbs({ id: "TBS-ISC-09", section: "ISC", chapter: "ISC-01", title: "クラウドの責任共有モデル",
+  scenario: `<p>Marlow Corp. uses three cloud services:</p>
+<p>(A) <b>IaaS</b> — virtual machines on which Marlow installs and runs its own inventory application.<br>
+(B) <b>PaaS</b> — a managed application platform (operating system, runtime, and database engine provided) on which Marlow developed a custom revenue application.<br>
+(C) <b>SaaS</b> — a subscription expense-reporting application used by Marlow's employees.</p>
+<p>For each task, indicate which party is primarily responsible under the shared responsibility model.</p>
+<p class="ja">Marlow社は3つのクラウドサービスを利用している。(A)IaaS:仮想マシン上に自社の在庫アプリケーションを導入・運用。(B)PaaS:OS・ランタイム・データベースエンジンが提供されるマネージド基盤上で独自の収益アプリケーションを開発。(C)SaaS:従業員が利用するサブスクリプション型の経費精算アプリケーション。各作業について、責任共有モデル上主に責任を負う当事者を選べ。</p>`,
+  rows: [
+    { label: "(A) Applying security patches to the guest operating system of the virtual machines(仮想マシンのゲストOSへのパッチ適用)", type: "select", options: ["Marlow (customer)", "Cloud provider"], answer: "Marlow (customer)" },
+    { label: "(A) Physical security and environmental controls of the data center(データセンターの物理的セキュリティと環境統制)", type: "select", options: ["Marlow (customer)", "Cloud provider"], answer: "Cloud provider" },
+    { label: "(B) Patching and upgrading the managed database engine(マネージドデータベースエンジンのパッチ適用・更新)", type: "select", options: ["Marlow (customer)", "Cloud provider"], answer: "Cloud provider" },
+    { label: "(B) Secure coding and testing of the custom revenue application(独自収益アプリケーションのセキュアコーディングとテスト)", type: "select", options: ["Marlow (customer)", "Cloud provider"], answer: "Marlow (customer)" },
+    { label: "(C) Approving user access and performing periodic access reviews(利用者アクセスの承認と定期的なアクセスレビュー)", type: "select", options: ["Marlow (customer)", "Cloud provider"], answer: "Marlow (customer)" },
+    { label: "(C) Maintaining the application code and deploying software updates(アプリケーションコードの保守とソフトウェア更新の適用)", type: "select", options: ["Marlow (customer)", "Cloud provider"], answer: "Cloud provider" },
+  ],
+  explain: `<p>IaaS:事業者は物理設備・ネットワーク・ハイパーバイザーを管理し、利用者はゲストOS・ミドルウェア・アプリケーション・データを管理する。</p>
+<p>PaaS:事業者はOS・ランタイム・データベースエンジンまで管理し、利用者は自ら開発したアプリケーションとデータ・アクセス権を管理する。</p>
+<p>SaaS:事業者がアプリケーションまで管理するが、どのモデルでも利用者アクセスの管理とデータそのものは利用企業の責任として残る。</p>`,
+});
+
+CPA.tbs({ id: "TBS-ISC-10", section: "ISC", chapter: "ISC-01", title: "データ品質の側面の識別",
+  scenario: `<p>Harlan Co.'s internal audit team performed data analytics on several systems and noted the issues below. For each issue, select the data quality dimension that is most directly deficient. Each option may be used once, more than once, or not at all.</p>
+<p class="ja">Harlan社の内部監査チームは複数のシステムに対してデータ分析を行い、以下の問題を発見した。各問題について、最も直接的に欠けているデータ品質の側面を選べ。各選択肢は1回、複数回使用してもよく、使用しなくてもよい。</p>`,
+  rows: [
+    { label: "The same vendor is set up under two vendor numbers, and one invoice was paid twice(同一仕入先が2つの番号で登録され、請求書が二重払いされた)", type: "select", options: ["Accuracy", "Completeness", "Consistency", "Timeliness", "Uniqueness", "Validity"], answer: "Uniqueness" },
+    { label: "12% of customer records have a blank tax identification number, a required field(顧客レコードの12%で必須項目の納税者番号が空欄)", type: "select", options: ["Accuracy", "Completeness", "Consistency", "Timeliness", "Uniqueness", "Validity"], answer: "Completeness" },
+    { label: "Several employee records show a hire date of \"02/30/2025\"(複数の従業員レコードの入社日が「2025年2月30日」)", type: "select", options: ["Accuracy", "Completeness", "Consistency", "Timeliness", "Uniqueness", "Validity"], answer: "Validity" },
+    { label: "Inventory for a part is recorded as 1,000 units; a test count confirms 100 units due to a keying error(ある部品の在庫が1,000個と記録されているが、入力ミスにより実際は100個)", type: "select", options: ["Accuracy", "Completeness", "Consistency", "Timeliness", "Uniqueness", "Validity"], answer: "Accuracy" },
+    { label: "Customer status is \"Active\" in the CRM but \"Closed\" in the ERP for the same customer(同一顧客の状態がCRMでは「有効」、ERPでは「閉鎖」)", type: "select", options: ["Accuracy", "Completeness", "Consistency", "Timeliness", "Uniqueness", "Validity"], answer: "Consistency" },
+    { label: "Foreign exchange rates used for daily invoicing are updated only at month-end(日次の請求に用いる為替レートが月末にしか更新されない)", type: "select", options: ["Accuracy", "Completeness", "Consistency", "Timeliness", "Uniqueness", "Validity"], answer: "Timeliness" },
+  ],
+  explain: `<p>一意性:同一実体の重複登録(二重払いのリスク)。完全性:必須データの欠落。妥当性:定められた形式・値域(存在しない日付等)に適合しない値。正確性:記録値が現実と一致しない。一貫性:同じデータがシステム間で矛盾する。適時性:データが利用時点で十分に最新でない。</p>
+<p>2月30日は形式上の規則に反する値であるため、実在の値との不一致(正確性)ではなく妥当性の問題である。</p>`,
+});
