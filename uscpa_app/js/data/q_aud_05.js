@@ -70,7 +70,7 @@ CPA.extend("AUD-04", {
       ex: "サンプリング間隔 = (許容虚偽表示 − 予想虚偽表示 × 拡大係数)÷ 信頼係数 = (54,000 − 10,000 × 1.5)÷ 3.0 = 39,000 ÷ 3 = 13,000。拡大係数を無視すると(54,000 − 10,000)÷ 3 = 14,667となり誤り。",
     },
     {
-      q: "Using the facts in which accounts receivable with a recorded balance of $2,600,000 are tested with a monetary-unit sampling interval of $13,000, what is the required sample size?",
+      q: "An auditor tests accounts receivable with a recorded balance of $2,600,000 using monetary-unit sampling with a sampling interval of $13,000. What is the required sample size?",
       ja: "帳簿残高$2,600,000の売掛金をサンプリング間隔$13,000の金額単位サンプリングで検証する場合、必要なサンプル数はいくつか。",
       c: ["130", "200", "260", "48"],
       a: 1,
@@ -449,7 +449,7 @@ CPA.extend("AUD-04", {
       ja: "詳細テストで、監査人は帳簿価額$900,000の母集団から抽出した帳簿価額$60,000のサンプルにおいて、合計$6,000の過大計上を発見した。比率による推定を用いた場合、母集団の推定虚偽表示額はいくらか。",
       c: ["$6,000", "$84,000", "$96,000", "$90,000"],
       a: 3,
-      ex: "虚偽表示率 = 6,000 ÷ 60,000 = 10%、推定虚偽表示 = 900,000 × 10% = 90,000。発見額6,000のみを集計するのは母集団への推定を怠る誤りで、84,000はサンプル部分を二重に差し引いた誤りである。",
+      ex: "虚偽表示率 = 6,000 ÷ 60,000 = 10%、推定虚偽表示 = 900,000 × 10% = 90,000。発見額6,000のみを集計するのは母集団への推定を怠る誤りで、84,000は推定額から発見額を差し引いた誤り、96,000は発見額を二重に加算した誤りである。",
     },
     {
       q: "Under AU-C 450, which of the following statements about the threshold for clearly trivial misstatements is correct?",
@@ -668,4 +668,72 @@ CPA.extend("AUD-04", {
       ex: "内部監査機能の作業を利用する前に、客観性(組織上の地位と方針)、能力、品質管理を含む体系的で規律ある手法の適用を評価する。内部監査人は財務諸表の適正性について意見を表明するものではなく、それは評価項目ではない。",
     },
   ],
+});
+
+CPA.tbs({ id: "TBS-AUD-21", section: "AUD", chapter: "AUD-04", title: "古典的変数サンプリング(MPU・差額法・比率法)",
+  scenario: `<p>An auditor is testing the inventory of Harbor Co. using classical variables sampling. The population consists of <b>4,000</b> items with a recorded book value of <b>$2,000,000</b>. A random sample of <b>200</b> items was selected:</p>
+<table><tr><th>Sample data</th><th>Amount</th></tr>
+<tr><td>Book value of the 200 sample items</td><td>$96,000</td></tr>
+<tr><td>Audited value of the 200 sample items</td><td>$94,080</td></tr></table>
+<p>Misstatements found in the sample are roughly proportional to the items' book values. Tolerable misstatement is <b>$60,000</b>. Using ratio estimation, the auditor computed an allowance for sampling risk of <b>$25,000</b>.</p>
+<p class="ja">監査人はHarbor社の棚卸資産を古典的変数サンプリングで検証している。母集団は4,000品目、帳簿価額$2,000,000である。無作為に200品目を抽出した結果、サンプルの帳簿価額は$96,000、監査価額は$94,080であった。サンプルの虚偽表示は各項目の帳簿価額にほぼ比例している。許容虚偽表示額は$60,000である。比率推定法によるサンプリングリスクの許容額は$25,000と算定された。</p>`,
+  rows: [
+    { label: "Estimated audited value — mean-per-unit estimation(平均値推定法による推定監査価額)", type: "num", answer: 1881600 },
+    { label: "Estimated audited value — difference estimation(差額推定法による推定監査価額)", type: "num", answer: 1961600 },
+    { label: "Estimated audited value — ratio estimation(比率推定法による推定監査価額)", type: "num", answer: 1960000 },
+    { label: "Projected misstatement (overstatement) — ratio estimation(比率推定法による推定虚偽表示額・過大計上)", type: "num", answer: 40000 },
+    { label: "Most appropriate method given the pattern of misstatements(虚偽表示の傾向から最も適切な方法)", type: "select", options: ["Mean-per-unit estimation", "Difference estimation", "Ratio estimation", "Attribute sampling"], answer: "Ratio estimation" },
+    { label: "Conclusion using ratio estimation results(比率推定法の結果に基づく結論)", type: "select", options: ["The balance is fairly stated because projected misstatement is less than tolerable misstatement", "The auditor cannot conclude the balance is not materially misstated; request adjustment or perform additional procedures", "The auditor must express an adverse opinion"], answer: "The auditor cannot conclude the balance is not materially misstated; request adjustment or perform additional procedures" },
+  ],
+  explain: `<p>MPU:サンプルの平均監査価額 = 94,080 ÷ 200 = 470.40、× 4,000 = 1,881,600(帳簿価額を使わない)。</p>
+<p>差額法:平均差額 = (94,080 − 96,000)÷ 200 = −9.60、× 4,000 = −38,400、推定監査価額 = 2,000,000 − 38,400 = 1,961,600。</p>
+<p>比率法:比率 = 94,080 ÷ 96,000 = 0.98、× 2,000,000 = 1,960,000。推定虚偽表示 = 2,000,000 − 1,960,000 = 40,000(過大計上)。</p>
+<p>虚偽表示が帳簿価額に比例するため比率推定法が適する。虚偽表示の上限 = 40,000 + 25,000 = 65,000 が許容虚偽表示60,000を超えるため、重要な虚偽表示がないとは結論付けられず、修正の要求や追加手続を行う。</p>`,
+});
+
+CPA.tbs({ id: "TBS-AUD-22", section: "AUD", chapter: "AUD-04", title: "後発事象の分類と報告書の日付",
+  scenario: `<p>You are auditing the financial statements of Pine Corp. for the year ended <b>December 31, 2025</b>. The auditor's report is dated <b>March 6, 2026</b>, and the financial statements are expected to be issued on March 20, 2026. All amounts are material. The following events came to your attention:</p>
+<table><tr><th>#</th><th>Event</th></tr>
+<tr><td>1</td><td>Jan. 20: A customer owing $150,000 at year-end filed for bankruptcy because of a financial decline that had been ongoing since mid-2025.</td></tr>
+<tr><td>2</td><td>Feb. 10: An uninsured warehouse and its contents were destroyed by a flood.</td></tr>
+<tr><td>3</td><td>Feb. 25: A lawsuit filed in 2025 for an injury that occurred in 2025 was settled for $500,000; $300,000 had been accrued at year-end.</td></tr>
+<tr><td>4</td><td>Feb. 2: Pine issued $5,000,000 of bonds payable.</td></tr>
+<tr><td>5</td><td>Feb. 27: The fair value of Pine's equity investments declined sharply because of general market conditions arising after year-end.</td></tr>
+<tr><td>6</td><td>Mar. 12: Pine agreed to acquire a competitor; management disclosed the agreement in Note 15 before the statements were issued.</td></tr></table>
+<p class="ja">Pine社の2025年12月31日終了年度の財務諸表を監査している。監査報告書日は2026年3月6日、財務諸表の発行予定日は3月20日である。金額はいずれも重要である。①1月20日、期末に$150,000の債務がある得意先が2025年半ばから続く財務悪化により破産申請。②2月10日、無保険の倉庫と在庫が洪水で滅失。③2月25日、2025年に発生した傷害について2025年に提起された訴訟が$500,000で和解(期末に$300,000を計上済)。④2月2日、社債$5,000,000を発行。⑤2月27日、期末後に生じた市況により保有株式の公正価値が急落。⑥3月12日、競合他社の買収に合意し、経営者は発行前に注記15で開示した。</p>`,
+  rows: [
+    { label: "Event 1 — required treatment(事象1の処理)", type: "select", options: ["Adjust the financial statements", "Disclose only (no adjustment)", "Neither adjust nor disclose"], answer: "Adjust the financial statements" },
+    { label: "Event 2 — required treatment(事象2の処理)", type: "select", options: ["Adjust the financial statements", "Disclose only (no adjustment)", "Neither adjust nor disclose"], answer: "Disclose only (no adjustment)" },
+    { label: "Event 3 — required treatment(事象3の処理)", type: "select", options: ["Adjust the financial statements", "Disclose only (no adjustment)", "Neither adjust nor disclose"], answer: "Adjust the financial statements" },
+    { label: "Event 4 — required treatment(事象4の処理)", type: "select", options: ["Adjust the financial statements", "Disclose only (no adjustment)", "Neither adjust nor disclose"], answer: "Disclose only (no adjustment)" },
+    { label: "Event 5 — required treatment(事象5の処理)", type: "select", options: ["Adjust the financial statements", "Disclose only (no adjustment)", "Neither adjust nor disclose"], answer: "Disclose only (no adjustment)" },
+    { label: "Event 6 — report date if the auditor limits responsibility to this event(事象6について責任を限定する場合の報告書日付)", type: "select", options: ["March 6, 2026", "March 12, 2026", "March 6, 2026, except for Note 15, as to which the date is March 12, 2026", "March 20, 2026"], answer: "March 6, 2026, except for Note 15, as to which the date is March 12, 2026" },
+  ],
+  explain: `<p>期末時点に存在した状況について追加的な証拠を提供する事象は修正後発事象(type 1)、期末後に生じた状況は開示後発事象(type 2)である。</p>
+<p>事象1:財務悪化は期末前から存在 → 修正(貸倒引当金)。事象3:訴訟原因は期末前 → 負債を$500,000に修正。</p>
+<p>事象2(洪水)、事象4(社債発行)、事象5(期末後の市況による下落)は期末後の状況 → 注記のみ。</p>
+<p>事象6:報告書日後・発行前に開示された事象については、二重日付により3月6日後の責任を当該注記に限定できる。報告書日全体を3月12日にすると、3月12日までのすべての事象に責任が及ぶ。</p>`,
+});
+
+CPA.tbs({ id: "TBS-AUD-23", section: "AUD", chapter: "AUD-04", title: "識別した虚偽表示の評価(AU-C 450)",
+  scenario: `<p>In the audit of Lark Inc., overall materiality is <b>$200,000</b> and the threshold for clearly trivial misstatements is <b>$5,000</b>. The auditor identified the following, all of which overstate pretax income:</p>
+<table><tr><th>#</th><th>Item</th></tr>
+<tr><td>A</td><td>An unrecorded December utility invoice of $42,000 found in the search for unrecorded liabilities.</td></tr>
+<tr><td>B</td><td>Pricing errors found in a sample of inventory items, which, when extrapolated to the population, indicate overstatement of $65,000.</td></tr>
+<tr><td>C</td><td>Management recorded an allowance for credit losses of $120,000; the auditor's reasonable range is $150,000 to $190,000.</td></tr>
+<tr><td>D</td><td>A sales cutoff error of $3,000.</td></tr></table>
+<p>After the auditor communicated the misstatements, management recorded an adjustment for item A only.</p>
+<p class="ja">Lark社の監査で、全体の重要性は$200,000、明らかに僅少な虚偽表示の閾値は$5,000である。識別した事項はいずれも税引前利益を過大にする。A:未計上の12月分公共料金請求書$42,000。B:棚卸資産の価格誤りのサンプルを母集団に推定すると$65,000の過大計上。C:経営者の貸倒引当金$120,000に対し監査人の合理的な範囲は$150,000〜$190,000。D:売上の期間帰属誤り$3,000。監査人の伝達後、経営者はAのみ修正した。</p>`,
+  rows: [
+    { label: "Misstatement to accumulate for item C(Cについて集計する虚偽表示額)", type: "num", answer: 30000 },
+    { label: "Total accumulated misstatements before management's correction(経営者の修正前の集計虚偽表示合計)", type: "num", answer: 137000 },
+    { label: "Total uncorrected misstatements after management's correction(経営者の修正後の未修正虚偽表示合計)", type: "num", answer: 95000 },
+    { label: "Classification of item B(Bの分類)", type: "select", options: ["Factual misstatement", "Judgmental misstatement", "Projected misstatement"], answer: "Projected misstatement" },
+    { label: "Treatment of item D(Dの扱い)", type: "select", options: ["Accumulate as a factual misstatement", "Need not be accumulated because it is clearly trivial", "Must be corrected before the report is issued"], answer: "Need not be accumulated because it is clearly trivial" },
+    { label: "Required communication of the uncorrected misstatements(未修正の虚偽表示に関して求められる伝達)", type: "select", options: ["No communication because they are immaterial", "Communicate to those charged with governance and obtain management's written representation that their effects are immaterial", "Disclose them in the auditor's report"], answer: "Communicate to those charged with governance and obtain management's written representation that their effects are immaterial" },
+  ],
+  explain: `<p>C:経営者の見積りが範囲外のため、範囲の最も近い点との差 150,000 − 120,000 = 30,000 を判断による虚偽表示として集計する。</p>
+<p>D:3,000は明らかに僅少の閾値5,000未満のため集計不要。修正前の集計合計 = 42,000(事実)+ 65,000(推定)+ 30,000(判断)= 137,000。</p>
+<p>Aの修正後の未修正合計 = 65,000 + 30,000 = 95,000。重要性200,000未満だが、質的要因も考慮する。</p>
+<p>未修正の虚偽表示は統治責任者に伝達し(修正を求める)、経営者確認書で影響が重要でない旨の確認と一覧の添付を得る。監査報告書に記載するものではない。</p>`,
 });
