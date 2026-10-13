@@ -25,7 +25,7 @@ const COURSE_PRESETS = {
         "18科目・51単位を取得でき、モンタナ州の出願に必要な会計Upper 24単位・ビジネス24単位をまかなえる(前回受講時の単位取得記録なし)",
         "出願州はモンタナ州を案内(学位・総単位数が不要。全科目合格後3年以内にライセンスを取らなくても合格実績は失効しない)",
         "3つのキャッシュバックをすべて受け取った場合の実質負担額は197,084円(見積もりメール記載)",
-        "期間限定の再受講特典(2026年10月まで):40%OFF・合格保証で受講期限を合格まで無料延長・紙の問題集を無料提供",
+        "期間限定の再受講特典(2026年10月まで):40%OFF(以前は30%OFF)・5年の受講期限が終わっても全科目合格まで無料で延長(合格保証)・紙の問題集を無料提供",
       ],
     },
     {
@@ -86,6 +86,8 @@ const COURSE_PRESETS = {
       "個別カウンセリングで、再スタートの学習スケジュールを相談(予約フォームは見積もりメールに記載)",
     ],
     sources: [
+      { label: "アビタス:教育訓練給付金制度について(見積もりメール記載)", url: "https://www.usedu.com/entry/social.html" },
+      { label: "アビタス:個別カウンセリング予約フォーム(見積もりメール記載)", url: "https://abitus.jp/3r0VZ4T" },
       { label: "アビタス公式:合格お祝い金制度開始(プレスリリース)", url: "https://www.abitus.co.jp/information/uscpa/uscpa-20241002-pr.html" },
       { label: "アビタス公式:リスキリングWキャッシュバック", url: "https://www.abitus.co.jp/information/uscpa/general_cb.html" },
       { label: "reskill110:アビタスの給付金・キャッシュバック制度", url: "https://reskill110.com/uscpa/abitus-reskilling/" },
