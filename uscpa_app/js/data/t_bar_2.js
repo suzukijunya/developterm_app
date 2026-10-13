@@ -284,3 +284,39 @@ CPA.tbs({
 <p>増分利益 = 収益3,000 × 38 = 114,000 − 変動費3,000 ×(30 − 2)= 84,000 − 工具5,000 − 機会原価20,000 = $5,000 → 受諾すべき。</p>
 <p>最低価格 =(84,000 + 5,000 + 20,000)÷ 3,000 = $36.33。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-BAR-49", section: "BAR", chapter: "BAR-01", title: "事業部の業績評価(ROI・残余利益・CAPMによるWACCとEVA)と振替価格の範囲",
+  scenario: `<p>Ueda Corporation evaluates its Motor Division as an investment center. Headquarters asked you to complete the performance package and to advise on a proposed internal transfer.</p>
+<table><tr><th>Exhibit 1 — Motor Division, current year</th><th>Amount</th></tr>
+<tr><td>Operating income (before tax)</td><td>$1,800,000</td></tr>
+<tr><td>Average operating assets (total assets)</td><td>$12,000,000</td></tr>
+<tr><td>Current liabilities</td><td>$2,000,000</td></tr>
+<tr><td>Minimum required rate of return for residual income</td><td>10%</td></tr>
+<tr><td>Income tax rate</td><td>25%</td></tr></table>
+<table><tr><th>Exhibit 2 — Capital market data (Ueda Corporation)</th><th>Amount</th></tr>
+<tr><td>Risk-free rate / Expected market return / Equity beta</td><td>4% / 9% / 1.2</td></tr>
+<tr><td>Pretax cost of debt</td><td>8%</td></tr>
+<tr><td>Market value of debt / Market value of equity</td><td>$4,000,000 / $6,000,000</td></tr></table>
+<p><b>Email from the Assembly Division manager:</b> "We need 8,000 motors next year. An outside supplier quotes $112 each. Can Motor supply them?"</p>
+<p><b>Motor Division data:</b> capacity 50,000 motors; outside sales are expected to be 45,000 motors at $120 each. Variable cost is $70 per motor, including a $6 selling cost that is avoided on internal transfers.</p>
+<p><b>Proposal:</b> Motor's manager is also considering a $2,000,000 investment expected to earn operating income of $260,000 per year.</p>
+<p class="ja">Ueda社はMotor事業部を投資センターとして評価している。資料1(Motor事業部・当期):税引前営業利益$1,800,000、平均営業資産(総資産)$12,000,000、流動負債$2,000,000、残余利益の最低要求利益率10%、税率25%。資料2(資本市場):無リスク利子率4%、市場期待収益率9%、株式ベータ1.2、税引前負債コスト8%、負債時価$4,000,000、株式時価$6,000,000。Assembly事業部長からのメール:「来年モーターが8,000個必要だ。外部業者の見積りは1個$112である。Motorから供給できるか。」Motor事業部:生産能力50,000個、外部販売見込45,000個(1個$120)、変動費は1個$70で、うち$6の販売費は社内振替では発生しない。また、Motor事業部長は$2,000,000を投資して年$260,000の営業利益を得る案件を検討中である。</p>`,
+  rows: [
+    { label: "Cost of equity using CAPM (decimal)(CAPMによる株主資本コスト・小数)", type: "num", answer: 0.1, tol: 0.0005 },
+    { label: "Weighted-average cost of capital (decimal)(加重平均資本コスト・小数)", type: "num", answer: 0.084, tol: 0.0005 },
+    { label: "Return on investment of Motor Division (decimal)(Motor事業部のROI・小数)", type: "num", answer: 0.15, tol: 0.0005 },
+    { label: "Residual income of Motor Division(Motor事業部の残余利益)", type: "num", answer: 600000 },
+    { label: "Economic value added of Motor Division(Motor事業部のEVA)", type: "num", answer: 510000 },
+    { label: "Minimum average transfer price per motor acceptable to Motor for the 8,000 units(8,000個に対しMotorが受け入れ可能な最低平均振替価格)", type: "num", answer: 82.75, tol: 0.01 },
+    { label: "Maximum transfer price per motor Assembly should pay(Assemblyが支払ってよい最高振替価格)", type: "num", answer: 112 },
+    { label: "If Motor's manager is evaluated on ROI, the $2,000,000 proposal will likely be(ROIで評価されるMotor事業部長は$2,000,000の案件を)", type: "select", options: ["Rejected, although it would increase residual income", "Accepted, because its ROI exceeds the minimum required return", "Rejected, because it would decrease residual income", "Accepted, because it would increase divisional ROI"], answer: "Rejected, although it would increase residual income" },
+  ],
+  explain: `<p>CAPM:株主資本コスト = 4% + 1.2 ×(9% − 4%)= 10%。</p>
+<p>WACC:負債ウェイト40%、株式60%。税引後負債コスト = 8% ×(1 − 0.25)= 6%。WACC = 0.4 × 6% + 0.6 × 10% = 2.4% + 6.0% = 8.4%。</p>
+<p>ROI = 1,800,000 ÷ 12,000,000 = 15%。残余利益 = 1,800,000 − 12,000,000 × 10% = $600,000。</p>
+<p>EVA = 税引後営業利益(1,800,000 × 0.75 = 1,350,000)−(総資産12,000,000 − 流動負債2,000,000)× 8.4% = 1,350,000 − 840,000 = $510,000。</p>
+<p>最低振替価格 = 増分変動費 + 機会原価。遊休能力5,000個は変動費70 − 6 = $64。残り3,000個は外部販売を失うため64 + 失う貢献利益(120 − 70 = 50)= $114。平均 =(5,000 × 64 + 3,000 × 114)÷ 8,000 = 662,000 ÷ 8,000 = $82.75。</p>
+<p>最高振替価格 = Assemblyが外部から購入できる価格$112。82.75〜112の範囲で交渉すれば全社利益が増える。</p>
+<p>新規案件のROI = 260,000 ÷ 2,000,000 = 13%で現在の15%を下回るため、ROI評価の事業部長は棄却しがちである。しかし残余利益は260,000 − 200,000 = +60,000で全社的には有利(準最適化の典型例)。</p>`,
+});
