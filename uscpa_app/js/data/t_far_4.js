@@ -118,9 +118,9 @@ CPA.tbs({
 CPA.tbs({
   id: "TBS-FAR-71", section: "FAR", chapter: "FAR-05", title: "公正価値評価から持分法への変更(段階取得)",
   scenario: `<p>Kato Corp. acquired <b>10%</b> of the common stock of Delta Inc. on January 1, Year 1, for <b>$400,000</b>. Lacking significant influence, Kato measured the investment at fair value through net income. Delta paid total dividends of <b>$200,000</b> in Year 1. Fair value of Kato's 10% interest at 12/31 Y1 was <b>$430,000</b>.</p>
-<p>On January 1, Year 2, Kato purchased an additional <b>15%</b> of Delta for <b>$690,000</b> cash and obtained significant influence. Kato remeasures its previously held interest to fair value immediately before applying the equity method, using the per-share price paid in this transaction. Delta's book value of net assets at 1/1 Y2 was <b>$4,200,000</b>; the entire excess of Kato's total investment over its share of book value is attributable to a patent with a <b>10-year</b> remaining life.</p>
+<p>On January 1, Year 2, Kato purchased an additional <b>15%</b> of Delta for <b>$690,000</b> cash and obtained significant influence. As required by ASC 321 (as clarified by ASU 2020-01), Kato remeasures its previously held interest to fair value through net income immediately before applying the equity method; that fair value is based on the per-share price paid in this transaction (no control premium). Delta's book value of net assets at 1/1 Y2 was <b>$4,200,000</b>; the entire excess of Kato's total investment over its share of book value is attributable to a patent with a <b>10-year</b> remaining life.</p>
 <p>Delta reported Year 2 net income of <b>$800,000</b> and paid dividends of <b>$240,000</b> in December, Year 2.</p>
-<p class="ja">Kato社は第1年度1月1日にDelta社の普通株式の10%を$400,000で取得した。重要な影響力がないため公正価値(変動は純利益)で測定した。Delta社は第1年度に総額$200,000の配当を支払い、12/31 Y1のKato社持分10%の公正価値は$430,000であった。第2年度1月1日、Kato社は追加で15%を$690,000で取得し重要な影響力を得た。持分法適用直前に、この取引の1株当たり価格を用いて既存持分を公正価値で再測定する。1/1 Y2のDelta社純資産簿価は$4,200,000で、投資総額と簿価持分の差額はすべて残存10年の特許権に帰属する。第2年度のDelta社純利益は$800,000、12月の配当は$240,000である。</p>`,
+<p class="ja">Kato社は第1年度1月1日にDelta社の普通株式の10%を$400,000で取得した。重要な影響力がないため公正価値(変動は純利益)で測定した。Delta社は第1年度に総額$200,000の配当を支払い、12/31 Y1のKato社持分10%の公正価値は$430,000であった。第2年度1月1日、Kato社は追加で15%を$690,000で取得し重要な影響力を得た。ASC 321(ASU 2020-01による明確化)に従い、持分法適用直前に既存持分を公正価値で再測定し、差額を純利益に計上する。公正価値はこの取引の1株当たり価格に基づく(支配プレミアムなし)。1/1 Y2のDelta社純資産簿価は$4,200,000で、投資総額と簿価持分の差額はすべて残存10年の特許権に帰属する。第2年度のDelta社純利益は$800,000、12月の配当は$240,000である。</p>`,
   rows: [
     { label: "Dividend income recognized by Kato in Year 1(第1年度にKato社が計上する受取配当金)", type: "num", answer: 20000 },
     { label: "Unrealized holding gain in Kato's Year 1 net income(第1年度の純利益に計上する未実現保有利益)", type: "num", answer: 30000 },
@@ -131,11 +131,11 @@ CPA.tbs({
     { label: "Effect of adopting the equity method on prior periods(持分法採用が過年度に与える影響)", type: "select", options: ["Retrospectively restate Year 1 as if the equity method had always applied", "Apply prospectively from the date significant influence is obtained; no retroactive adjustment", "Record a cumulative-effect adjustment to opening retained earnings", "Restate only the Year 1 dividend income"], answer: "Apply prospectively from the date significant influence is obtained; no retroactive adjustment" },
   ],
   explain: `<p>第1年度:受取配当 = 200,000 × 10% = 20,000。未実現保有利益 = 430,000 − 400,000 = 30,000(公正価値の変動は純利益)。</p>
-<p>1/1 Y2:1%当たり価格 = 690,000 ÷ 15 = 46,000。既存10%の公正価値 = 460,000。再測定益 = 460,000 − 430,000 = 30,000。</p>
+<p>1/1 Y2:1%当たり価格 = 690,000 ÷ 15 = 46,000。既存10%の公正価値 = 460,000。再測定益 = 460,000 − 430,000 = 30,000(ASU 2020-01:持分法適用直前に持分証券を再測定し、差額は第2年度の純利益)。</p>
 <p>持分法の基礎 = 460,000 + 690,000 = 1,150,000(ASU 2016-07により、追加取得の原価を既存持分の帳簿価額に加算し、遡及修正しない)。</p>
 <p>簿価持分 = 4,200,000 × 25% = 1,050,000。超過額 = 100,000 → 特許権償却 10,000/年。持分法利益 = 800,000 × 25% − 10,000 = 190,000。</p>
 <p>期末残高 = 1,150,000 + 190,000 − 配当 240,000 × 25%(60,000)= 1,280,000。</p>
-<p>持分法は重要な影響力を得た日から将来に向かって適用し、過年度の修正は行わない。</p>`,
+<p>持分法は重要な影響力を得た日から将来に向かって適用し、過年度の修正は行わない。第1年度にASU 2016-01に基づき純利益に計上した受取配当・公正価値変動もそのまま据え置く。</p>`,
 });
 
 CPA.tbs({
@@ -146,12 +146,12 @@ CPA.tbs({
 <tr><td>Mar 15</td><td>Reacquired 30,000 shares at $16 per share.</td></tr>
 <tr><td>Jun 1</td><td>Reissued 10,000 treasury shares at $19 per share.</td></tr>
 <tr><td>Aug 1</td><td>Reissued 8,000 treasury shares at $12 per share.</td></tr>
-<tr><td>Oct 1</td><td>Formally retired the remaining treasury shares (originally issued at $10).</td></tr>
+<tr><td>Oct 1</td><td>Formally retired the remaining treasury shares (originally issued at $10). Company policy: on retirement, remove the APIC from the original issuance first, then any APIC–treasury stock, and charge the rest to retained earnings.</td></tr>
 <tr><td>Nov 1</td><td>Declared and distributed a 10% stock dividend; market price $20 per share.</td></tr>
 <tr><td>Dec 15</td><td>Effected a 2-for-1 stock split by reducing par value to $0.50.</td></tr>
 <tr><td>Dec 20</td><td>Declared a cash dividend of $0.10 per share (payable in January, Year 2).</td></tr>
 <tr><td>Dec 31</td><td>Net income for Year 1 was $1,500,000.</td></tr></table>
-<p class="ja">Nagano社の1/1 Y1の株主資本:普通株式(額面$1、発行済・流通500,000株)$500,000、資本剰余金(普通株式)$4,500,000(既存株式はすべて1株$10で発行)、利益剰余金$6,000,000。期首に自己株式由来の資本剰余金はなく、自己株式は原価法で処理する。第1年度の取引は表のとおり(2/1 新株50,000株を$14で発行、3/15 30,000株を$16で取得、6/1 10,000株を$19で再発行、8/1 8,000株を$12で再発行、10/1 残りの自己株式を消却(当初$10で発行)、11/1 10%株式配当(時価$20)、12/15 額面を$0.50に下げる2対1の株式分割、12/20 1株$0.10の現金配当を宣言、純利益$1,500,000)。</p>`,
+<p class="ja">Nagano社の1/1 Y1の株主資本:普通株式(額面$1、発行済・流通500,000株)$500,000、資本剰余金(普通株式)$4,500,000(既存株式はすべて1株$10で発行)、利益剰余金$6,000,000。期首に自己株式由来の資本剰余金はなく、自己株式は原価法で処理する。第1年度の取引は表のとおり(2/1 新株50,000株を$14で発行、3/15 30,000株を$16で取得、6/1 10,000株を$19で再発行、8/1 8,000株を$12で再発行、10/1 残りの自己株式を消却(当初$10で発行。会社の方針として、消却時はまず当初発行時の資本剰余金、次に自己株式由来の資本剰余金を取り崩し、残額を利益剰余金に借記する)、11/1 10%株式配当(時価$20)、12/15 額面を$0.50に下げる2対1の株式分割、12/20 1株$0.10の現金配当を宣言、純利益$1,500,000)。</p>`,
   rows: [
     { label: "Debit to retained earnings on the August 1 reissuance(8/1の再発行で利益剰余金に借記する額)", type: "num", answer: 2000 },
     { label: "Debit to retained earnings on the October 1 retirement(10/1の消却で利益剰余金に借記する額)", type: "num", answer: 72000 },
