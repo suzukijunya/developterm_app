@@ -204,3 +204,58 @@ CPA.tbs({
 <p>収用:実現利益 = 260,000 − 150,000 = 110,000。再投資しなかった額 260,000 − 230,000 = 30,000を認識。繰延利益80,000。代替資産の取得価額 = 230,000 − 80,000 = 150,000。</p>
 <p>期限:事業用・投資用不動産の収用は、利益を実現した課税年度末から3年以内(2026年12月31日 + 3年 = 2029年12月31日)。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-REG-59", section: "REG", chapter: "REG-04", title: "減価償却リキャプチャーを伴う割賦販売と関連者間売却(§267)の損失否認",
+  scenario: `<p><b>Exhibit 1 — Installment sale.</b> On July 1, 2026, Victor Hale, a sole proprietor, sold a production machine to an unrelated buyer. The buyer paid $80,000 at closing and signed a note for $320,000 payable in four annual principal installments of $80,000 beginning July 1, 2027, with adequate stated interest. Victor did not elect out of the installment method.</p>
+<table><tr><th>Machine data</th><th>Amount</th></tr>
+<tr><td>Original cost</td><td>$300,000</td></tr>
+<tr><td>Accumulated MACRS depreciation</td><td>$180,000</td></tr>
+<tr><td>Selling price</td><td>$400,000</td></tr>
+<tr><td>Selling expenses paid by Victor</td><td>$10,000</td></tr></table>
+<p><b>Exhibit 2 — Related-party sale.</b> On August 1, 2026, Victor sold 1,000 shares of listed stock held for investment (basis $50,000) to his brother Paul for their fair market value of $35,000. On November 20, 2026, Paul sold all 1,000 shares to an unrelated party for $46,000.</p>
+<p class="ja">資料1(割賦販売):2026年7月1日、個人事業主Victor Haleは製造機械を非関連者へ売却した。買手は引渡時に$80,000を支払い、残額$320,000は2027年7月1日から毎年$80,000ずつ4回払いの手形(適正な利息付き)とした。割賦基準の不適用は選択していない。機械の原価$300,000、MACRS償却累計額$180,000、売却価額$400,000、Victor負担の売却費用$10,000。資料2(関連者間売却):2026年8月1日、Victorは投資目的の上場株式1,000株(取得価額$50,000)を弟Paulに時価$35,000で売却した。Paulは2026年11月20日に全株を非関連者へ$46,000で売却した。</p>`,
+  rows: [
+    { label: "Total gain realized on the machine sale(機械売却の実現利益合計)", type: "num", answer: 270000 },
+    { label: "Section 1245 ordinary income recognized in 2026(2026年に認識する§1245通常所得)", type: "num", answer: 180000 },
+    { label: "Gross profit percentage applied to principal payments (%)(元本回収に適用する売上総利益率(%))", type: "num", answer: 22.5, tol: 0.01 },
+    { label: "Total gain on the machine recognized in 2026(2026年に認識する機械売却益の合計)", type: "num", answer: 198000 },
+    { label: "Section 1231 gain recognized in 2027 on the first note installment(2027年の第1回元本回収で認識する§1231利益)", type: "num", answer: 18000 },
+    { label: "Loss Victor may deduct on the sale to Paul(Paulへの売却でVictorが控除できる損失)", type: "num", answer: 0 },
+    { label: "Gain Paul recognizes on his resale for $46,000(Paulの$46,000での再売却による認識利益)", type: "num", answer: 0 },
+    { label: "Sale to which buyer would NOT be subject to the §267 loss disallowance?(§267の損失否認の対象とならない買手)", type: "select", options: ["Victor's grandmother", "Victor's sister-in-law", "A corporation in which Victor owns 60% of the stock", "Victor's adult daughter"], answer: "Victor's sister-in-law" },
+  ],
+  explain: `<p>実現利益 = 売却価額400,000 − 売却費用10,000 − 帳簿価額(300,000 − 180,000 = 120,000) = 270,000。</p>
+<p>§1245リキャプチャー:償却累計額180,000は割賦基準にかかわらず売却年度に全額認識する。</p>
+<p>割賦基準:リキャプチャー額は取得価額に加算する。調整後基準額 = 120,000 + 10,000 + 180,000 = 310,000。売上総利益 = 400,000 − 310,000 = 90,000。契約価額400,000(債務引受なし)。売上総利益率 = 90,000 ÷ 400,000 = 22.5%。</p>
+<p>2026年:頭金80,000 × 22.5% = 18,000(§1231利益)。2026年の合計 = 180,000 + 18,000 = 198,000。2027年:80,000 × 22.5% = 18,000。</p>
+<p>§267:兄弟姉妹は関連者であり、損失15,000(50,000 − 35,000)は否認される。Paulの取得価額は35,000で、再売却益11,000は否認された損失15,000の範囲で減額されるため認識利益0(残る4,000の否認損失は消滅する)。</p>
+<p>関連者:家族は兄弟姉妹・配偶者・直系尊属・直系卑属に限られ、義理の姉妹は含まれない。50%超を所有する法人は関連者である。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-REG-60", section: "REG", chapter: "REG-04", title: "§179即時償却の段階的縮小・100%ボーナス償却(OBBBA)・MACRS減価償却スケジュール",
+  scenario: `<p>Brightline Fabrication Inc., a calendar-year C corporation, placed the following new assets in service in 2026. All property was acquired by binding contracts entered into after January 19, 2025. Brightline's taxable income from the active conduct of its business (before §179) is $5,000,000.</p>
+<table><tr><th>Asset</th><th>MACRS class</th><th>Placed in service</th><th>Cost</th></tr>
+<tr><td>Production machinery</td><td>7-year</td><td>March 10, 2026</td><td>$3,000,000</td></tr>
+<tr><td>Office furniture</td><td>7-year</td><td>June 5, 2026</td><td>$400,000</td></tr>
+<tr><td>Computers and servers</td><td>5-year</td><td>November 12, 2026</td><td>$900,000</td></tr>
+<tr><td>Office building (land excluded)</td><td>39-year nonresidential real property</td><td>February 2, 2026</td><td>$2,000,000</td></tr></table>
+<p><b>Assumptions and elections:</b> For 2026, assume the §179 dollar limit is <b>$2,560,000</b>, reduced dollar-for-dollar by the cost of §179 property placed in service in excess of <b>$4,090,000</b>. Under the One Big Beautiful Bill Act, 100% bonus depreciation applies to qualified property acquired after January 19, 2025. Brightline (1) elects the maximum §179 deduction, applied entirely to the production machinery; (2) elects out of bonus depreciation for the 7-year class; and (3) claims bonus depreciation on the 5-year class. First-year MACRS table rates: 7-year half-year 14.29%; 5-year half-year 20.00%; 39-year property placed in service in February 2.247%.</p>
+<p class="ja">暦年決算のC法人Brightline Fabrication社は2026年に次の新規資産を事業の用に供した(いずれも2025年1月19日後に締結した拘束力ある契約で取得)。事業からの課税所得(§179控除前)は$5,000,000。資産:製造機械(7年、2026/3/10、$3,000,000)、事務用家具(7年、6/5、$400,000)、コンピュータ・サーバー(5年、11/12、$900,000)、事務所建物(土地除く、39年非住宅用不動産、2/2、$2,000,000)。前提と選択:2026年の§179上限は$2,560,000とし、§179対象資産の供用額が$4,090,000を超える額だけ1ドルずつ減額される。OBBBAにより2025年1月19日後取得の適格資産には100%ボーナス償却が適用される。同社は(1)§179の最大額を全額製造機械に適用し、(2)7年クラスについてボーナス償却の不適用を選択し、(3)5年クラスにはボーナス償却を適用する。初年度MACRS表の率:7年・ハーフイヤー14.29%、5年・ハーフイヤー20.00%、2月供用の39年資産2.247%。</p>`,
+  rows: [
+    { label: "Maximum §179 deduction for 2026 after the phase-out(段階的縮小後の2026年の§179最大控除額)", type: "num", answer: 2350000 },
+    { label: "Applicable convention for the 7-year and 5-year property(7年・5年資産に適用される期中慣行)", type: "select", options: ["Half-year convention", "Mid-quarter convention", "Mid-month convention", "Full-month convention"], answer: "Half-year convention" },
+    { label: "Regular MACRS depreciation on the machinery after §179(§179適用後の機械の通常MACRS償却費)", type: "num", answer: 92885 },
+    { label: "Regular MACRS depreciation on the office furniture(事務用家具の通常MACRS償却費)", type: "num", answer: 57160 },
+    { label: "Bonus depreciation on the computers and servers(コンピュータ・サーバーのボーナス償却額)", type: "num", answer: 900000 },
+    { label: "MACRS depreciation on the office building(事務所建物のMACRS償却費)", type: "num", answer: 44940 },
+    { label: "Total 2026 cost recovery deduction (§179 + bonus + MACRS)(2026年の費用回収控除の合計)", type: "num", answer: 3444985 },
+  ],
+  explain: `<p>§179:対象資産(機械・家具・コンピュータ。建物は対象外)の供用額 = 3,000,000 + 400,000 + 900,000 = 4,300,000。超過額 = 4,300,000 − 4,090,000 = 210,000。上限 = 2,560,000 − 210,000 = 2,350,000。課税所得制限5,000,000は拘束しない。</p>
+<p>期中慣行:第4四半期の供用額900,000 ÷ 動産合計(§179控除分2,350,000を除外すると1,950,000、除外しなくても4,300,000)は40%以下(約46%?の誤りに注意:900,000 ÷ 1,950,000 = 46.2%となるが、§179を除外した後の基準でも判定する必要がある)。</p>
+<p>機械:(3,000,000 − 2,350,000) × 14.29% = 650,000 × 14.29% = 92,885。家具:400,000 × 14.29% = 57,160(7年クラスはボーナス不適用を選択)。</p>
+<p>コンピュータ:100%ボーナス償却 = 900,000(残額0のため通常MACRSなし)。</p>
+<p>建物:39年資産はボーナス対象外、月央慣行。2,000,000 × 2.247% = 44,940。</p>
+<p>合計 = 2,350,000 + 92,885 + 57,160 + 900,000 + 44,940 = 3,444,985。</p>`,
+});

@@ -161,3 +161,56 @@ Gamma:定性的評価で「50%超ではない」と結論したので定量的�
 合計 = 300,000 + 200,000 = <b>500,000</b>。</p>
 <p>Lynx社:年間償却 360,000 ÷ 10 = 36,000。3年目末の残高 = 360,000 − 36,000 × 3 = <b>252,000</b>。減損 = 1,900,000 − 1,700,000 = <b>200,000</b>(252,000以内)。減損後の残高52,000は残存期間7年で引き続き償却するので、4年目の償却 = 52,000 ÷ 7 ≒ <b>7,429</b>。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-BAR-55", section: "BAR", chapter: "BAR-02", title: "金利スワップによる固定利付債務の公正価値ヘッジの仕訳金額",
+  scenario: `<p>On January 1, Year 1, Kestrel Corp. issued a <b>$1,000,000</b>, 5-year note at par with a fixed rate of <b>6%</b>, interest payable each December 31. On the same date Kestrel entered into an interest rate swap (notional $1,000,000, 5 years) under which it <b>receives 6% fixed and pays a variable rate</b> (SOFR-based), settled net each December 31. The variable rate is reset each December 31 for the following year. The swap had zero fair value at inception. Kestrel designated the swap as a <b>fair value hedge</b> of changes in the fair value of the note attributable to changes in the benchmark interest rate; all hedge criteria are met and the hedge is perfectly effective.</p>
+<table><tr><th>Exhibit — Market data</th><th>Year 1</th><th>Year 2</th></tr>
+<tr><td>Variable rate applicable for the year</td><td>6%</td><td>5% (reset Dec 31, Year 1)</td></tr>
+<tr><td>Swap fair value at year-end (after net settlement) — asset</td><td>$38,000</td><td>$26,000</td></tr>
+<tr><td>Change in note's fair value attributable to the benchmark rate</td><td>+$38,000</td><td>−$12,000</td></tr></table>
+<p class="ja">1年目1月1日、Kestrel社は額面$1,000,000、期間5年、固定利率6%(毎年12月31日利払い)の手形を額面で発行した。同日、想定元本$1,000,000・期間5年の金利スワップ(6%固定受取・変動(SOFRベース)支払、毎年12月31日に純額決済)を締結した。変動金利は毎年12月31日に翌年分が改定される。開始時のスワップの公正価値はゼロ。Kestrel社はベンチマーク金利の変動による手形の公正価値の変動に対する<b>公正価値ヘッジ</b>としてスワップを指定し、要件をすべて満たし、ヘッジは完全に有効である。<br>
+市場データ:適用変動金利 1年目6%、2年目5%(1年目12月31日改定)。年度末のスワップ公正価値(純額決済後、資産)1年目$38,000、2年目$26,000。ベンチマーク金利に起因する手形の公正価値変動 1年目+$38,000、2年目−$12,000。</p>`,
+  rows: [
+    { label: "Net swap settlement received (paid) on Dec 31, Year 1(1年目12月31日のスワップ純額決済額)", type: "num", answer: 0 },
+    { label: "Gain on the swap recognized in Year 1(1年目に認識するスワップの利益)", type: "num", answer: 38000 },
+    { label: "Carrying amount of the note at Dec 31, Year 1(1年目末の手形の帳簿価額)", type: "num", answer: 1038000 },
+    { label: "Net effect on Year 1 earnings of the fair value changes of swap and note(1年目のスワップと手形の公正価値変動の損益への純影響)", type: "num", answer: 0 },
+    { label: "Net swap settlement received on Dec 31, Year 2(2年目12月31日に受け取るスワップ純額決済額)", type: "num", answer: 10000 },
+    { label: "Net interest expense reported for Year 2(2年目に計上する純支払利息)", type: "num", answer: 50000 },
+    { label: "Income statement presentation of the swap's fair value change (ASU 2017-12)(スワップの公正価値変動の損益計算書上の表示)", type: "select", options: ["Other comprehensive income until the note matures", "Same line item as the hedged item's earnings effect (interest expense)", "Separate line item: hedge ineffectiveness", "Directly in retained earnings"], answer: "Same line item as the hedged item's earnings effect (interest expense)" },
+  ],
+  explain: `<p>1年目の変動金利は6%で固定受取6%と同じなので純額決済は <b>0</b>。支払利息は表面利息60,000のみ。</p>
+<p>1年目末、金利低下でスワップ(固定受取)は資産38,000となり、スワップ利益 <b>38,000</b> を損益に計上する(Dr スワップ 38,000 / Cr 利益)。公正価値ヘッジでは被ヘッジ項目の手形もヘッジ対象リスクに起因する変動分だけ帳簿価額を修正する(Dr 損失 38,000 / Cr 手形 38,000)。手形の帳簿価額 = 1,000,000 + 38,000 = <b>1,038,000</b>。両者は相殺され損益への純影響は <b>0</b>。</p>
+<p>2年目:受取 6% − 支払 5% = 1% × 1,000,000 = <b>10,000</b> を受け取る。純支払利息 = 60,000 − 10,000 = <b>50,000</b>。スワップの公正価値減少12,000と手形の帳簿価額減少12,000は相殺される(手形の帳簿価額は1,026,000)。結果として変動金利で借りたのと同じ利息負担となる。</p>
+<p>ASU 2017-12により、ヘッジ手段の公正価値変動は被ヘッジ項目の損益影響と<b>同じ表示科目(支払利息)</b>に表示する。OCIに繰り延べるのはキャッシュフロー・ヘッジである。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-BAR-56", section: "BAR", chapter: "BAR-02", title: "在外子会社の再測定(テンポラル法)と換算の比較",
+  scenario: `<p>Atlas Inc. (U.S.) owns 100% of Bravo Ltd., located in Country X. Bravo keeps its books in the local currency unit (LCU). Bravo mainly resells products shipped from Atlas, its sales are priced in U.S. dollars, and its financing comes from Atlas; management has concluded that Bravo's <b>functional currency is the U.S. dollar</b>.</p>
+<table><tr><th>Bravo — Dec 31, Year 3 balances</th><th>LCU</th><th>Relevant historical rate ($/LCU)</th></tr>
+<tr><td>Cash</td><td>100,000</td><td>—</td></tr>
+<tr><td>Inventory (at cost; acquired when rate was 0.50)</td><td>80,000</td><td>0.50</td></tr>
+<tr><td>Equipment, cost</td><td>400,000</td><td>0.55</td></tr>
+<tr><td>Accumulated depreciation</td><td>(100,000)</td><td>0.55</td></tr>
+<tr><td>Accounts payable</td><td>90,000</td><td>—</td></tr>
+<tr><td>Common stock</td><td>200,000</td><td>0.60</td></tr></table>
+<p>Year 3 depreciation expense was <b>40,000 LCU</b>. Exchange rates ($ per LCU): Dec 31, Year 3 current rate <b>0.45</b>; Year 3 weighted-average rate <b>0.48</b>.</p>
+<p class="ja">米国のAtlas社はX国のBravo社を100%保有する。Bravo社は現地通貨(LCU)で記帳している。Bravo社は主にAtlas社から出荷された製品を再販し、売上はドル建て、資金はAtlas社から調達しているため、経営者はBravo社の<b>機能通貨は米ドル</b>であると結論した。<br>
+Bravo社の3年目12月31日残高:現金100,000 LCU、棚卸資産80,000 LCU(原価、レート0.50の時に取得)、設備取得原価400,000 LCU(0.55)、減価償却累計額(100,000) LCU(0.55)、買掛金90,000 LCU、資本金200,000 LCU(0.60)。3年目の減価償却費は40,000 LCU。為替レート($/LCU):3年目12月31日の決算日レート0.45、3年目の加重平均レート0.48。</p>`,
+  rows: [
+    { label: "Method required to convert Bravo's books into U.S. dollars(Bravo社の帳簿をドルにする方法)", type: "select", options: ["Translation (current rate method); adjustment to OCI", "Remeasurement (temporal method); gain or loss in net income", "Remeasurement into LCU, then translation", "No conversion needed"], answer: "Remeasurement (temporal method); gain or loss in net income" },
+    { label: "Cash in U.S. dollars(現金のドル額)", type: "num", answer: 45000 },
+    { label: "Inventory in U.S. dollars(棚卸資産のドル額)", type: "num", answer: 40000 },
+    { label: "Equipment, net, in U.S. dollars(設備(純額)のドル額)", type: "num", answer: 165000 },
+    { label: "Year 3 depreciation expense in U.S. dollars(3年目の減価償却費のドル額)", type: "num", answer: 22000 },
+    { label: "Equipment, net, if the LCU were the functional currency(機能通貨がLCUだった場合の設備(純額)のドル額)", type: "num", answer: 135000 },
+    { label: "If Country X's cumulative 3-year inflation exceeded 100% and Bravo's functional currency had been the LCU(X国の3年間累積インフレ率が100%超で、機能通貨がLCUであった場合)", type: "select", options: ["Translate using the current rate method; adjustment to CTA", "Remeasure as if the U.S. dollar were the functional currency", "Restate for inflation, then translate", "Use the average rate for all accounts"], answer: "Remeasure as if the U.S. dollar were the functional currency" },
+  ],
+  explain: `<p>機能通貨がドルで帳簿がLCUなので、ドルへの<b>再測定(テンポラル法)</b>を行い、再測定損益は<b>当期純利益</b>に計上する(ASC 830-10-45-17)。換算(決算日レート法)とCTA(OCI)は機能通貨が外貨の場合の方法である。</p>
+<p>貨幣性項目は決算日レート:現金 100,000 × 0.45 = <b>45,000</b>、買掛金 90,000 × 0.45 = 40,500。<br>
+非貨幣性項目は取得時の歴史的レート:棚卸資産(原価) 80,000 × 0.50 = <b>40,000</b>。設備純額 (400,000 − 100,000) × 0.55 = <b>165,000</b>。減価償却費も関連資産の歴史的レートを用いる:40,000 × 0.55 = <b>22,000</b>(平均レートではない)。</p>
+<p>機能通貨がLCUなら資産・負債はすべて決算日レートで換算する:300,000 × 0.45 = <b>135,000</b>。差額はCTAとしてOCIに計上される。</p>
+<p>超インフレ経済(3年間の累積インフレ率が約100%超)では、在外事業体の財務諸表は報告通貨が機能通貨であるかのように<b>再測定</b>する(ASC 830-10-45-11)。</p>`,
+});
