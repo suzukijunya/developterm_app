@@ -128,7 +128,7 @@ CPA.tbs({
     { label: "Additional Medicare Tax on self-employment income (Form 8959)(自営業所得に係る追加メディケア税)", type: "num", answer: 852, tol: 1 },
   ],
   explain: `<p>総収入:現金主義では1099の有無を問わず受領額を計上し、前受の着手金も受領年度に課税される → 145,000 + 10,000 + 5,000 = 160,000。</p>
-<p>費用:飲食4,000 × 50% = 2,000、接待(シーズンチケット)は控除不可で0 → 合計2,000。自宅事務所 300 × 5 = 1,500。車両 8,000 × 0.725 = 5,800。§179 12,000。事務用品3,700。連邦所得税は控除不可で税額からの支払として扱う。本人の健康保険料はSchedule Cではなく、Schedule 1の自営業者健康保険料控除(AGI調整)で扱う。</p>
+<p>費用:飲食4,000 × 50% = 2,000、接待(シーズンチケット)は控除不可で0 → 合計2,000。自宅事務所 300 × 5 = 1,500。車両 8,000 × 0.725 = 5,800。§179 12,000。事務用品3,700。連邦所得税は控除不可で税額からの支払として扱う。本人の健康保険料はSchedule Cでは控除できない。また勤務先の補助付き健康保険に加入資格がある(辞退した)ため、Schedule 1の自営業者健康保険料控除も認められない(Schedule Aの医療費としてのみ扱い得る)。</p>
 <p>純利益 = 160,000 − (2,000 + 1,500 + 5,800 + 12,000 + 3,700) = 160,000 − 25,000 = 135,000。</p>
 <p>自営業純所得 = 135,000 × 92.35% = 124,672.50。社会保障部分:OASDI上限の残り = 184,500 − 170,000 = 14,500 → 14,500 × 12.4% = 1,798。メディケア部分:124,672.50 × 2.9% = 3,615.50(上限なし)。合計 = 5,413.50 ≒ 5,414。</p>
 <p>追加メディケア税:自営業所得の基準額は給与分だけ減額 → 200,000 − 170,000 = 30,000。(124,672.50 − 30,000) × 0.9% = 852.05 ≒ 852(給与には基準額未満のため追加税なし。この税は自営業税の控除可能部分の計算には含めない)。</p>`,
@@ -141,9 +141,9 @@ CPA.tbs({
 <tr><td>Jacob (son)</td><td>Age 17 at December 31; lived with Elena all year; did not provide over half of his own support.</td></tr>
 <tr><td>Mia (daughter)</td><td>Age 22; full-time college student for 8 months; lived with Elena except while away at school; earned $9,000 of wages but did not provide over half of her own support.</td></tr>
 <tr><td>Rosa (Elena's mother)</td><td>Age 70; lives in her own apartment across town. Income: taxable interest $3,000 and Social Security benefits $14,000 (none taxable). Elena provided 60% of Rosa's support.</td></tr>
-<tr><td>Leo (nephew)</td><td>Age 10; lived with Elena for 5 months and with his mother (Elena's sister) for 7 months; Elena paid 55% of his support.</td></tr>
+<tr><td>Leo (nephew)</td><td>Age 10; lived with Elena for 5 months and with his mother (Elena's sister, who has income requiring her to file a return) for 7 months; Elena paid 55% of his support.</td></tr>
 <tr><td>Sam (friend)</td><td>Age 30; lived with Elena all year as a member of the household; earned $6,000; Elena provided 70% of his support.</td></tr></table>
-<p class="ja">45歳のElena Ruizは2024年に離婚し再婚していない。米国市民で2026年のAGIは$85,000、自宅の維持費の半分超を負担した。全員が有効なSSNを持つ。2026年の適格親族の総所得上限は$5,300、世帯主(HOH)の標準控除は$24,150、児童税額控除は17歳未満の適格子女1人あたり$2,200、その他の扶養親族控除は$500(HOHのMAGI $200,000から段階的縮小)と仮定する。Jacob(息子):12月31日時点で17歳、通年同居、自身の扶養費の半分超を負担していない。Mia(娘):22歳、8か月間フルタイムの大学生、通学中以外は同居、給与$9,000を得たが自身の扶養費の半分超は負担していない。Rosa(母):70歳、市内の自分のアパートに居住、課税利息$3,000と社会保障給付$14,000(非課税)、Elenaが扶養費の60%を負担。Leo(甥):10歳、Elenaと5か月、母親(Elenaの姉妹)と7か月同居、Elenaが扶養費の55%を負担。Sam(友人):30歳、世帯員として通年同居、所得$6,000、Elenaが扶養費の70%を負担。</p>`,
+<p class="ja">45歳のElena Ruizは2024年に離婚し再婚していない。米国市民で2026年のAGIは$85,000、自宅の維持費の半分超を負担した。全員が有効なSSNを持つ。2026年の適格親族の総所得上限は$5,300、世帯主(HOH)の標準控除は$24,150、児童税額控除は17歳未満の適格子女1人あたり$2,200、その他の扶養親族控除は$500(HOHのMAGI $200,000から段階的縮小)と仮定する。Jacob(息子):12月31日時点で17歳、通年同居、自身の扶養費の半分超を負担していない。Mia(娘):22歳、8か月間フルタイムの大学生、通学中以外は同居、給与$9,000を得たが自身の扶養費の半分超は負担していない。Rosa(母):70歳、市内の自分のアパートに居住、課税利息$3,000と社会保障給付$14,000(非課税)、Elenaが扶養費の60%を負担。Leo(甥):10歳、Elenaと5か月、母親(Elenaの姉妹、申告義務のある所得あり)と7か月同居、Elenaが扶養費の55%を負担。Sam(友人):30歳、世帯員として通年同居、所得$6,000、Elenaが扶養費の70%を負担。</p>`,
   rows: [
     { label: "Jacob's status(Jacobの区分)", type: "select", options: ["Qualifying child — eligible for the $2,200 child tax credit", "Qualifying child — eligible only for the $500 credit for other dependents", "Qualifying relative", "Not a dependent"], answer: "Qualifying child — eligible only for the $500 credit for other dependents" },
     { label: "Mia's status(Miaの区分)", type: "select", options: ["Qualifying child (full-time student under age 24)", "Qualifying relative", "Not a dependent — her income exceeds the gross income limit", "Not a dependent — she is over age 18"], answer: "Qualifying child (full-time student under age 24)" },
