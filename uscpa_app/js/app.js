@@ -1801,8 +1801,8 @@ const App = (() => {
         ${chk("cp-credits", pr.needCredits, "会計・ビジネス単位を取る必要がある")}
         ${chk("cp-subsidy", pr.subsidy, "教育訓練給付金を受け取れる(雇用保険の加入期間などの要件あり)")}
         <div class="cp-group">条件付きの還元(受け取れる見込みのものだけチェック)</div>
-        ${chk("cp-pass", pr.pass, "合格お祝い金:期限内(入会から約2年)に4科目すべて合格できる")}
-        ${chk("cp-career", pr.career, "キャリア支援金:予備校の転職支援(ABcareer)を通じて転職する")}
+        ${chk("cp-pass", pr.pass, "合格お祝い金:期限内(再申し込みから2年以内)に4科目すべて合格できる")}
+        ${chk("cp-career", pr.career, "キャリア支援金:予備校の転職支援(AB Career)を通じて転職する")}
         ${chk("cp-other", pr.other, "その他の補助(CPA会計学院の「最大46%補助」など、内訳不明のもの)")}
         <label class="field" style="margin-top:10px"><span>どの講座でも共通でかかる費用(任意)</span><input type="number" inputmode="numeric" min="0" step="1000" id="cp-extra" value="${pr.extra}"><small class="muted">受験料・日本受験の追加料金・学歴評価など。4科目で数十万円規模になります(州と為替で変わります)</small></label>
       </div>
@@ -1810,14 +1810,14 @@ const App = (() => {
 
       <h2 class="h2">${cb.title}</h2>
       <div class="table-wrap"><table class="tbl cp-cond">
-        <thead><tr><th></th><th>合格お祝い金</th><th>キャリア支援金</th></tr></thead>
-        <tbody>${cb.rows.map((r) => `<tr><th>${esc(r[0])}</th><td>${esc(r[1])}</td><td>${esc(r[2])}</td></tr>`).join("")}</tbody>
+        <thead><tr>${cb.head.map((h) => `<th>${esc(h)}</th>`).join("")}</tr></thead>
+        <tbody>${cb.rows.map((r) => `<tr><th>${esc(r[0])}</th>${r.slice(1).map((c) => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody>
       </table></div>
       <p class="muted small">${esc(cb.note)}</p>
       ${
         noDegree
           ? `<div class="warn-box"><b>あなたの場合(受験資格チェックの入力より)</b>
-              合格お祝い金は、受け取るのが難しい可能性が高いです。期限は入会から約2年ですが、先に学士号(州によっては単位)をそろえる必要があり、学位の取得に2年以上かかると受験を始める前に期限が来てしまいます。キャリア支援金は試験に合格しなくても対象になりえますが、ABcareerで転職する場合に限られます。</div>`
+              アビタスの案内どおりモンタナ州に出願する場合、学位は不要ですが、フルパックで会計Upper 24単位・ビジネス24単位を取り終えてから受験を始めることになります。合格お祝い金の期限は再申し込みから2年以内なので、単位取得と並行して早めに科目学習を進めないと期限に間に合わない可能性があります。キャリア支援金は試験に合格しなくても対象ですが、AB Careerを通じて転職する場合に限られます。</div>`
           : `<p class="muted small">受験資格チェックに学歴を入力すると、ここにあなたの場合の注意点を表示します。</p>`
       }
       <h2 class="h2">ガイダンス・個別相談で確認すること</h2>
