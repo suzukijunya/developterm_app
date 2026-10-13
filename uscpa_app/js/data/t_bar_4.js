@@ -161,7 +161,7 @@ CPA.tbs({
 
 CPA.tbs({
   id: "TBS-BAR-65", section: "BAR", chapter: "BAR-03", title: "企業基金のキャッシュ・フロー計算書:4区分への分類と合計",
-  scenario: `<p>The Northgate Transit Authority (an enterprise fund) had the following cash transactions for Year 7. Assume GASB Statement No. 103 is effective and that, for this task, it does not change the four cash flow categories or the classification of interest applied below.</p>
+  scenario: `<p>The Northgate Transit Authority (an enterprise fund) had the following cash transactions for Year 7. For this task, classify cash flows using the following rules (apply them regardless of any GASB Statement No. 103 changes): use the four categories — operating; noncapital financing; capital and related financing; investing. Operating subsidies from other governments, transfers, and borrowings not related to capital assets (and the interest paid on them) are noncapital financing. Debt issued to acquire capital assets, capital asset acquisitions, capital grants, and principal and interest paid on capital debt are capital and related financing. Purchases of investments and interest received on investments are investing. Interest paid is never classified as operating.</p>
 <table><tr><th>Cash transaction</th><th>Amount</th></tr>
 <tr><td>Cash received from customers (fares)</td><td>$2,400,000</td></tr>
 <tr><td>Cash paid to employees</td><td>$900,000</td></tr>
@@ -177,7 +177,7 @@ CPA.tbs({
 <tr><td>Federal capital grant received for bus purchases</td><td>$500,000</td></tr>
 <tr><td>Interest received on investments</td><td>$40,000</td></tr>
 <tr><td>Purchase of investments</td><td>$300,000</td></tr></table>
-<p class="ja">Northgate交通局(企業基金)の7年目の現金取引。GASB 103号は適用済みとし、本問では以下で用いる4区分および利息の分類を変更しないものとする。<br>
+<p class="ja">Northgate交通局(企業基金)の7年目の現金取引。本問では(GASB 103号による変更の有無にかかわらず)次の規則で分類すること:営業、非資本財務、資本及び関連財務、投資の4区分を用いる。他の政府からの経常補助金、繰入・繰出、資本資産に関連しない借入(およびその支払利息)は非資本財務活動。資本資産取得のための債務の発行、資本資産の取得、資本補助金、資本債務の元本・利息の支払は資本及び関連財務活動。投資の購入と投資の受取利息は投資活動。支払利息は営業活動に分類しない。<br>
 顧客からの運賃収入$2,400,000、従業員への支払$900,000、仕入先への支払$600,000、郡からの経常補助金(資本目的に制限なし)$150,000、一般基金への繰出$200,000、運転資金のための短期借入$100,000、その短期借入の利息支払$10,000、バス購入のためのレベニュー債発行収入$3,000,000、バスの取得$2,800,000、レベニュー債元本返済$400,000、レベニュー債利息支払$180,000、バス購入のための連邦資本補助金$500,000、投資の受取利息$40,000、投資の購入$300,000。</p>`,
   rows: [
     { label: "Net cash provided by operating activities(営業活動による純キャッシュ・フロー)", type: "num", answer: 900000 },
