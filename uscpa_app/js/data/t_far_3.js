@@ -185,3 +185,104 @@ CPA.tbs({
 <p>⑥ 転換:1,000口 × 40株 = 40,000株 × $1 = $40,000が資本金。APIC = $1,006,000 − $40,000 = $966,000。</p>
 <p>⑦ 簿価法(book value method)によるため転換損益は認識しない。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-FAR-62", section: "FAR", chapter: "FAR-04", title: "利息を擬制する手形と短期債務の借換え分類",
+  scenario: `<p>Sutter Logistics is preparing its December 31, Year 2 balance sheet. Financial statements will be issued on March 5, Year 3.</p>
+<table><tr><th>Exhibit 1 — Equipment note</th><th>Data</th></tr>
+<tr><td>On January 1, Year 1, Sutter acquired specialized equipment by issuing a noninterest-bearing note</td><td>$500,000 face, due in a single payment December 31, Year 3</td></tr>
+<tr><td>Cash price of the equipment / fair value of the note</td><td>Not determinable</td></tr>
+<tr><td>Sutter's incremental borrowing rate for similar debt (imputed rate)</td><td>9%</td></tr>
+<tr><td>PV of $1 at 9% for 3 periods</td><td>0.77218</td></tr></table>
+<table><tr><th>Exhibit 2 — Other short-term obligations at 12/31, Year 2</th><th>Data</th></tr>
+<tr><td>Bank note payable due March 1, Year 3</td><td>$800,000</td></tr>
+<tr><td>On February 10, Year 3, Sutter signed a noncancelable agreement with a financially capable lender to refinance the bank note on a long-term basis (due Year 6), up to a maximum of $600,000. Sutter is not in violation of any provision of the agreement.</td><td>—</td></tr>
+<tr><td>Note payable to a supplier due January 15, Year 3</td><td>$300,000</td></tr>
+<tr><td>Sutter paid the supplier note with operating cash on January 15, Year 3, and on February 1, Year 3 issued $300,000 of 10-year bonds to replenish working capital.</td><td>—</td></tr></table>
+<p class="ja">Sutter Logistics社は第2年度12月31日の貸借対照表を作成中である。財務諸表の発行日は第3年度3月5日である。</p>
+<p class="ja">資料1:第1年度1月1日、無利息手形(額面$500,000、第3年度12月31日一括返済)を振り出して特殊設備を取得した。設備の現金価格・手形の公正価値は算定できない。類似借入の追加借入利子率(擬制利率)は9%、3期9%の現価係数は0.77218。</p>
+<p class="ja">資料2:銀行借入$800,000(第3年度3月1日期限)について、第3年度2月10日に財務的に能力のある貸手と最大$600,000を長期(第6年度期限)に借り換える解約不能契約を締結した。契約違反はない。仕入先への手形$300,000(第3年度1月15日期限)は1月15日に営業資金で支払い、2月1日に運転資金補填のため10年債$300,000を発行した。</p>`,
+  rows: [
+    { label: "Carrying amount of the equipment note at January 1, Year 1(手形の当初帳簿価額)", type: "num", answer: 386092, tol: 3 },
+    { label: "Interest expense on the equipment note for Year 1(第1年度の支払利息)", type: "num", answer: 34748, tol: 3 },
+    { label: "Carrying amount of the equipment note at December 31, Year 2(第2年度末の手形帳簿価額)", type: "num", answer: 458716, tol: 3 },
+    { label: "Amount of the $800,000 bank note classified as noncurrent(銀行借入のうち非流動分類額)", type: "num", answer: 600000 },
+    { label: "Classification of the $300,000 supplier note at 12/31, Year 2(仕入先手形の分類)", type: "select", options: ["Noncurrent, because long-term bonds were issued before the statements were issued", "Current, because it was repaid with current assets before the long-term financing", "Excluded from the balance sheet", "Reclassified to equity"], answer: "Current, because it was repaid with current assets before the long-term financing" },
+    { label: "Total current liabilities from the three obligations at 12/31, Year 2(3項目の流動負債合計)", type: "num", answer: 958716, tol: 3 },
+    { label: "Authoritative guidance for the refinancing classification(借換え分類の根拠となる基準)", type: "select", options: ["ASC 470-10 (Debt — Overall)", "ASC 835-30 (Imputation of Interest)", "ASC 450-20 (Loss Contingencies)", "ASC 842-20 (Leases — Lessee)"], answer: "ASC 470-10 (Debt — Overall)" },
+  ],
+  explain: `<p>① 手形も設備も公正価値が不明なので、追加借入利子率9%で利息を擬制する(ASC 835-30)。$500,000 × 0.77218 = $386,090(正確には$386,092)。割引額$113,908。</p>
+<p>② 第1年度利息:$386,092 × 9% = $34,748 → 年度末簿価$420,840。</p>
+<p>③ 第2年度利息:$420,840 × 9% = $37,876 → 簿価$458,716(= $500,000 ÷ 1.09)。満期は12か月以内なので流動負債である。</p>
+<p>④ 貸借対照表日後・発行前に借換え契約を締結し要件(解約不能・違反なし・貸手に能力)を満たせば、契約上の借換え可能額まで非流動に分類できる:$600,000(残り$200,000は流動)。</p>
+<p>⑤ 仕入先手形は長期資金調達の前に流動資産で返済されたため、借換えの意図があっても流動に分類する。</p>
+<p>⑥ 流動負債合計 = $458,716 + $200,000 + $300,000 = $958,716。</p>
+<p>⑦ 短期債務の借換えによる分類はASC 470-10(旧SFAS 6)に規定される。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-FAR-63", section: "FAR", chapter: "FAR-04", title: "債務者側の条件変更・資産譲渡による債務リストラクチャリング",
+  scenario: `<p>Two unrelated debtors, Kessler Co. and Ortega Inc., are experiencing financial difficulty. In each case the creditor granted a concession, so the transaction is a troubled debt restructuring for the debtor. Ignore income taxes.</p>
+<table><tr><th>Exhibit 1 — Kessler Co. (settlement by asset transfer, December 31, Year 3)</th><th>Data</th></tr>
+<tr><td>Note payable principal</td><td>$1,000,000</td></tr>
+<tr><td>Accrued interest payable</td><td>100,000</td></tr>
+<tr><td>Land transferred in full settlement — fair value</td><td>700,000</td></tr>
+<tr><td>Land — carrying amount</td><td>550,000</td></tr></table>
+<table><tr><th>Exhibit 2 — Ortega Inc. (modification of terms, January 1, Year 4)</th><th>Data</th></tr>
+<tr><td>Note payable principal</td><td>$1,000,000</td></tr>
+<tr><td>Accrued interest payable</td><td>100,000</td></tr>
+<tr><td>Modified terms</td><td>Accrued interest forgiven; principal reduced to $800,000 due December 31, Year 6; interest at 5% of $800,000 payable each December 31</td></tr></table>
+<p class="ja">無関係の債務者Kessler社とOrtega社は財政難にある。いずれも債権者が譲歩しており、債務者にとって債務リストラクチャリング(TDR)に該当する。税金は無視する。</p>
+<p class="ja">資料1(Kessler社、第3年度12月31日に資産譲渡で全額決済):手形元本$1,000,000、未払利息$100,000、譲渡した土地の公正価値$700,000、帳簿価額$550,000。</p>
+<p class="ja">資料2(Ortega社、第4年度1月1日に条件変更):手形元本$1,000,000、未払利息$100,000。変更後条件:未払利息を免除、元本を$800,000に減額し第6年度12月31日満期、毎年12月31日に$800,000の5%の利息を支払う。</p>`,
+  rows: [
+    { label: "Kessler — gain on restructuring of payables(Kessler社の債務リストラ利益)", type: "num", answer: 400000 },
+    { label: "Kessler — gain on disposal of land(Kessler社の土地処分益)", type: "num", answer: 150000 },
+    { label: "Ortega — gain on restructuring recognized January 1, Year 4(Ortega社の債務リストラ利益)", type: "num", answer: 180000 },
+    { label: "Ortega — carrying amount of the restructured debt on January 1, Year 4(条件変更後の債務帳簿価額)", type: "num", answer: 920000 },
+    { label: "Ortega — interest expense for Year 4(Ortega社の第4年度支払利息)", type: "num", answer: 0 },
+    { label: "Ortega — carrying amount of the debt at December 31, Year 4(第4年度末の債務帳簿価額)", type: "num", answer: 880000 },
+    { label: "If the total future undiscounted cash payments had exceeded the $1,100,000 carrying amount, Ortega would(将来支払総額が帳簿価額を上回る場合)", type: "select", options: ["Recognize a gain measured using the present value of future payments", "Recognize no gain; compute a new effective interest rate and apply it prospectively", "Recognize a loss for the excess payments", "Derecognize the old debt and record the new debt at fair value"], answer: "Recognize no gain; compute a new effective interest rate and apply it prospectively" },
+  ],
+  explain: `<p>債務者のTDR会計はASC 470-60による。</p>
+<p>① 資産譲渡による決済:債務帳簿価額($1,000,000 + $100,000 = $1,100,000)− 譲渡資産の公正価値$700,000 = リストラ利益$400,000。</p>
+<p>② 土地は公正価値で処分したとみなす:$700,000 − $550,000 = 処分益$150,000(リストラ利益とは区分)。</p>
+<p>③ 条件変更:将来の割引前支払総額 = 元本$800,000 + 利息$40,000 × 3年 = $920,000。帳簿価額$1,100,000がこれを上回るので、差額$180,000を利益として認識する。</p>
+<p>④ 債務の帳簿価額は将来支払総額の$920,000に減額される。</p>
+<p>⑤ 将来支払がすべて帳簿価額の返済に充てられるため、以後の支払利息は0である。</p>
+<p>⑥ 第4年度末:$920,000 − $40,000 = $880,000。</p>
+<p>⑦ 将来支払総額が帳簿価額を上回る場合は利益を認識せず、帳簿価額と将来支払額を等しくする新たな実効金利を算定して将来に向かって適用する。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-FAR-64", section: "FAR", chapter: "FAR-04", title: "借手のファイナンス・リースとオペレーティング・リースの比較",
+  scenario: `<p>On January 1, Year 1, Pinecrest Clinics (lessee) signed two equipment leases. Each lease has a 5-year term, requires five annual payments of $100,000 due each January 1 beginning January 1, Year 1, and the rate implicit in each lease is not readily determinable; Pinecrest's incremental borrowing rate is 6%. There are no initial direct costs, lease incentives, or residual value guarantees.</p>
+<table><tr><th>Exhibit — Lease terms</th><th>Lease A (imaging system)</th><th>Lease B (lab analyzers)</th></tr>
+<tr><td>Transfer of ownership at end of term</td><td>Yes</td><td>No</td></tr>
+<tr><td>Purchase option</td><td>None</td><td>None</td></tr>
+<tr><td>Economic life of underlying asset</td><td>8 years</td><td>12 years</td></tr>
+<tr><td>Fair value of underlying asset</td><td>$470,000</td><td>$900,000</td></tr>
+<tr><td>Specialized asset</td><td>No</td><td>No</td></tr></table>
+<p>PV of an annuity due of $1, 5 periods, 6% = 4.46511. Pinecrest uses straight-line amortization for ROU assets of finance leases.</p>
+<p class="ja">第1年度1月1日、Pinecrest Clinics社(借手)は2件の設備リースを締結した。いずれも期間5年、毎年1月1日払いの年額$100,000を5回(初回は第1年度1月1日)、リースの計算利子率は容易に算定できず、借手の追加借入利子率は6%。当初直接コスト、リース・インセンティブ、残価保証はない。</p>
+<p class="ja">リースA(画像診断装置):期末に所有権移転あり、購入オプションなし、経済的耐用年数8年、公正価値$470,000、特殊資産ではない。リースB(検査機器):所有権移転なし、購入オプションなし、経済的耐用年数12年、公正価値$900,000、特殊資産ではない。5期6%の期首払年金現価係数は4.46511。ファイナンス・リースの使用権資産は定額法で償却する。</p>`,
+  rows: [
+    { label: "Initial lease liability for each lease on January 1, Year 1(各リースの当初リース負債)", type: "num", answer: 446511, tol: 2 },
+    { label: "Lease A — interest expense for Year 1(リースAの第1年度支払利息)", type: "num", answer: 20791, tol: 2 },
+    { label: "Lease A — amortization of ROU asset for Year 1(リースAの使用権資産償却費)", type: "num", answer: 55814, tol: 2 },
+    { label: "Lease A — total Year 1 expense(リースAの第1年度費用合計)", type: "num", answer: 76605, tol: 3 },
+    { label: "Lease B — single lease cost for Year 1(リースBの第1年度リース費用)", type: "num", answer: 100000 },
+    { label: "Lease B — ROU asset at December 31, Year 1(リースBの第1年度末使用権資産)", type: "num", answer: 367301, tol: 3 },
+    { label: "Statement of cash flows — principal portion of Lease A payments(リースA支払元本部分のCF区分)", type: "select", options: ["Operating activities", "Investing activities", "Financing activities", "Noncash disclosure only"], answer: "Financing activities" },
+    { label: "Statement of cash flows — Lease B payments(リースB支払額のCF区分)", type: "select", options: ["Operating activities", "Investing activities", "Financing activities", "Noncash disclosure only"], answer: "Operating activities" },
+  ],
+  explain: `<p>分類:リースAは所有権移転があるためファイナンス・リース。リースBは所有権移転・購入オプションなし、期間5/12年=42%(主要部分ではない)、支払現在価値$446,511/$900,000=50%(実質的にすべてではない)、特殊資産でもないためオペレーティング・リースである。</p>
+<p>① 当初負債:$100,000 × 4.46511 = $446,511(両リース同額、使用権資産も同額)。</p>
+<p>② リースA利息:初回支払後の負債 $446,511 − $100,000 = $346,511 × 6% = $20,791。</p>
+<p>③ 所有権が移転するので、使用権資産はリース期間ではなく経済的耐用年数8年で償却:$446,511 ÷ 8 = $55,814。</p>
+<p>④ 費用合計 = $20,791 + $55,814 = $76,605(前倒しの費用パターン)。</p>
+<p>⑤ オペレーティング・リースは単一のリース費用を定額で認識:支払総額$500,000 ÷ 5年 = $100,000。</p>
+<p>⑥ 年度末負債 = $346,511 × 1.06 = $367,302。使用権資産 = 負債 − 未払リース料(期首払いで0)= 当初$446,511 −(リース費用$100,000 − 利息相当$20,791 = $79,209)= $367,302(端数により$367,301〜$367,302)。</p>
+<p>⑦ ファイナンス・リースの元本返済部分は財務活動(利息部分は営業活動)。</p>
+<p>⑧ オペレーティング・リースの支払は営業活動に区分する。</p>`,
+});

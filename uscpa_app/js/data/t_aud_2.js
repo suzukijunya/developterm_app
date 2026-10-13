@@ -175,3 +175,59 @@ CPA.tbs({
 <p>統制6:出力物の配布制限とコントロール・トータルとの照合 → 業務処理統制(出力)。</p>
 <p>依拠への影響:自動化統制は一度テストすれば一貫して機能すると推定できるが、それはプログラム変更管理などのITGCが有効であることが前提である。変更管理が無効なら価格ロジックが期中に無承認で変更された可能性があるため、1回のテストでは期間を通じた運用を示せない。期間を通じた運用の他の証拠を入手するか、依拠を減らして実証手続を拡大する。統制の不備が直ちに財務諸表の否定的意見につながるわけではない。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-AUD-46", section: "AUD", chapter: "AUD-03", title: "統合監査(AS 2201):トップダウン・アプローチと報告",
+  scenario: `<p>Your firm is performing an integrated audit of <b>Lindqvist Technologies, Inc.</b>, an accelerated filer, for the year ended December 31, Year 1, under <b>PCAOB AS 2201</b>. Planning materiality is <b>$1,000,000</b>. Excerpts from the planning memo and year-end status notes follow.</p>
+<table><tr><th>Item</th><th>Planning memo / status note</th></tr>
+<tr><td>1</td><td>Account data: Revenue $84M; Inventory $19M; Prepaid insurance $40,000 (no unusual risk factors); Litigation reserve and related disclosure $600,000 (a patent lawsuit with significant judgment about the probability and amount of loss).</td></tr>
+<tr><td>2</td><td>The team proposes to begin by selecting individual transaction-level controls over revenue and then work upward to the entity level.</td></tr>
+<tr><td>3</td><td>The team will perform a walkthrough of the revenue process, following a transaction from origination through recording.</td></tr>
+<tr><td>4</td><td>In Q4, the team identified a material weakness in the period-end financial reporting process. Management corrected all resulting misstatements, and substantive procedures provided sufficient appropriate evidence that the financial statements are fairly presented. Management's report discloses the material weakness and concludes ICFR is not effective.</td></tr>
+<tr><td>5</td><td>The partner asks when and how the material weakness must be communicated to the audit committee.</td></tr></table>
+<p class="ja">あなたの事務所は早期提出会社Lindqvist Technologies社の1年目12月31日終了年度の統合監査をPCAOB AS 2201に基づき実施している。計画上の重要性は$1,000,000。1:勘定データ — 売上高$84M、棚卸資産$19M、前払保険料$40,000(特段のリスク要因なし)、訴訟引当金と関連開示$600,000(損失の発生可能性と金額に重要な判断を伴う特許訴訟)。2:チームは売上の取引レベルの統制から選定を始め、全社的レベルへと積み上げることを提案している。3:売上プロセスについて取引の発生から記録までを追跡するウォークスルーを行う。4:第4四半期に決算・財務報告プロセスで重要な欠陥を識別した。経営者は生じた虚偽表示をすべて修正し、実証手続により財務諸表の適正表示について十分かつ適切な証拠を得た。経営者報告書は重要な欠陥を開示しICFRは有効でないと結論している。5:パートナーは重要な欠陥を監査委員会にいつ、どのように伝達すべきかを尋ねている。</p>`,
+  rows: [
+    { label: "Item 1 — Account that is significant even though its amount is below planning materiality(計画上の重要性未満でも重要な勘定となるもの)", type: "select", options: ["Prepaid insurance", "Litigation reserve and related disclosure", "Neither; only accounts exceeding materiality can be significant", "Both"], answer: "Litigation reserve and related disclosure" },
+    { label: "Item 2 — Correct starting point under the top-down approach(トップダウン・アプローチの正しい出発点)", type: "select", options: ["Transaction-level controls over the highest-volume accounts", "The financial statement level and the auditor's understanding of overall risks to ICFR, then entity-level controls", "Management's list of key controls, tested in the order provided", "IT general controls over all systems"], answer: "The financial statement level and the auditor's understanding of overall risks to ICFR, then entity-level controls" },
+    { label: "Item 3 — Primary purpose of the walkthrough(ウォークスルーの主な目的)", type: "select", options: ["To provide sufficient evidence of operating effectiveness for the entire year", "To understand the likely sources of misstatement and evaluate the design and implementation of controls", "To substitute for substantive tests of revenue", "To determine planning materiality"], answer: "To understand the likely sources of misstatement and evaluate the design and implementation of controls" },
+    { label: "Item 4 — Opinion on ICFR(ICFRに対する意見)", type: "select", options: ["Unqualified", "Qualified", "Adverse", "Disclaimer"], answer: "Adverse" },
+    { label: "Item 4 — Opinion on the financial statements(財務諸表に対する意見)", type: "select", options: ["Unqualified", "Qualified", "Adverse", "Disclaimer"], answer: "Unqualified" },
+    { label: "Item 4 — Dating of the two reports(2つの報告書の日付)", type: "select", options: ["The ICFR report is dated as of December 31, Year 1", "Both reports must bear the same date", "The ICFR report must be dated later than the financial statement report", "The dates may differ by up to 60 days"], answer: "Both reports must bear the same date" },
+    { label: "Item 5 — Communication of the material weakness to the audit committee(重要な欠陥の監査委員会への伝達)", type: "select", options: ["Orally, at any time before the next year's audit begins", "In writing, prior to the issuance of the auditor's report on ICFR", "In writing, within 60 days after the report release date", "Communication is unnecessary because management's report discloses it"], answer: "In writing, prior to the issuance of the auditor's report on ICFR" },
+  ],
+  explain: `<p>重要な勘定:AS 2201では、勘定・開示が重要かどうかは金額だけでなく質的なリスク要因(複雑さ、判断の程度、偶発事象など)で判断する。訴訟引当金は$600,000と重要性未満だが、損失見積りに重要な判断を伴い虚偽表示が重要となる合理的な可能性があるため重要な勘定・開示である。前払保険料は僅少でリスク要因もないため重要ではない。</p>
+<p>トップダウン:財務諸表レベルからICFR全体のリスクを理解し、全社的統制(entity-level controls)を評価し、次に重要な勘定・開示と関連するアサーションを識別し、虚偽表示の発生源を理解したうえで検証する統制を選定する。取引レベルから積み上げるのは逆である。</p>
+<p>ウォークスルー:虚偽表示の発生しうる箇所の理解の確認と統制のデザイン・業務への適用の評価が目的であり、通年の運用評価の十分な証拠にはならない。</p>
+<p>報告:期末日時点で重要な欠陥が存在すればICFRには否定的意見(adverse)を表明する。一方、虚偽表示が修正され実証手続で十分な証拠を得ていれば、財務諸表には無限定適正意見を表明できる。ICFRと財務諸表の報告書(別個の報告書の場合)は同じ日付としなければならない。</p>
+<p>伝達:AS 2201は重要な欠陥(および重要な不備)を、ICFRの監査報告書の発行前に、書面で経営者と監査委員会に伝達することを求める。経営者の報告書に開示されていても伝達は省略できない。60日以内という期限はAU-C 265(非発行体)の規定である。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-AUD-47", section: "AUD", chapter: "AUD-03", title: "AU-C 265に基づく内部統制の不備の伝達文書のレビュー",
+  scenario: `<p>The audit of <b>Rourke Distributors, LLC</b> (nonissuer) was completed and the auditor's report release date was <b>March 10, Year 2</b>. A staff member drafted the communication of internal control matters and a cover memo. Review the bracketed items.</p>
+<table><tr><th>Ref.</th><th>Draft wording</th></tr>
+<tr><td>[A]</td><td>Addressed "To the Members and Lenders of Rourke Distributors, LLC."</td></tr>
+<tr><td>[B]</td><td>"In planning and performing our audit, we considered internal control as a basis for designing audit procedures and to express an opinion on the effectiveness of the Company's internal control."</td></tr>
+<tr><td>[C]</td><td>"A material weakness is a deficiency, or combination of deficiencies, in internal control such that there is a <i>remote</i> possibility that a material misstatement will not be prevented, or detected and corrected, on a timely basis."</td></tr>
+<tr><td>[D]</td><td>"A significant deficiency is a deficiency, or a combination of deficiencies, in internal control that is <i>more severe than a material weakness</i>."</td></tr>
+<tr><td>[E]</td><td>"A significant deficiency in inventory reconciliations is not reported here because management remediated it in February, Year 2."</td></tr>
+<tr><td>[F]</td><td>"We are pleased to report that no other significant deficiencies exist."</td></tr>
+<tr><td>[G]</td><td>Cover memo: "The letter will be delivered by <i>July 8, Year 2 (120 days after the report release date)</i>."</td></tr></table>
+<p class="ja">Rourke Distributors社(非発行体)の監査が完了し、監査報告書の発行日(report release date)は2年目3月10日である。スタッフが内部統制に関する事項の伝達文書とカバー・メモを起案した。[A]宛先が「社員および貸手各位」。[B]「監査の計画と実施にあたり、監査手続を立案する基礎として、また会社の内部統制の有効性に意見を表明するために内部統制を検討した。」[C]重要な欠陥の定義で「僅少な(remote)可能性」。[D]重要な不備の定義で「重要な欠陥より重大な」。[E]棚卸資産の調整に関する重要な不備は2年目2月に経営者が是正したので記載しない。[F]「その他の重要な不備は存在しないことを報告する。」[G]カバー・メモ:「報告書発行日から120日後の2年目7月8日までに提出する。」</p>`,
+  rows: [
+    { label: "[A] Appropriate addressees(適切な宛先)", type: "select", options: ["Members and lenders", "Management and those charged with governance", "The state licensing board", "Any party requesting a copy"], answer: "Management and those charged with governance" },
+    { label: "[B] Correct wording(正しい文言)", type: "select", options: ["Keep as drafted", "\"...but not for the purpose of expressing an opinion on the effectiveness of internal control. Accordingly, we do not express an opinion on the effectiveness of internal control.\"", "\"...and we provide limited assurance on internal control.\"", "\"...and we conclude that internal control is effective.\""], answer: "\"...but not for the purpose of expressing an opinion on the effectiveness of internal control. Accordingly, we do not express an opinion on the effectiveness of internal control.\"" },
+    { label: "[C] Replacement for \"remote\"(「remote」の置換)", type: "select", options: ["remote (no change)", "reasonable", "probable", "more than remote but less than likely"], answer: "reasonable" },
+    { label: "[D] Replacement for \"more severe than a material weakness\"(「重要な欠陥より重大な」の置換)", type: "select", options: ["equal in severity to a material weakness", "less severe than a material weakness, yet important enough to merit attention by those charged with governance", "that results in a misstatement exceeding materiality", "identified by management rather than the auditor"], answer: "less severe than a material weakness, yet important enough to merit attention by those charged with governance" },
+    { label: "[E] Treatment of the remediated inventory deficiency(是正済みの棚卸資産の不備の取扱い)", type: "select", options: ["Omit, because it was remediated", "Include it, because significant deficiencies identified during the audit must be communicated even if remediated", "Communicate orally only", "Report it only if it recurs next year"], answer: "Include it, because significant deficiencies identified during the audit must be communicated even if remediated" },
+    { label: "[F] Treatment of the statement(この記述の取扱い)", type: "select", options: ["Keep as drafted", "Delete; the auditor should not issue a written communication stating that no significant deficiencies were identified", "Change to \"no material weaknesses exist\"", "Move it to the auditor's report on the financial statements"], answer: "Delete; the auditor should not issue a written communication stating that no significant deficiencies were identified" },
+    { label: "[G] Latest permissible delivery date(提出の最終期限)", type: "select", options: ["March 10, Year 2", "April 9, Year 2", "May 9, Year 2", "July 8, Year 2"], answer: "May 9, Year 2" },
+  ],
+  explain: `<p>[A]:AU-C 265の書面伝達は経営者と統治責任者宛てであり、利用は経営者・統治責任者・組織内の者(および該当する場合は規制当局)に制限される旨のアラートを付す。貸手は宛先とならない。</p>
+<p>[B]:財務諸表監査では内部統制は手続立案の基礎として検討するにとどまり、内部統制の有効性に対する意見表明目的ではない。その旨と意見を表明しない旨を記載する。</p>
+<p>[C]:重要な欠陥の定義は「重要な虚偽表示が適時に防止または発見・是正されない合理的な可能性(reasonable possibility)がある」不備である。</p>
+<p>[D]:重要な不備は「重要な欠陥ほど重大ではないが、統治責任者の注意に値するほど重要な」不備である。</p>
+<p>[E]:監査中に識別された重要な不備・重要な欠陥は、監査期間中に是正されたものも含めて伝達しなければならない。</p>
+<p>[F]:「重要な不備は存在しない」といった書面を発行してはならない。財務諸表監査の範囲では、そのような保証を与える根拠がなく誤解を招くためである。</p>
+<p>[G]:書面伝達は報告書発行日までに行うのが望ましいが、遅くとも報告書発行日の60日後までに行う。3月10日 + 60日:3月の残り21日 + 4月30日 = 51日、残り9日 → 5月9日。</p>`,
+});
