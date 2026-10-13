@@ -195,3 +195,70 @@ CPA.tbs({
 <p>純増加 = 900,000 + 40,000 + 120,000 − 260,000 = 800,000。</p>
 <p>GASBでは直接法が必須で、営業利益から営業活動の純キャッシュ・フローへの調整表を併せて表示する。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-BAR-66", section: "BAR", chapter: "BAR-03", title: "GASB 87:借手・貸手のリース処理(政府資金と政府全体の比較)",
+  scenario: `<p>On January 1, Year 1, Maple County (a) leased road equipment for the Public Works Department (accounted for in the General Fund) and (b) leased space in a county-owned building to a café operator.</p>
+<table><tr><th>Exhibit 1 — Lessee lease (equipment)</th><th></th></tr>
+<tr><td>Lease term (noncancelable; no purchase option)</td><td>5 years</td></tr>
+<tr><td>Annual payment, due each December 31 beginning Year 1</td><td>$50,000</td></tr>
+<tr><td>County's incremental borrowing rate</td><td>5%</td></tr>
+<tr><td>PV of ordinary annuity, 5 periods, 5%</td><td>4.32948</td></tr>
+<tr><td>Useful life of the equipment</td><td>8 years</td></tr></table>
+<table><tr><th>Exhibit 2 — Lessor lease (café space)</th><th></th></tr>
+<tr><td>Lease term</td><td>10 years</td></tr>
+<tr><td>Present value of lease payments to be received (measured at commencement)</td><td>$120,000</td></tr>
+<tr><td>No payments were received at or before commencement</td><td></td></tr></table>
+<p>Round all amounts to the nearest dollar.</p>
+<p class="ja">1年目1月1日、Maple郡は(a)公共事業部(一般基金で会計処理)のために道路機材をリースで借り入れ、(b)郡所有ビルのスペースをカフェ事業者に貸し出した。<br>
+借手リース:リース期間5年(解約不能、購入オプションなし)、年間支払額$50,000(1年目から毎年12月31日払い)、追加借入利子率5%、5期5%の通常年金現価係数4.32948、機材の耐用年数8年。<br>
+貸手リース:リース期間10年、受け取るリース料の現在価値(開始日測定)$120,000、開始日以前の受取なし。金額は1ドル未満を四捨五入する。</p>`,
+  rows: [
+    { label: "Lease liability at commencement — government-wide(開始日のリース負債:政府全体)", type: "num", answer: 216474, tol: 1 },
+    { label: "General Fund entry at commencement(開始日の一般基金の仕訳)", type: "select", options: ["No entry until the first payment", "Dr Expenditures—capital outlay; Cr Other financing sources—leases, $216,474", "Dr Lease asset; Cr Lease liability, $216,474", "Dr Expenditures—rent $50,000; Cr Cash $50,000"], answer: "Dr Expenditures—capital outlay; Cr Other financing sources—leases, $216,474" },
+    { label: "Year 1 interest expense — government-wide(1年目の支払利息:政府全体)", type: "num", answer: 10824, tol: 1 },
+    { label: "Year 1 amortization expense on the lease asset — government-wide(1年目のリース資産償却費)", type: "num", answer: 43295, tol: 1 },
+    { label: "Lease liability, Dec 31, Year 1 — government-wide(1年目末のリース負債)", type: "num", answer: 177298, tol: 1 },
+    { label: "General Fund expenditure for debt service — principal, Year 1(1年目の一般基金の債務返済元本支出)", type: "num", answer: 39176, tol: 1 },
+    { label: "Lessor recognition at commencement(貸手の開始日の認識)", type: "select", options: ["Lease receivable and lease revenue of $120,000", "Lease receivable and deferred inflow of resources of $120,000; the building remains on the books", "Derecognize the leased portion of the building and recognize a gain", "No entry; revenue is recognized as cash is received"], answer: "Lease receivable and deferred inflow of resources of $120,000; the building remains on the books" },
+    { label: "Year 1 lease revenue recognized from the deferred inflow (straight-line)(1年目に繰延資源流入から認識するリース収益)", type: "num", answer: 12000 },
+  ],
+  explain: `<p>リース負債 = 50,000 × 4.32948 = 216,474。政府全体ではリース資産(使用権資産)とリース負債を同額で認識する。</p>
+<p>一般基金(修正発生主義)では、開始日に資本支出216,474とその他の財源(リース)216,474を計上する(資産・長期負債は計上しない)。</p>
+<p>1年目利息 = 216,474 × 5% = 10,824。償却費 = 216,474 ÷ 5年(リース期間 < 耐用年数8年なので短い方)= 43,295。</p>
+<p>1年目末負債 = 216,474 + 10,824 − 50,000 = 177,298。</p>
+<p>一般基金の支払時:債務返済(元本)支出 = 50,000 − 10,824 = 39,176、債務返済(利息)支出10,824。</p>
+<p>貸手:リース債権とリースに係る繰延資源流入を120,000で認識し、原資産(建物)は引き続き計上する。繰延資源流入はリース期間にわたり規則的に収益化:120,000 ÷ 10 = 12,000(債権には別途利息収益を認識する)。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-BAR-67", section: "BAR", chapter: "BAR-03", title: "GASB 96:サブスクリプション型ITアレンジメント(SBITA)の資産計上",
+  scenario: `<p>On July 1, Year 3, Riverside School District signed a cloud-based enterprise resource planning subscription (SBITA). Terms and costs:</p>
+<table><tr><th>Item</th><th>Amount / detail</th></tr>
+<tr><td>Noncancelable subscription term</td><td>4 years</td></tr>
+<tr><td>Annual subscription payment, due each July 1 (first payment made at commencement)</td><td>$90,000</td></tr>
+<tr><td>Incremental borrowing rate</td><td>6%</td></tr>
+<tr><td>PV of ordinary annuity, 3 periods, 6%</td><td>2.67301</td></tr>
+<tr><td>Preliminary project stage — needs assessment and vendor selection</td><td>$25,000</td></tr>
+<tr><td>Initial implementation stage — configuration, coding and interface testing</td><td>$60,000</td></tr>
+<tr><td>Training of district staff</td><td>$15,000</td></tr></table>
+<p><b>Exhibit 2:</b> The district also signed a separate 10-month subscription for survey software with no renewal options.</p>
+<p>The district's fiscal year ends June 30. Round to the nearest dollar.</p>
+<p class="ja">3年目7月1日、Riverside学区はクラウド型ERPのサブスクリプション契約(SBITA)を締結した。解約不能期間4年、年間支払額$90,000(毎年7月1日払い、初回は開始日に支払済)、追加借入利子率6%、3期6%の通常年金現価係数2.67301。予備的プロジェクト段階(ニーズ評価・ベンダー選定)$25,000、初期導入段階(設定・コーディング・インターフェース試験)$60,000、職員研修$15,000。<br>
+資料2:別途、更新オプションのない10か月のアンケートソフトの契約も締結した。会計年度末は6月30日。金額は1ドル未満を四捨五入する。</p>`,
+  rows: [
+    { label: "Subscription liability at commencement (after the first payment)(開始日のサブスクリプション負債)", type: "num", answer: 240571, tol: 2 },
+    { label: "Subscription asset at commencement(開始日のサブスクリプション資産)", type: "num", answer: 390571, tol: 2 },
+    { label: "Total costs expensed as incurred(発生時に費用処理する額の合計)", type: "num", answer: 40000 },
+    { label: "Amortization expense for fiscal year ending June 30, Year 4(4年6月期の償却費)", type: "num", answer: 97643, tol: 2 },
+    { label: "Interest expense for fiscal year ending June 30, Year 4(4年6月期の支払利息)", type: "num", answer: 14434, tol: 2 },
+    { label: "Accounting for the 10-month survey software subscription(10か月契約の会計処理)", type: "select", options: ["Capitalize a subscription asset and liability", "Short-term SBITA — recognize outflows as expense based on the payment terms", "Recognize an intangible asset only for the implementation costs and a liability for all payments", "Disclose only"], answer: "Short-term SBITA — recognize outflows as expense based on the payment terms" },
+    { label: "Governmental fund reporting at commencement for the ERP SBITA(政府資金での開始日の表示)", type: "select", options: ["Subscription asset and subscription liability", "Capital outlay expenditure and an other financing source equal to the initial subscription liability", "Deferred outflow of resources for the full payment stream", "No recognition until each annual payment"], answer: "Capital outlay expenditure and an other financing source equal to the initial subscription liability" },
+  ],
+  explain: `<p>負債:開始日の支払後に残る3回の支払の現在価値 = 90,000 × 2.67301 = 240,571。</p>
+<p>資産 = 負債240,571 + 開始日の支払90,000 + 初期導入段階の資本化コスト60,000 = 390,571。</p>
+<p>予備的プロジェクト段階のコスト25,000と研修費15,000は発生時に費用処理 → 40,000(研修費は段階にかかわらず費用)。</p>
+<p>償却費 = 390,571 ÷ 4年 = 97,643。支払利息 = 240,571 × 6% = 14,434。</p>
+<p>最長期間が12か月以下の短期SBITAは資産・負債を認識せず、支払条件に基づき費用処理する。</p>
+<p>政府資金では、リースと同様に初期のサブスクリプション負債額を資本支出とその他の財源として計上する(開始日の支払90,000は支出として別途計上)。</p>`,
+});
