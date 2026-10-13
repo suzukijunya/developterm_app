@@ -188,3 +188,58 @@ CPA.tbs({ id: "TBS-TCP-28", section: "TCP", chapter: "TCP-01", title: "AOTCとLL
 <p><b>529</b>:529の適格費用は授業料・教科書・寮費食費(半時間以上在籍)で 14,000 + 1,000 + 12,000 = 27,000。AOTCに使った4,000を差し引くと <b>23,000</b>。分配10,000 ≤ 23,000 なので全額非課税、所得算入額は <b>0</b>(同じ費用を二重に使わないことが調整の要点)。</p>
 <p>控除合計 = 1,250 + 900 = <b>2,150</b>。</p>`,
 });
+
+CPA.tbs({ id: "TBS-TCP-29", section: "TCP", chapter: "TCP-01", title: "寄附のバンチング:値上り株式のDAF寄附とOBBBAの0.5%フロア",
+  scenario: `<p>Email from client Ota (married filing jointly):</p>
+<p><i>"We normally give $10,000 cash to our church every year. Our AGI will be about $300,000 in both 2026 and 2027. Each year we pay $25,000 of state and local taxes and $5,000 of mortgage interest. A friend suggested we instead give our appreciated stock to a donor-advised fund (DAF) in 2026 and skip our church gift in 2027 except for a $2,000 cash gift. Which plan gives more deductions?"</i></p>
+<table><tr><th>Plan</th><th>2026</th><th>2027</th></tr>
+<tr><td>A (current)</td><td>$10,000 cash to church</td><td>$10,000 cash to church</td></tr>
+<tr><td>B (bunching)</td><td>Publicly traded stock held 6 years (basis <b>$4,000</b>, FMV <b>$20,000</b>) to a DAF sponsored by a public charity</td><td>$2,000 cash directly to church</td></tr></table>
+<p>Assumptions (law after the One Big Beautiful Bill Act): standard deduction for joint filers <b>$32,200</b> in both years; itemized charitable deductions are allowed only to the extent they exceed <b>0.5% of AGI</b>; non-itemizers may deduct cash gifts to public charities (other than DAFs) up to <b>$2,000</b> on a joint return; the SALT deduction cap is not binding; the couple is in the 24% bracket, so the itemized-deduction value cap does not apply.</p>
+<p class="ja">顧客Ota夫妻(夫婦合算申告)からのメール:「毎年教会に現金$10,000を寄附している。2026年・2027年ともAGIは約$300,000の見込み。毎年、州・地方税$25,000と住宅ローン利息$5,000を支払う。友人から、2026年に値上りした株式をドナー・アドバイズド・ファンド(DAF)に寄附し、2027年は現金$2,000の寄附にとどめる案を勧められた。どちらの控除が大きいか。」プランA:両年とも教会に現金$10,000。プランB:2026年に6年保有の上場株式(取得価額$4,000、時価$20,000)を公益慈善団体が運営するDAFへ寄附、2027年は教会へ直接現金$2,000。前提(OBBBA後の法律):夫婦合算の標準控除は両年とも$32,200。項目別控除の寄附金はAGIの0.5%を超える部分のみ控除可能。項目別控除を選ばない者は公益慈善団体(DAFを除く)への現金寄附を合算申告で$2,000まで控除できる。SALT上限は影響しない。税率区分は24%で、項目別控除の価値上限は適用されない。</p>`,
+  rows: [
+    { label: "Plan A: total deductions from AGI for 2026 and 2027 combined(プランA:2026・2027年のAGIからの控除合計)", type: "num", answer: 77000 },
+    { label: "Plan B: 2026 charitable deduction after the 0.5% floor(プランB:0.5%フロア適用後の2026年の寄附金控除)", type: "num", answer: 18500 },
+    { label: "Plan B: 2026 total itemized deductions(プランB:2026年の項目別控除合計)", type: "num", answer: 48500 },
+    { label: "Plan B: 2027 total deductions from AGI(プランB:2027年のAGIからの控除合計)", type: "num", answer: 34200 },
+    { label: "Plan B: total deductions for both years combined(プランB:両年の控除合計)", type: "num", answer: 82700 },
+    { label: "Capital gain that the couple avoids recognizing by donating the stock(株式寄附により認識を回避できるキャピタルゲイン)", type: "num", answer: 16000 },
+    { label: "AGI percentage limit applicable to the 2026 stock gift(2026年の株式寄附に適用されるAGI限度割合)", type: "select", options: ["60%", "50%", "30%", "20%"], answer: "30%" },
+    { label: "If the stock had been held only 8 months, the 2026 contribution amount before the floor would be(株式の保有期間が8か月だった場合、フロア適用前の2026年の寄附額)", type: "select", options: ["$20,000 (FMV)", "$4,000 (basis)", "$12,000 (average of basis and FMV)", "$0, because short-term property is not deductible"], answer: "$4,000 (basis)" },
+  ],
+  explain: `<p>0.5%フロア = 300,000 × 0.5% = 1,500。寄附以外の項目別控除 = 25,000 + 5,000 = 30,000。</p>
+<p><b>プランA</b>:各年 30,000 + (10,000 − 1,500) = 38,500 > 標準控除32,200 → 項目別控除。2年合計 38,500 × 2 = <b>77,000</b>。</p>
+<p><b>プランB 2026年</b>:長期保有の値上りキャピタル・ゲイン資産を公益慈善団体(DAFのスポンサーは公益慈善団体)へ寄附 → 時価20,000で控除、AGIの<b>30%</b>限度(90,000)内。フロア後 20,000 − 1,500 = <b>18,500</b>。項目別控除 30,000 + 18,500 = <b>48,500</b>。</p>
+<p><b>プランB 2027年</b>:項目別控除30,000 < 32,200 なので標準控除を選択。教会への直接の現金寄附2,000は非項目別控除者向けの寄附金控除(上限2,000)の対象 → 32,200 + 2,000 = <b>34,200</b>。両年合計 48,500 + 34,200 = <b>82,700</b>(プランAより5,700多い)。</p>
+<p>株式を売却せず寄附するので含み益 20,000 − 4,000 = <b>16,000</b>は課税されない。保有1年以下なら通常所得資産となり、控除額は取得価額 <b>4,000</b>に限られる。</p>`,
+});
+
+CPA.tbs({ id: "TBS-TCP-30", section: "TCP", chapter: "TCP-01", title: "NIITを含む見積納税のセーフハーバーと四半期納付額",
+  scenario: `<p>The Moris file jointly. You are planning their 2026 estimated tax payments.</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>2025 AGI</td><td>$180,000</td></tr>
+<tr><td>2025 total tax (full-year return filed)</td><td>$30,000</td></tr>
+<tr><td>2026 projected wages (combined; neither spouse earns over $200,000)</td><td>$200,000</td></tr>
+<tr><td>2026 projected taxable interest</td><td>$10,000</td></tr>
+<tr><td>2026 projected qualified dividends</td><td>$30,000</td></tr>
+<tr><td>2026 projected long-term capital gain on stock sales</td><td>$80,000</td></tr>
+<tr><td>2026 projected regular income tax (before NIIT)</td><td>$60,000</td></tr>
+<tr><td>2026 projected federal income tax withholding from wages</td><td>$24,000</td></tr></table>
+<p>There are no investment expenses, no foreign income, and no other taxes. The NIIT threshold for joint filers is <b>$250,000</b> (not indexed). Modified AGI equals AGI.</p>
+<p class="ja">Mori夫妻は夫婦合算申告で、2026年の見積納税を計画する。2025年AGI $180,000、2025年の税額合計$30,000(通年の申告書を提出済み)。2026年見込み:給与合計$200,000(いずれの配偶者も$200,000以下)、課税利息$10,000、適格配当$30,000、株式売却の長期キャピタルゲイン$80,000、NIIT前の通常所得税$60,000、給与からの源泉徴収$24,000。投資費用・国外所得・その他の税はない。夫婦合算申告のNIIT基準額は$250,000(物価調整なし)。修正AGIはAGIと同じ。</p>`,
+  rows: [
+    { label: "2026 net investment income(2026年の純投資所得)", type: "num", answer: 120000 },
+    { label: "2026 net investment income tax(2026年のNIIT)", type: "num", answer: 2660 },
+    { label: "90% of the 2026 total tax(2026年の税額合計の90%)", type: "num", answer: 56394 },
+    { label: "Required annual payment to avoid the underpayment penalty(過少納付ペナルティを回避するための必要年間納付額)", type: "num", answer: 33000 },
+    { label: "Total 2026 estimated tax payments needed in addition to withholding(源泉徴収に加えて必要な2026年の見積納税額合計)", type: "num", answer: 9000 },
+    { label: "Required installment for each of the four due dates(4回の各納期限の必要納付額)", type: "num", answer: 2250 },
+    { label: "Required annual payment if 2025 AGI had been $140,000(2025年のAGIが$140,000だった場合の必要年間納付額)", type: "num", answer: 30000 },
+    { label: "If the Moris skip the first three installments, which action can still avoid all penalty?(最初の3回の納付を怠った場合、ペナルティを全額回避できる方法)", type: "select", options: ["Paying the full $9,000 with the January 15, 2027 installment", "Increasing December 2026 wage withholding by $9,000, because withholding is treated as paid ratably during the year", "Filing the 2026 return by April 15, 2027 with full payment", "Electing the annualized income installment method, because their income was earned evenly"], answer: "Increasing December 2026 wage withholding by $9,000, because withholding is treated as paid ratably during the year" },
+  ],
+  explain: `<p>純投資所得 = 10,000 + 30,000 + 80,000 = <b>120,000</b>。修正AGI = 200,000 + 120,000 = 320,000、基準超過額 70,000。NIIT = 3.8% × min(120,000, 70,000) = <b>2,660</b>。給与は各配偶者とも合算でも$250,000以下のため追加メディケア税はない。</p>
+<p>2026年の税額合計 = 60,000 + 2,660 = 62,660(NIITも見積納税の対象)。90% = <b>56,394</b>。</p>
+<p>前年AGIが$150,000超なので前年基準は110%:30,000 × 110% = 33,000。必要年間納付額 = min(56,394, 33,000) = <b>33,000</b>。源泉24,000を控除し、見積納税 <b>9,000</b>、各回 9,000 ÷ 4 = <b>2,250</b>。</p>
+<p>前年AGIが$150,000以下なら100%基準:min(56,394, 30,000) = <b>30,000</b>。</p>
+<p>源泉徴収は別段の選択がない限り年間を通じて均等に納付されたものとみなされるため、12月の源泉増額で過去の納期の不足も解消できる。1月15日の一括納付や期限内申告では、それ以前の納期の不足に対するペナルティは回避できない。年換算法は所得が年後半に偏る場合に有効で、均等な所得では効果がない。</p>`,
+});
