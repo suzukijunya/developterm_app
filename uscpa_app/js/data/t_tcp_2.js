@@ -113,3 +113,58 @@ CPA.tbs({ id: "TBS-TCP-34", section: "TCP", chapter: "TCP-02", title: "株式償
 <p><b>償還後(放棄なし)</b>:発行済450株、Helenの所有は 250 + 100 = 350株。350 ÷ 450 = <b>77.78%</b>。80%テスト(88.24% × 80% = 70.59%未満が必要)も50%未満要件も満たさず、支配株主のままなので意味のある減少にも当たらない。よって§301の分配となり、E&amp;Pが十分なので <b>320,000</b> 全額が配当。償還株式の未回収基準価額はIanの株式に移る。</p>
 <p><b>放棄あり</b>:§302(c)(2)の放棄は家族帰属を消すので、Ianの250株もOak経由の100株(Ianを経由した家族帰属部分)もHelenに帰属しない。完全終了となり、利得 = 320,000 − 100,000 = <b>220,000</b>。要件:償還後10年間、債権者以外の持分(役員・取締役・従業員を含む)を持たないこと(相続による取得は除く)、合意書を提出すること、過去10年内の関係者間取得がないこと。</p>`,
 });
+
+CPA.tbs({ id: "TBS-TCP-35", section: "TCP", chapter: "TCP-02", title: "子会社の清算:親会社(§332・§337)と少数株主(§331・§336)",
+  scenario: `<p>Parent Corp. has owned <b>85%</b> of Sub Corp.'s only class of stock for 6 years (basis $300,000). Mia, an individual, owns the other <b>15%</b> (basis $40,000, held 4 years). Sub has no liabilities, a $50,000 NOL carryforward and adopts a plan of complete liquidation in 2026. Sub's assets:</p>
+<table><tr><th>Asset</th><th>FMV</th><th>Adjusted basis</th><th>Distributed to</th></tr>
+<tr><td>Cash</td><td>$50,000</td><td>$50,000</td><td>Parent</td></tr>
+<tr><td>Land</td><td>$600,000</td><td>$250,000</td><td>Parent</td></tr>
+<tr><td>Equipment</td><td>$200,000</td><td>$300,000</td><td>Parent</td></tr>
+<tr><td>Marketable securities (capital assets)</td><td>$150,000</td><td>$90,000</td><td>Mia</td></tr></table>
+<p class="ja">Parent社はSub社の単一種類の株式の85%を6年間保有している(基準価額$300,000)。残り15%は個人Miaが保有する(基準価額$40,000、保有4年)。Subは負債がなく、$50,000のNOL繰越を有し、2026年に完全清算の計画を採択した。資産:現金$50,000→Parent、土地(時価$600,000、基準価額$250,000)→Parent、設備(時価$200,000、基準価額$300,000)→Parent、市場性有価証券(資本資産、時価$150,000、基準価額$90,000)→Mia。</p>`,
+  rows: [
+    { label: "Sub's recognized gain on the liquidating distributions(清算分配によるSubの認識利得)", type: "num", answer: 60000 },
+    { label: "Sub's treatment of the $100,000 loss on the equipment(設備の損失$100,000のSubでの扱い)", type: "select", options: ["Recognized under §336 as an ordinary loss", "Not recognized — §337 provides nonrecognition on distributions to an 80% distributee", "Recognized only to the extent of Mia's 15% interest", "Deferred until Parent sells the equipment and then recognized by Sub"], answer: "Not recognized — §337 provides nonrecognition on distributions to an 80% distributee" },
+    { label: "Parent's recognized gain on its Sub stock(ParentのSub株式に係る認識利得)", type: "num", answer: 0 },
+    { label: "Parent's basis in the land(Parentの土地の基準価額)", type: "num", answer: 250000 },
+    { label: "Parent's basis in the equipment(Parentの設備の基準価額)", type: "num", answer: 300000 },
+    { label: "Mia's recognized long-term capital gain(Miaの長期キャピタルゲイン)", type: "num", answer: 110000 },
+    { label: "Mia's basis in the securities(Miaの有価証券の基準価額)", type: "num", answer: 150000 },
+    { label: "What happens to Sub's NOL carryforward and E&P?(SubのNOL繰越とE&Pの扱い)", type: "select", options: ["They disappear on liquidation", "They carry over to Parent under §381", "They are allocated 85% to Parent and 15% to Mia", "The NOL carries over but E&P is eliminated"], answer: "They carry over to Parent under §381" },
+  ],
+  explain: `<p><b>Sub</b>:80%以上を保有する親会社への清算分配は§337により損益を認識しない(設備の含み損100,000も認識されない)。少数株主Miaへの分配は§336により時価で売却したものとして扱い、有価証券の利得 150,000 − 90,000 = <b>60,000</b> を認識する。なお少数株主への分配で生じる損失は§336(d)(3)により認識できない。</p>
+<p><b>Parent</b>:§332により株式の実現利得(時価850,000 − 基準価額300,000 = 550,000)は認識されない(<b>0</b>)。資産の基準価額はSubの基準価額を引き継ぐ(§334(b)):土地 <b>250,000</b>、設備 <b>300,000</b>(含み損も引き継がれる)。NOL・E&amp;P等の税務属性は§381により<b>Parentへ引き継がれる</b>。</p>
+<p><b>Mia</b>:§331により交換取引。受領資産の時価150,000 − 株式の基準価額40,000 = <b>110,000</b> の長期キャピタルゲイン。資産の基準価額は時価 <b>150,000</b>(§334(a))。</p>`,
+});
+
+CPA.tbs({ id: "TBS-TCP-36", section: "TCP", chapter: "TCP-02", title: "パートナーシップの設立から初年度のK-1まで:§752・保証支払・自営業所得",
+  scenario: `<p>On January 1, 2026, Olga, Pete and Quinn formed OPQ, a <b>general partnership</b>, sharing profits, losses and capital equally (1/3 each). Recourse liabilities are shared equally. Contributions:</p>
+<table><tr><th>Partner</th><th>Contribution</th></tr>
+<tr><td>Olga</td><td>Building: FMV $300,000, adjusted basis $180,000, subject to a recourse mortgage of $120,000 assumed by OPQ</td></tr>
+<tr><td>Pete</td><td>Cash $180,000</td></tr>
+<tr><td>Quinn</td><td>Cash $100,000 and equipment (FMV $80,000, adjusted basis $50,000)</td></tr></table>
+<p>2026 operations (exhibit from OPQ's trial balance):</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Ordinary business income <b>before</b> guaranteed payments</td><td>$270,000</td></tr>
+<tr><td>Guaranteed payment to Pete for services (paid in cash)</td><td>$60,000</td></tr>
+<tr><td>Long-term capital gain on investments</td><td>$30,000</td></tr>
+<tr><td>Cash distribution to Olga</td><td>$20,000</td></tr>
+<tr><td>Mortgage principal repaid (balance 12/31/2026: $105,000)</td><td>$15,000</td></tr></table>
+<p>All partners materially participate. No §704(c) property was sold in 2026.</p>
+<p class="ja">2026年1月1日、Olga・Pete・Quinnは損益・資本を1/3ずつ分配するゼネラル・パートナーシップOPQを設立した。リコース債務も均等に負担する。出資:Olgaは建物(時価$300,000、基準価額$180,000、OPQが引き受けるリコース抵当債務$120,000付き)、Peteは現金$180,000、Quinnは現金$100,000と設備(時価$80,000、基準価額$50,000)。2026年の営業:保証支払控除前の通常事業所得$270,000、Peteへの役務の保証支払$60,000(現金払い)、投資の長期キャピタルゲイン$30,000、Olgaへの現金分配$20,000、抵当債務の元本返済$15,000(年末残高$105,000)。全員が実質的に関与している。2026年に§704(c)資産の売却はない。</p>`,
+  rows: [
+    { label: "Olga's outside basis immediately after formation(設立直後のOlgaの持分の基準価額)", type: "num", answer: 100000 },
+    { label: "Pete's outside basis immediately after formation(設立直後のPeteの持分の基準価額)", type: "num", answer: 220000 },
+    { label: "OPQ's basis in the building(OPQの建物の基準価額)", type: "num", answer: 180000 },
+    { label: "Pete's net earnings from self-employment from OPQ (K-1 box 14)(PeteのOPQからの自営業純所得・K-1 14欄)", type: "num", answer: 130000 },
+    { label: "Total income Pete reports from OPQ for 2026(Peteが2026年に申告するOPQからの所得合計)", type: "num", answer: 140000 },
+    { label: "Olga's outside basis on December 31, 2026(2026年12月31日のOlgaの持分の基準価額)", type: "num", answer: 155000 },
+    { label: "Pete's outside basis on December 31, 2026(2026年12月31日のPeteの持分の基準価額)", type: "num", answer: 295000 },
+    { label: "If Quinn were instead a limited partner in a limited partnership (no guaranteed payments), his self-employment earnings would be(Quinnがリミテッド・パートナーで保証支払がない場合の自営業所得)", type: "select", options: ["$70,000 — his distributive share of ordinary income", "$80,000 — ordinary income plus capital gain", "$0 — a limited partner's distributive share is excluded under §1402(a)(13)", "$35,000 — one-half of his distributive share"], answer: "$0 — a limited partner's distributive share is excluded under §1402(a)(13)" },
+  ],
+  explain: `<p><b>設立時</b>:債務120,000は各自40,000ずつ負担に再配分される。Olgaは債務から解放された80,000(120,000 − 自己負担40,000)をみなし現金分配として扱う。基準価額 = 180,000 − 120,000 + 40,000 = <b>100,000</b>(みなし分配80,000は基準価額を超えないので利得なし)。Pete = 180,000 + 40,000 = <b>220,000</b>。Quinn = 150,000 + 40,000 = 190,000。OPQの建物の基準価額はOlgaの基準価額を引き継いで <b>180,000</b>(§723)。</p>
+<p><b>2026年の配分</b>:通常所得 = 270,000 − 60,000 = 210,000 → 各70,000。LTCG 30,000 → 各10,000。債務の減少15,000 → 各5,000のみなし分配。</p>
+<p><b>Pete</b>:自営業所得 = 通常所得の分配分70,000 + 保証支払60,000 = <b>130,000</b>(キャピタルゲインは含まない)。申告所得 = 70,000 + 60,000 + 10,000 = <b>140,000</b>。期末基準価額 = 220,000 + 70,000 + 10,000 − 5,000 = <b>295,000</b>(保証支払は基準価額に影響しない)。</p>
+<p><b>Olga</b>:100,000 + 70,000 + 10,000 − 現金分配20,000 − 債務減少5,000 = <b>155,000</b>。</p>
+<p><b>リミテッド・パートナー</b>:§1402(a)(13)により分配分は自営業所得から除外され、役務の保証支払のみが対象となる。保証支払がなければ <b>$0</b>。</p>`,
+});
