@@ -108,3 +108,69 @@ CPA.tbs({
 <p><b>Dan</b>:購入時に虚偽表示を知っていた者は第11条で回収できないので0。</p>
 <p>第11条では、原告は重要な虚偽表示と損失を立証すれば足り、過失・信頼・故意・契約関係の立証は不要である。監査人は相当な注意(due diligence)の抗弁、原告の悪意、損害因果関係の欠如で責任を免れる・軽減できる。Rule 10b-5では、原告はさらに故意(scienter)と信頼を立証しなければならない。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-REG-38", section: "REG", chapter: "REG-01", title: "税務リサーチ:該当するIRC条文・権威の種類・訴訟の場",
+  scenario: `<p>A senior associate left the following research requests in a client file. For each request, identify the Internal Revenue Code section, the type of authority, or the forum that answers it.</p>
+<table><tr><th>Request</th><th>Question</th></tr>
+<tr><td>1</td><td>Our client, a dentist, wants to know the general rule allowing a deduction for ordinary and necessary expenses paid in carrying on her practice.</td></tr>
+<tr><td>2</td><td>A married couple sold the home they had owned and used as their principal residence for six years. Which section governs exclusion of the gain?</td></tr>
+<tr><td>3</td><td>A client traded a warehouse held for investment for undeveloped land. Which section governs deferral of the gain?</td></tr>
+<tr><td>4</td><td>The IRS proposed a 20% penalty for a substantial understatement of income tax. Which section imposes it?</td></tr>
+<tr><td>5</td><td>How long does the IRS have to assess additional tax on the client's return?</td></tr>
+<tr><td>6</td><td>We want to cite sources supporting "substantial authority." Which item is <b>not</b> considered authority for that purpose?</td></tr>
+<tr><td>7</td><td>The IRS issued official guidance on how to request an automatic change in accounting method. What type of pronouncement is this most likely to be?</td></tr>
+<tr><td>8</td><td>The client wants to contest a statutory notice of deficiency without first paying the tax. Which forum must be used?</td></tr></table>
+<p class="ja">シニアアソシエイトが顧客ファイルに次のリサーチ依頼を残した。各依頼に答えるIRC条文、権威の種類または訴訟の場を特定せよ。1:歯科医の顧客が、事業の遂行において支払った通常かつ必要な費用の控除を認める一般規定を知りたい。2:6年間所有し主たる住居として使用した自宅を夫婦が売却した。譲渡益の非課税を定める条文は。3:投資目的で保有する倉庫を未開発の土地と交換した。譲渡益の繰延べを定める条文は。4:IRSが所得税の重大な過少申告に対し20%のペナルティを提案した。これを課す条文は。5:IRSが追加税額を査定できる期間は。6:「実質的根拠」を裏付ける資料を引用したい。この目的上、権威とならないものは。7:会計方法の自動変更の申請方法についてIRSが公式ガイダンスを公表した。最も可能性の高い公表物の種類は。8:不足税額通知を、税額を先に納付せずに争いたい。利用すべき裁判所は。</p>`,
+  rows: [
+    { label: "Request 1(依頼1)", type: "select", options: ["IRC §61", "IRC §121", "IRC §162", "IRC §1031", "IRC §6501", "IRC §6662"], answer: "IRC §162" },
+    { label: "Request 2(依頼2)", type: "select", options: ["IRC §61", "IRC §121", "IRC §162", "IRC §1031", "IRC §6501", "IRC §6662"], answer: "IRC §121" },
+    { label: "Request 3(依頼3)", type: "select", options: ["IRC §61", "IRC §121", "IRC §162", "IRC §1031", "IRC §6501", "IRC §6662"], answer: "IRC §1031" },
+    { label: "Request 4(依頼4)", type: "select", options: ["IRC §61", "IRC §121", "IRC §162", "IRC §1031", "IRC §6501", "IRC §6662"], answer: "IRC §6662" },
+    { label: "Request 5(依頼5)", type: "select", options: ["IRC §61", "IRC §121", "IRC §162", "IRC §1031", "IRC §6501", "IRC §6662"], answer: "IRC §6501" },
+    { label: "Request 6(依頼6)", type: "select", options: ["Proposed Treasury regulations", "Revenue rulings", "Private letter rulings", "IRS publications", "Tax treaties"], answer: "IRS publications" },
+    { label: "Request 7(依頼7)", type: "select", options: ["Revenue ruling", "Revenue procedure", "Private letter ruling", "Technical advice memorandum", "Final regulation"], answer: "Revenue procedure" },
+    { label: "Request 8(依頼8)", type: "select", options: ["U.S. Tax Court", "U.S. District Court", "U.S. Court of Federal Claims", "U.S. Court of Appeals"], answer: "U.S. Tax Court" },
+  ],
+  explain: `<p><b>1</b>:§162は事業の通常かつ必要な費用の控除を定める(§61は総所得の定義)。</p>
+<p><b>2</b>:§121は主たる住居の譲渡益の非課税(夫婦合算で最大$500,000)を定める。</p>
+<p><b>3</b>:§1031は事業用・投資用不動産の同種交換による譲渡益の繰延べを定める。投資用の倉庫と未開発の土地はいずれも不動産で同種である。</p>
+<p><b>4</b>:§6662は正確性関連ペナルティ(過失・重大な過少申告等、20%)を定める。</p>
+<p><b>5</b>:§6501は査定期間(原則3年、25%超の総所得の脱漏は6年等)を定める。</p>
+<p><b>6</b>:実質的根拠の判断上、IRC・規則(提案規則を含む)・レベニュールーリング・プライベートレタールーリング・租税条約・判例等は権威となるが、IRSの刊行物(Publication)や論文・教科書は権威とならない。</p>
+<p><b>7</b>:申請手続など手続的事項に関する公式ガイダンスはレベニュープロシージャ(Rev. Proc.)で示される。レベニュールーリングは特定の事実への実体法の適用を示すものである。</p>
+<p><b>8</b>:税額を先に納付せずに争えるのは租税裁判所(Tax Court)のみであり、通知から90日以内に申し立てる。地方裁判所と連邦請求裁判所は納付後に還付訴訟として争う。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-REG-39", section: "REG", chapter: "REG-02", title: "申込み・承諾の時系列と契約の効力(確定申込み・追加条項・約因・未成年者)",
+  scenario: `<p>Exhibit 1 — Correspondence between Hill Lumber (a lumber dealer) and Gaku Furniture (a furniture manufacturer):</p>
+<table><tr><th>Date</th><th>Communication</th></tr>
+<tr><td>March 1</td><td>Signed letter from Hill: "We offer to sell you 500 oak boards at $40 each. This offer will remain open until March 31. Acceptance is limited to the terms of this offer."</td></tr>
+<tr><td>March 5</td><td>E-mail from Hill: "Due to rising costs, we revoke our March 1 offer." Gaku received it the same day.</td></tr>
+<tr><td>March 10</td><td>Signed letter from Gaku: "We accept your March 1 offer. All disputes shall be resolved by arbitration."</td></tr>
+<tr><td>April 20</td><td>Hill and Gaku agree in a signed writing, in good faith because of an unexpected cost increase, to raise the price to $42 per board. Gaku receives nothing additional in exchange.</td></tr></table>
+<p>Exhibit 2 — Other matters:</p>
+<table><tr><th>Item</th><th>Facts</th></tr>
+<tr><td>Consulting</td><td>On Day 1, Ito mailed Jun an offer to provide consulting services. On Day 3, Jun mailed an acceptance. On Day 4, Jun telephoned Ito to reject the offer. Ito received the acceptance on Day 5 and had not changed position in reliance on the call.</td></tr>
+<tr><td>Bonus</td><td>Gaku's owner promised a retiring employee a $10,000 bonus "in appreciation of your 20 years of loyal service."</td></tr>
+<tr><td>Car</td><td>A 17-year-old bought a used car from a dealer for $15,000 and damaged it in an accident. Before turning 18, she seeks to cancel the purchase.</td></tr>
+<tr><td>Fee</td><td>An individual who does not hold the professional license that state law requires (to protect the public) performed services and sues the client for the agreed fee.</td></tr></table>
+<p class="ja">資料1:Hill Lumber(材木商)とGaku Furniture(家具製造業者)の通信。3月1日:Hillの署名入り書面「オーク材500枚を1枚$40で売る申込みをする。この申込みは3月31日まで有効とする。承諾はこの申込みの条件に限る。」3月5日:Hillのメール「コスト上昇のため3月1日の申込みを撤回する。」Gakuは同日受信。3月10日:Gakuの署名入り書面「3月1日の申込みを承諾する。すべての紛争は仲裁で解決する。」4月20日:予期しないコスト上昇を理由に、両者は誠実に価格を1枚$42に引き上げることを署名入り書面で合意した。Gakuは見返りを何も受け取らない。資料2:コンサルティング:1日目にItoがJunにコンサルティング役務の申込みを郵送。3日目にJunが承諾を郵送。4日目にJunがItoに電話で拒絶を伝えた。Itoは5日目に承諾書を受領し、電話を信頼して立場を変えてはいなかった。賞与:Gakuのオーナーが退職する従業員に「20年間の忠実な勤務への感謝として」$10,000の賞与を約束した。自動車:17歳の者が販売店から中古車を$15,000で購入し事故で損傷させた。18歳になる前に購入を取り消そうとしている。報酬:公衆保護のため州法が要求する専門資格を持たない者が役務を提供し、合意した報酬を求めて顧客を訴えた。</p>`,
+  rows: [
+    { label: "Effect of Hill's March 5 revocation(3月5日のHillの撤回の効果)", type: "select", options: ["Effective when sent", "Effective when received by Gaku", "Ineffective; the offer is irrevocable until March 31", "Ineffective; a merchant's offer is irrevocable for three months regardless of its terms"], answer: "Ineffective; the offer is irrevocable until March 31" },
+    { label: "Result of Gaku's March 10 letter(3月10日のGakuの書面の結果)", type: "select", options: ["No contract; the letter is a counteroffer", "Contract formed; the arbitration term is included", "Contract formed; the arbitration term is not included", "Contract formed only if Hill expressly assents to arbitration"], answer: "Contract formed; the arbitration term is not included" },
+    { label: "April 20 price modification(4月20日の価格変更)", type: "select", options: ["Enforceable", "Voidable by one party", "Unenforceable for lack of consideration", "Void as illegal"], answer: "Enforceable" },
+    { label: "Consulting — when was a contract formed?(コンサルティング:契約の成立時点)", type: "select", options: ["Day 3, when the acceptance was mailed", "Day 4, when the rejection was telephoned", "Day 5, when the acceptance was received", "No contract was formed"], answer: "Day 3, when the acceptance was mailed" },
+    { label: "Bonus promise(賞与の約束)", type: "select", options: ["Enforceable", "Voidable by one party", "Unenforceable for lack of consideration", "Void as illegal"], answer: "Unenforceable for lack of consideration" },
+    { label: "Car purchase by the minor(未成年者による自動車購入)", type: "select", options: ["Enforceable", "Voidable by one party", "Unenforceable for lack of consideration", "Void as illegal"], answer: "Voidable by one party" },
+    { label: "Unlicensed individual's fee agreement(無資格者の報酬契約)", type: "select", options: ["Enforceable", "Voidable by one party", "Unenforceable for lack of consideration", "Void as illegal"], answer: "Void as illegal" },
+  ],
+  explain: `<p><b>撤回</b>:商人が署名入り書面で申込みを維持すると約したもの(確定申込み)は約因がなくても撤回できない。期間が明示されていればその期間(3か月が上限)、3月31日まで撤回不能であり、3月5日の撤回は無効である。</p>
+<p><b>3月10日の書面</b>:UCC 2-207では、追加条項があっても明確かつ適時の承諾の表示は承諾となり契約が成立する(承諾が追加条項への同意を明示的条件としていないため)。商人間でも、申込みが承諾を申込みの条件に限定している場合、追加条項は契約内容にならない。よって契約は成立し仲裁条項は含まれない。</p>
+<p><b>価格変更</b>:物品売買契約の変更はUCC上、誠実になされれば約因を要しない。価格$500以上の契約変更であり詐欺防止法の対象だが署名入り書面がある。よって強制可能。</p>
+<p><b>コンサルティング</b>:役務提供はコモンローが適用される。承諾を先に発信した場合、発信時(3日目)に契約が成立する(発信主義)。その後の拒絶は、申込者が拒絶を信頼して立場を変えた場合を除き契約に影響しない。</p>
+<p><b>賞与</b>:過去の勤務は過去の約因であり約因とならないため、強制できない。</p>
+<p><b>自動車</b>:未成年者の契約は未成年者側から取り消しうる。多くの州では、未成年者は手元の物(損傷した車)を返還すれば取り消せる。</p>
+<p><b>報酬</b>:公衆保護を目的とする規制的資格(免許)のない者との契約は違法で無効であり、報酬を請求できない(歳入目的の免許とは異なる)。</p>`,
+});
