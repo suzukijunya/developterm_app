@@ -117,3 +117,61 @@ CPA.tbs({
 <p>不備5:45,000 < 60,000 で質的兆候もない → 不備。</p>
 <p>伝達:AU-C 265は重要な不備と重要な欠陥を経営者と統治責任者に書面で伝達することを求める。したがって1・3・4が対象である。2と5の不備は、経営者の注意に値すると判断したものを適切な階層の経営者に伝達すればよく(口頭も可)、統治責任者への書面伝達は求められない。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-AUD-44", section: "AUD", chapter: "AUD-03", title: "統制テストの属性サンプリング:上限逸脱率の算定と結論",
+  scenario: `<p>For the audit of <b>Pemberton Foods</b>, the audit team plans to rely on two revenue/purchasing controls and used statistical attribute sampling with a <b>5% risk of overreliance</b> (risk of assessing control risk too low).</p>
+<table><tr><th>Control</th><th>Tolerable deviation rate</th><th>Sample size</th><th>Deviations found</th></tr>
+<tr><td>A — Credit approval of sales orders</td><td>6%</td><td>60</td><td>1</td></tr>
+<tr><td>B — Three-way match before invoice approval</td><td>7%</td><td>100</td><td>2</td></tr></table>
+<p><b>Exhibit — Upper deviation rate (%) at 5% risk of overreliance</b></p>
+<table><tr><th>Sample size</th><th>0 dev.</th><th>1 dev.</th><th>2 dev.</th><th>3 dev.</th><th>4 dev.</th></tr>
+<tr><td>60</td><td>4.9</td><td>7.7</td><td>10.2</td><td>12.5</td><td>14.7</td></tr>
+<tr><td>80</td><td>3.7</td><td>5.8</td><td>7.7</td><td>9.5</td><td>11.1</td></tr>
+<tr><td>100</td><td>3.0</td><td>4.7</td><td>6.2</td><td>7.6</td><td>8.9</td></tr></table>
+<p>Follow-up on Control B revealed that one of the two deviations occurred because the AP supervisor deliberately approved an invoice for a related-party vendor without a receiving report, overriding the system hold.</p>
+<p class="ja">Pemberton Foods社の監査で、監査チームは2つの統制への依拠を計画し、過大信頼のリスク(統制リスクを過小評価するリスク)5%の統計的属性サンプリングを用いた。統制A(受注の与信承認):許容逸脱率6%、サンプル60件、逸脱1件。統制B(請求書承認前の3点照合):許容逸脱率7%、サンプル100件、逸脱2件。上限逸脱率の表は英文のとおり。統制Bの追加調査で、逸脱2件のうち1件は買掛金責任者が関連当事者の仕入先の請求書を検収報告書なしで故意に承認し、システムの保留をオーバーライドしたものと判明した。</p>`,
+  rows: [
+    { label: "Control A — sample deviation rate (%)(統制Aの標本逸脱率%)", type: "num", answer: 1.67, tol: 0.01 },
+    { label: "Control A — upper deviation rate (%)(統制Aの上限逸脱率%)", type: "num", answer: 7.7, tol: 0.01 },
+    { label: "Control A — conclusion(統制Aの結論)", type: "select", options: ["Supports planned reliance", "Does not support planned reliance; assess control risk higher and expand substantive procedures", "Increase the tolerable deviation rate to 8% to support reliance", "Inconclusive; the sample deviation rate is below the tolerable rate"], answer: "Does not support planned reliance; assess control risk higher and expand substantive procedures" },
+    { label: "Control B — sample deviation rate (%)(統制Bの標本逸脱率%)", type: "num", answer: 2, tol: 0.01 },
+    { label: "Control B — upper deviation rate (%)(統制Bの上限逸脱率%)", type: "num", answer: 6.2, tol: 0.01 },
+    { label: "Control B — allowance for sampling risk (%)(統制Bのサンプリング・リスクの許容値%)", type: "num", answer: 4.2, tol: 0.01 },
+    { label: "Control B — conclusion based on the statistical results alone(統計的結果のみに基づく統制Bの結論)", type: "select", options: ["Supports planned reliance", "Does not support planned reliance", "Inconclusive; increase the sample size"], answer: "Supports planned reliance" },
+    { label: "Appropriate response to the intentional deviation in Control B(統制Bの故意の逸脱への適切な対応)", type: "select", options: ["No further action, because the upper deviation rate is below the tolerable rate", "Consider the qualitative aspects, including possible fraud and management override, and reassess reliance and the related risks of material misstatement", "Replace the deviation with another randomly selected item", "Exclude the deviation from the computation as an isolated anomaly"], answer: "Consider the qualitative aspects, including possible fraud and management override, and reassess reliance and the related risks of material misstatement" },
+  ],
+  explain: `<p>統制A:標本逸脱率 = 1 ÷ 60 = 1.67%。表(サンプル60・逸脱1)より上限逸脱率 7.7%。7.7% > 許容逸脱率6% のため、標本逸脱率が許容逸脱率を下回っていても依拠は支持されない。統制リスクを高く評価し、実証手続の範囲を拡大する。結果を見てから許容逸脱率を引き上げるのは不適切である。</p>
+<p>統制B:標本逸脱率 = 2 ÷ 100 = 2.0%。表(サンプル100・逸脱2)より上限逸脱率 6.2%。サンプリング・リスクの許容値 = 6.2 − 2.0 = 4.2%。6.2% ≤ 7% のため統計的には依拠が支持される。</p>
+<p>故意の逸脱:監査人は逸脱の件数だけでなく性質と原因(質的側面)を評価しなければならない。故意の逸脱や経営者・責任者によるオーバーライドは不正の兆候であり、上限逸脱率が許容範囲内でも統制への依拠と重要な虚偽表示リスク(特に関連当事者取引)を再評価する必要がある。逸脱を他の標本で置き換えたり、異常値として除外したりしてはならない。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-AUD-45", section: "AUD", chapter: "AUD-03", title: "IT全般統制と業務処理統制の区分",
+  scenario: `<p>Your firm audits <b>Ostrander Retail Group</b>, which runs its sales, inventory, and payroll processes on a single ERP system. The IT audit specialist documented the controls below.</p>
+<table><tr><th>#</th><th>Control</th></tr>
+<tr><td>1</td><td>Each quarter, IT security sends business owners a listing of ERP users and roles; owners certify access, and access of terminated or transferred users is removed within 2 days.</td></tr>
+<tr><td>2</td><td>Changes to the pricing logic are tested in a separate test environment, approved by the sales business owner, and migrated to production by a release team that does not develop code.</td></tr>
+<tr><td>3</td><td>Nightly batch jobs are monitored by the operations team; failed jobs are logged, investigated, and rerun, with resolution documented.</td></tr>
+<tr><td>4</td><td>The sales order screen rejects any customer number that does not exist in the customer master file.</td></tr>
+<tr><td>5</td><td>The system recalculates each invoice line (quantity &times; master price) and compares run-to-run totals from the sales subledger to the amount posted to the general ledger.</td></tr>
+<tr><td>6</td><td>Printed payroll registers are distributed only to authorized recipients, who agree their totals to the batch control totals before releasing payment.</td></tr></table>
+<p class="ja">Ostrander Retail Group社は販売・在庫・給与の各プロセスを単一のERPで処理している。IT監査スペシャリストが次の統制を文書化した。1:IT部門が四半期ごとにERPのユーザー・ロール一覧を業務責任者に送り、責任者がアクセスを承認し、退職・異動者のアクセスは2日以内に削除される。2:価格計算ロジックの変更は別のテスト環境でテストされ、販売部門の業務責任者が承認し、コードを開発しないリリース・チームが本番環境へ移行する。3:夜間バッチ処理を運用チームが監視し、失敗したジョブは記録・調査・再実行され、対応が文書化される。4:受注画面は顧客マスタに存在しない顧客番号を受け付けない。5:システムが請求書の各行(数量×マスタ単価)を再計算し、売上補助元帳と総勘定元帳への転記額のラン・ツー・ラン合計を比較する。6:出力された給与台帳は承認された受領者にのみ配布され、受領者は支払前に合計額をバッチ・コントロール・トータルと照合する。</p>`,
+  rows: [
+    { label: "Control 1(統制1)", type: "select", options: ["ITGC — Access to programs and data", "ITGC — Program changes", "ITGC — Computer operations", "Application — Input control", "Application — Processing control", "Application — Output control"], answer: "ITGC — Access to programs and data" },
+    { label: "Control 2(統制2)", type: "select", options: ["ITGC — Access to programs and data", "ITGC — Program changes", "ITGC — Computer operations", "Application — Input control", "Application — Processing control", "Application — Output control"], answer: "ITGC — Program changes" },
+    { label: "Control 3(統制3)", type: "select", options: ["ITGC — Access to programs and data", "ITGC — Program changes", "ITGC — Computer operations", "Application — Input control", "Application — Processing control", "Application — Output control"], answer: "ITGC — Computer operations" },
+    { label: "Control 4(統制4)", type: "select", options: ["ITGC — Access to programs and data", "ITGC — Program changes", "ITGC — Computer operations", "Application — Input control", "Application — Processing control", "Application — Output control"], answer: "Application — Input control" },
+    { label: "Control 5(統制5)", type: "select", options: ["ITGC — Access to programs and data", "ITGC — Program changes", "ITGC — Computer operations", "Application — Input control", "Application — Processing control", "Application — Output control"], answer: "Application — Processing control" },
+    { label: "Control 6(統制6)", type: "select", options: ["ITGC — Access to programs and data", "ITGC — Program changes", "ITGC — Computer operations", "Application — Input control", "Application — Processing control", "Application — Output control"], answer: "Application — Output control" },
+    { label: "If Control 2 had been ineffective for the entire year, the effect on the auditor's plan to rely on the automated price calculation in Control 5(統制2が通年で有効でなかった場合、統制5の自動計算への依拠への影響)", type: "select", options: ["No effect; automated controls operate consistently once tested", "The auditor may not rely on a single test of the automated control; consider other evidence that it operated consistently throughout the period or reduce reliance and expand substantive procedures", "The auditor must issue an adverse opinion on the financial statements", "The auditor should test only the input control (Control 4) instead"], answer: "The auditor may not rely on a single test of the automated control; consider other evidence that it operated consistently throughout the period or reduce reliance and expand substantive procedures" },
+  ],
+  explain: `<p>IT全般統制(ITGC)は複数のアプリケーションに共通し、業務処理統制が継続的に機能する基盤となる統制である。主な区分はプログラム・データへのアクセス、プログラム変更、プログラム開発、コンピュータ運用である。業務処理統制は個々の取引処理に関する入力・処理・出力の統制である。</p>
+<p>統制1:ユーザーアクセスの定期的な棚卸しと削除 → ITGC(アクセス)。</p>
+<p>統制2:テスト・承認・開発と移行の職務分離を伴う変更管理 → ITGC(プログラム変更)。</p>
+<p>統制3:バッチジョブの監視と障害対応 → ITGC(コンピュータ運用)。</p>
+<p>統制4:マスタに存在しない顧客番号を拒否する妥当性チェック → 業務処理統制(入力)。</p>
+<p>統制5:再計算とラン・ツー・ラン合計の照合 → 業務処理統制(処理)。</p>
+<p>統制6:出力物の配布制限とコントロール・トータルとの照合 → 業務処理統制(出力)。</p>
+<p>依拠への影響:自動化統制は一度テストすれば一貫して機能すると推定できるが、それはプログラム変更管理などのITGCが有効であることが前提である。変更管理が無効なら価格ロジックが期中に無承認で変更された可能性があるため、1回のテストでは期間を通じた運用を示せない。期間を通じた運用の他の証拠を入手するか、依拠を減らして実証手続を拡大する。統制の不備が直ちに財務諸表の否定的意見につながるわけではない。</p>`,
+});

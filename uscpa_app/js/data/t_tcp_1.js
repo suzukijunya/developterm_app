@@ -9,12 +9,12 @@ CPA.tbs({ id: "TBS-TCP-21", section: "TCP", chapter: "TCP-01", title: "Form 709�
 <tr><td>4</td><td>Publicly traded stock transferred outright to her husband</td><td>$200,000</td></tr>
 <tr><td>5</td><td>Land transferred outright to a public charity</td><td>$300,000</td></tr>
 <tr><td>6</td><td>Cash to a friend</td><td>$15,000</td></tr>
-<tr><td>7</td><td>Remainder interest in a vacation home (Lena keeps a life estate) to granddaughter; value of remainder</td><td>$40,000</td></tr></table>
-<p class="ja">米国市民のLenaは米国市民の夫と婚姻しており、2026年に上表の移転を行った。夫は贈与分割に同意していない。2026年の年間非課税枠は受贈者1人当たり$19,000、基礎控除額(OBBBAによる)は$15,000,000とする。過年度の課税贈与累計は$2,000,000で、贈与税の納付実績はない。移転:(1)成人の息子へ現金$50,000、(2)息子の手術代として病院へ直接支払い$12,000、(3)息子が既に大学へ支払った授業料を息子に現金で補填$20,000、(4)上場株式を夫へ無条件で移転$200,000、(5)土地を公益慈善団体へ無条件で移転$300,000、(6)友人へ現金$15,000、(7)別荘の残余権(Lenaが生涯権を保持)を孫娘へ$40,000。</p>`,
+<tr><td>7</td><td>Remainder interest in a vacation home (Lena keeps a life estate) to her niece; value of remainder</td><td>$40,000</td></tr></table>
+<p class="ja">米国市民のLenaは米国市民の夫と婚姻しており、2026年に上表の移転を行った。夫は贈与分割に同意していない。2026年の年間非課税枠は受贈者1人当たり$19,000、基礎控除額(OBBBAによる)は$15,000,000とする。過年度の課税贈与累計は$2,000,000で、贈与税の納付実績はない。移転:(1)成人の息子へ現金$50,000、(2)息子の手術代として病院へ直接支払い$12,000、(3)息子が既に大学へ支払った授業料を息子に現金で補填$20,000、(4)上場株式を夫へ無条件で移転$200,000、(5)土地を公益慈善団体へ無条件で移転$300,000、(6)友人へ現金$15,000、(7)別荘の残余権(Lenaが生涯権を保持)を姪へ$40,000。</p>`,
   rows: [
     { label: "Taxable gift to the son after the annual exclusion(年間非課税枠控除後の息子への課税贈与額)", type: "num", answer: 51000 },
     { label: "Marital deduction for the transfer to her husband(夫への移転に係る配偶者控除額)", type: "num", answer: 181000 },
-    { label: "Taxable gift to the granddaughter(孫娘への課税贈与額)", type: "num", answer: 40000 },
+    { label: "Taxable gift to the niece(姪への課税贈与額)", type: "num", answer: 40000 },
     { label: "Total 2026 taxable gifts(2026年の課税贈与合計)", type: "num", answer: 91000 },
     { label: "Gift tax payable for 2026(2026年の納付贈与税額)", type: "num", answer: 0 },
     { label: "Basic exclusion amount remaining after 2026 gifts(2026年の贈与後に残る基礎控除額)", type: "num", answer: 12909000 },
@@ -23,7 +23,7 @@ CPA.tbs({ id: "TBS-TCP-21", section: "TCP", chapter: "TCP-01", title: "Form 709�
   explain: `<p><b>息子</b>:病院への直接支払い12,000は§2503(e)により無制限に非課税で年間非課税枠も使わない。授業料の補填20,000は教育機関への直接支払いではないため非課税にならず、現金50,000と合算する。(50,000 + 20,000) − 19,000 = <b>51,000</b>。</p>
 <p><b>夫</b>:米国市民の配偶者への無条件移転は無制限の配偶者控除の対象。年間非課税枠19,000を先に控除し、残額 200,000 − 19,000 = <b>181,000</b>を配偶者控除とする(課税贈与0)。</p>
 <p><b>慈善団体</b>:300,000 − 19,000 = 281,000が慈善控除となり課税贈与0。<b>友人</b>:15,000 ≤ 19,000で0。</p>
-<p><b>孫娘</b>:残余権は将来権利(future interest)のため年間非課税枠が使えず、<b>40,000</b>全額が課税贈与。</p>
+<p><b>姪</b>:残余権は将来権利(future interest)のため年間非課税枠が使えず、<b>40,000</b>全額が課税贈与。</p>
 <p>課税贈与合計 = 51,000 + 40,000 = <b>91,000</b>。累計課税贈与 2,000,000 + 91,000 = 2,091,000 は基礎控除額15,000,000以下のため統一税額控除で全額相殺され、納付税額 <b>0</b>。残る基礎控除額 = 15,000,000 − 2,091,000 = <b>12,909,000</b>。非課税枠超過の贈与と将来権利の贈与があるためForm 709の提出は必要である。</p>`,
 });
 
@@ -110,13 +110,13 @@ CPA.tbs({ id: "TBS-TCP-25", section: "TCP", chapter: "TCP-01", title: "基準価
     { label: "Rio's outside basis at the end of Year 1(第1年度末のRioの持分基準価額)", type: "num", answer: 5000 },
     { label: "Year 2 at-risk carryover loss allowed under §465(第2年度:§465上で認められるアットリスク繰越損失)", type: "num", answer: 10000 },
     { label: "Total suspended losses (at-risk plus passive) carried to Year 3(第3年度へ繰り越される停止損失合計(アットリスク+パッシブ))", type: "num", answer: 27000 },
-    { label: "Which liability would have increased Rio's amount at risk?(Rioのアットリスク額を増加させた負債は)", type: "select", options: ["Nonrecourse loan from the equipment seller", "Qualified nonrecourse financing secured by real property from a commercial lender", "Nonrecourse loan from another partner", "Any nonrecourse liability included in outside basis"], answer: "Qualified nonrecourse financing secured by real property from a commercial lender" },
+    { label: "In an activity of holding real property, which nonrecourse liability is included in a partner's amount at risk?(不動産保有活動において、パートナーのアットリスク額に含まれるノンリコース負債は)", type: "select", options: ["Nonrecourse loan from the equipment seller", "Qualified nonrecourse financing secured by real property from a commercial lender", "Nonrecourse loan from another partner", "Any nonrecourse liability included in outside basis"], answer: "Qualified nonrecourse financing secured by real property from a commercial lender" },
   ],
   explain: `<p>損失は①基準価額 → ②アットリスク → ③パッシブの順に判定する。</p>
 <p>①基準価額 = 20,000 + 30,000 = 50,000 ≥ 45,000 → <b>45,000</b>が通過。②アットリスク額は現金20,000のみ(適格でないノンリコース負債は含まない)→ 20,000を通過し <b>25,000</b>を停止。③パッシブ損失20,000はパッシブ所得(Delta 8,000)の範囲でのみ控除 → <b>8,000</b>控除、<b>12,000</b>停止。</p>
 <p>期末基準価額 = 50,000 − 45,000 = <b>5,000</b>(§704(d)を通過した損失は、アットリスクで停止されていても基準価額を減らす)。</p>
 <p>第2年度:持分所得10,000でアットリスク額が0 → 10,000に増加し、アットリスク繰越損失25,000のうち <b>10,000</b>が通過。Harborの所得10,000と通過損失10,000は相殺されて純額0、他のパッシブ所得もないため、過年度の停止パッシブ損失12,000は使えない。繰越合計 = アットリスク 25,000 − 10,000 = 15,000 + パッシブ12,000 = <b>27,000</b>。</p>
-<p>適格ノンリコース融資(不動産を担保とする商業金融機関等からの借入)のみがノンリコースでもアットリスク額に含まれる。売主や関係者からのノンリコース借入は含まれない。</p>`,
+<p>不動産保有活動では、適格ノンリコース融資(不動産を担保とする商業金融機関等からの借入)のみがノンリコースでもアットリスク額に含まれる(設備リース活動であるHarborにはこの例外は適用されない)。売主や関係者からのノンリコース借入は含まれない。</p>`,
 });
 
 CPA.tbs({ id: "TBS-TCP-26", section: "TCP", chapter: "TCP-01", title: "§121の非適格使用期間・減価償却と転勤による部分的除外",
