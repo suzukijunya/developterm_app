@@ -118,3 +118,50 @@ CPA.tbs({ id: "TBS-TCP-25", section: "TCP", chapter: "TCP-01", title: "基準価
 <p>第2年度:持分所得10,000でアットリスク額が0 → 10,000に増加し、アットリスク繰越損失25,000のうち <b>10,000</b>が通過。Harborの所得10,000と通過損失10,000は相殺されて純額0、他のパッシブ所得もないため、過年度の停止パッシブ損失12,000は使えない。繰越合計 = アットリスク 25,000 − 10,000 = 15,000 + パッシブ12,000 = <b>27,000</b>。</p>
 <p>適格ノンリコース融資(不動産を担保とする商業金融機関等からの借入)のみがノンリコースでもアットリスク額に含まれる。売主や関係者からのノンリコース借入は含まれない。</p>`,
 });
+
+CPA.tbs({ id: "TBS-TCP-26", section: "TCP", chapter: "TCP-01", title: "§121の非適格使用期間・減価償却と転勤による部分的除外",
+  scenario: `<p><b>Part 1.</b> Sora, single, purchased a house on January 1, 2017 for <b>$300,000</b>. Use history:</p>
+<table><tr><th>Period</th><th>Use</th><th>Depreciation claimed</th></tr>
+<tr><td>Jan 1, 2017 – Dec 31, 2018 (2 years)</td><td>Rented to tenants</td><td>$20,000</td></tr>
+<tr><td>Jan 1, 2019 – Dec 31, 2024 (6 years)</td><td>Sora's principal residence</td><td>—</td></tr>
+<tr><td>Jan 1, 2025 – Dec 31, 2026 (2 years)</td><td>Rented to tenants after Sora moved out</td><td>$20,000</td></tr></table>
+<p>Sora sold the house on December 31, 2026 for <b>$800,000</b> and paid selling expenses of <b>$20,000</b>. She has not used §121 on any other sale.</p>
+<p><b>Part 2.</b> Independently, Ben, single, bought a home on October 1, 2025 and used it as his principal residence until he sold it on December 31, 2026 (15 months), realizing a gain of <b>$200,000</b>. He sold because his employer transferred him to a job 300 miles away.</p>
+<p class="ja">【第1部】独身のSoraは2017年1月1日に住宅を$300,000で購入した。2017年1月1日〜2018年12月31日(2年)は賃貸(減価償却$20,000)、2019年1月1日〜2024年12月31日(6年)は主たる住居、2025年1月1日〜2026年12月31日(2年)は転居後に賃貸(減価償却$20,000)。2026年12月31日に$800,000で売却し、売却費用$20,000を支払った。他の売却で§121を使っていない。【第2部】別のケースとして、独身のBenは2025年10月1日に自宅を購入し、2026年12月31日の売却まで(15か月)主たる住居として使用し、売却益$200,000を実現した。勤務先の転勤命令(300マイル離れた勤務地)が売却理由である。</p>`,
+  rows: [
+    { label: "Part 1: Sora's realized gain(第1部:Soraの実現利益)", type: "num", answer: 520000 },
+    { label: "Part 1: gain ineligible for exclusion because of post-May 6, 1997 depreciation(第1部:減価償却のため除外対象外となる利益)", type: "num", answer: 40000 },
+    { label: "Part 1: gain allocated to nonqualified use(第1部:非適格使用期間に配分される利益)", type: "num", answer: 96000 },
+    { label: "Part 1: §121 exclusion(第1部:§121の除外額)", type: "num", answer: 250000 },
+    { label: "Part 1: total recognized gain(第1部:認識利益合計)", type: "num", answer: 270000 },
+    { label: "Part 1: the 2025–2026 rental period is(第1部:2025〜2026年の賃貸期間の扱い)", type: "select", options: ["Nonqualified use, because the home was not a residence", "Not nonqualified use, because it follows the last use as a principal residence and is within the 5-year look-back period", "Disqualifying, because Sora fails the 2-out-of-5-year use test", "Counted as qualified use only if Sora rented to a relative"], answer: "Not nonqualified use, because it follows the last use as a principal residence and is within the 5-year look-back period" },
+    { label: "Part 2: Ben's maximum reduced exclusion(第2部:Benの減額後の除外上限額)", type: "num", answer: 156250 },
+    { label: "Part 2: Ben's recognized gain(第2部:Benの認識利益)", type: "num", answer: 43750 },
+  ],
+  explain: `<p><b>第1部</b>:実現額 800,000 − 20,000 = 780,000、調整後取得価額 300,000 − 40,000 = 260,000 → 実現利益 <b>520,000</b>。1997年5月6日以後の減価償却 <b>40,000</b>は除外できず、未回収§1250利益(最高25%)として課税される。</p>
+<p>非適格使用:2009年以降で主たる住居として使用していない期間のうち、最後に住居として使用した後の期間(5年以内)は除かれる。よって非適格使用は2017〜2018年の2年のみ。所有期間10年。配分 = (520,000 − 40,000) × 2/10 = <b>96,000</b>。</p>
+<p>除外対象となりうる利益 = 480,000 − 96,000 = 384,000。過去5年(2022〜2026年)のうち3年を住居として使用し所有・使用要件を満たすので、独身の上限 <b>250,000</b>を除外。認識利益 = 40,000 + 96,000 + (384,000 − 250,000) = <b>270,000</b>。</p>
+<p><b>第2部</b>:2年要件を満たさないが、雇用場所の変更(50マイル超)による売却は部分的除外が認められる。250,000 × 15/24 = <b>156,250</b>。認識利益 = 200,000 − 156,250 = <b>43,750</b>。</p>`,
+});
+
+CPA.tbs({ id: "TBS-TCP-27", section: "TCP", chapter: "TCP-01", title: "キディ税:勤労所得と不労所得がある子の税額計算",
+  scenario: `<p>Emi, age 15, is claimed as a dependent by her parents, who file jointly. Emi's only income in 2026:</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Wages from a part-time job</td><td>$2,000</td></tr>
+<tr><td>Interest from a custodial (UTMA) account</td><td>$6,000</td></tr></table>
+<p>Assume for 2026: a dependent's standard deduction is the greater of <b>$1,350</b> or earned income plus <b>$450</b> (not to exceed the regular standard deduction); net unearned income is unearned income minus <b>$2,700</b> (two times $1,350, since Emi has no itemized deductions). The parents' marginal tax rate is <b>32%</b> on all additional income, and Emi's own rate on her remaining taxable income is <b>10%</b>.</p>
+<p class="ja">15歳のEmiは夫婦合算申告をする両親の被扶養者である。2026年のEmiの所得はアルバイトの給与$2,000と、未成年者口座(UTMA)の利息$6,000のみ。2026年について次を仮定する:被扶養者の標準控除は$1,350と勤労所得+$450のいずれか大きい額(通常の標準控除が上限)、純不労所得は不労所得から$2,700($1,350の2倍。Emiに項目別控除はない)を控除した額。両親の限界税率は追加所得の全額について32%、Emiの残りの課税所得に対する税率は10%とする。</p>`,
+  rows: [
+    { label: "Emi's standard deduction(Emiの標準控除額)", type: "num", answer: 2450 },
+    { label: "Emi's taxable income(Emiの課税所得)", type: "num", answer: 5550 },
+    { label: "Net unearned income taxed at the parents' rate(両親の税率で課税される純不労所得)", type: "num", answer: 3300 },
+    { label: "Tax on net unearned income at the parents' rate(純不労所得に対する両親の税率での税額)", type: "num", answer: 1056 },
+    { label: "Tax on the remaining taxable income at Emi's rate(残りの課税所得に対するEmiの税率での税額)", type: "num", answer: 225 },
+    { label: "Emi's total 2026 income tax(Emiの2026年の所得税合計)", type: "num", answer: 1281 },
+    { label: "May the parents elect to report Emi's income on their own return (Form 8814)?(両親はEmiの所得を自身の申告書で申告する選択(Form 8814)ができるか)", type: "select", options: ["Yes, because Emi is under age 19", "Yes, because her unearned income is less than $13,500", "No, because Emi has earned income (the election is limited to children with only interest, dividends and capital gain distributions)", "No, because the election applies only to single parents"], answer: "No, because Emi has earned income (the election is limited to children with only interest, dividends and capital gain distributions)" },
+  ],
+  explain: `<p>標準控除 = max(1,350, 2,000 + 450) = <b>2,450</b>。総所得 2,000 + 6,000 = 8,000 → 課税所得 8,000 − 2,450 = <b>5,550</b>。</p>
+<p>純不労所得 = 6,000 − 2,700 = <b>3,300</b>(課税所得5,550以下なので全額)。両親の税率で 3,300 × 32% = <b>1,056</b>。</p>
+<p>残り 5,550 − 3,300 = 2,250 × 10% = <b>225</b>。合計 1,056 + 225 = <b>1,281</b>。</p>
+<p>Form 8814の選択は、子の所得が利息・配当・キャピタルゲイン分配のみで一定額未満の場合に限られる。Emiは給与所得があるため選択できず、自身でForm 8615を添付して申告する。</p>`,
+});

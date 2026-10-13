@@ -168,5 +168,57 @@ CPA.tbs({
 <p>機械:手形の現在価値 = 100,000 × 2.5771 = 257,710。取得原価 = 50,000 + 257,710 + 7,290(据付費)= 315,000。第1年度の支払利息 = 257,710 × 8% = 20,617。</p>
 <p>加重平均累積支出額 = 600,000 × 12/12 + 800,000 × 9/12 + 900,000 × 4/12 + 300,000 × 0/12 = 600,000 + 600,000 + 300,000 = 1,500,000。</p>
 <p>その他借入の加重平均利率 = (200,000 + 210,000) ÷ 5,000,000 = 8.2%。回避可能利息 = 1,000,000 × 9% + 500,000 × 8.2% = 90,000 + 41,000 = 131,000。実際の利息 = 90,000 + 410,000 = 500,000 より小さいので131,000を資本化する。</p>
-<p>倉庫の取得原価 = 支出合計2,600,000 + 131,000 = 2,731,000。US GAAPでは(免税借入を除き)借入資金の運用益を資本化利息と相殺しないため、5,000は受取利息として計上する(IFRSでは特定借入の運用益を控除する)。</p>`,
+<p>倉庫の取得原価 = 支出合計2,600,000 + 131,000 = 2,731,000。US GAAPでは借入資金の運用益を資本化利息と相殺しないため、5,000は受取利息として計上する(IFRSでは特定借入の運用益を控除する)。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-FAR-53", section: "FAR", chapter: "FAR-03", title: "非貨幣性資産交換の判定グリッド(5件の交換と25%基準)",
+  scenario: `<p>Ishikawa Logistics completed five exchanges of nonfinancial assets with unrelated parties during Year 2. Fair values are reliably determinable. Ishikawa's staff accountant prepared the following worksheet for your review.</p>
+<table><tr><th>Exchange</th><th>Asset given: carrying amount</th><th>Asset given: fair value</th><th>Cash</th><th>Fair value of asset received</th><th>Commercial substance?</th></tr>
+<tr><td>1</td><td>$30,000</td><td>$42,000</td><td>None</td><td>$42,000</td><td>Yes</td></tr>
+<tr><td>2</td><td>$50,000</td><td>$60,000</td><td>Received $9,000</td><td>$51,000</td><td>No</td></tr>
+<tr><td>3</td><td>$40,000</td><td>$35,000</td><td>Paid $10,000</td><td>$45,000</td><td>No</td></tr>
+<tr><td>4</td><td>$26,000</td><td>$40,000</td><td>Paid $8,000</td><td>$48,000</td><td>No</td></tr>
+<tr><td>5</td><td>$70,000</td><td>$100,000</td><td>Received $30,000</td><td>$70,000</td><td>No</td></tr></table>
+<p class="ja">Ishikawa Logistics社は第2年度に非関連当事者と5件の非金融資産の交換を行った。公正価値は信頼性をもって測定できる。表は各交換の引渡資産の帳簿価額・公正価値、現金の授受、受領資産の公正価値、経済的実質の有無である。</p>`,
+  rows: [
+    { label: "Exchange 1: gain recognized(交換1の認識利得)", type: "num", answer: 12000 },
+    { label: "Exchange 2: gain recognized(交換2の認識利得)", type: "num", answer: 1500 },
+    { label: "Exchange 2: carrying amount of asset received(交換2の受領資産の計上額)", type: "num", answer: 42500 },
+    { label: "Exchange 3: loss recognized(交換3の認識損失)", type: "num", answer: 5000 },
+    { label: "Exchange 4: carrying amount of asset received(交換4の受領資産の計上額)", type: "num", answer: 34000 },
+    { label: "Exchange 5: gain recognized(交換5の認識利得)", type: "num", answer: 30000 },
+    { label: "Reason for the Exchange 5 treatment(交換5の処理の根拠)", type: "select", options: ["Losses and gains are always recognized in full", "Boot received is 25% or more of fair value, so the transaction is treated as a monetary exchange", "The exchange lacks commercial substance, so no gain is recognized", "Only the boot portion of the gain is recognized"], answer: "Boot received is 25% or more of fair value, so the transaction is treated as a monetary exchange" },
+  ],
+  explain: `<p>交換1(経済的実質あり):公正価値で測定し、利得 = 42,000 − 30,000 = 12,000を全額認識。受領資産42,000。</p>
+<p>交換2(経済的実質なし・現金受取):現金受取9,000 ÷ 公正価値60,000 = 15% < 25%。総利得 = 60,000 − 50,000 = 10,000のうち、受け取った現金の割合だけ認識:10,000 × 9,000/60,000 = 1,500。受領資産 = 50,000 − 9,000 + 1,500 = 42,500(= 51,000 − 繰延利得8,500)。</p>
+<p>交換3:損失は経済的実質の有無にかかわらず全額認識。損失 = 40,000 − 35,000 = 5,000。受領資産 = 35,000 + 10,000 = 45,000。</p>
+<p>交換4(経済的実質なし・現金支払):利得は認識しない。受領資産 = 帳簿価額26,000 + 現金8,000 = 34,000(繰延利得14,000)。</p>
+<p>交換5:現金受取30,000 ÷ 100,000 = 30% ≥ 25% のため、全体を貨幣性取引とみなし、利得 = 100,000 − 70,000 = 30,000を全額認識。受領資産は公正価値70,000。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-FAR-54", section: "FAR", chapter: "FAR-03", title: "減価償却スケジュール(期中取得・償却方法と見積りの変更)",
+  scenario: `<p>Yamada Corp. (calendar year) computes depreciation to the nearest month. Prepare the depreciation schedule for the assets below.</p>
+<table><tr><th>Asset</th><th>Acquired</th><th>Cost</th><th>Salvage</th><th>Life</th><th>Method</th></tr>
+<tr><td>Machine</td><td>April 1, Year 1</td><td>$250,000</td><td>$25,000</td><td>5 years</td><td>Sum-of-the-years'-digits</td></tr>
+<tr><td>Equipment</td><td>July 1, Year 1</td><td>$160,000</td><td>$10,000</td><td>8 years</td><td>Double-declining balance</td></tr>
+<tr><td>Building</td><td>January 1, Year -7</td><td>$900,000</td><td>$60,000</td><td>40 years</td><td>Straight-line</td></tr>
+<tr><td>Truck</td><td>January 1, Year 3</td><td>$90,000</td><td>$6,000</td><td>200,000 miles</td><td>Units of production</td></tr></table>
+<p>Exhibit 2 (Changes effective January 1, Year 3): (a) Equipment — management switched to straight-line to better reflect the pattern of use; the remaining life is 5 years and the salvage value is revised to $5,000. (b) Building — the total remaining life is revised to 20 years and salvage value to $50,000. (c) The truck was driven 30,000 miles in Year 3.</p>
+<p class="ja">Yamada社(暦年決算)は月割で減価償却する。機械:第1年度4月1日取得、原価$250,000、残存$25,000、5年、級数法。設備:第1年度7月1日取得、$160,000、残存$10,000、8年、200%定率法。建物:第-7年度1月1日取得、$900,000、残存$60,000、40年、定額法。トラック:第3年度1月1日取得、$90,000、残存$6,000、200,000マイル、生産高比例法。Exhibit 2(第3年度1月1日から):(a)設備を定額法に変更、残存耐用年数5年、残存価額$5,000。(b)建物の残存耐用年数を20年、残存価額を$50,000に見直し。(c)トラックの第3年度走行距離は30,000マイル。</p>`,
+  rows: [
+    { label: "Machine depreciation, Year 1(機械の第1年度減価償却費)", type: "num", answer: 56250 },
+    { label: "Machine depreciation, Year 2(機械の第2年度減価償却費)", type: "num", answer: 63750 },
+    { label: "Equipment depreciation, Year 2(設備の第2年度減価償却費)", type: "num", answer: 35000 },
+    { label: "Equipment depreciation, Year 3(設備の第3年度減価償却費)", type: "num", answer: 20000 },
+    { label: "Building depreciation, Year 3(建物の第3年度減価償却費)", type: "num", answer: 32000 },
+    { label: "Total depreciation expense, Year 3 (all four assets)(第3年度の減価償却費合計)", type: "num", answer: 113350 },
+    { label: "Classification of the equipment method change(設備の償却方法変更の分類)", type: "select", options: ["Change in accounting principle — retrospective application", "Change in accounting estimate effected by a change in accounting principle — prospective", "Correction of an error — restatement", "Change in reporting entity"], answer: "Change in accounting estimate effected by a change in accounting principle — prospective" },
+  ],
+  explain: `<p>機械(級数法):償却基礎 = 225,000、級数合計15。償却1年目(4/1/Y1〜3/31/Y2)= 225,000 × 5/15 = 75,000、2年目 = 60,000、3年目 = 45,000。第1年度 = 75,000 × 9/12 = 56,250。第2年度 = 75,000 × 3/12 + 60,000 × 9/12 = 18,750 + 45,000 = 63,750。第3年度 = 60,000 × 3/12 + 45,000 × 9/12 = 15,000 + 33,750 = 48,750。</p>
+<p>設備(200%定率法、率 = 2/8 = 25%):第1年度 = 160,000 × 25% × 6/12 = 20,000。第2年度 = (160,000 − 20,000)× 25% = 35,000。第2年度末帳簿価額 = 105,000。第3年度(定額法へ変更、将来に向けて)=(105,000 − 5,000)÷ 5 = 20,000。</p>
+<p>建物:年間償却 = (900,000 − 60,000) ÷ 40 = 21,000。第-7年度〜第2年度の10年分で累計210,000、帳簿価額690,000。第3年度 = (690,000 − 50,000) ÷ 20 = 32,000。</p>
+<p>トラック:(90,000 − 6,000) ÷ 200,000 = 0.42/マイル × 30,000 = 12,600。</p>
+<p>第3年度合計 = 48,750 + 20,000 + 32,000 + 12,600 = 113,350。償却方法の変更は「会計原則の変更により生じた会計上の見積りの変更」として将来に向けて処理する(ASC 250)。</p>`,
 });
