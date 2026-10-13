@@ -199,3 +199,85 @@ CPA.tbs({
 <p>現物配当:非貨幣性資産を宣言日の公正価値で再測定し、利益 = 190,000 − 150,000 = 40,000 を認識する。利益剰余金は公正価値190,000だけ減少する。</p>
 <p>累積的優先株式の延滞配当は宣言されるまで負債ではなく、1株当たり金額・総額を注記で開示する。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-FAR-74", section: "FAR", chapter: "FAR-05", title: "希薄化後EPS:複数の潜在株式の順位付けと逆希薄化の判定",
+  scenario: `<p>Fujita Inc. reported Year 1 net income of <b>$2,400,000</b>. The income tax rate is <b>25%</b>. Common shares outstanding were <b>900,000</b> on January 1; <b>200,000</b> new shares were issued for cash on July 1. Other securities outstanding for all of Year 1:</p>
+<table><tr><th>Security</th><th>Terms</th></tr>
+<tr><td>Stock options</td><td>120,000 options, exercise price $30; average market price of common stock $40</td></tr>
+<tr><td>Convertible preferred stock</td><td>20,000 shares, $100 par, 5% cumulative; each converts into 4 common shares; Year 1 dividend declared and paid</td></tr>
+<tr><td>6% convertible bonds</td><td>$4,000,000 face, issued at par; convertible into 100,000 common shares</td></tr>
+<tr><td>8% convertible bonds</td><td>$2,000,000 face, issued at par; convertible into 40,000 common shares</td></tr></table>
+<p><b>Staff accountant's worksheet note:</b> "All potential common shares were added to the denominator at once, and diluted EPS was computed as $2,580,000 + $120,000 = $2,700,000 ÷ 1,250,000 = $2.16."</p>
+<p class="ja">Fujita社の第1年度純利益は$2,400,000、税率25%。普通株式は1月1日に900,000株、7月1日に200,000株を現金で新規発行した。年間を通じて流通していたその他の証券は上表のとおり(ストック・オプション120,000個・行使価格$30・平均株価$40/転換優先株式20,000株・額面$100・5%累積的・1株を普通株式4株に転換・当期配当支払済/6%転換社債額面$4,000,000・額面発行・普通株式100,000株に転換可能/8%転換社債額面$2,000,000・額面発行・40,000株に転換可能)。担当者のワークシートでは、すべての潜在株式を一度に加算し希薄化後EPSを$2.16と計算している。</p>`,
+  rows: [
+    { label: "Weighted-average common shares outstanding(加重平均流通普通株式数)", type: "num", answer: 1000000 },
+    { label: "Basic EPS(基本的EPS)", type: "num", answer: 2.30, tol: 0.01 },
+    { label: "Incremental shares from the stock options (treasury stock method)(自己株式法によるオプションの増分株式数)", type: "num", answer: 30000 },
+    { label: "Per-share effect (incremental EPS) of the 6% convertible bonds(6%転換社債の1株当たり影響額)", type: "num", answer: 1.80, tol: 0.01 },
+    { label: "Denominator used for diluted EPS(希薄化後EPSの分母)", type: "num", answer: 1210000 },
+    { label: "Diluted EPS(希薄化後EPS)", type: "num", answer: 2.13, tol: 0.01 },
+    { label: "Security(ies) excluded from diluted EPS as antidilutive(逆希薄化のため除外する証券)", type: "select", options: ["None", "8% convertible bonds only", "6% and 8% convertible bonds", "Convertible preferred stock only", "Stock options only"], answer: "8% convertible bonds only" },
+  ],
+  explain: `<p>加重平均株式数 = 900,000 + 200,000 × 6/12 = 1,000,000。</p>
+<p>基本的EPS:優先配当 = 20,000 × $100 × 5% = 100,000。(2,400,000 − 100,000) ÷ 1,000,000 = $2.30。</p>
+<p>オプション:行使代金 120,000 × $30 = 3,600,000 ÷ $40 = 90,000株買戻し → 増分 30,000株(分子影響0)。</p>
+<p>各証券の1株当たり影響額:オプション$0、転換優先株式 100,000 ÷ 80,000 = $1.25、6%社債 4,000,000 × 6% × 75% = 180,000 ÷ 100,000 = $1.80、8%社債 2,000,000 × 8% × 75% = 120,000 ÷ 40,000 = $3.00。</p>
+<p>希薄化の大きい順に加算:①オプション 2,300,000 ÷ 1,030,000 = $2.233 ②優先株式 2,400,000 ÷ 1,110,000 = $2.162 ③6%社債 2,580,000 ÷ 1,210,000 = $2.132 ④8%社債の$3.00は$2.132を上回るため逆希薄化 → 除外。</p>
+<p>希薄化後EPS = $2.13、分母1,210,000。担当者のように一括で加算すると逆希薄化証券が含まれ、希薄化後EPSを過大表示($2.16)してしまう。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-FAR-75", section: "FAR", chapter: "FAR-05", title: "株式報酬スケジュール(クリフ・段階的権利確定・失効見積り・SAR再測定)",
+  scenario: `<p>Mizuno Corp. has three share-based payment plans. Ignore income taxes.</p>
+<p><b>Plan 1 – cliff vesting options:</b> On 1/1 Y1, Mizuno granted <b>100,000</b> options that all vest on 12/31 Y3 (3-year cliff). Grant-date fair value is <b>$12</b> per option. Mizuno elects to estimate forfeitures: expected forfeiture rate <b>10%</b> at grant, revised to <b>15%</b> at 12/31 Y2; actual forfeitures were <b>12%</b> at vesting.</p>
+<p><b>Plan 2 – graded vesting options:</b> On 1/1 Y1, Mizuno granted <b>60,000</b> options vesting in three equal annual tranches on 12/31 Y1, Y2 and Y3. Fair value is <b>$9</b> per option for every tranche. No forfeitures are expected.</p>
+<p><b>Plan 3 – cash-settled stock appreciation rights (SARs):</b> On 1/1 Y1, Mizuno granted <b>30,000</b> SARs that vest on 12/31 Y2 (2-year service period). Fair value per SAR was <b>$5</b> at 12/31 Y1 and <b>$8</b> at 12/31 Y2. No forfeitures.</p>
+<p class="ja">Mizuno社には3つの株式報酬制度がある。法人税は無視する。<br>制度1(クリフ型):1/1 Y1にオプション100,000個を付与し、12/31 Y3に一括で権利確定する。付与日公正価値は1個$12。失効は見積る方針で、付与時の見積失効率10%、12/31 Y2に15%へ改訂、確定時の実績は12%。<br>制度2(段階型):1/1 Y1にオプション60,000個を付与し、12/31 Y1・Y2・Y3に3分の1ずつ権利確定する。各トランシェの公正価値は1個$9、失効は見込まない。<br>制度3(現金決済型SAR):1/1 Y1にSAR30,000個を付与し、12/31 Y2に権利確定(勤務期間2年)。1個当たり公正価値は12/31 Y1 $5、12/31 Y2 $8。失効なし。</p>`,
+  rows: [
+    { label: "Plan 1 compensation expense for Year 1(制度1の第1年度報酬費用)", type: "num", answer: 360000 },
+    { label: "Plan 1 compensation expense for Year 2(制度1の第2年度報酬費用)", type: "num", answer: 320000 },
+    { label: "Plan 1 compensation expense for Year 3(制度1の第3年度報酬費用)", type: "num", answer: 376000 },
+    { label: "Plan 2 Year 1 expense using graded (accelerated) attribution(制度2:段階的(加速)配分による第1年度費用)", type: "num", answer: 330000 },
+    { label: "Plan 2 Year 1 expense if Mizuno elects straight-line attribution(制度2:定額配分を選択した場合の第1年度費用)", type: "num", answer: 180000 },
+    { label: "Plan 3 SAR liability at 12/31 Y1(制度3:12/31 Y1のSAR負債)", type: "num", answer: 75000 },
+    { label: "Plan 3 compensation expense for Year 2(制度3の第2年度報酬費用)", type: "num", answer: 165000 },
+    { label: "Measurement of the cash-settled SARs(現金決済型SARの測定)", type: "select", options: ["Equity, measured once at grant-date fair value", "Liability, remeasured at fair value each reporting date until settlement", "Liability, measured at intrinsic value at grant date only", "Disclosure only until exercise"], answer: "Liability, remeasured at fair value each reporting date until settlement" },
+  ],
+  explain: `<p>制度1:Y1累計 = 100,000 × 90% × $12 × 1/3 = 360,000。Y2累計 = 100,000 × 85% × $12 × 2/3 = 680,000 → Y2費用 = 680,000 − 360,000 = 320,000。Y3累計 = 100,000 × 88% × $12 = 1,056,000 → Y3費用 = 1,056,000 − 680,000 = 376,000(見積りの変更は累積キャッチアップで処理)。</p>
+<p>制度2(段階的配分):各トランシェ 20,000 × $9 = 180,000。第1トランシェは1年で全額180,000、第2は2年で1/2 = 90,000、第3は3年で1/3 = 60,000 → 合計330,000。</p>
+<p>定額配分:総額540,000 ÷ 3 = 180,000。ただし累計費用は権利確定済み部分(180,000)以上でなければならず、ちょうど満たすため180,000。</p>
+<p>制度3:Y1負債 = 30,000 × $5 × 1/2 = 75,000。Y2負債 = 30,000 × $8 × 2/2 = 240,000 → Y2費用 = 240,000 − 75,000 = 165,000。</p>
+<p>現金決済型SARは負債に分類し、決済まで各報告日に公正価値で再測定する。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-FAR-76", section: "FAR", chapter: "FAR-05", title: "外貨建取引の為替差損益(期末をまたぐ決済)",
+  scenario: `<p>Sato Inc., whose functional currency is the U.S. dollar, has a December 31 year-end. It entered into the following transactions, none of which is hedged:</p>
+<ol><li>Nov 15, Y1: purchased inventory from a German supplier for <b>€200,000</b>, payable Jan 15, Y2.</li>
+<li>Dec 1, Y1: sold goods to a U.K. customer for <b>£100,000</b>, receivable Feb 28, Y2.</li>
+<li>Oct 1, Y1: borrowed <b>¥30,000,000</b> from a Japanese bank, repayable Sep 30, Y2 (ignore interest).</li></ol>
+<table><tr><th>Date</th><th>$ per €</th><th>$ per £</th><th>$ per ¥</th></tr>
+<tr><td>Oct 1, Y1</td><td>—</td><td>—</td><td>0.0070</td></tr>
+<tr><td>Nov 15, Y1</td><td>1.10</td><td>—</td><td>—</td></tr>
+<tr><td>Dec 1, Y1</td><td>—</td><td>1.30</td><td>—</td></tr>
+<tr><td>Dec 31, Y1</td><td>1.14</td><td>1.27</td><td>0.0068</td></tr>
+<tr><td>Jan 15, Y2</td><td>1.12</td><td>—</td><td>—</td></tr>
+<tr><td>Feb 28, Y2</td><td>—</td><td>1.33</td><td>—</td></tr></table>
+<p class="ja">機能通貨が米ドルで12月決算のSato社は、ヘッジしていない次の取引を行った。①Y1年11/15 ドイツの仕入先から€200,000の棚卸資産を購入(Y2年1/15支払)②Y1年12/1 英国の顧客に£100,000で販売(Y2年2/28回収)③Y1年10/1 日本の銀行から¥30,000,000を借入(Y2年9/30返済、利息は無視)。為替レートは表のとおり。</p>`,
+  rows: [
+    { label: "Inventory cost recorded on Nov 15, Y1(Y1年11/15に計上する棚卸資産の取得原価)", type: "num", answer: 220000 },
+    { label: "Year 1 foreign currency transaction loss on the euro payable(ユーロ建買掛金に係るY1年の為替差損)", type: "num", answer: 8000 },
+    { label: "Year 2 foreign currency transaction gain on settling the euro payable(ユーロ建買掛金の決済によるY2年の為替差益)", type: "num", answer: 4000 },
+    { label: "Pound receivable reported at 12/31 Y1(12/31 Y1に計上するポンド建売掛金)", type: "num", answer: 127000 },
+    { label: "Year 2 foreign currency transaction gain on collecting the pound receivable(ポンド建売掛金の回収によるY2年の為替差益)", type: "num", answer: 6000 },
+    { label: "Year 1 foreign currency transaction gain on the yen loan(円建借入金に係るY1年の為替差益)", type: "num", answer: 6000 },
+    { label: "Net Year 1 foreign currency transaction loss (all three items)(3取引合計のY1年の為替差損(純額))", type: "num", answer: 5000 },
+    { label: "Where Sato reports these transaction gains and losses(これらの為替差損益の表示区分)", type: "select", options: ["Other comprehensive income (cumulative translation adjustment)", "Net income from continuing operations", "Adjustment to the cost of inventory", "Direct adjustment to retained earnings"], answer: "Net income from continuing operations" },
+  ],
+  explain: `<p>①取引日レートで記録:€200,000 × 1.10 = 220,000(棚卸資産の原価はその後のレート変動で修正しない)。12/31:€200,000 × 1.14 = 228,000 → 負債増加により差損8,000。1/15決済:€200,000 × 1.12 = 224,000 → 差益 228,000 − 224,000 = 4,000。</p>
+<p>②売上・売掛金 = £100,000 × 1.30 = 130,000。12/31:£100,000 × 1.27 = 127,000 → 差損3,000。2/28回収:£100,000 × 1.33 = 133,000 → 差益 133,000 − 127,000 = 6,000。</p>
+<p>③借入金 = ¥30,000,000 × 0.0070 = 210,000。12/31:× 0.0068 = 204,000 → 負債減少により差益6,000。</p>
+<p>Y1年の純額 = △8,000 △3,000 + 6,000 = △5,000(純損失5,000)。</p>
+<p>外貨建取引の損益は発生した期間の純利益(継続事業)に計上する。換算調整勘定(OCI)は在外事業体の財務諸表換算で生じるもので、取引損益とは異なる。</p>`,
+});
