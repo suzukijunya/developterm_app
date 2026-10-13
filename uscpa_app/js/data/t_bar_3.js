@@ -214,3 +214,92 @@ Bravo社の3年目12月31日残高:現金100,000 LCU、棚卸資産80,000 LCU(�
 <p>機能通貨がLCUなら資産・負債はすべて決算日レートで換算する:300,000 × 0.45 = <b>135,000</b>。差額はCTAとしてOCIに計上される。</p>
 <p>超インフレ経済(3年間の累積インフレ率が約100%超)では、在外事業体の財務諸表は報告通貨が機能通貨であるかのように<b>再測定</b>する(ASC 830-10-45-11)。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-BAR-57", section: "BAR", chapter: "BAR-02", title: "ストック・オプションの行使価格引下げ(条件変更)と失効・行使の処理",
+  scenario: `<p>On January 1, Year 1, Corvo Inc. granted <b>10,000</b> employee stock options with an exercise price of $25. The options <b>cliff vest at December 31, Year 3</b> (3 years of service). The grant-date fair value was <b>$12</b> per option. Corvo's policy is to account for forfeitures <b>as they occur</b>; no forfeitures were expected or occurred during Years 1 and 2. The options are equity-classified.</p>
+<p><b>Exhibit 1 — Board minutes, January 1, Year 2:</b> Because the share price had fallen, the board reduced the exercise price of all outstanding options to <b>$15</b>. No other terms changed. Valuation report: fair value of the original options immediately before the modification <b>$3</b>; fair value of the modified options <b>$7</b>.</p>
+<p><b>Exhibit 2 — HR report:</b> On January 1, Year 3, employees holding <b>1,000</b> options resigned and forfeited them. In Year 4 the remaining <b>9,000</b> vested options were exercised. Corvo's common stock has a par value of <b>$1</b>.</p>
+<p class="ja">1年目1月1日、Corvo社は行使価格$25の従業員ストック・オプション10,000個を付与した。3年目12月31日に一括して権利確定する(3年間の勤務)。付与日の公正価値は1個$12。失効は発生時に会計処理する方針で、1・2年目に失効の見込みも発生もなかった。オプションは資本に分類される。<br>
+資料1(2年目1月1日の取締役会議事録):株価下落のため、未行使のオプションすべての行使価格を$15に引き下げた。他の条件は変更していない。評価報告:変更直前の当初オプションの公正価値$3、変更後のオプションの公正価値$7。<br>
+資料2(人事報告):3年目1月1日に1,000個を保有する従業員が退職し失効した。4年目に残りの権利確定済み9,000個が行使された。普通株式の額面は$1。</p>`,
+  rows: [
+    { label: "Total incremental fair value from the modification(条件変更による増分公正価値の総額)", type: "num", answer: 40000 },
+    { label: "Compensation cost, Year 1(1年目の報酬費用)", type: "num", answer: 40000 },
+    { label: "Compensation cost, Year 2(2年目の報酬費用)", type: "num", answer: 60000 },
+    { label: "Compensation cost, Year 3(3年目の報酬費用)", type: "num", answer: 44000 },
+    { label: "Type of modification (vesting probability before → after)(条件変更の類型)", type: "select", options: ["Probable-to-probable (Type I)", "Probable-to-improbable (Type II)", "Improbable-to-probable (Type III)", "Improbable-to-improbable (Type IV)"], answer: "Probable-to-probable (Type I)" },
+    { label: "Credit to additional paid-in capital — common stock on exercise in Year 4(4年目の行使時の資本剰余金(普通株式)への貸方)", type: "num", answer: 270000 },
+    { label: "If the options had instead been cancelled on Jan 1, Year 2 with no replacement award(代わりに2年目1月1日に代替報酬なしで取り消していた場合)", type: "select", options: ["Reverse all compensation cost recognized to date", "Recognize the remaining unrecognized grant-date cost immediately", "Continue recognizing cost over the original vesting period", "No further cost; previously recognized cost remains"], answer: "Recognize the remaining unrecognized grant-date cost immediately" },
+  ],
+  explain: `<p>増分公正価値 = (変更後7 − 変更直前3) × 10,000 = <b>40,000</b>。当初の付与日公正価値120,000(12 × 10,000)は従来どおり3年で認識し、増分は残りの勤務期間2年(2・3年目)で認識する。</p>
+<p>1年目:120,000 ÷ 3 = <b>40,000</b>。<br>
+2年目:当初分40,000 + 増分 40,000 ÷ 2 = 20,000 → <b>60,000</b>。累計100,000。</p>
+<p>3年目:失効は発生時に処理するので、失効した1,000個に係る既認識額(当初分 12 × 1,000 × 2/3 = 8,000、増分 4 × 1,000 × 1/2 = 2,000、計10,000)を戻し入れる。残る9,000個の総費用 = 9,000 × (12 + 4) = 144,000、累計100,000との差額で <b>44,000</b>(= 9,000 × 4 + 9,000 × 2 − 10,000)。</p>
+<p>変更前も変更後も権利確定の可能性が高い(勤務条件のみで条件は不変)ので <b>Type I(probable-to-probable)</b> である。</p>
+<p>行使時:Dr 現金 135,000(9,000 × 15)、Dr 資本剰余金―ストック・オプション 144,000 / Cr 普通株式 9,000、Cr 資本剰余金―普通株式 <b>270,000</b>。</p>
+<p>代替報酬なしの取消しは、未認識の付与日報酬費用を取消日に<b>即時に認識</b>する(ASC 718-20-35-9)。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-BAR-58", section: "BAR", chapter: "BAR-02", title: "非継続事業(売却目的保有の処分グループ)の表示と1株当たり利益",
+  scenario: `<p>Orion Corp. (calendar year; income tax rate <b>25%</b>; <b>500,000</b> weighted-average common shares; no dilutive securities) has two segments, Industrial and Retail. Retail generates about 30% of consolidated revenue.</p>
+<p><b>Exhibit 1 — Board resolution, September 30, Year 1:</b> Management with the appropriate authority committed to a plan to sell the entire Retail segment, which represents a strategic shift that will have a major effect on Orion's operations. All held-for-sale criteria were met on October 1, Year 1. The sale is expected to close in Year 2.</p>
+<table><tr><th>Exhibit 2 — Year 1 data</th><th>Amount</th></tr>
+<tr><td>Retail operating loss before tax, January 1 – December 31, Year 1</td><td>$(180,000)</td></tr>
+<tr><td>Carrying amount of the Retail disposal group at Dec 31, Year 1 (before any write-down)</td><td>$2,000,000</td></tr>
+<tr><td>Fair value of the Retail disposal group at Dec 31, Year 1</td><td>$1,800,000</td></tr>
+<tr><td>Estimated costs to sell</td><td>$50,000</td></tr>
+<tr><td>Pretax income from continuing operations (Industrial and corporate)</td><td>$1,500,000</td></tr></table>
+<p><b>Exhibit 3:</b> In December, Year 1 Orion also sold a small product line within Industrial (2% of revenue); the sale does not represent a strategic shift.</p>
+<p class="ja">Orion社(暦年、税率25%、加重平均普通株式数500,000株、希薄化証券なし)はIndustrialとRetailの2セグメントを持ち、Retailは連結売上高の約30%を占める。<br>
+資料1(1年目9月30日の取締役会決議):適切な権限を持つ経営者が、Retailセグメント全体を売却する計画を決定した。これは事業に重大な影響を及ぼす戦略的転換である。1年目10月1日に売却目的保有の要件をすべて満たした。売却は2年目に完了する見込みである。<br>
+資料2(1年目データ):Retailの1年目(1月1日~12月31日)の税引前営業損失$(180,000)。1年目12月31日のRetail処分グループの帳簿価額(評価減前)$2,000,000、公正価値$1,800,000、見積売却費用$50,000。継続事業(Industrialと本社)の税引前利益$1,500,000。<br>
+資料3:1年目12月にOrion社はIndustrial内の小さな製品ライン(売上高の2%)も売却した。この売却は戦略的転換に当たらない。</p>`,
+  rows: [
+    { label: "Write-down (impairment) of the Retail disposal group(Retail処分グループの評価減)", type: "num", answer: 250000 },
+    { label: "Pretax loss from discontinued operations(非継続事業の税引前損失)", type: "num", answer: 430000 },
+    { label: "Loss from discontinued operations, net of tax(非継続事業損失(税引後))", type: "num", answer: 322500 },
+    { label: "Income from continuing operations(継続事業からの利益)", type: "num", answer: 1125000 },
+    { label: "Net income(当期純利益)", type: "num", answer: 802500 },
+    { label: "Loss per share from discontinued operations (enter as a positive number)(非継続事業の1株当たり損失(正の数で))", type: "num", answer: 0.645, tol: 0.01 },
+    { label: "Depreciation of Retail's long-lived assets after October 1, Year 1(10月1日以降のRetailの長期性資産の減価償却)", type: "select", options: ["Continue depreciating over remaining useful lives", "Cease depreciation while classified as held for sale", "Accelerate depreciation to the expected sale date", "Depreciate only the excess over fair value"], answer: "Cease depreciation while classified as held for sale" },
+    { label: "Presentation of the Industrial product line sale(Industrial製品ライン売却の表示)", type: "select", options: ["Discontinued operations, net of tax", "Continuing operations (not a discontinued operation)", "Other comprehensive income", "Extraordinary item"], answer: "Continuing operations (not a discontinued operation)" },
+  ],
+  explain: `<p>売却目的保有の処分グループは「帳簿価額」と「公正価値 − 売却費用」の低い方で測定する。1,800,000 − 50,000 = 1,750,000 なので評価減 = 2,000,000 − 1,750,000 = <b>250,000</b>。</p>
+<p>Retailは戦略的転換に当たるコンポーネントの処分なので非継続事業に表示する。対象期間の営業損益は通年分(1月1日~12月31日)を含める。税引前損失 = 180,000 + 250,000 = <b>430,000</b>。税効果 25% × 430,000 = 107,500、税引後 = <b>322,500</b>。</p>
+<p>継続事業:1,500,000 × (1 − 25%) = <b>1,125,000</b>。当期純利益 = 1,125,000 − 322,500 = <b>802,500</b>。</p>
+<p>1株当たり:継続事業2.25、非継続事業 322,500 ÷ 500,000 = <b>0.645</b>(損失)、純利益1.605。非継続事業のEPSは損益計算書本体または注記で開示する。</p>
+<p>売却目的保有に分類した長期性資産は<b>減価償却を停止</b>し、貸借対照表で区分表示する(比較年度の損益も非継続事業として組み替える)。</p>
+<p>戦略的転換に当たらない小さな製品ラインの売却は非継続事業の要件を満たさず、損益は<b>継続事業</b>に含める。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-BAR-59", section: "BAR", chapter: "BAR-02", title: "セグメント情報:量的基準の判定とASU 2023-07の開示",
+  scenario: `<p>Meridian Corp., a public entity, has identified five operating segments. Its chief operating decision maker (CODM), the CEO, regularly receives the information below (in <b>$ thousands</b>). Intersegment sales are made at market prices.</p>
+<table><tr><th>Segment</th><th>External revenue</th><th>Intersegment revenue</th><th>Segment profit (loss)</th><th>Segment assets</th></tr>
+<tr><td>A</td><td>4,000</td><td>600</td><td>700</td><td>6,000</td></tr>
+<tr><td>B</td><td>1,200</td><td>0</td><td>(450)</td><td>1,500</td></tr>
+<tr><td>C</td><td>700</td><td>300</td><td>90</td><td>2,600</td></tr>
+<tr><td>D</td><td>600</td><td>0</td><td>60</td><td>600</td></tr>
+<tr><td>E</td><td>500</td><td>0</td><td>50</td><td>500</td></tr></table>
+<p>Assume none of the segments are aggregated and management does not elect to report any additional segments voluntarily.</p>
+<p class="ja">上場企業Meridian社は5つの事業セグメントを識別している。最高経営意思決定者(CODM)であるCEOは、定期的に上記の情報(単位:千ドル)を受け取っている。セグメント間売上は市場価格で行う。<br>
+A:外部売上4,000、セグメント間600、利益700、資産6,000。B:1,200、0、損失(450)、1,500。C:700、300、90、2,600。D:600、0、60、600。E:500、0、50、500。<br>
+セグメントの集約は行わず、経営者が任意に追加のセグメントを報告することもないものとする。</p>`,
+  rows: [
+    { label: "Revenue test threshold, in $000(売上高基準の閾値(千ドル))", type: "num", answer: 790 },
+    { label: "Profit (loss) test threshold, in $000(利益(損失)基準の閾値(千ドル))", type: "num", answer: 90 },
+    { label: "Segment C(セグメントC)", type: "select", options: ["Reportable segment", "Not reportable — fails all 10% tests", "Reportable only if needed for the 75% test"], answer: "Reportable segment" },
+    { label: "Segment D(セグメントD)", type: "select", options: ["Reportable segment", "Not reportable — fails all 10% tests", "Reportable because it is profitable"], answer: "Not reportable — fails all 10% tests" },
+    { label: "External revenue of reportable segments for the 75% test, in $000(75%基準の報告セグメントの外部売上高(千ドル))", type: "num", answer: 5900 },
+    { label: "ASU 2023-07: significant segment expenses must be disclosed when they are(ASU 2023-07で重要なセグメント費用の開示が求められる条件)", type: "select", options: ["Greater than 10% of consolidated expenses", "Regularly provided to the CODM and included in each reported measure of segment profit or loss", "Disclosed only in annual filings and only for the largest segment", "Required by IFRS 8 to be reconciled to cash flows"], answer: "Regularly provided to the CODM and included in each reported measure of segment profit or loss" },
+    { label: "ASU 2023-07: a public entity with a single reportable segment(報告セグメントが1つの上場企業)", type: "select", options: ["Is exempt from segment disclosures", "Must provide all segment disclosures required by ASC 280, including the new ones", "Discloses only entity-wide information", "Discloses only the CODM's title"], answer: "Must provide all segment disclosures required by ASC 280, including the new ones" },
+  ],
+  explain: `<p><b>売上高基準</b>:セグメント間を含む総売上 = 4,600 + 1,200 + 1,000 + 600 + 500 = 7,900、10% = <b>790</b>。A(4,600)、B(1,200)、C(1,000)が該当、D(600)とE(500)は該当しない。</p>
+<p><b>利益(損失)基準</b>:利益のセグメントの合計 700 + 90 + 60 + 50 = 900、損失の合計450。絶対値の大きい方900の10% = <b>90</b>。A、B(|450|)、C(90は「10%以上」なので該当)が該当、D(60)とE(50)は該当しない。</p>
+<p><b>資産基準</b>:総資産11,200の10% = 1,120。A、B、Cが該当。</p>
+<p>よってCは<b>報告セグメント</b>、Dはどの基準も満たさず<b>報告対象外</b>(Eも同様)。</p>
+<p><b>75%基準</b>:報告セグメントの外部売上 = 4,000 + 1,200 + 700 = <b>5,900</b>。連結外部売上7,000 × 75% = 5,250 以上なので、追加の報告セグメントは不要である。</p>
+<p>ASU 2023-07:CODMに定期的に提供され、各セグメント損益の測定値に含まれる<b>重要なセグメント費用</b>を開示する(年次・四半期とも)。またCODMの役職と、CODMが業績評価・資源配分にセグメント損益をどう使うかも開示する。報告セグメントが1つの企業も、新しい開示を含め<b>ASC 280の開示をすべて</b>行う。</p>`,
+});
