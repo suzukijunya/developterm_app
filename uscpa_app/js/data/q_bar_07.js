@@ -664,3 +664,85 @@ CPA.extend("BAR-03", {
     },
   ],
 });
+
+CPA.tbs({ id: "TBS-BAR-27", section: "BAR", chapter: "BAR-03", title: "一般基金の基金残高の分類",
+  scenario: `<p>Cedar City's general fund reports total fund balance of <b>$1,000,000</b> at December 31. The following information relates to the fund balance:</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Inventories of supplies</td><td>$45,000</td></tr>
+<tr><td>Unspent state grant resources that the grantor restricts to road maintenance</td><td>$120,000</td></tr>
+<tr><td>Resources set aside by council ordinance (the highest level of decision-making authority) for use only in a declared natural disaster, a circumstance not expected to occur routinely</td><td>$300,000</td></tr>
+<tr><td>Outstanding encumbrances for office supplies (no other constraint applies)</td><td>$35,000</td></tr>
+<tr><td>Portion of existing fund balance appropriated by the city manager, under authority delegated by the council, to eliminate a projected deficit in next year's budget</td><td>$80,000</td></tr></table>
+<p class="ja">Cedar市の一般基金の12月31日現在の基金残高合計は$1,000,000である。関連情報:消耗品の棚卸資産$45,000、補助金提供者が道路維持に使途を制限した未使用の州補助金資源$120,000、議会条例(最高意思決定権限)により、通常発生しない宣言された自然災害時にのみ使用するために留保された資源$300,000、事務用品に係る未決済予約$35,000(他の制約なし)、議会から権限委譲を受けた市長(city manager)が翌年度予算の見込不足を解消するために充当した既存基金残高$80,000。</p>`,
+  rows: [
+    { label: "Nonspendable fund balance(非支出可能基金残高)", type: "num", answer: 45000 },
+    { label: "Restricted fund balance(制限基金残高)", type: "num", answer: 120000 },
+    { label: "Committed fund balance(拘束基金残高)", type: "num", answer: 300000 },
+    { label: "Assigned fund balance(指定基金残高)", type: "num", answer: 115000 },
+    { label: "Unassigned fund balance(未指定基金残高)", type: "num", answer: 420000 },
+    { label: "In the government-wide statement of net position, the $300,000 committed by ordinance is reported as:(条例により拘束された$300,000の政府全体での区分)", type: "select", options: ["Restricted net position", "Unrestricted net position", "Net investment in capital assets", "Deferred inflow of resources"], answer: "Unrestricted net position" },
+  ],
+  explain: `<p>① 棚卸資産は現金化されない形態のため非支出可能:45,000。</p>
+<p>② 補助金提供者(外部)による制約は制限:120,000。</p>
+<p>③ 最高意思決定機関の条例による、通常発生しない状況に限定された安定化資金は拘束:300,000。</p>
+<p>④ 他の制約のない予約35,000と、権限委譲された者による翌年度予算不足への充当80,000は指定:115,000。</p>
+<p>⑤ 未指定 = 1,000,000 − 45,000 − 120,000 − 300,000 − 115,000 = 420,000。</p>
+<p>⑥ 拘束は政府内部の制約であり、政府全体では外部制約・授権法による制約のみが制限付きとなるため、非制限純ポジションに含まれる。</p>`,
+});
+
+CPA.tbs({ id: "TBS-BAR-28", section: "BAR", chapter: "BAR-03", title: "構成単位の判定:統合表示と個別表示",
+  scenario: `<p>Birch County is evaluating six legally separate organizations for inclusion in its financial reporting entity. For each organization, select the appropriate reporting.</p>
+<table><tr><th>Organization</th><th>Facts</th></tr>
+<tr><td>1. Building Authority</td><td>County commissioners appoint the entire board. The authority issues bonds to construct facilities that it leases exclusively to the county.</td></tr>
+<tr><td>2. Housing Authority</td><td>County appoints 5 of 7 board members and can modify and approve the authority's budget. The authority serves low-income residents and repays its debt from rents.</td></tr>
+<tr><td>3. Library District</td><td>Separately elected board. The county must approve the district's budget and tax levy. The district serves the general public.</td></tr>
+<tr><td>4. Redevelopment Agency</td><td>The county commission serves as the agency's governing board, and the county is legally obligated to finance the agency's deficits.</td></tr>
+<tr><td>5. Hospital Authority</td><td>County appoints a voting majority of the board but cannot remove members at will or approve budgets, rates, or debt; no financial benefit or burden relationship exists, and the authority is not fiscally dependent on the county.</td></tr>
+<tr><td>6. Parks Foundation</td><td>A not-for-profit corporation of which the county is the sole corporate member; the county appoints the board and the foundation's resources benefit county parks.</td></tr></table>
+<p class="ja">Birch郡は法的に独立した6つの組織について報告主体への包含を検討している。1.建物公社:郡が理事全員を任命し、公社は施設建設のため債券を発行して郡にのみ賃貸する。2.住宅公社:郡が理事7名中5名を任命し、予算の修正・承認権を持つ。低所得住民にサービスを提供し、債務は家賃で返済する。3.図書館区:理事は別途選挙で選出されるが、予算と税賦課は郡の承認が必要で、一般市民にサービスを提供する。4.再開発公社:郡委員会が公社の理事会を兼ね、郡は公社の赤字を補填する法的義務を負う。5.病院公社:郡が理事の過半数を任命するが、自由な解任や予算・料金・債務の承認はできず、財務的便益・負担関係もなく、財政的依存もない。6.公園財団:郡が唯一の法人会員である非営利法人で、郡が理事を任命し、財団の資源は郡の公園に便益をもたらす。各組織の適切な報告方法を選択せよ。</p>`,
+  rows: [
+    { label: "1. Building Authority(建物公社)", type: "select", options: ["Blended component unit", "Discretely presented component unit", "Related organization (note disclosure only)", "Joint venture"], answer: "Blended component unit" },
+    { label: "2. Housing Authority(住宅公社)", type: "select", options: ["Blended component unit", "Discretely presented component unit", "Related organization (note disclosure only)", "Joint venture"], answer: "Discretely presented component unit" },
+    { label: "3. Library District(図書館区)", type: "select", options: ["Blended component unit", "Discretely presented component unit", "Related organization (note disclosure only)", "Joint venture"], answer: "Discretely presented component unit" },
+    { label: "4. Redevelopment Agency(再開発公社)", type: "select", options: ["Blended component unit", "Discretely presented component unit", "Related organization (note disclosure only)", "Joint venture"], answer: "Blended component unit" },
+    { label: "5. Hospital Authority(病院公社)", type: "select", options: ["Blended component unit", "Discretely presented component unit", "Related organization (note disclosure only)", "Joint venture"], answer: "Related organization (note disclosure only)" },
+    { label: "6. Parks Foundation(公園財団)", type: "select", options: ["Blended component unit", "Discretely presented component unit", "Related organization (note disclosure only)", "Joint venture"], answer: "Blended component unit" },
+  ],
+  explain: `<p>1. 理事の過半数任命により財務的説明責任があり、サービスをほぼ専ら主要政府に提供しているため統合表示(blending)。</p>
+<p>2. 過半数任命かつ予算の修正・承認により意思を強制できる(imposition of will)ため構成単位。サービスは市民向けで、統合要件を満たさないため個別表示。</p>
+<p>3. 理事は選挙で選ばれるが、予算・税賦課の承認が必要な財政的依存により構成単位。統合要件を満たさないため個別表示。</p>
+<p>4. 統治機関が実質的に同一で、かつ財務的便益・負担関係があるため統合表示。</p>
+<p>5. 過半数任命のみで意思の強制・財務的便益/負担・財政的依存がなく、構成単位ではない関連組織。注記開示のみ。</p>
+<p>6. 主要政府が唯一の法人会員である非営利法人の構成単位は統合表示(GASB第80号)。</p>`,
+});
+
+CPA.tbs({ id: "TBS-BAR-29", section: "BAR", chapter: "BAR-03", title: "政府活動の純ポジションの区分計算",
+  scenario: `<p>The following information relates to Aspen City's governmental activities at year-end. Total net position of governmental activities is <b>$24,000,000</b>.</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Capital assets, net of accumulated depreciation</td><td>$45,000,000</td></tr>
+<tr><td>General obligation bonds issued for capital construction, face amount</td><td>$20,000,000</td></tr>
+<tr><td>Unamortized premium on those bonds</td><td>$600,000</td></tr>
+<tr><td>Unspent bond proceeds held in the capital projects fund (restricted for construction)</td><td>$3,000,000</td></tr>
+<tr><td>Deferred outflow of resources: loss on refunding of capital-related bonds</td><td>$400,000</td></tr>
+<tr><td>Debt service fund resources restricted by bond covenants (no related liabilities)</td><td>$900,000</td></tr>
+<tr><td>Permanent fund principal required to be held in perpetuity</td><td>$1,500,000</td></tr>
+<tr><td>Permanent fund earnings restricted by the donor for park maintenance</td><td>$200,000</td></tr>
+<tr><td>General fund cash committed by council ordinance for park expansion</td><td>$500,000</td></tr>
+<tr><td>Net pension liability</td><td>$8,000,000</td></tr></table>
+<p>Enter negative amounts with a minus sign.</p>
+<p class="ja">Aspen市の政府活動に関する期末情報。政府活動の純ポジション合計は$24,000,000である。減価償却累計額控除後の資本資産$45,000,000、資本的建設のために発行した一般財源債の額面$20,000,000、同債券の未償却プレミアム$600,000、資本プロジェクト基金で保有する未使用の債券手取金$3,000,000(建設目的に制限)、資本関連債の借換損失による繰延資源流出$400,000、債券契約により制限された債務返済基金の資源$900,000(関連負債なし)、永久に保持すべき永久基金元本$1,500,000、寄付者が公園維持に使途を制限した永久基金運用益$200,000、議会条例により公園拡張用に拘束された一般基金現金$500,000、純年金負債$8,000,000。マイナスの金額はマイナス記号を付けて入力する。</p>`,
+  rows: [
+    { label: "Net investment in capital assets(資本資産への純投資)", type: "num", answer: 27800000 },
+    { label: "Restricted for capital projects, net of the related debt(資本プロジェクト用制限付き純ポジション(関連債務控除後))", type: "num", answer: 0 },
+    { label: "Restricted—nonexpendable(制限付き・非支出)", type: "num", answer: 1500000 },
+    { label: "Total restricted net position(制限付き純ポジション合計)", type: "num", answer: 2600000 },
+    { label: "Unrestricted net position(非制限純ポジション)", type: "num", answer: -6400000 },
+    { label: "Classification of the $500,000 committed by council ordinance($500,000の区分)", type: "select", options: ["Restricted—expendable", "Restricted—nonexpendable", "Unrestricted", "Net investment in capital assets"], answer: "Unrestricted" },
+  ],
+  explain: `<p>① 資本資産への純投資 = 45,000,000 −(債券帳簿価額20,600,000 − 未使用手取金3,000,000)+ 繰延資源流出400,000 = 27,800,000。プレミアムは債務の帳簿価額に含め、資本関連の繰延資源流出も含める。</p>
+<p>② 未使用手取金3,000,000に対応する債務3,000,000は手取金と同じ区分(制限付き)に含めるため、資本プロジェクト用の制限付き純ポジションは 3,000,000 − 3,000,000 = 0。</p>
+<p>③ 永久基金元本1,500,000は制限付き・非支出。</p>
+<p>④ 制限付き合計 = 0 + 900,000(債務返済)+ 1,500,000 + 200,000(公園維持)= 2,600,000。</p>
+<p>⑤ 非制限 = 24,000,000 − 27,800,000 − 2,600,000 = −6,400,000(純年金負債等により赤字)。</p>
+<p>⑥ 議会条例による拘束は内部の制約であり、政府全体では非制限純ポジションとなる。</p>`,
+});
