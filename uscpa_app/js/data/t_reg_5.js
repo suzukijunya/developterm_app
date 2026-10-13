@@ -126,3 +126,94 @@ CPA.tbs({
 <p>売却(§751(a))では棚卸資産の著しい値上がり要件は不要で、120%テストは§751(b)の不均衡分配にのみ適用される。</p>
 <p>Hanaの取得価額 = 支払現金 90,000 + 引き受けた負債負担分 20,000 = 110,000。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-REG-74", section: "REG", chapter: "REG-05", title: "S法人の適格要件・選択・終了とチェック・ザ・ボックスの判定",
+  scenario: `<p>You are reviewing client files for a tax engagement. All entities are domestic and calendar-year. Unless stated, each corporation meets all S corporation requirements other than the fact described. Assume a corporation may have no more than <b>100</b> shareholders (members of a family are treated as one shareholder) and Form 2553 must be filed no later than the 15th day of the third month of the tax year for the election to be effective for that year.</p>
+<p><b>Exhibit — Client facts</b></p>
+<table><tr><th>Client</th><th>Fact</th></tr>
+<tr><td>1. Ivy Corp.</td><td>Has 120 individual shareholders, all lineal descendants (and their spouses) of a common ancestor within six generations.</td></tr>
+<tr><td>2. Juniper Corp.</td><td>One of its 12 shareholders is a nonresident alien individual.</td></tr>
+<tr><td>3. Kale Corp.</td><td>Has voting and nonvoting common stock with identical distribution and liquidation rights.</td></tr>
+<tr><td>4. Laurel Corp.</td><td>A C corporation since 2018; filed Form 2553 on March 10, 2026, with all shareholders' consents, requesting S status for 2026.</td></tr>
+<tr><td>5. Maple Inc.</td><td>An S corporation with accumulated E&amp;P from its C years; passive investment income exceeded 25% of gross receipts in 2023, 2024, and 2025.</td></tr>
+<tr><td>6. Nutmeg Inc.</td><td>Its S election was revoked effective January 1, 2024. It now wants to re-elect S status without IRS consent.</td></tr>
+<tr><td>7. Oak LLC</td><td>A newly formed LLC with two individual members; it filed no Form 8832.</td></tr></table>
+<p class="ja">税務業務のクライアント資料を検討している。すべて内国・暦年の事業体であり、記載された事実以外はS法人の要件を満たすものとする。株主数の上限は100名(家族は1名とみなす)、Form 2553は課税年度の3か月目の15日までに提出すればその年度から効力を生じる。1. Ivy社:株主は120名の個人で、全員6世代以内の共通の祖先の直系子孫(及びその配偶者)。2. Juniper社:12名の株主のうち1名が非居住外国人。3. Kale社:分配・残余財産の権利が同一の議決権株式と無議決権株式がある。4. Laurel社:2018年からC法人で、2026年3月10日に全株主の同意付きでForm 2553を提出し2026年からのS法人を求めた。5. Maple社:C法人時代の累積E&Pがあり、2023〜2025年の受動的投資所得が総収入の25%を超えた。6. Nutmeg社:S選択を2024年1月1日付で撤回し、IRSの同意なしに再選択したい。7. Oak LLC:個人2名をメンバーとする新設LLCで、Form 8832を提出していない。</p>`,
+  rows: [
+    { label: "1. Ivy Corp. — S corporation eligibility(S法人の適格性)", type: "select", options: ["Eligible", "Not eligible"], answer: "Eligible" },
+    { label: "2. Juniper Corp. — S corporation eligibility(S法人の適格性)", type: "select", options: ["Eligible", "Not eligible"], answer: "Not eligible" },
+    { label: "3. Kale Corp. — S corporation eligibility(S法人の適格性)", type: "select", options: ["Eligible", "Not eligible"], answer: "Eligible" },
+    { label: "4. Laurel Corp. — first year S election is effective(S選択の効力発生年度)", type: "select", options: ["2026", "2027", "Effective on March 10, 2026", "Not effective without IRS consent"], answer: "2026" },
+    { label: "5. Maple Inc. — effect of the passive investment income(受動的投資所得の影響)", type: "select", options: ["No effect; only a tax on excess passive income", "S election terminates effective January 1, 2026", "S election terminated retroactively to January 1, 2023", "S election terminates effective December 31, 2026"], answer: "S election terminates effective January 1, 2026" },
+    { label: "6. Nutmeg Inc. — earliest year for re-election without IRS consent(IRSの同意なしに再選択できる最初の年度)", type: "select", options: ["2026", "2027", "2028", "2029"], answer: "2029" },
+    { label: "7. Oak LLC — default federal tax classification(デフォルトの税務上の区分)", type: "select", options: ["Disregarded entity", "Partnership", "C corporation", "S corporation"], answer: "Partnership" },
+  ],
+  explain: `<p>1. 共通の祖先から6世代以内の家族は1名の株主とみなされるため、120名でも株主数は1名となり適格である。</p>
+<p>2. 非居住外国人は株主になれないため不適格である。</p>
+<p>3. 1種類株式要件は分配・残余財産の権利が同一であればよく、議決権の差異は認められるため適格である。</p>
+<p>4. 3月10日は3か月目の15日(3月15日)以前なので2026年1月1日から効力を生じる。</p>
+<p>5. 累積E&Pを有するS法人の受動的投資所得が3年連続で総収入の25%を超えると、4年目の初日(2026年1月1日)にS選択が終了する。</p>
+<p>6. 撤回・終了後は終了が効力を生じた年度から5課税年度(2024〜2028年)は再選択できないため、IRSの同意なしでは2029年が最初となる。</p>
+<p>7. メンバーが2名以上の国内適格事業体はForm 8832で法人課税を選択しない限り、デフォルトでパートナーシップとして扱われる(1名なら無視される事業体)。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-REG-75", section: "REG", chapter: "REG-05", title: "S法人株主の株式・貸付金取得価額と損失制限の順序・回復",
+  scenario: `<p>Kai owns <b>50%</b> of Kappa Inc., a calendar-year S corporation. In 2025 Kai lent Kappa <b>$20,000</b> evidenced by a written note; his debt basis was $20,000 at January 1, 2026. Kai also personally guaranteed a <b>$50,000</b> bank loan to Kappa in 2026 but has made no payment on the guarantee. Kai is at risk and materially participates.</p>
+<p><b>Exhibit 1 — Kai's stock basis, January 1, 2026:</b> $18,000</p>
+<p><b>Exhibit 2 — Kai's Schedule K-1 items</b></p>
+<table><tr><th>Item</th><th>2026</th><th>2027</th></tr>
+<tr><td>Ordinary business income (loss)</td><td>($45,000)</td><td>$12,000</td></tr>
+<tr><td>Net long-term capital gain</td><td>$3,000</td><td>—</td></tr>
+<tr><td>Tax-exempt interest</td><td>$2,000</td><td>—</td></tr>
+<tr><td>Nondeductible expenses (fines)</td><td>($1,000)</td><td>—</td></tr>
+<tr><td>Cash distributions</td><td>$4,000</td><td>—</td></tr></table>
+<p>Kappa made no repayment on Kai's note in 2026 or 2027.</p>
+<p class="ja">KaiはS法人Kappa社(暦年)の株式50%を保有する。2025年に$20,000を書面の約束手形で貸し付けており、2026年1月1日の貸付金取得価額は$20,000である。2026年には同社の銀行借入$50,000を個人保証したが、保証債務の支払はしていない。Kaiはアットリスクで、重要な関与をしている。2026年1月1日の株式取得価額は$18,000。K-1の内容:2026年は通常事業損失($45,000)、長期キャピタル・ゲイン$3,000、非課税利息$2,000、損金不算入費用(罰金)($1,000)、現金分配$4,000。2027年は通常事業所得$12,000のみ。2026年・2027年に貸付金の返済はない。</p>`,
+  rows: [
+    { label: "Stock basis available for the 2026 loss (after increases, distributions, and nondeductible expenses)(2026年の損失に充当できる株式取得価額)", type: "num", answer: 18000 },
+    { label: "Ordinary loss deductible by Kai in 2026(2026年に控除できる通常損失)", type: "num", answer: 38000 },
+    { label: "Suspended loss carried to 2027(2027年に繰り越される停止損失)", type: "num", answer: 7000 },
+    { label: "Debt basis, December 31, 2026(2026年末の貸付金取得価額)", type: "num", answer: 0 },
+    { label: "Loss deductible by Kai in 2027 from the carryover(2027年に控除できる繰越損失)", type: "num", answer: 7000 },
+    { label: "Debt basis, December 31, 2027(2027年末の貸付金取得価額)", type: "num", answer: 5000 },
+    { label: "Effect of Kai's guarantee of the $50,000 bank loan(銀行借入保証の影響)", type: "select", options: ["Increases debt basis by $50,000", "Increases stock basis by $25,000", "No basis increase until Kai makes payment on the guarantee", "Increases debt basis by $25,000 (50% share)"], answer: "No basis increase until Kai makes payment on the guarantee" },
+    { label: "If Kappa later repays the note when debt basis is less than face(貸付金取得価額が額面未満で手形が返済された場合の差額の性質)", type: "select", options: ["Not taxable; return of capital", "Capital gain because the debt is a written note", "Ordinary income regardless of form", "Reduces stock basis instead"], answer: "Capital gain because the debt is a written note" },
+  ],
+  explain: `<p>2026年:株式取得価額 18,000 + 3,000 + 2,000 = 23,000 → 分配 4,000 減算 19,000 → 損金不算入費用 1,000 減算 18,000(損失に充当可能な株式取得価額)。</p>
+<p>損失 45,000 はまず株式取得価額 18,000 を 0 まで減らし、次に貸付金取得価額 20,000 を 0 まで減らす。控除可能額 = 18,000 + 20,000 = 38,000、停止損失 = 45,000 − 38,000 = 7,000。2026年末の貸付金取得価額は 0。</p>
+<p>2027年:繰越損失 7,000 は2027年の損失として扱われる。所得 12,000 − 損失 7,000 = 純増加額 5,000。所得 12,000 が取得価額を回復させるので繰越損失 7,000 は全額控除でき、純増加額 5,000 はまず減額された貸付金取得価額の回復に充てる(株式より先)。2027年末の貸付金取得価額 5,000、株式取得価額 0。</p>
+<p>保証は経済的支出(actual economic outlay)がないため取得価額を増やさない。支払った時点で貸付金取得価額となる。書面の約束手形を取得価額未満で返済されると差額は利得となり、書面の手形(資本資産)ならキャピタル・ゲイン、オープン・アカウントなら通常所得となる。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-REG-76", section: "REG", chapter: "REG-05", title: "累積E&PのあるS法人の分配(AAA・配当・資本の払戻し)",
+  scenario: `<p>Mu Corp. converted from a C corporation to an S corporation in 2022. Its sole shareholder is Pat. No election under §1368(e)(3) has been made. There is no previously taxed income.</p>
+<p><b>Exhibit 1 — Balances, January 1, 2026</b></p>
+<table><tr><th>Account</th><th>Amount</th></tr>
+<tr><td>Accumulated adjustments account (AAA)</td><td>$20,000</td></tr>
+<tr><td>Accumulated E&amp;P (from C corporation years)</td><td>$30,000</td></tr>
+<tr><td>Pat's stock basis</td><td>$50,000</td></tr></table>
+<p><b>Exhibit 2 — 2026 activity</b></p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Ordinary business income</td><td>$40,000</td></tr>
+<tr><td>Tax-exempt interest income</td><td>$5,000</td></tr>
+<tr><td>Nondeductible expenses (fines; unrelated to tax-exempt income)</td><td>$3,000</td></tr>
+<tr><td>Cash distributions to Pat (December 2026)</td><td>$90,000</td></tr></table>
+<p class="ja">Mu社は2022年にC法人からS法人へ転換した。株主はPat 1名で、§1368(e)(3)の選択はなく、既課税所得(PTI)もない。2026年1月1日残高:AAA $20,000、累積E&P(C法人時代)$30,000、Patの株式取得価額$50,000。2026年の活動:通常事業所得$40,000、非課税利息$5,000、損金不算入費用(罰金、非課税所得とは無関係)$3,000、Patへの現金分配(2026年12月)$90,000。</p>`,
+  rows: [
+    { label: "AAA available before the distribution(分配前のAAA)", type: "num", answer: 57000 },
+    { label: "Portion of distribution nontaxable from AAA(AAAからの非課税分配額)", type: "num", answer: 57000 },
+    { label: "Portion taxable as a dividend(配当として課税される額)", type: "num", answer: 30000 },
+    { label: "Portion that is a nontaxable return of remaining basis(残りの取得価額の払戻し額)", type: "num", answer: 3000 },
+    { label: "Capital gain recognized by Pat(Patが認識するキャピタル・ゲイン)", type: "num", answer: 0 },
+    { label: "Pat's stock basis, December 31, 2026(2026年末のPatの株式取得価額)", type: "num", answer: 32000 },
+    { label: "Effect of the tax-exempt interest on AAA(非課税利息のAAAへの影響)", type: "select", options: ["Increases AAA", "No effect on AAA (increases OAA); increases stock basis", "Decreases AAA", "No effect on AAA or stock basis"], answer: "No effect on AAA (increases OAA); increases stock basis" },
+    { label: "How could Mu distribute E&P before AAA?(AAAより先にE&Pを分配するには)", type: "select", options: ["Not permitted", "Elect under §1368(e)(3) with consent of all affected shareholders", "Automatic if E&P exceeds AAA", "File Form 8832"], answer: "Elect under §1368(e)(3) with consent of all affected shareholders" },
+  ],
+  explain: `<p>AAA = 20,000 + 40,000 − 3,000 = 57,000(非課税利息はAAAではなくOAAに計上)。</p>
+<p>分配 90,000 の配分:①AAA 57,000 は非課税(取得価額を減額)、②累積E&P 30,000 は配当(適格配当)、③残り 90,000 − 57,000 − 30,000 = 3,000 は取得価額の払戻し。</p>
+<p>株式取得価額:50,000 + 40,000 + 5,000 = 95,000。分配のうち配当以外の 60,000 を減算(分配は損金不算入費用より先)→ 35,000。損金不算入費用 3,000 を減算 → 32,000。払戻し 3,000 は取得価額の範囲内なのでキャピタル・ゲインは 0。</p>
+<p>非課税利息はAAAに影響しないが(OAA)、株式取得価額は増額する。E&Pを先に分配したい場合は、影響を受ける全株主の同意を得て§1368(e)(3)の選択を行う。</p>`,
+});

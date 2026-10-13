@@ -184,3 +184,67 @@ CPA.tbs({
 <p>[4] レビューは限定的保証であり、「財務諸表に重要な修正を要する事項に気付かなかったか」を報告する基礎として限定的保証を得る。</p>
 <p>必須記載:独立していない場合、調製報告書には「当該企業に関して独立していない」旨を独立の段落(最終段落)として必ず記載する。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-AUD-66", section: "AUD", chapter: "AUD-05", title: "SSARS 25レビュー:重要性の決定と分析的手続",
+  scenario: `<p>Whitfield CPAs is performing a review under SSARS (AR-C 90, as amended by SSARS No. 25) of the 2026 financial statements of <b>Nolan Supply Co.</b>, a nonissuer distributor.</p>
+<p><b>Exhibit 1 — Materiality policy (firm methodology)</b>: Materiality for the financial statements as a whole = 1% of revenue. Differences between recorded amounts and expectations exceeding 25% of materiality require further inquiry and, if needed, additional procedures.</p>
+<p><b>Exhibit 2 — Data</b></p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>2026 revenue (recorded)</td><td>$12,000,000</td></tr>
+<tr><td>Notes payable, January 1, 2026</td><td>$2,000,000</td></tr>
+<tr><td>Notes payable, December 31, 2026 (borrowing increased evenly during the year)</td><td>$2,800,000</td></tr>
+<tr><td>Fixed interest rate on all notes</td><td>6%</td></tr>
+<tr><td>Interest expense (recorded)</td><td>$198,000</td></tr>
+<tr><td>Prior-year gross margin (stable pricing and product mix)</td><td>38%</td></tr>
+<tr><td>Cost of goods sold (recorded)</td><td>$7,465,000</td></tr></table>
+<p class="ja">Whitfield会計事務所は非公開企業Nolan社の2026年度財務諸表のレビュー(AR-C 90、SSARS第25号改正後)を行う。展示1:財務諸表全体の重要性は売上の1%。記録額と期待値の差が重要性の25%を超える場合は追加の質問等を行う。展示2:売上$12,000,000、期首借入金$2,000,000、期末借入金$2,800,000(期中均等に増加)、固定金利6%、支払利息計上額$198,000、前期の売上総利益率38%(価格・製品構成は安定)、売上原価計上額$7,465,000。</p>`,
+  rows: [
+    { label: "Materiality for the FS as a whole(財務諸表全体の重要性)", type: "num", answer: 120000 },
+    { label: "Threshold for investigating differences(差異調査の閾値)", type: "num", answer: 30000 },
+    { label: "Expected interest expense(支払利息の期待値)", type: "num", answer: 144000 },
+    { label: "Difference: recorded interest − expectation(支払利息の差異)", type: "num", answer: 54000 },
+    { label: "Expected cost of goods sold(売上原価の期待値)", type: "num", answer: 7440000 },
+    { label: "Response to the interest expense difference(支払利息差異への対応)", type: "select", options: ["No further action; reviews do not require follow-up", "Inquire of management and obtain additional review evidence until the difference is explained", "Confirm the notes with the lender and test controls over debt", "Withdraw from the engagement"], answer: "Inquire of management and obtain additional review evidence until the difference is explained" },
+    { label: "Procedure NOT required in a review(レビューで要求されない手続)", type: "select", options: ["Obtaining an understanding of the industry and the entity", "Applying analytical procedures", "Testing the operating effectiveness of internal controls", "Obtaining a management representation letter"], answer: "Testing the operating effectiveness of internal controls" },
+    { label: "Misstatements material and pervasive, management refuses to correct(重要かつ広範な虚偽表示が未修正)", type: "select", options: ["Qualified conclusion", "Adverse conclusion", "Disclaimer of conclusion", "Unmodified conclusion with emphasis paragraph"], answer: "Adverse conclusion" },
+  ],
+  explain: `<p>重要性:SSARS第25号により、レビューでも財務諸表全体の重要性を決定し、手続の立案と結果の評価に用いる。12,000,000 × 1% = 120,000。</p>
+<p>閾値:120,000 × 25% = 30,000。</p>
+<p>支払利息の期待値:借入金は期中均等に増加したので平均残高 = (2,000,000 + 2,800,000) ÷ 2 = 2,400,000。2,400,000 × 6% = 144,000。</p>
+<p>差異:198,000 − 144,000 = 54,000 > 30,000 → 調査が必要。</p>
+<p>売上原価の期待値:12,000,000 × (1 − 0.38) = 7,440,000。計上額7,465,000との差は25,000で閾値30,000未満のため追加手続は不要。</p>
+<p>対応:閾値を超える差異は経営者に質問し、説明が得られるまで追加のレビュー証拠を入手する(未記帳の借入や利率の誤り等を検討)。確認や統制テストは監査手続である。</p>
+<p>要求されない手続:レビューは主に質問と分析的手続で構成され、業種・企業の理解と経営者確認書は必須だが、内部統制の理解・運用評価テストは要求されない。</p>
+<p>結論:SSARS第25号でレビューにおける否定的結論(adverse conclusion)が導入された。重要かつ広範な虚偽表示が修正されない場合は否定的結論、重要だが広範でない場合は限定付結論とする。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-AUD-67", section: "AUD", chapter: "AUD-05", title: "証明業務の選択(検証・レビュー・AUP、アサーション型と直接型)",
+  scenario: `<p>Kestrel Attest Partners received several requests from clients in 2026. All engagements are performed under the SSAEs (AT-C sections, including SSAE No. 19 for agreed-upon procedures and SSAE No. 21 for direct examination engagements).</p>
+<table><tr><th>#</th><th>Request</th></tr>
+<tr><td>1</td><td>Harbor Bank wants a CPA's <b>opinion</b> on whether Lyle Co. complied with its debt covenants as of December 31, 2026.</td></tr>
+<tr><td>2</td><td>A franchisor wants <b>limited (negative) assurance</b> on franchisee Vega LLC's statement of royalty-bearing sales, for which Vega provides a written assertion.</td></tr>
+<tr><td>3</td><td>An investor group wants the CPA to perform specified procedures on inventory quantities that the group designs and to report the results; no opinion or conclusion is wanted.</td></tr>
+<tr><td>4</td><td>In an examination of Orchid Inc.'s greenhouse-gas emissions statement, the responsible party declines to provide a written assertion; the CPA will measure the subject matter against the criteria itself.</td></tr>
+<tr><td>5</td><td>In an assertion-based examination, the CPA finds a material misstatement in Pine Co.'s schedule of investment returns that management refuses to correct.</td></tr>
+<tr><td>6</td><td>A client asks whether the CPA must be independent to perform the agreed-upon procedures engagement in item 3.</td></tr>
+<tr><td>7</td><td>A start-up asks for a <b>review</b> of its financial forecast for the next two years.</td></tr></table>
+<p class="ja">Kestrel会計事務所への2026年の依頼。すべてSSAE(AT-C、AUPはSSAE第19号、直接型検証業務はSSAE第21号)に基づく。1:銀行がLyle社の財務制限条項遵守について意見を求める。2:フランチャイザーが加盟店Vega社のロイヤルティ対象売上報告書(書面アサーションあり)について限定的(消極的)保証を求める。3:投資家グループが自ら設計した棚卸数量の手続の実施と結果報告を求め、意見・結論は不要。4:温室効果ガス排出量の検証で責任者が書面アサーションの提供を拒否し、CPA自身が規準に照らして測定する。5:アサーション型検証で重要な虚偽表示があり経営者が修正を拒否。6:3のAUPで独立性が必要か。7:新興企業が今後2年間の財務予測のレビューを依頼。</p>`,
+  rows: [
+    { label: "1 Engagement type(業務の種類)", type: "select", options: ["Examination", "Review", "Agreed-upon procedures", "Compilation"], answer: "Examination" },
+    { label: "2 Form of conclusion(結論の形式)", type: "select", options: ["Opinion that the statement is presented fairly in all material respects", "Conclusion that we are not aware of any material modifications that should be made", "List of procedures and findings only", "No assurance"], answer: "Conclusion that we are not aware of any material modifications that should be made" },
+    { label: "3 Report content(報告内容)", type: "select", options: ["Opinion on inventory quantities", "Negative assurance on inventory", "Description of procedures performed and the related findings", "Statement that inventory is fairly stated in relation to the FS"], answer: "Description of procedures performed and the related findings" },
+    { label: "4 How to proceed(対応)", type: "select", options: ["Must withdraw — an examination requires a written assertion", "Perform a direct examination engagement and express an opinion on the subject matter", "Convert to a review engagement", "Perform an AUP engagement instead"], answer: "Perform a direct examination engagement and express an opinion on the subject matter" },
+    { label: "5 Report wording(報告の対象)", type: "select", options: ["Qualified or adverse opinion reported directly on the subject matter, not on the assertion", "Unmodified opinion on management's assertion", "Disclaimer of opinion", "Negative assurance on the assertion"], answer: "Qualified or adverse opinion reported directly on the subject matter, not on the assertion" },
+    { label: "6 Independence for AUP(AUPの独立性)", type: "select", options: ["Required", "Not required if the report is restricted", "Not required if disclosed in the report", "Required only for examinations"], answer: "Required" },
+    { label: "7 Review of prospective financial information(予測財務情報のレビュー)", type: "select", options: ["Acceptable — issue negative assurance", "Not permitted; offer an examination, compilation, or AUP instead", "Acceptable only for a forecast, not a projection", "Acceptable if restricted to management"], answer: "Not permitted; offer an examination, compilation, or AUP instead" },
+  ],
+  explain: `<p>1:積極的な意見(合理的保証)を求めるので検証(Examination、AT-C 205)。</p>
+<p>2:限定的保証はレビュー(AT-C 210)で、「重要な修正を要する事項に気付かなかった」という消極的結論となる。</p>
+<p>3:AUP(AT-C 215、SSAE第19号)は保証を提供せず、実施した手続と発見事項を報告する。SSAE第19号では書面アサーションは不要で、報告書を一般利用目的とすることも可能である。</p>
+<p>4:SSAE第21号(AT-C 206)により、責任者の書面アサーションがなくても、実施者が規準に照らして主題を測定・評価する直接型検証業務を行い、主題について直接意見を表明できる。</p>
+<p>5:アサーション型業務で重要な虚偽表示により意見を修正する場合、アサーションではなく主題に対して直接、限定付または否定的意見を表明する。</p>
+<p>6:AUPも証明業務であり、AICPA職業行為規程上、独立性が必要である。</p>
+<p>7:AT-C 305では予測財務情報のレビューは認められない。検証、調製、またはAUPを提案する。</p>`,
+});
