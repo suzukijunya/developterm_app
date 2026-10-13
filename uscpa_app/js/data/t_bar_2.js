@@ -219,3 +219,68 @@ CPA.tbs({
 <p>月末現金 = −46,960 + 80,000 = $33,040。</p>
 <p>減価償却費は現金支出を伴わない費用なので現金予算から除外する。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-BAR-47", section: "BAR", chapter: "BAR-01", title: "変動予算と原価差異の総合分析(材料・労務・変動/固定製造間接費)",
+  scenario: `<p>Ishikawa Parts uses a standard cost system. Overhead is applied on standard direct labor hours (DLH). The static budget was based on 20,000 units (the normal capacity used to set the fixed overhead rate); 22,000 units were actually produced and sold.</p>
+<table><tr><th>Exhibit 1 — Standard cost card (per unit)</th><th>Standard quantity</th><th>Standard price</th><th>Cost</th></tr>
+<tr><td>Direct materials</td><td>4 lbs</td><td>$3.00/lb</td><td>$12</td></tr>
+<tr><td>Direct labor</td><td>0.5 DLH</td><td>$24.00/DLH</td><td>$12</td></tr>
+<tr><td>Variable overhead</td><td>0.5 DLH</td><td>$10.00/DLH</td><td>$5</td></tr>
+<tr><td>Fixed overhead (budget $220,000 ÷ 10,000 DLH)</td><td>0.5 DLH</td><td>$22.00/DLH</td><td>$11</td></tr></table>
+<table><tr><th>Exhibit 2 — Actual results</th><th>Amount</th></tr>
+<tr><td>Budgeted / actual selling price per unit</td><td>$80 / $78</td></tr>
+<tr><td>Materials purchased</td><td>95,000 lbs at $3.10 per lb</td></tr>
+<tr><td>Materials used in production</td><td>90,000 lbs</td></tr>
+<tr><td>Direct labor</td><td>10,500 DLH at $25.00 per DLH</td></tr>
+<tr><td>Variable overhead incurred</td><td>$110,250</td></tr>
+<tr><td>Fixed overhead incurred</td><td>$226,000</td></tr></table>
+<p>The materials price variance is recognized at the time of purchase. There are no variable selling costs.</p>
+<p class="ja">Ishikawa Parts社は標準原価計算を採用し、製造間接費は標準直接作業時間(DLH)で配賦する。固定予算は20,000個(固定費率算定の基準操業度)で作成されたが、実際の製造・販売量は22,000個だった。資料1(標準原価カード):材料4ポンド×$3.00=$12、労務0.5DLH×$24=$12、変動間接費0.5DLH×$10=$5、固定間接費0.5DLH×$22=$11(予算$220,000÷10,000DLH)。資料2(実績):販売価格は予算$80・実際$78、材料購入95,000ポンド@$3.10、材料消費90,000ポンド、直接労務10,500DLH@$25、変動間接費実際$110,250、固定間接費実際$226,000。材料価格差異は購入時に認識する。変動販売費はない。</p>`,
+  rows: [
+    { label: "Direct materials price variance(材料価格差異)", type: "select", options: ["$9,500 Unfavorable", "$9,500 Favorable", "$9,000 Unfavorable", "$8,800 Unfavorable"], answer: "$9,500 Unfavorable" },
+    { label: "Direct materials quantity (usage) variance — absolute amount(材料数量差異・絶対値)", type: "num", answer: 6000 },
+    { label: "Direct labor efficiency variance(労働能率差異)", type: "select", options: ["$12,000 Favorable", "$12,000 Unfavorable", "$12,500 Favorable", "$10,500 Unfavorable"], answer: "$12,000 Favorable" },
+    { label: "Variable overhead spending variance — absolute amount(変動製造間接費予算(支出)差異・絶対値)", type: "num", answer: 5250 },
+    { label: "Variable overhead efficiency variance — absolute amount(変動製造間接費能率差異・絶対値)", type: "num", answer: 5000 },
+    { label: "Fixed overhead spending (budget) variance — absolute amount(固定製造間接費予算差異・絶対値)", type: "num", answer: 6000 },
+    { label: "Fixed overhead production-volume variance(固定製造間接費操業度差異)", type: "select", options: ["$22,000 Favorable", "$22,000 Unfavorable", "$16,000 Favorable", "$6,000 Unfavorable"], answer: "$22,000 Favorable" },
+    { label: "Sales-volume variance in contribution margin — absolute amount(貢献利益ベースの販売数量差異・絶対値)", type: "num", answer: 102000 },
+  ],
+  explain: `<p>実際生産22,000個に対する標準:材料88,000ポンド、作業時間11,000DLH。</p>
+<p>材料価格差異(購入時)=(3.10 − 3.00)× 購入量95,000 = $9,500 不利。消費量90,000で計算した9,000は購入時認識の場合誤り。</p>
+<p>材料数量差異 =(90,000 − 88,000)× 3.00 = $6,000 不利。</p>
+<p>労働能率差異 =(10,500 − 11,000)× 24 = $12,000 有利(実際賃率25を使った12,500は誤り)。なお賃率差異は(25 − 24)× 10,500 = 10,500 不利。</p>
+<p>変動間接費予算差異 = 110,250 − 10,500 × 10 = $5,250 不利。能率差異 =(10,500 − 11,000)× 10 = $5,000 有利。</p>
+<p>固定間接費予算差異 = 226,000 − 220,000 = $6,000 不利。操業度差異 = 予算220,000 − 配賦額(11,000 × 22 = 242,000)= $22,000 有利(基準操業度を上回って生産したため)。</p>
+<p>販売数量差異 =(22,000 − 20,000)× 予算単位貢献利益(80 − 12 − 12 − 5 = 51)= $102,000 有利。なお販売価格差異は(78 − 80)× 22,000 = 44,000 不利である。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-BAR-48", section: "BAR", chapter: "BAR-01", title: "製品ライン廃止と特別注文の意思決定(関連原価分析)",
+  scenario: `<p>Sakai Housewares reports the following segmented income statement for its three product lines. The VP of Sales has proposed dropping Line C, and a hotel chain has requested a special order for Line A products.</p>
+<table><tr><th>Exhibit 1 — Segmented income statement</th><th>Line A</th><th>Line B</th><th>Line C</th></tr>
+<tr><td>Sales</td><td>$500,000</td><td>$400,000</td><td>$300,000</td></tr>
+<tr><td>Variable costs</td><td>300,000</td><td>220,000</td><td>210,000</td></tr>
+<tr><td>Traceable fixed costs</td><td>80,000</td><td>70,000</td><td>60,000</td></tr>
+<tr><td>Allocated common fixed costs (12% of sales)</td><td>60,000</td><td>48,000</td><td>36,000</td></tr>
+<tr><td>Operating income (loss)</td><td>$60,000</td><td>$62,000</td><td>$(6,000)</td></tr></table>
+<p><b>Memo — Line C:</b> Line C's traceable fixed costs include $20,000 of depreciation on specialized equipment that has no resale value; the remaining traceable fixed costs would be eliminated. Because customers buy Line B and Line C together, Line B sales would fall by 5% if Line C were dropped. Common fixed costs would not change.</p>
+<p><b>Memo — Special order:</b> Line A sells 10,000 units at $50 per unit; capacity is 12,000 units. The hotel wants 3,000 units at $38 per unit (all or nothing). Variable cost per unit is $30, of which $2 is a sales commission not paid on this order. Special tooling of $5,000 is required. Any regular sales displaced would be lost.</p>
+<p class="ja">Sakai Housewares社の製品ライン別損益計算書は資料1のとおりである。売上高:A $500,000、B $400,000、C $300,000。変動費:300,000、220,000、210,000。個別固定費:80,000、70,000、60,000。共通固定費配賦額(売上高の12%):60,000、48,000、36,000。営業損益:60,000、62,000、(6,000)。販売担当副社長はラインCの廃止を提案し、ホテルチェーンからはラインAの特別注文の依頼があった。ラインCに関するメモ:個別固定費のうち$20,000は売却価値のない専用設備の減価償却費で、残りは廃止により回避できる。顧客はBとCを併せて購入するため、C廃止でBの売上高は5%減少する。共通固定費は変わらない。特別注文に関するメモ:ラインAは1個$50で10,000個を販売、生産能力は12,000個。ホテルは3,000個を1個$38で一括発注(全量受注が条件)。単位変動費$30のうち$2は販売手数料でこの注文には発生しない。特殊工具$5,000が必要。通常販売を圧迫した分は失われる。</p>`,
+  rows: [
+    { label: "Segment margin of Line C(ラインCのセグメント・マージン)", type: "num", answer: 30000 },
+    { label: "Decrease in total company operating income if Line C is dropped(ラインC廃止による全社営業利益の減少額)", type: "num", answer: 59000 },
+    { label: "Recommendation for Line C(ラインCについての提言)", type: "select", options: ["Keep Line C", "Drop Line C", "Indifferent"], answer: "Keep Line C" },
+    { label: "Cost that is irrelevant to the decision to drop Line C(ラインC廃止の意思決定に無関連な原価)", type: "select", options: ["Allocated common fixed costs", "Avoidable traceable fixed costs", "Lost contribution margin of Line B", "Variable costs of Line C"], answer: "Allocated common fixed costs" },
+    { label: "Contribution margin lost on displaced regular sales of Line A(特別注文により失われるラインAの通常販売の貢献利益)", type: "num", answer: 20000 },
+    { label: "Increase in operating income from accepting the special order(特別注文受諾による営業利益の増加額)", type: "num", answer: 5000 },
+    { label: "Minimum price per unit for the special order to break even(特別注文の最低受諾価格・1個当たり)", type: "num", answer: 36.33, tol: 0.01 },
+  ],
+  explain: `<p>ラインCのセグメント・マージン = 貢献利益(300,000 − 210,000 = 90,000)− 個別固定費60,000 = $30,000。共通費配賦後の損失(6,000)は廃止の判断材料にならない。</p>
+<p>C廃止の影響:失われる貢献利益90,000 − 回避可能固定費(60,000 − 20,000 = 40,000)= 50,000の減少。さらにBの売上高5%減少で貢献利益(400,000 − 220,000 = 180,000)× 5% = 9,000を失う。合計$59,000の減益 → Cは継続すべき。</p>
+<p>共通固定費の配賦額は廃止しても発生額が変わらず、他ラインに再配賦されるだけなので無関連である。</p>
+<p>特別注文:遊休能力は12,000 − 10,000 = 2,000個なので1,000個の通常販売を失う。失われる貢献利益 = 1,000 ×(50 − 30)= $20,000。</p>
+<p>増分利益 = 収益3,000 × 38 = 114,000 − 変動費3,000 ×(30 − 2)= 84,000 − 工具5,000 − 機会原価20,000 = $5,000 → 受諾すべき。</p>
+<p>最低価格 =(84,000 + 5,000 + 20,000)÷ 3,000 = $36.33。</p>`,
+});
