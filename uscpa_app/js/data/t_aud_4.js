@@ -270,7 +270,7 @@ CPA.tbs({
 <p class="ja">Brookfield市の2026年6月期の単一監査(統一ガイダンス、2024年改正)を計画する。低リスク被監査体ではない。連邦補助金支出総額$20,000,000。展示1(前提):支出$1,000,000以上で単一監査が必要。支出$1,000,000〜$34,000,000ではタイプA閾値$1,000,000。タイプBはタイプA閾値の25%を超える場合のみリスク評価。高リスクのタイプBは低リスクのタイプA数の4分の1以上を監査。カバー率40%(低リスク被監査体は20%)。主要プログラムの各遵守要件について既知または推定の疑義費用が$25,000超なら発見事項として報告。展示2:各プログラムの支出とリスク情報(表参照)。監査人は高リスクのタイプAすべてと、大きい方の高リスクのタイプB(D)を主要プログラムとし、カバー率を満たすのに必要な最小の低リスクのタイプAを1つ追加する。展示3:プログラムBで既知の疑義費用$18,000、推定疑義費用$31,000。</p>`,
   rows: [
     { label: "Type A threshold($)(タイプA閾値)", type: "num", answer: 1000000 },
-    { label: "Minimum Type B size subject to risk assessment($)(リスク評価対象となるタイプBの下限)", type: "num", answer: 250000 },
+    { label: "Type B risk-assessment threshold — Type B programs above this amount are risk-assessed($)(タイプBのリスク評価の閾値:これを超えるものが対象)", type: "num", answer: 250000 },
     { label: "Classification of Program C(プログラムCの分類)", type: "select", options: ["Low-risk Type A", "High-risk Type A — must be audited as major", "Type B — not risk-assessed", "Low-risk Type B"], answer: "High-risk Type A — must be audited as major" },
     { label: "Number of high-risk Type B programs required(監査が必要な高リスクのタイプB数)", type: "num", answer: 1 },
     { label: "Coverage before additions(%)(追加前カバー率)", type: "num", answer: 34.5, tol: 0.1 },

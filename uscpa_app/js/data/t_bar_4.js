@@ -262,3 +262,74 @@ CPA.tbs({
 <p>最長期間が12か月以下の短期SBITAは資産・負債を認識せず、支払条件に基づき費用処理する。</p>
 <p>政府資金では、リースと同様に初期のサブスクリプション負債額を資本支出とその他の財源として計上する(開始日の支払90,000は支出として別途計上)。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-BAR-68", section: "BAR", chapter: "BAR-03", title: "年金:総年金負債・受託者純資産のロールフォワードと繰延項目",
+  scenario: `<p>Clearwater City sponsors a single-employer defined benefit pension plan. The measurement date is the city's fiscal year-end, December 31, Year 8. Year 8 is the first year in which any deferred outflows or inflows of resources arise (no beginning balances).</p>
+<table><tr><th>Exhibit 1 — Total pension liability (TPL)</th><th>Amount</th></tr>
+<tr><td>TPL, January 1</td><td>$10,000,000</td></tr>
+<tr><td>Service cost</td><td>$400,000</td></tr>
+<tr><td>Interest on TPL</td><td>$700,000</td></tr>
+<tr><td>Difference between expected and actual experience (increase)</td><td>$150,000</td></tr>
+<tr><td>Change of assumptions (increase)</td><td>$300,000</td></tr>
+<tr><td>Benefit payments</td><td>$600,000</td></tr></table>
+<table><tr><th>Exhibit 2 — Plan fiduciary net position (FNP)</th><th>Amount</th></tr>
+<tr><td>FNP, January 1</td><td>$7,500,000</td></tr>
+<tr><td>Employer contributions</td><td>$450,000</td></tr>
+<tr><td>Employee contributions</td><td>$120,000</td></tr>
+<tr><td>Projected earnings on plan investments</td><td>$525,000</td></tr>
+<tr><td>Actual earnings on plan investments</td><td>$425,000</td></tr>
+<tr><td>Benefit payments</td><td>$600,000</td></tr>
+<tr><td>Administrative expense</td><td>$15,000</td></tr></table>
+<p>The average expected remaining service life of all employees (active and inactive) is <b>5 years</b>.</p>
+<p class="ja">Clearwater市は単一雇用主の確定給付年金制度を運営している。測定日は会計年度末の8年目12月31日。8年目に初めて繰延資源流出・流入が生じた(期首残高なし)。<br>
+総年金負債:期首$10,000,000、勤務費用$400,000、利息$700,000、経験差異(増加)$150,000、仮定の変更(増加)$300,000、給付支払$600,000。<br>
+受託者純資産:期首$7,500,000、雇用主拠出$450,000、従業員拠出$120,000、予想運用収益$525,000、実際運用収益$425,000、給付支払$600,000、管理費$15,000。全従業員(現役・退職者等)の平均予想残存勤務期間は5年。</p>`,
+  rows: [
+    { label: "Total pension liability, Dec 31, Year 8(期末総年金負債)", type: "num", answer: 10950000 },
+    { label: "Plan fiduciary net position, Dec 31, Year 8(期末受託者純資産)", type: "num", answer: 7880000 },
+    { label: "Net pension liability, Dec 31, Year 8(期末純年金負債)", type: "num", answer: 3070000 },
+    { label: "Pension expense, Year 8 — government-wide(8年目の年金費用:政府全体)", type: "num", answer: 580000 },
+    { label: "Deferred outflows of resources related to pensions, Dec 31, Year 8(期末の年金に係る繰延資源流出)", type: "num", answer: 440000 },
+    { label: "Recognition period for the difference between projected and actual investment earnings(運用収益の予想と実績の差異の認識期間)", type: "select", options: ["Immediately in pension expense", "Closed 5-year period", "Average remaining service life of active employees only", "Open 30-year period"], answer: "Closed 5-year period" },
+    { label: "Amount reported as pension expenditure in the General Fund (assume all contributions were due and paid)(一般基金の年金支出額)", type: "select", options: ["$580,000 (pension expense)", "$450,000 (employer contributions)", "$570,000 (increase in net pension liability)", "$3,070,000 (net pension liability)"], answer: "$450,000 (employer contributions)" },
+  ],
+  explain: `<p>TPL = 10,000,000 + 400,000 + 700,000 + 150,000 + 300,000 − 600,000 = 10,950,000。</p>
+<p>FNP = 7,500,000 + 450,000 + 120,000 + 425,000 − 600,000 − 15,000 = 7,880,000。NPL = 10,950,000 − 7,880,000 = 3,070,000(期首2,500,000から570,000増加)。</p>
+<p>年金費用 = 勤務費用400,000 + 利息700,000 − 予想運用収益525,000 − 従業員拠出120,000 + 管理費15,000 + 経験差異150,000÷5 = 30,000 + 仮定変更300,000÷5 = 60,000 + 運用差異100,000÷5 = 20,000 = 580,000。</p>
+<p>繰延資源流出 = 未償却の経験差異120,000 + 仮定変更240,000 + 運用差異80,000 = 440,000。検算:ΔNPL570,000 + 雇用主拠出450,000 − 繰延資源流出の増加440,000 = 580,000。</p>
+<p>運用収益差異は閉鎖型の5年で、経験差異・仮定変更は全従業員(現役・非現役)の平均予想残存勤務期間で認識する。</p>
+<p>政府資金(修正発生主義)では、当期の流動財源で支払われる拠出額450,000を支出とする。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-BAR-69", section: "BAR", chapter: "BAR-03", title: "埋立地の閉鎖・閉鎖後費用(使用容量法)と報告主体の判定",
+  scenario: `<p><b>Part A.</b> Oakridge County operates a municipal solid waste landfill in an enterprise fund.</p>
+<table><tr><th></th><th>Year 1</th><th>Year 2</th></tr>
+<tr><td>Estimated total current cost of closure and postclosure care (end of year)</td><td>$6,000,000</td><td>$6,600,000</td></tr>
+<tr><td>Total estimated capacity (cubic yards)</td><td>2,000,000</td><td>2,000,000</td></tr>
+<tr><td>Cumulative capacity used at year-end (cubic yards)</td><td>300,000</td><td>760,000</td></tr></table>
+<p>No closure equipment has been purchased and no closure costs have been paid.</p>
+<p><b>Part B.</b> Assume GASB Statement No. 103 is effective (major component unit information is presented in the statements of net position and activities or in combining statements, not in the notes). The County is evaluating three legally separate entities:</p>
+<ul><li><b>Building Authority</b> — board appointed by the County Commission; issues bonds to construct buildings leased exclusively to the County; the bonds are repaid entirely from County lease payments.</li>
+<li><b>Housing Authority</b> — board appointed by the County Executive; the County can remove board members at will; it provides housing services to the public; its debt is repaid from rents and federal funds.</li>
+<li><b>Library Foundation</b> — a not-for-profit whose resources are used entirely for the County library system; the County is entitled to and has accessed a majority of the foundation's resources; the foundation is significant to the County.</li></ul>
+<p class="ja">Part A:Oakridge郡は都市固形廃棄物の埋立地を企業基金で運営している。閉鎖・閉鎖後管理費用の現在原価見積総額は1年目末$6,000,000、2年目末$6,600,000。総容量は2,000,000立方ヤード、期末累計使用量は1年目300,000、2年目760,000。閉鎖用設備の購入や閉鎖費用の支払はない。<br>
+Part B:GASB 103号を適用済みとする(主要構成単位の情報は注記ではなく純ポジション計算書・活動計算書または結合財務諸表で表示)。郡は法的に独立した3団体を評価している。Building Authority:理事会は郡委員会が任命、郡に専ら賃貸する建物の建設のため債券を発行し、債券は郡のリース料のみで返済される。Housing Authority:理事は郡長が任命し郡は任意に解任可能、一般市民に住宅サービスを提供、債務は家賃と連邦資金で返済。Library Foundation:非営利法人で資源は郡図書館のためにのみ使用、郡は資源の過半にアクセスする権利があり実際にアクセスしている、郡にとって重要である。</p>`,
+  rows: [
+    { label: "Landfill liability, end of Year 1(1年目末の埋立地負債)", type: "num", answer: 900000 },
+    { label: "Landfill liability, end of Year 2(2年目末の埋立地負債)", type: "num", answer: 2508000 },
+    { label: "Closure and postclosure expense, Year 2(2年目の閉鎖・閉鎖後費用)", type: "num", answer: 1608000 },
+    { label: "Treatment of the Year 2 change in cost estimate(2年目の見積変更の扱い)", type: "select", options: ["Restate Year 1 liability retroactively", "Recognized in Year 2 through the capacity-used computation (change in estimate)", "Recognized only when the landfill closes", "Reported as an extraordinary item"], answer: "Recognized in Year 2 through the capacity-used computation (change in estimate)" },
+    { label: "Building Authority(Building Authorityの表示)", type: "select", options: ["Blended component unit", "Discretely presented component unit", "Not part of the reporting entity", "Fiduciary fund"], answer: "Blended component unit" },
+    { label: "Housing Authority(Housing Authorityの表示)", type: "select", options: ["Blended component unit", "Discretely presented component unit", "Not part of the reporting entity", "Fiduciary fund"], answer: "Discretely presented component unit" },
+    { label: "Library Foundation(Library Foundationの表示)", type: "select", options: ["Blended component unit", "Discretely presented component unit", "Not part of the reporting entity", "Fiduciary fund"], answer: "Discretely presented component unit" },
+  ],
+  explain: `<p>負債 = 見積総額 × 累計使用量 ÷ 総容量 − 既認識額(使用容量法)。</p>
+<p>1年目末 = 6,000,000 × 300,000 ÷ 2,000,000 = 6,000,000 × 15% = 900,000。</p>
+<p>2年目末 = 6,600,000 × 760,000 ÷ 2,000,000 = 6,600,000 × 38% = 2,508,000。2年目の費用 = 2,508,000 − 900,000 = 1,608,000。</p>
+<p>見積の変更は会計上の見積変更として、変更年度の計算(累計使用率を新見積に乗じる)に反映し、過年度は修正しない。</p>
+<p>Building Authority:債務が郡の資源で全額返済され、サービスを専ら郡に提供している → 統合表示(ブレンド)。</p>
+<p>Housing Authority:郡が理事を任命し意思を課すことができるため構成単位だが、サービスは一般市民向けで債務も自主財源で返済し、ブレンド要件に該当しない → 個別表示(ディスクリート)。</p>
+<p>Library Foundation:GASB 39号の要件(資源が専ら主たる政府のため、主たる政府がその過半にアクセス可能、重要性あり)を満たす → 個別表示。GASB 103号の下では主要構成単位の情報は注記での開示は認められず、財務諸表本体の個別列または結合財務諸表で表示する。</p>`,
+});
