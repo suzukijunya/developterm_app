@@ -126,3 +126,68 @@ CPA.tbs({
 <p>純修正額 = −16,200 − 22,500 + 14,000 − 12,000 − 7,000 = <b>−$43,700</b>。修正後残高 = 1,250,000 − 43,700 = <b>$1,206,300</b>。</p>
 <p>現物(床)から棚卸表への追跡は、存在する在庫が記録に漏れていないかを確かめる<b>網羅性</b>のテストである。逆方向(棚卸表から現物)は実在性のテストである。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-AUD-54", section: "AUD", chapter: "AUD-04", title: "期末日後支払からの未計上負債の検索と未修正虚偽表示の集計(AU-C 450)",
+  scenario: `<p>The auditor of <b>Haverford Media, Inc.</b> (year-end December 31, Year 2) performed a search for unrecorded liabilities by examining cash disbursements made after year-end. Recorded accounts payable at December 31 was <b>$640,000</b>. All disbursements below were recorded in January, Year 3 unless stated otherwise.</p>
+<p><b>Exhibit 1 — Subsequent disbursements, January Year 3</b></p>
+<table><tr><th>Check</th><th>Date</th><th>Amount</th><th>Description</th></tr>
+<tr><td>#3010</td><td>Jan 5</td><td>$18,500</td><td>Supplies received Dec 18; vendor invoice dated Dec 20. The invoice appears on the December 31 accounts payable listing.</td></tr>
+<tr><td>#3014</td><td>Jan 8</td><td>$27,000</td><td>Paper stock; receiving report dated Dec 28; invoice dated Jan 2. The goods were not included in the December 31 physical count.</td></tr>
+<tr><td>#3021</td><td>Jan 12</td><td>$9,600</td><td>Legal fees for services rendered December 1–31; invoice dated Jan 10.</td></tr>
+<tr><td>#3025</td><td>Jan 15</td><td>$45,000</td><td>Printing equipment ordered Dec 15, shipped FOB destination, received Jan 10.</td></tr>
+<tr><td>#3030</td><td>Jan 20</td><td>$12,000</td><td>Utilities for the service period December 1 – January 31 (usage was even across the period).</td></tr>
+<tr><td>#3033</td><td>Jan 22</td><td>$4,800</td><td>Annual software subscription for February 1, Year 3 – January 31, Year 4.</td></tr></table>
+<p><b>Exhibit 2 — Other uncorrected misstatements identified (effect on pretax income)</b></p>
+<table><tr><th>Item</th><th>Type</th><th>Effect</th></tr>
+<tr><td>Warranty liability: client's estimate is below the auditor's point estimate</td><td>Judgmental</td><td>Liability understated $20,000</td></tr>
+<tr><td>Inventory pricing sample, projected</td><td>Projected</td><td>Inventory overstated $18,000</td></tr></table>
+<p>Overall materiality is <b>$75,000</b> (based on pretax income); the clearly trivial threshold is <b>$3,000</b>. Management has declined to record any of the misstatements.</p>
+<p class="ja">Haverford Media, Inc.(12月31日決算)の監査人は期末日後の支払を調べて未計上負債の検索を行った。12月31日の計上済買掛金は$640,000。#3010:12月18日受入・12月20日付請求の消耗品$18,500(期末買掛金リストに記載あり)。#3014:12月28日受入・1月2日付請求の用紙$27,000(期末実地棚卸に含まれていない)。#3021:12月1〜31日の弁護士報酬$9,600(1月10日付請求)。#3025:12月15日発注、仕向地渡し、1月10日到着の印刷機$45,000。#3030:12月1日〜1月31日の光熱費$12,000(使用量は均等)。#3033:2月1日開始の年間ソフトウェア利用料$4,800。その他の未修正虚偽表示:製品保証引当金が監査人の点推定より$20,000少ない(判断による虚偽表示)、棚卸資産の単価サンプルからの推定過大$18,000(推定虚偽表示)。全体の重要性は$75,000(税引前利益基準)、明らかに僅少な金額は$3,000。経営者は修正を拒否している。</p>`,
+  rows: [
+    { label: "Check #3010(小切手#3010)", type: "select", options: ["Unrecorded liability — full amount", "Unrecorded liability — partial amount", "Not a December 31 liability", "Already recorded at December 31"], answer: "Already recorded at December 31" },
+    { label: "Check #3014(小切手#3014)", type: "select", options: ["Unrecorded liability — full amount", "Unrecorded liability — partial amount", "Not a December 31 liability", "Already recorded at December 31"], answer: "Unrecorded liability — full amount" },
+    { label: "Check #3025(小切手#3025)", type: "select", options: ["Unrecorded liability — full amount", "Unrecorded liability — partial amount", "Not a December 31 liability", "Already recorded at December 31"], answer: "Not a December 31 liability" },
+    { label: "Check #3030(小切手#3030)", type: "select", options: ["Unrecorded liability — full amount", "Unrecorded liability — partial amount", "Not a December 31 liability", "Already recorded at December 31"], answer: "Unrecorded liability — partial amount" },
+    { label: "Total unrecorded liabilities at December 31 ($)(12月31日の未計上負債合計)", type: "num", answer: 42600 },
+    { label: "Aggregate overstatement of pretax income from all uncorrected misstatements ($)(未修正虚偽表示による税引前利益の過大計上合計)", type: "num", answer: 53600 },
+    { label: "Appropriate auditor action under AU-C 450(AU-C 450に基づく適切な対応)", type: "select", options: ["No action — aggregate is below overall materiality, so the misstatements may be ignored", "Request management to correct all accumulated misstatements; if not corrected, obtain the reasons, evaluate the aggregate (including qualitative factors and the risk of undetected misstatement), communicate to those charged with governance, and obtain a written representation", "Issue a qualified opinion because management refused to correct", "Correct only the factual misstatements; judgmental and projected misstatements are never communicated"], answer: "Request management to correct all accumulated misstatements; if not corrected, obtain the reasons, evaluate the aggregate (including qualitative factors and the risk of undetected misstatement), communicate to those charged with governance, and obtain a written representation" },
+  ],
+  explain: `<p><b>#3010</b>:期末の買掛金リストに記載済み → 計上済みで追加不要。</p>
+<p><b>#3014</b>:12月28日に受入済みで期末に債務が存在する → 全額$27,000が未計上負債。棚卸にも含まれていないため棚卸資産と買掛金が同額過小で、損益への影響はない。</p>
+<p><b>#3021</b>:12月中の役務提供に対する報酬 → 全額$9,600が未計上(費用も過小)。</p>
+<p><b>#3025</b>:仕向地渡しで1月10日到着 → 期末に債務なし。</p>
+<p><b>#3030</b>:12月分のみが当期の負債:12,000 × 1/2 = $6,000(一部未計上)。</p>
+<p><b>#3033</b>:翌期の役務 → 期末の負債ではない。</p>
+<p>未計上負債合計 = 27,000 + 9,600 + 6,000 = <b>$42,600</b>。</p>
+<p>税引前利益への影響:費用の計上漏れ 9,600 + 6,000 = 15,600(#3014は損益影響なし)。これに保証引当金不足20,000と棚卸資産の推定過大18,000を加え、15,600 + 20,000 + 18,000 = <b>$53,600</b> の利益過大。</p>
+<p>AU-C 450では、明らかに僅少なもの以外の集計した虚偽表示をすべて適時に経営者へ伝達し修正を求める。修正されない場合は理由を把握し、未修正虚偽表示が個別・合計で重要か(質的要因、未発見の虚偽表示を加えると重要性を超えるリスク)を評価する。$53,600は重要性$75,000を下回るが余裕は小さい。統治責任者への伝達と、未修正虚偽表示の影響が重要でない旨の経営者確認書(一覧の添付)が必要である。重要性未満なので直ちに限定意見となるわけではない。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-AUD-55", section: "AUD", chapter: "AUD-04", title: "実証的分析的手続:賃貸収入の期待値・許容差異・差異調査",
+  scenario: `<p>The auditor of <b>Brightwater Residential LLC</b>, which owns a single <b>240-unit</b> apartment complex, plans to use a substantive analytical procedure as the primary test of rental revenue for Year 2. The auditor has tested controls over the property-management system that tracks occupancy and lease rates and found them effective.</p>
+<p><b>Exhibit — Data</b></p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Monthly rent per unit, January–June</td><td>$1,500</td></tr>
+<tr><td>Monthly rent per unit, July–December (4% increase effective July 1)</td><td>$1,560</td></tr>
+<tr><td>Average occupancy for the year (per tested system reports)</td><td>95%</td></tr>
+<tr><td>Rental revenue recorded in the general ledger</td><td>$4,262,000</td></tr>
+<tr><td>Threshold for differences not requiring further investigation</td><td>$40,000</td></tr></table>
+<p>When asked about the difference, the property manager explained that <b>late fees and parking income of $52,000</b> are recorded in the rental revenue account. The auditor agreed this amount to the fee and parking sub-ledgers and tested a sample of the underlying charges without exception.</p>
+<p class="ja">Brightwater Residential LLCは240戸のアパート1棟を所有している。監査人は第2年度の賃貸収入の主たるテストとして実証的分析的手続を用いる予定である。入居率と賃料を管理するシステムの内部統制は有効と判断済みである。1〜6月の1戸当たり月額賃料$1,500、7月1日から4%値上げで7〜12月は$1,560、年間平均入居率95%、総勘定元帳の賃貸収入$4,262,000、追加調査不要とする差異の閾値は$40,000。差異について管理者は延滞料と駐車場収入$52,000が賃貸収入勘定に含まれていると説明し、監査人は補助元帳と照合し、その明細をサンプルテストして例外はなかった。</p>`,
+  rows: [
+    { label: "Auditor's expectation of rental revenue ($)(賃貸収入の期待値)", type: "num", answer: 4186080 },
+    { label: "Difference between recorded and expected revenue ($)(計上額と期待値の差異)", type: "num", answer: 75920 },
+    { label: "Required response to the difference(差異に対して必要な対応)", type: "select", options: ["None — differences of this size are expected in revenue", "Inquire of management and obtain corroborating audit evidence for the difference; if it cannot be explained, consider it a possible misstatement", "Accept management's oral explanation without further evidence", "Abandon the analytical procedure and confirm every tenant balance"], answer: "Inquire of management and obtain corroborating audit evidence for the difference; if it cannot be explained, consider it a possible misstatement" },
+    { label: "Unexplained difference after the corroborated explanation ($)(裏付けられた説明後の未解明差異)", type: "num", answer: 23920 },
+    { label: "Conclusion on the remaining difference(残る差異についての結論)", type: "select", options: ["Below the threshold — no further investigation of the remaining difference is required", "Must be recorded as a known misstatement", "Requires a qualified opinion", "Exceeds tolerable misstatement — expand to tests of details"], answer: "Below the threshold — no further investigation of the remaining difference is required" },
+    { label: "Type of analytical procedure used(用いた分析的手続の種類)", type: "select", options: ["Trend analysis", "Ratio analysis", "Reasonableness test", "Regression analysis"], answer: "Reasonableness test" },
+    { label: "Change that would most improve the precision of the expectation(期待値の精度を最も高める変更)", type: "select", options: ["Comparing total revenue with the prior year", "Disaggregating the expectation by month and unit type using tested occupancy data", "Raising the threshold to $80,000", "Using the client's budget as the expectation"], answer: "Disaggregating the expectation by month and unit type using tested occupancy data" },
+  ],
+  explain: `<p>期待値 = 240戸 × 95% × (1,500 × 6 + 1,560 × 6) = 228 × (9,000 + 9,360) = 228 × 18,360 = <b>$4,186,080</b>。</p>
+<p>差異 = 4,262,000 − 4,186,080 = <b>$75,920</b>(閾値$40,000を超える)。</p>
+<p>AU-C 520では、閾値を超える差異について経営者に質問し、その回答を裏付ける適切な監査証拠を入手する。口頭説明だけでは不十分であり、説明できない差異は虚偽表示の可能性として扱う。</p>
+<p>延滞料・駐車場収入$52,000は補助元帳と照合し明細テストで裏付けられたので差異から除く:75,920 − 52,000 = <b>$23,920</b>。これは閾値$40,000未満なので、残りについて追加調査は不要である(ただし勘定の内容としては賃料以外の収入が含まれる点を表示の観点で検討してもよい)。</p>
+<p>戸数・入居率・賃料という財務・非財務データから独立に金額を見積もる手法は<b>合理性テスト(reasonableness test)</b>である。月別・タイプ別に分解し、テスト済みのデータを用いるほど期待値の精度は高まる。前年比較や予算は精度が低く、閾値を上げることは精度向上ではない。</p>`,
+});
