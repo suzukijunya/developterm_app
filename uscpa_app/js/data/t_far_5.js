@@ -100,3 +100,64 @@ CPA.tbs({
 <p><b>行5:</b>GASB 65 により、保険料前払分を除く債券発行費用は発生時の費用(アウトフロー)とする。</p>
 <p><b>行6〜8:</b>外部利用者への有料サービスはエンタープライズ基金、政府内部への原価ベースのサービスは内部サービス基金、信託によらず他の政府のために保有する資源は受託(custodial)基金で報告する。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-FAR-80", section: "FAR", chapter: "FAR-06", title: "非営利組織の活動計算書(純資産区分と制約解除)",
+  scenario: `<p>Harbor Arts Center, a private not-for-profit museum, prepares its statement of activities for the year ended June 30, 2027. Selected information:</p>
+<table><tr><th>#</th><th>Transaction</th><th>Amount</th></tr>
+<tr><td>1</td><td>Contributions with no donor restrictions</td><td>$900,000</td></tr>
+<tr><td>2</td><td>Admission and program service fees</td><td>$600,000</td></tr>
+<tr><td>3</td><td>Gift restricted by donor to the education program; $250,000 spent on that program this year</td><td>$400,000</td></tr>
+<tr><td>4</td><td>Gift restricted to acquire a building; building purchased for $800,000 and placed in service in March (no donor stipulation on how long it must be used; Center has no policy implying a time restriction)</td><td>$1,000,000</td></tr>
+<tr><td>5</td><td>Cash gift to establish a perpetual endowment</td><td>$2,000,000</td></tr>
+<tr><td>6</td><td>Endowment investment return (donor requires return to be used for scholarships); $70,000 appropriated and spent on scholarships this year</td><td>$120,000</td></tr>
+<tr><td>7</td><td>Unconditional promise received in June 2027, payable in fiscal 2028 (present value)</td><td>$285,000</td></tr>
+<tr><td>8</td><td>Expenses: program services $1,300,000; management and general $300,000; fundraising $150,000</td><td>$1,750,000</td></tr></table>
+<p class="ja">私立の非営利美術館Harbor Arts Centerの2027年6月30日終了年度の活動計算書を作成する。①使途制約のない寄付900,000ドル、②入館料・事業収入600,000ドル、③教育事業に使途を限定された寄付400,000ドル(当期に同事業へ250,000ドル支出)、④建物取得に限定された寄付1,000,000ドル(3月に800,000ドルで建物を購入し供用開始、寄付者による使用期間の指定はなく、時間制約を推定する方針もない)、⑤永久基本財産を設定する現金寄付2,000,000ドル、⑥基本財産の運用収益120,000ドル(奨学金に使用するよう寄付者が指定、当期に70,000ドルを予算化し奨学金に支出)、⑦2027年6月に受領した2028年度支払の無条件の寄付約束(現在価値)285,000ドル、⑧費用:事業費1,300,000ドル、管理費300,000ドル、資金調達費150,000ドル。</p>`,
+  rows: [
+    { label: "Net assets released from restrictions(制約から解除された純資産の合計)", type: "num", answer: 1120000 },
+    { label: "Change in net assets without donor restrictions(寄付者制約なし純資産の変動額)", type: "num", answer: 870000 },
+    { label: "Contribution revenue with donor restrictions(寄付者制約付きの寄付収益)", type: "num", answer: 3685000 },
+    { label: "Change in net assets with donor restrictions(寄付者制約付き純資産の変動額)", type: "num", answer: 2685000 },
+    { label: "Classification of the $50,000 of endowment return not yet appropriated(未予算化の基本財産運用収益50,000ドルの区分)", type: "select", options: ["Net assets without donor restrictions, board-designated", "Net assets with donor restrictions until appropriated for expenditure", "Liability until spent", "Added to the perpetual endowment principal"], answer: "Net assets with donor restrictions until appropriated for expenditure" },
+    { label: "Presentation of releases in the statement of activities(活動計算書における制約解除の表示)", type: "select", options: ["Revenue without donor restrictions and expense with donor restrictions", "Reclassification: increase net assets without donor restrictions and decrease net assets with donor restrictions", "Disclosed in the notes only", "Direct adjustment to beginning net assets"], answer: "Reclassification: increase net assets without donor restrictions and decrease net assets with donor restrictions" },
+    { label: "Required analysis of expenses(費用の分析に関する要求事項)", type: "select", options: ["Natural classification only, in the notes", "Functional classification only, on the face of the statement", "Both nature and function, in one location (face, separate statement, or notes)", "Required only for voluntary health and welfare entities"], answer: "Both nature and function, in one location (face, separate statement, or notes)" },
+  ],
+  explain: `<p><b>制約解除:</b>教育事業への支出 250,000 + 建物の供用開始 800,000(期間の定めがなければ供用開始時に解除)+ 奨学金支出 70,000 = 1,120,000。</p>
+<p><b>制約なし純資産:</b>寄付 900,000 + 事業収入 600,000 + 解除 1,120,000 − 費用 1,750,000 = 870,000。費用はすべて制約なし純資産で報告する。</p>
+<p><b>制約付き寄付収益:</b>400,000 + 1,000,000 + 2,000,000 + 285,000(将来受領の約束は時間制約付き)= 3,685,000。</p>
+<p><b>制約付き純資産の変動:</b>3,685,000 + 運用収益 120,000 − 解除 1,120,000 = 2,685,000。</p>
+<p><b>行5:</b>寄付者が使途を指定した基本財産の運用収益は、UPMIFA に基づき予算化(appropriation)され支出されるまで制約付き純資産に留まる。120,000 − 70,000 = 50,000 が残る。</p>
+<p><b>行6:</b>制約解除は収益・費用ではなく純資産区分間の振替(reclassification)として両区分に同額表示する。</p>
+<p><b>行7:</b>ASU 2016-14 により、すべての NFP は費用を性質別・機能別の両面で一か所(本表・別表・注記のいずれか)にまとめて分析表示する。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-FAR-81", section: "FAR", chapter: "FAR-06", title: "非営利組織の寄付の認識判定グリッド(条件付・役務・収蔵品・代理)",
+  scenario: `<p>Riverside Food Alliance, a private not-for-profit, received the following during 2026. The Alliance's policy is <b>not to capitalize</b> collection items; its collection meets all criteria for nonrecognition (held for public exhibition, protected and preserved, and proceeds from sales used to acquire other collection items or for direct care).</p>
+<table><tr><th>Item</th><th>Description</th></tr>
+<tr><td>A</td><td>Pledge of $50,000 payable only if the Alliance raises $50,000 of matching gifts from other donors by June 2027; donor may cancel if the match is not met. Matching gifts raised to date: $12,000.</td></tr>
+<tr><td>B</td><td>A CPA firm performed the year-end accounting close at no charge; the Alliance would otherwise have purchased these services. Fair value $18,000.</td></tr>
+<tr><td>C</td><td>Community volunteers sorted food and staffed a fundraising gala; estimated value $25,000.</td></tr>
+<tr><td>D</td><td>Historical photograph collection donated and added to the Alliance's exhibit collection; fair value $35,000.</td></tr>
+<tr><td>E</td><td>$40,000 received from a donor who specified that the Alliance must pass it to a named, unaffiliated shelter; the Alliance has no variance power.</td></tr>
+<tr><td>F</td><td>Unconditional pledge of $100,000 payable evenly over 2027–2029; present value $92,000 (no other restriction).</td></tr>
+<tr><td>G</td><td>Land with no donor restrictions; fair value $300,000.</td></tr></table>
+<p class="ja">私立非営利組織Riverside Food Allianceは2026年に以下を受領した。同組織は収蔵品を資産計上しない方針で、その収蔵品は非認識の要件(公開展示目的、保護・保存、売却代金を他の収蔵品取得または直接的な維持管理に使用)をすべて満たす。A:2027年6月までに他の寄付者から50,000ドルのマッチング寄付を集めた場合にのみ支払われる50,000ドルの寄付約束(未達なら取消可、現在までの調達額12,000ドル)。B:会計事務所が期末決算業務を無償で提供(本来は購入する役務、公正価値18,000ドル)。C:地域ボランティアによる食品の仕分けと資金集めパーティの運営(見積価値25,000ドル)。D:展示用収蔵品として歴史的写真コレクションを受贈(公正価値35,000ドル)。E:寄付者が特定の無関係のシェルターへ渡すよう指定した40,000ドル(差替権なし)。F:2027〜2029年に均等支払の無条件寄付約束100,000ドル(現在価値92,000ドル、他の制約なし)。G:制約のない土地(公正価値300,000ドル)。</p>`,
+  rows: [
+    { label: "Item A(項目A)", type: "select", options: ["Contribution revenue without donor restrictions", "Contribution revenue with donor restrictions", "Not recognized as revenue", "Liability (agency transaction)"], answer: "Not recognized as revenue" },
+    { label: "Item B(項目B)", type: "select", options: ["Contribution revenue without donor restrictions", "Contribution revenue with donor restrictions", "Not recognized as revenue", "Liability (agency transaction)"], answer: "Contribution revenue without donor restrictions" },
+    { label: "Item C(項目C)", type: "select", options: ["Contribution revenue without donor restrictions", "Contribution revenue with donor restrictions", "Not recognized as revenue", "Liability (agency transaction)"], answer: "Not recognized as revenue" },
+    { label: "Item D(項目D)", type: "select", options: ["Contribution revenue without donor restrictions", "Contribution revenue with donor restrictions", "Not recognized as revenue", "Liability (agency transaction)"], answer: "Not recognized as revenue" },
+    { label: "Item E(項目E)", type: "select", options: ["Contribution revenue without donor restrictions", "Contribution revenue with donor restrictions", "Not recognized as revenue", "Liability (agency transaction)"], answer: "Liability (agency transaction)" },
+    { label: "Item F(項目F)", type: "select", options: ["Contribution revenue without donor restrictions", "Contribution revenue with donor restrictions", "Not recognized as revenue", "Liability (agency transaction)"], answer: "Contribution revenue with donor restrictions" },
+    { label: "Total contribution revenue recognized in 2026 (Items A–G)(2026年に認識する寄付収益の合計)", type: "num", answer: 410000 },
+  ],
+  explain: `<p><b>A:</b>マッチング達成という障壁(barrier)と未達時の取消権(right of release)があるため条件付寄付であり、条件が満たされるまで収益認識しない(12,000ドルの達成は部分的にすぎない)。</p>
+<p><b>B:</b>専門的技能を要する役務で、寄付がなければ購入していたものは公正価値で寄付収益(制約なし)と同額の費用を計上する。18,000。</p>
+<p><b>C:</b>専門的技能を要さないボランティア役務で、非金融資産を創造・増強するものでもないため認識しない。</p>
+<p><b>D:</b>収蔵品の非認識要件を満たし資産計上しない方針のため、収益も資産も計上しない。</p>
+<p><b>E:</b>特定の受益者への受け渡しを指示され差替権(variance power)がないため、仲介者・代理人として資産と負債を計上し、収益にはしない。</p>
+<p><b>F:</b>将来期間に受け取る無条件の寄付約束は暗黙の時間制約があるため制約付き。現在価値 92,000 で計上する。</p>
+<p><b>合計:</b>B 18,000 + F 92,000 + G 300,000 = 410,000。</p>`,
+});
