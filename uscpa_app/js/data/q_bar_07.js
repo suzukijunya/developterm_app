@@ -14,7 +14,7 @@ CPA.extend("BAR-03", {
       ja: "郡の財務部長がMD&Aを起草している。GASB基準上、MD&Aに含めることが不適切な項目はどれか。",
       c: [
         "Condensed financial information derived from the government-wide statements comparing the current year to the prior year",
-        "An analysis of significant variations between original and final budget amounts and between final budget and actual results for the general fund",
+        "A description of significant capital asset and long-term debt activity during the year",
         "A description of currently known facts, decisions, or conditions expected to have a significant effect on financial position or results of operations",
         "A narrative of the mayor's policy accomplishments and long-range community development goals unrelated to the financial statements",
       ],
@@ -157,8 +157,8 @@ CPA.extend("BAR-03", {
         "An investment measured at fair value",
         "An investment measured using the equity method",
       ],
-      a: 2,
-      ex: "過半数持分が投資の定義(収益・利益獲得目的で保有)を満たす場合、公正価値で測定する投資として報告する。投資の定義を満たさない場合は持分法となる。",
+      a: 3,
+      ex: "過半数持分が投資の定義(収益・利益獲得目的で保有)を満たす場合は投資として報告し、原則として持分法で測定する。公正価値で測定するのは、受託活動のみを行う特別目的政府、受託基金、エンダウメント(永久基金を含む)が保有する場合に限られる。一般基金の保有なので持分法。投資の定義を満たさない場合は構成単位となる。",
     },
     {
       q: "A city acquired 100% of the equity interest in a legally separate company that operates the downtown parking garages, intending to continue providing public parking services rather than to hold the interest for investment income. Under GASB Statement No. 90, the city should report the company as:",
