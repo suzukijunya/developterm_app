@@ -183,16 +183,16 @@ CPA.extend("TCP-02", {
       ex: "損失制限は基準価額→危険負担額→受動的活動→超過事業損失の順に適用する。基準価額・at-riskは通過するため基準価額は25,000減って$5,000となり、受動的損失は受動的所得10,000の範囲で控除、15,000は停止損失となる。",
     },
     {
-      q: "After applying the basis, at-risk, and passive activity limitations, Diaz, a single taxpayer, has a net loss of $400,000 from active partnership businesses. Diaz also has $500,000 of wages and investment income. Assume the excess business loss threshold for the year is $305,000. How is the loss treated?",
-      ja: "単身申告者のDiazは、基準価額・危険負担額・受動的活動の各制限を適用した後、能動的なパートナーシップ事業から$400,000の純損失を有する。Diazには給与および投資所得が$500,000ある。当年の超過事業損失の閾値は$305,000と仮定する。この損失はどのように扱われるか。",
+      q: "After applying the basis, at-risk, and passive activity limitations, Diaz, a single taxpayer, has a net loss of $400,000 from active partnership businesses. Diaz also has $500,000 of wages and investment income. Assume the excess business loss threshold for the year is $256,000. How is the loss treated?",
+      ja: "単身申告者のDiazは、基準価額・危険負担額・受動的活動の各制限を適用した後、能動的なパートナーシップ事業から$400,000の純損失を有する。Diazには給与および投資所得が$500,000ある。当年の超過事業損失の閾値は$256,000と仮定する。この損失はどのように扱われるか。",
       c: [
-        "$305,000 is deductible currently, and $95,000 is carried forward as part of an NOL",
+        "$256,000 is deductible currently, and $144,000 is carried forward as part of an NOL",
         "The full $400,000 is deductible currently against wages and investment income",
-        "$95,000 is deductible currently, and $305,000 is carried forward",
-        "$305,000 is deductible currently, and $95,000 is permanently disallowed",
+        "$144,000 is deductible currently, and $256,000 is carried forward",
+        "$256,000 is deductible currently, and $144,000 is permanently disallowed",
       ],
       a: 0,
-      ex: "超過事業損失の制限(§461(l))は受動的活動制限の後に適用され、閾値305,000を超える95,000は当期控除できず、翌年以降NOLとして繰り越される。永久に否認されるわけではない。",
+      ex: "超過事業損失の制限(§461(l))は受動的活動制限の後に適用され、閾値256,000を超える144,000は当期控除できず、翌年以降NOLとして繰り越される。永久に否認されるわけではない。",
     },
     {
       q: "Chen's outside basis is $25,000. In a nonliquidating distribution, Chen receives $28,000 cash and inventory with an inside basis of $6,000 and a fair market value of $9,000. What gain does Chen recognize, and what is Chen's basis in the inventory?",
@@ -380,7 +380,7 @@ CPA.extend("TCP-02", {
       ja: "2015年超党派予算法(BBA)による集中型パートナーシップ監査制度のもとで、当該課税年度に同制度の適用除外を選択できるパートナーシップはどれか。",
       c: [
         "A partnership with 80 partners, one of which is another partnership",
-        "A partnership with 50 partners, all of whom are individuals, C corporations, or S corporations, that makes the election on a timely filed return",
+        "A partnership with 50 partners, all of whom are individuals or C corporations, that makes the election on a timely filed return",
         "A partnership with 150 individual partners",
         "A partnership with 10 partners, one of which is a grantor trust",
       ],

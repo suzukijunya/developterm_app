@@ -424,3 +424,77 @@ CPA.extend("REG-05", {
     },
   ],
 });
+
+CPA.tbs({ id: "TBS-REG-31", section: "REG", chapter: "REG-05", title: "パートナーシップの設立と持分の取得価額(§721・§752)",
+  scenario: `<p>On January 1, Avery, Blake, and Corin form ABC Partnership, each receiving a one-third interest in capital, profits, and losses. Contributions:</p>
+<table><tr><th>Partner</th><th>Property contributed</th><th>Adjusted basis</th><th>FMV</th></tr>
+<tr><td>Avery</td><td>Cash</td><td>$50,000</td><td>$50,000</td></tr>
+<tr><td>Blake</td><td>Land, subject to a $30,000 recourse mortgage assumed by ABC</td><td>$30,000</td><td>$80,000</td></tr>
+<tr><td>Corin</td><td>Equipment</td><td>$40,000</td><td>$50,000</td></tr></table>
+<p>The mortgage is ABC's only liability and is shared equally by the partners. No partner provides services.</p>
+<p class="ja">1月1日、Avery、Blake、CorinはABCパートナーシップを設立し、各自が資本・損益の3分の1の持分を取得した。Averyは現金$50,000、Blakeは$30,000のリコース抵当債務付きの土地(取得価額$30,000、FMV $80,000、債務はABCが引受け)、Corinは設備(取得価額$40,000、FMV $50,000)を拠出した。抵当債務はABC唯一の負債で、パートナーが均等に分担する。役務を提供するパートナーはいない。</p>`,
+  rows: [
+    { label: "Avery's initial basis in partnership interest(Averyの持分の当初取得価額)", type: "num", answer: 60000 },
+    { label: "Blake's initial basis in partnership interest(Blakeの持分の当初取得価額)", type: "num", answer: 10000 },
+    { label: "Gain recognized by Blake on the contribution(Blakeが拠出時に認識する利得)", type: "select", options: ["$0", "$10,000", "$20,000", "$50,000"], answer: "$0" },
+    { label: "Corin's initial basis in partnership interest(Corinの持分の当初取得価額)", type: "num", answer: 50000 },
+    { label: "ABC's basis in the land(ABCの土地の取得価額)", type: "num", answer: 30000 },
+    { label: "ABC's basis in the equipment(ABCの設備の取得価額)", type: "num", answer: 40000 },
+  ],
+  explain: `<p>§721により拠出時の損益は認識せず、持分の取得価額は拠出資産の取得価額+パートナーシップ負債の分担額−他のパートナーに引き受けられた個人負債で計算する。負債30,000の分担額は各10,000。</p>
+<p>Avery:50,000 + 10,000 = 60,000。Blake:30,000 − 30,000 + 10,000 = 10,000。負債の純減少20,000は取得価額30,000を超えないため利得は0。Corin:40,000 + 10,000 = 50,000。</p>
+<p>パートナーシップは拠出者の取得価額を引き継ぐ(§723):土地30,000、設備40,000。FMVは資本勘定(帳簿)上の金額にすぎない。</p>`,
+});
+
+CPA.tbs({ id: "TBS-REG-32", section: "REG", chapter: "REG-05", title: "S法人株主の取得価額・分配・貸付金取得価額",
+  scenario: `<p>Jordan owns 40% of the stock of Zenith Inc., a calendar-year S corporation that has never been a C corporation. At the beginning of the year, Jordan's stock basis is $18,000, and Jordan has a $5,000 loan outstanding to Zenith (debt basis $5,000). Zenith's results for the year:</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Ordinary business income</td><td>$60,000</td></tr>
+<tr><td>Tax-exempt interest income</td><td>$5,000</td></tr>
+<tr><td>Net long-term capital gain</td><td>$10,000</td></tr>
+<tr><td>Nondeductible expenses</td><td>$2,500</td></tr>
+<tr><td>Section 179 expense</td><td>$7,500</td></tr>
+<tr><td>Cash distributions to shareholders (pro rata)</td><td>$125,000</td></tr></table>
+<p>Use the default basis ordering rules (no election). Assume Jordan can use the full §179 deduction at the shareholder level.</p>
+<p class="ja">JordanはC法人であったことのない暦年S法人Zenith社の株式40%を保有する。期首の株式取得価額は$18,000で、Zenithへの貸付金$5,000(貸付金取得価額$5,000)がある。当年のZenithの数値:通常事業所得$60,000、非課税利息$5,000、純長期キャピタルゲイン$10,000、損金不算入費用$2,500、§179費用$7,500、株主への現金分配(持分比例)$125,000。デフォルトの順序規則による。Jordanは株主段階で§179控除を全額利用できるものとする。</p>`,
+  rows: [
+    { label: "Jordan's share of ordinary business income(Jordanの通常事業所得の持分)", type: "num", answer: 24000 },
+    { label: "Stock basis immediately before the distribution(分配直前の株式取得価額)", type: "num", answer: 48000 },
+    { label: "Gain Jordan recognizes on the distribution(分配によりJordanが認識する利得)", type: "num", answer: 2000 },
+    { label: "Character of that gain(その利得の性質)", type: "select", options: ["Dividend income", "Capital gain", "Ordinary income", "Tax-exempt"], answer: "Capital gain" },
+    { label: "Section 179 deduction Jordan may claim this year(Jordanが当年控除できる§179費用)", type: "num", answer: 3000 },
+    { label: "Jordan's debt basis at year-end(期末の貸付金取得価額)", type: "num", answer: 1000 },
+  ],
+  explain: `<p>Jordanの持分(40%):通常事業所得24,000、非課税利息2,000、LTCG 4,000、損金不算入費用1,000、§179費用3,000、分配50,000。</p>
+<p>①増加項目:18,000 + 24,000 + 2,000 + 4,000 = 48,000。②分配50,000 → 48,000まで非課税、超過2,000はキャピタルゲイン(E&PがないためDividendではない)。株式取得価額は0。分配は貸付金取得価額を減額しない。</p>
+<p>③損金不算入費用1,000と④§179費用3,000は株式取得価額が0のため貸付金取得価額から減額:5,000 − 1,000 − 3,000 = 1,000。合計4,000が貸付金取得価額5,000以内なので§179費用3,000は全額控除可能。</p>`,
+});
+
+CPA.tbs({ id: "TBS-REG-33", section: "REG", chapter: "REG-05", title: "パートナーシップの通常事業所得・K-1・自営業所得",
+  scenario: `<p>Lakeview Partners, a calendar-year general partnership, reports the following for the year:</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Gross sales</td><td>$600,000</td></tr>
+<tr><td>Cost of goods sold</td><td>$250,000</td></tr>
+<tr><td>Salaries to employees</td><td>$90,000</td></tr>
+<tr><td>Guaranteed payment to partner Morgan for services</td><td>$50,000</td></tr>
+<tr><td>Rent expense</td><td>$30,000</td></tr>
+<tr><td>MACRS depreciation</td><td>$20,000</td></tr>
+<tr><td>Charitable contributions</td><td>$6,000</td></tr>
+<tr><td>Taxable interest income</td><td>$4,000</td></tr>
+<tr><td>Net long-term capital gain</td><td>$12,000</td></tr>
+<tr><td>Net §1231 gain</td><td>$8,000</td></tr>
+<tr><td>Tax-exempt interest income</td><td>$2,000</td></tr></table>
+<p>Morgan is a general partner with a 40% interest in profits, losses, and capital. Morgan's beginning outside basis is $40,000, partnership liabilities did not change, and Morgan received a $20,000 cash distribution in addition to the guaranteed payment.</p>
+<p class="ja">暦年のゼネラル・パートナーシップLakeview Partnersの当年の数値:総売上$600,000、売上原価$250,000、従業員給与$90,000、パートナーMorganへの役務に対する保証支払$50,000、支払賃借料$30,000、MACRS減価償却費$20,000、寄附金$6,000、課税対象の受取利息$4,000、純長期キャピタルゲイン$12,000、純§1231利得$8,000、非課税利息$2,000。Morganは損益・資本の40%を有するジェネラル・パートナーで、期首の持分取得価額は$40,000、パートナーシップ負債に変動はなく、保証支払とは別に$20,000の現金分配を受けた。</p>`,
+  rows: [
+    { label: "Lakeview's ordinary business income(Lakeviewの通常事業所得)", type: "num", answer: 160000 },
+    { label: "Morgan's share of ordinary business income(Morganの通常事業所得の持分)", type: "num", answer: 64000 },
+    { label: "Tax treatment of the guaranteed payment to Morgan(Morganへの保証支払の取扱い)", type: "select", options: ["Ordinary income to Morgan; deductible in computing ordinary business income", "Distribution that reduces Morgan's basis", "Separately stated deduction only", "Not taxable to Morgan"], answer: "Ordinary income to Morgan; deductible in computing ordinary business income" },
+    { label: "Morgan's net earnings from self-employment before the 92.35% adjustment(Morganの自営業純所得・92.35%調整前)", type: "num", answer: 114000 },
+    { label: "Morgan's ending outside basis(Morganの期末の持分取得価額)", type: "num", answer: 92000 },
+  ],
+  explain: `<p>通常事業所得 = 600,000 − 250,000 − 90,000 − 50,000 − 30,000 − 20,000 = 160,000。寄附金、利息、LTCG、§1231利得、非課税利息は個別記載項目。Morganの持分 = 160,000 × 40% = 64,000。</p>
+<p>保証支払はパートナーシップの通常事業所得の計算上控除され、Morganは通常所得として計上する(分配ではないため取得価額は減らない)。</p>
+<p>自営業純所得(ジェネラル・パートナー)= 64,000 + 50,000 = 114,000。利息・キャピタルゲイン・§1231利得は除外する。</p>
+<p>期末取得価額 = 40,000 + 64,000 + 利息1,600 + LTCG 4,800 + §1231利得3,200 + 非課税利息800 − 寄附金2,400 − 現金分配20,000 = 92,000。</p>`,
+});
