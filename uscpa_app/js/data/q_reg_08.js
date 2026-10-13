@@ -17,8 +17,8 @@ CPA.extend("REG-05", {
       ex: "メンバーが2人以上の国内適格事業体(eligible entity)はデフォルトでパートナーシップ扱いとなる。有限責任であっても、Form 8832で法人課税を選択しない限り法人とはならない。",
     },
     {
-      q: "A multi-member LLC elected on Form 8832 to be classified as an association taxable as a corporation, effective January 1, Year 1. In Year 3, the members want to change back to partnership classification. Absent IRS permission or a change of more than 50% in ownership, when is the earliest the LLC may make a new classification election?",
-      ja: "複数メンバーのLLCが、Form 8832により1年目1月1日付で法人として課税される社団(association)への区分を選択した。3年目にメンバーはパートナーシップ区分に戻したいと考えている。IRSの許可または50%超の所有権変更がない場合、新たな区分選択を最も早く行えるのはいつか。",
+      q: "A multi-member LLC that had been classified as a partnership since its formation several years earlier elected on Form 8832 to be classified as an association taxable as a corporation, effective January 1, Year 1. In Year 3, the members want to change back to partnership classification. Absent IRS permission or a change of more than 50% in ownership, when is the earliest the LLC may make a new classification election?",
+      ja: "設立以来数年間パートナーシップとして区分されてきた複数メンバーのLLCが、Form 8832により1年目1月1日付で法人として課税される社団(association)への区分を選択した。3年目にメンバーはパートナーシップ区分に戻したいと考えている。IRSの許可または50%超の所有権変更がない場合、新たな区分選択を最も早く行えるのはいつか。",
       c: ["Effective 60 months after January 1, Year 1", "Effective January 1, Year 4", "At any time by filing a new Form 8832", "Never; a corporate classification election is irrevocable"],
       a: 0,
       ex: "Check-the-box規則では、区分変更の選択を行った事業体は、その選択の効力発生日から60か月間は再度区分を変更できない(原則)。いつでも変更可能、または取消不能という選択肢は誤り。",

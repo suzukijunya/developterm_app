@@ -549,3 +549,80 @@ CPA.extend("TCP-03", {
     },
   ],
 });
+
+CPA.tbs({ id: "TBS-TCP-18", section: "TCP", chapter: "TCP-03", title: "複合信託のDNIと分配控除(非課税利息・キャピタルゲイン)",
+  scenario: `<p>The Ito Family Trust is a complex trust. Under the trust instrument and state law, capital gains are allocated to corpus, and trustee fees are charged to corpus. The trustee has discretion to distribute income to the sole beneficiary, Ken. For the current year the trust reports:</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Qualified dividends</td><td>$30,000</td></tr>
+<tr><td>Taxable interest</td><td>$20,000</td></tr>
+<tr><td>Tax-exempt municipal bond interest</td><td>$10,000</td></tr>
+<tr><td>Long-term capital gain (allocated to corpus)</td><td>$25,000</td></tr>
+<tr><td>Trustee fees (charged to corpus)</td><td>$6,000</td></tr>
+<tr><td>Cash distributed to Ken</td><td>$36,000</td></tr></table>
+<p>The trust's personal exemption is $100. Allocate the trustee fees to tax-exempt income in proportion to tax-exempt income to total trust accounting income (dividends, taxable interest and tax-exempt interest). There were no other income or deductions.</p>
+<p class="ja">Ito家信託は複合信託である。信託証書と州法により、キャピタルゲインは元本に配分され、受託者報酬は元本に負担させる。受託者は唯一の受益者Kenに所得を裁量で分配できる。当年の数値は、適格配当$30,000、課税利息$20,000、非課税地方債利息$10,000、長期キャピタルゲイン(元本配分)$25,000、受託者報酬(元本負担)$6,000、Kenへの現金分配$36,000である。信託の人的控除は$100とする。受託者報酬は、信託会計上の所得合計(配当・課税利息・非課税利息)に占める非課税所得の割合で非課税所得に配賦する。その他の所得・控除はない。</p>`,
+  rows: [
+    { label: "Trustee fees allocable to tax-exempt interest (nondeductible)(非課税利息に配賦され控除不能な受託者報酬)", type: "num", answer: 1000 },
+    { label: "Distributable net income (DNI)(配分可能純所得)", type: "num", answer: 54000 },
+    { label: "Income distribution deduction(所得分配控除額)", type: "num", answer: 30000 },
+    { label: "Tax-exempt interest Ken may exclude(Kenが除外できる非課税利息)", type: "num", answer: 6000 },
+    { label: "Trust taxable income(信託の課税所得)", type: "num", answer: 39900 },
+    { label: "Who is taxed on the $25,000 capital gain?(キャピタルゲイン$25,000の課税主体)", type: "select", options: ["Ken", "The trust", "Split pro rata between Ken and the trust"], answer: "The trust" },
+  ],
+  explain: `<p>①非課税利息への報酬配賦 = 6,000 × 10,000 / 60,000 = 1,000(§265により控除不能)。控除可能報酬は5,000。</p>
+<p>②DNI = 配当30,000 + 課税利息20,000 + 非課税利息10,000 − 報酬6,000 = 54,000。元本に配分されたキャピタルゲインはDNIから除く。うち非課税部分 = 10,000 − 1,000 = 9,000、課税部分 = 45,000。</p>
+<p>③分配36,000はDNI以下なので、DNIの構成比で按分する。非課税部分 = 36,000 × 9,000/54,000 = 6,000、課税部分 = 30,000。分配控除は課税部分の30,000(非課税部分は控除不可)。Kenは30,000を所得に含め、6,000は非課税利息として除外する。</p>
+<p>④信託の課税所得 = 課税総所得75,000 − 報酬5,000 − 分配控除30,000 − 人的控除100 = 39,900(留保した課税DNI 15,000 + キャピタルゲイン25,000 − 100と一致)。元本に配分されたキャピタルゲインは分配されないため信託が課税される。</p>`,
+});
+
+CPA.tbs({ id: "TBS-TCP-19", section: "TCP", chapter: "TCP-03", title: "総遺産・課税遺産の計算(配偶者控除・慈善控除・DSUE)",
+  scenario: `<p>Aoki, a U.S. citizen, died in 2026, survived by his U.S.-citizen spouse. At death he held the following (fair market values at date of death; no alternate valuation election):</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Residence held with spouse as joint tenants with right of survivorship (total value)</td><td>$3,000,000</td></tr>
+<tr><td>Brokerage account in Aoki's name</td><td>$9,000,000</td></tr>
+<tr><td>Life insurance on Aoki's life, owned by Aoki, payable to his children</td><td>$2,000,000</td></tr>
+<tr><td>Assets in Aoki's revocable living trust, passing to his children</td><td>$4,000,000</td></tr>
+<tr><td>Traditional IRA, spouse named as beneficiary</td><td>$1,000,000</td></tr></table>
+<p>Funeral expenses were $50,000, debts of the decedent $450,000, and estate administration expenses $100,000 (deducted on the estate tax return). Under the will, $2,000,000 of the brokerage account passes to a qualified public charity and $3,000,000 passes outright to the spouse; the rest of the account passes to the children. Aoki made taxable gifts (after annual exclusions) of $1,000,000 in 2018 and paid no gift tax. Assume a basic exclusion amount of $15,000,000 and no state death taxes.</p>
+<p class="ja">米国市民のAokiは2026年に死亡し、米国市民の配偶者が生存している。死亡時の保有財産(死亡日の時価、代替評価日選択なし)は、配偶者との生存者権付き合有の自宅(総額)$3,000,000、本人名義の証券口座$9,000,000、本人が所有し子が受取人の本人の生命保険$2,000,000、子に帰属する撤回可能生前信託の資産$4,000,000、配偶者が受取人の伝統的IRA$1,000,000である。葬儀費用$50,000、被相続人の債務$450,000、遺産管理費用$100,000(遺産税申告で控除)がある。遺言により証券口座のうち$2,000,000は適格公益慈善団体へ、$3,000,000は配偶者へ直接遺贈され、残りは子に渡る。Aokiは2018年に課税贈与(年間除外後)$1,000,000を行い、贈与税は納付していない。基礎控除額(basic exclusion amount)は$15,000,000、州の死亡税はないものとする。</p>`,
+  rows: [
+    { label: "Gross estate(総遺産額)", type: "num", answer: 17500000 },
+    { label: "Total funeral, debts and administration expenses deduction(葬儀費用・債務・管理費用の控除合計)", type: "num", answer: 600000 },
+    { label: "Marital deduction(配偶者控除額)", type: "num", answer: 5500000 },
+    { label: "Taxable estate(課税遺産額)", type: "num", answer: 9400000 },
+    { label: "Tentative tax base (taxable estate + adjusted taxable gifts)(暫定税額計算の基礎)", type: "num", answer: 10400000 },
+    { label: "DSUE amount available to the surviving spouse if portability is elected(ポータビリティ選択時の配偶者への未使用控除額)", type: "num", answer: 4600000 },
+  ],
+  explain: `<p>①配偶者との合有財産は半分(1,500,000)のみ算入。総遺産 = 1,500,000 + 9,000,000 + 2,000,000(被相続人が付随的権利を保有する生命保険)+ 4,000,000(撤回可能信託は§2038で算入)+ 1,000,000(IRA)= 17,500,000。</p>
+<p>②§2053控除 = 50,000 + 450,000 + 100,000 = 600,000。</p>
+<p>③配偶者控除 = 合有自宅の算入分1,500,000 + IRA 1,000,000 + 遺贈3,000,000 = 5,500,000。慈善控除は2,000,000。</p>
+<p>④課税遺産 = 17,500,000 − 600,000 − 5,500,000 − 2,000,000 = 9,400,000。調整課税贈与1,000,000を加えた税額計算基礎は10,400,000で基礎控除額15,000,000以下のため遺産税は生じない。</p>
+<p>⑤DSUE = 15,000,000 − 10,400,000 = 4,600,000(期限内の遺産税申告でポータビリティを選択する必要がある)。総遺産に合有自宅全額を算入する誤りに注意。</p>`,
+});
+
+CPA.tbs({ id: "TBS-TCP-20", section: "TCP", chapter: "TCP-03", title: "免税団体の非関連事業課税所得(UBTI)と負債調達資産",
+  scenario: `<p>City Art Museum, a §501(c)(3) organization, reports the following for the current year:</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Net income from gift-shop sales of art reproductions and exhibition catalogs</td><td>$35,000</td></tr>
+<tr><td>Net income from gift-shop sales of souvenir items with no connection to art (e.g., city-logo T-shirts)</td><td>$40,000</td></tr>
+<tr><td>Net income from a public parking garage operated by museum employees (open to the general public)</td><td>$30,000</td></tr>
+<tr><td>Dividends and interest on investment portfolio (no debt)</td><td>$20,000</td></tr>
+<tr><td>Rents from an office building with no debt (no services provided)</td><td>$50,000</td></tr>
+<tr><td>Net proceeds of a bake sale run entirely by unpaid volunteers</td><td>$8,000</td></tr>
+<tr><td>Rental income from a separate debt-financed office building</td><td>$100,000</td></tr>
+<tr><td>Depreciation and operating expenses of the debt-financed building</td><td>$60,000</td></tr></table>
+<p>For the debt-financed building, the average acquisition indebtedness for the year was $600,000 and the average adjusted basis was $1,000,000. Assume each unrelated activity has net income (no loss), the $1,000 specific deduction applies, and the corporate rate is 21%.</p>
+<p class="ja">§501(c)(3)団体のCity Art Museumの当年の数値は、美術複製品・展覧会カタログのギフトショップ純利益$35,000、美術と無関係な土産物(市のロゴ入りTシャツ等)の純利益$40,000、美術館職員が運営する一般向け駐車場の純利益$30,000、投資ポートフォリオの配当・利息(負債なし)$20,000、負債のないオフィスビルの賃料(サービス提供なし)$50,000、無報酬ボランティアのみで運営したバザーの純収入$8,000、別の負債調達オフィスビルの賃料収入$100,000、その減価償却費・運営費$60,000である。負債調達ビルの年平均取得負債は$600,000、年平均調整基準価額は$1,000,000である。各非関連活動は純利益(損失なし)、$1,000の特別控除を適用し、法人税率は21%とする。</p>`,
+  rows: [
+    { label: "Debt/basis percentage for the debt-financed building (%)(負債調達比率、%)", type: "num", answer: 60 },
+    { label: "UBTI from the debt-financed building(負債調達ビルからのUBTI)", type: "num", answer: 24000 },
+    { label: "UBTI before the specific deduction(特別控除前のUBTI)", type: "num", answer: 94000 },
+    { label: "UBTI after the specific deduction(特別控除後のUBTI)", type: "num", answer: 93000 },
+    { label: "Unrelated business income tax(非関連事業所得税額)", type: "num", answer: 19530 },
+    { label: "Treatment of the bake sale proceeds(バザー収入の取扱い)", type: "select", options: ["Included in UBTI", "Excluded under the volunteer-labor exception", "Excluded as passive investment income"], answer: "Excluded under the volunteer-labor exception" },
+  ],
+  explain: `<p>①美術関連商品の販売は免税目的に関連するため除外。土産物40,000と一般向け駐車場30,000(サービスを伴う事業であり受動的賃料ではない)はUBTIに含む。</p>
+<p>②配当・利息、負債のない不動産賃料は受動的所得として除外。ボランティアのみで運営される事業は§513(a)(1)により非関連事業に当たらない。</p>
+<p>③負債調達比率 = 600,000 / 1,000,000 = 60%。UBTI = (100,000 − 60,000) × 60% = 24,000。負債調達資産の賃料は受動的賃料の除外が適用されない点に注意。</p>
+<p>④特別控除前UBTI = 40,000 + 30,000 + 24,000 = 94,000、特別控除1,000後は93,000、税額 = 93,000 × 21% = 19,530。</p>`,
+});
