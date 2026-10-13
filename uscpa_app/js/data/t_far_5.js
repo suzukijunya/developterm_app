@@ -161,3 +161,62 @@ CPA.tbs({
 <p><b>F:</b>将来期間に受け取る無条件の寄付約束は暗黙の時間制約があるため制約付き。現在価値 92,000 で計上する。</p>
 <p><b>合計:</b>B 18,000 + F 92,000 + G 300,000 = 410,000。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-FAR-82", section: "FAR", chapter: "FAR-07", title: "複数の一時差異と税率スケジュールによる繰延税金・評価性引当額",
+  scenario: `<p>Calloway Corp. is computing income taxes for the year ended December 31, 2026. Assume a single jurisdiction with the following <b>enacted</b> combined income tax rates: 2026 — 24%; 2027 — 25%; 2028 — 26%; 2029 and later — 28%. Taxable income for 2026 is <b>$900,000</b>.</p>
+<p><b>Exhibit — Differences existing at December 31, 2026 and scheduled reversals</b></p>
+<table><tr><th>Item</th><th>Total</th><th>2027</th><th>2028</th><th>2029</th></tr>
+<tr><td>Equipment: book basis exceeds tax basis</td><td>$600,000</td><td>$200,000</td><td>$200,000</td><td>$200,000</td></tr>
+<tr><td>Installment sale gain recognized for books in 2026, taxable when collected</td><td>$240,000</td><td>$120,000</td><td>$120,000</td><td>—</td></tr>
+<tr><td>Warranty liability (deductible when paid)</td><td>$150,000</td><td>$150,000</td><td>—</td><td>—</td></tr>
+<tr><td>Accrued litigation loss (deductible when paid)</td><td>$100,000</td><td>—</td><td>—</td><td>$100,000</td></tr>
+<tr><td>Capital loss carryforward (usable only against capital gains)</td><td>$80,000</td><td>$80,000</td><td>—</td><td>—</td></tr></table>
+<p><b>Memo from the tax director:</b> "We have no capital gains planned and no feasible tax-planning strategies; it is more likely than not that <b>none</b> of the capital loss carryforward will be realized. All other deferred tax assets are expected to be realized."</p>
+<p>At December 31, 2025, Calloway reported a deferred tax liability of $150,000 and a deferred tax asset (net of valuation allowance) of $40,000.</p>
+<p class="ja">Calloway社は2026年12月31日終了年度の法人税等を計算している。単一の課税地域とし、制定済みの合算税率は2026年24%、2027年25%、2028年26%、2029年以降28%とする。2026年の課税所得は900,000ドル。2026年末の差異と解消予定:設備の簿価が税務基準額を600,000ドル上回る(2027〜2029年に各200,000ドル)、2026年に会計上認識した割賦販売益240,000ドル(回収時に課税、2027・2028年に各120,000ドル)、製品保証負債150,000ドル(2027年に支払・損金算入)、未払訴訟損失100,000ドル(2029年に支払・損金算入)、キャピタル・ロス繰越80,000ドル(キャピタル・ゲインとのみ相殺可、2027年に利用予定)。税務部長のメモ:キャピタル・ゲインの予定も実行可能なタックス・プランニングもなく、キャピタル・ロス繰越は全額実現しない可能性の方が高い。その他の繰延税金資産は実現見込み。2025年末の繰延税金負債は150,000ドル、繰延税金資産(評価性引当額控除後)は40,000ドル。</p>`,
+  rows: [
+    { label: "Deferred tax liability at Dec 31, 2026(2026年末の繰延税金負債)", type: "num", answer: 219200 },
+    { label: "Gross deferred tax asset before valuation allowance(評価性引当額控除前の繰延税金資産)", type: "num", answer: 85500 },
+    { label: "Valuation allowance at Dec 31, 2026(評価性引当額)", type: "num", answer: 20000 },
+    { label: "Deferred income tax expense for 2026(2026年の繰延税金費用)", type: "num", answer: 43700 },
+    { label: "Total income tax expense for 2026(2026年の法人税等合計)", type: "num", answer: 259700 },
+    { label: "Balance sheet presentation at Dec 31, 2026(2026年末の貸借対照表表示)", type: "select", options: ["Current DTA $65,500 and noncurrent DTL $219,200", "Net noncurrent deferred tax liability $153,700", "Net noncurrent deferred tax liability $133,700", "Net current deferred tax liability $153,700"], answer: "Net noncurrent deferred tax liability $153,700" },
+    { label: "Rate used to measure each temporary difference(各一時差異の測定に用いる税率)", type: "select", options: ["Current-year rate of 24% for all differences", "Enacted rates for the years the differences are expected to reverse", "Rates expected to be enacted in future legislation", "Average of the enacted rates for 2027–2029"], answer: "Enacted rates for the years the differences are expected to reverse" },
+  ],
+  explain: `<p><b>繰延税金負債(将来加算一時差異):</b>2027年 (200,000 + 120,000) × 25% = 80,000、2028年 (200,000 + 120,000) × 26% = 83,200、2029年 200,000 × 28% = 56,000。合計 219,200。</p>
+<p><b>繰延税金資産:</b>保証 150,000 × 25% = 37,500、訴訟 100,000 × 28% = 28,000、キャピタル・ロス 80,000 × 25% = 20,000。合計 85,500。</p>
+<p><b>評価性引当額:</b>キャピタル・ロス分は全額実現しない可能性が高い(more likely than not)ため 20,000。正味 DTA = 65,500。</p>
+<p><b>繰延税金費用:</b>DTL 増加 (219,200 − 150,000) 69,200 − 正味 DTA 増加 (65,500 − 40,000) 25,500 = 43,700。</p>
+<p><b>法人税等合計:</b>当期税金 900,000 × 24% = 216,000 + 43,700 = 259,700。</p>
+<p><b>表示:</b>ASU 2015-17 により繰延税金はすべて非流動に分類し、同一課税地域内では相殺する。219,200 − 65,500 = 153,700 の非流動 DTL。測定には差異が解消する年度の制定済み税率を用いる。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-FAR-83", section: "FAR", chapter: "FAR-07", title: "永久差異と実効税率の調整表",
+  scenario: `<p>Dunmore Inc., a public business entity, reports pretax financial income of <b>$2,000,000</b> for 2026. The federal statutory rate is <b>21%</b>; ignore state taxes. The controller's worksheet lists the following items included in pretax income:</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Interest income on municipal bonds</td><td>$80,000</td></tr>
+<tr><td>Premiums on officers' life insurance (company is beneficiary)</td><td>$30,000</td></tr>
+<tr><td>Fines paid to a government agency for a regulatory violation</td><td>$20,000</td></tr>
+<tr><td>Business meals expense (50% deductible)</td><td>$60,000</td></tr>
+<tr><td>Dividends from a 20%-owned domestic corporation (65% dividends-received deduction; investment accounted for at fair value)</td><td>$100,000</td></tr>
+<tr><td>Tax depreciation in excess of book depreciation</td><td>$150,000</td></tr></table>
+<p>No deferred tax balances existed other than for depreciation; the enacted rate for all future years is 21%.</p>
+<p class="ja">公開営利企業であるDunmore社の2026年の税引前会計利益は2,000,000ドル。連邦法定税率は21%で州税は無視する。税引前利益には以下が含まれる:地方債の受取利息80,000ドル、役員生命保険料(会社が受取人)30,000ドル、規制違反による政府機関への罰金20,000ドル、ビジネス上の飲食費60,000ドル(50%損金算入)、20%保有の国内法人からの配当100,000ドル(受取配当控除65%、投資は公正価値で会計処理)、税務上の減価償却費が会計上を上回る額150,000ドル。減価償却以外の繰延税金残高はなく、将来の制定税率はすべて21%である。</p>`,
+  rows: [
+    { label: "Taxable income for 2026(2026年の課税所得)", type: "num", answer: 1785000 },
+    { label: "Current income tax expense(当期税金費用)", type: "num", answer: 374850 },
+    { label: "Total income tax expense(法人税等合計)", type: "num", answer: 406350 },
+    { label: "Effective tax rate, % (two decimals)(実効税率 %、小数第2位まで)", type: "num", answer: 20.32, tol: 0.01 },
+    { label: "Rate reconciliation — reduction for the dividends-received deduction ($)(調整表:受取配当控除による減少額)", type: "num", answer: 13650 },
+    { label: "Effect of the excess tax depreciation on the effective tax rate(減価償却差異が実効税率に与える影響)", type: "select", options: ["Decreases it — taxable income is lower", "Increases it — deferred tax expense is recorded", "No effect — temporary difference offset by deferred tax expense", "Reported as a reconciling item at 21%"], answer: "No effect — temporary difference offset by deferred tax expense" },
+    { label: "ASU 2023-09 rate reconciliation requirement for Dunmore(ASU 2023-09による調整表の開示要求)", type: "select", options: ["Qualitative description of significant reconciling items only", "Percentages only, for items exceeding 5% of pretax income", "Both percentages and amounts in specified categories, with separate disclosure of items meeting a 5% of statutory tax threshold", "No rate reconciliation is required for public business entities"], answer: "Both percentages and amounts in specified categories, with separate disclosure of items meeting a 5% of statutory tax threshold" },
+  ],
+  explain: `<p><b>永久差異:</b>地方債利息 −80,000、生命保険料 +30,000、罰金 +20,000、飲食費の損金不算入 +30,000(60,000 × 50%)、受取配当控除 −65,000(100,000 × 65%)。純額 −65,000。</p>
+<p><b>課税所得:</b>2,000,000 − 65,000 − 減価償却差異 150,000 = 1,785,000。当期税金 1,785,000 × 21% = 374,850。</p>
+<p><b>繰延税金費用:</b>150,000 × 21% = 31,500。合計 374,850 + 31,500 = 406,350(=(2,000,000 − 65,000)× 21%)。</p>
+<p><b>実効税率:</b>406,350 ÷ 2,000,000 = 20.3175% ≒ 20.32%。</p>
+<p><b>調整表:</b>法定税額 420,000 − 地方債 16,800 + 損金不算入項目 (30,000 + 20,000 + 30,000) × 21% = 16,800 − 受取配当控除 65,000 × 21% = 13,650 = 406,350。</p>
+<p>一時差異は当期税金の減少と同額の繰延税金費用で相殺されるため実効税率に影響しない。ASU 2023-09 では、公開営利企業は特定カテゴリーごとに率と金額の両方を表形式で開示し、法定税額の5%以上の項目を区分開示する。</p>`,
+});
