@@ -22,7 +22,7 @@ CPA.tbs({
     { label: "Matter 7 — Patel's auto loan from a client bank(クライアント銀行からの自動車ローン)", type: "select", options: ["Impaired", "Not impaired"], answer: "Not impaired" },
   ],
   explain: `<p>1:業務執行責任者が業務を行う事務所(オフィス)に所属するパートナーは、業務に関与しなくても対象メンバー(covered member)である。直接的金銭的利害は重要性にかかわらず禁止されるため、独立性は損なわれる。</p>
-<p>2:Chenは対象メンバーではない。対象メンバー以外のパートナー・専門職員は、クライアントの発行済持分の<b>10%超</b>を保有すると独立性が損なわれるが、2%は基準内なので損なわれない。</p>
+<p>2:Chenは対象メンバーではない。対象メンバー以外のパートナー・専門職員は、クライアントの発行済持分の<b>5%超</b>を保有すると独立性が損なわれるが、2%は基準内なので損なわれない。</p>
 <p>3:兄弟は近親者(close relative)である。業務チームのメンバーが、近親者が本人にとって重要な金銭的利害を保有していると知っている場合、独立性は損なわれる。</p>
 <p>4:扶養外の子は近親者であり、近親者が問題となるのは主要な地位(key position)にある場合や重要な金銭的利害を有する場合である。倉庫監督者は主要な地位ではないため損なわれない。</p>
 <p>5:配偶者は直近家族(immediate family)であり、業務チームのメンバーの直近家族がクライアントの主要な地位(コントローラー)に就くと独立性は損なわれる。</p>
@@ -74,16 +74,16 @@ CPA.tbs({
 <tr><td>7</td><td>"A bank wants us to disclose a client's financial information without the client's consent."</td></tr></table>
 <p class="ja">あなたはQuill会計事務所の品質管理部門のマネージャーである。パートナーから上表の問い合わせを受けた。各事項を最も直接的に扱うAICPA職業行為規程(ET)の条項を選べ。1:監査クライアントの信用組合がシニアに市場より低金利の住宅ローンを提示。2:ソフトウェア業者が、当事務所の推薦で調製(compilation)クライアントが購入した製品代金の10%を支払うという。3:報酬未払いの元クライアントが、当事務所が保管するクライアント提供資料の返還を要求。支払まで留置できるか。4:監査クライアントが前年の監査報酬を未払いのまま、当年の報告書を発行しようとしている。5:修正申告で得た還付額の20%を報酬とする依頼。6:クライアント負担で業務執行社員を1週間のリゾート旅行に招待。7:銀行がクライアントの同意なく財務情報の開示を求めている。</p>`,
   rows: [
-    { label: "Inquiry 1 — below-market mortgage from client(クライアントからの低利住宅ローン)", type: "select", options: ["ET 1.224 Financial Interests", "ET 1.260 Loans", "ET 1.285 Gifts and Entertainment", "ET 1.230 Unpaid Fees", "ET 1.510 Contingent Fees"], answer: "ET 1.260 Loans" },
+    { label: "Inquiry 1 — below-market mortgage from client(クライアントからの低利住宅ローン)", type: "select", options: ["ET 1.240 Financial Interests", "ET 1.260 Loans", "ET 1.285 Gifts and Entertainment", "ET 1.230 Unpaid Fees", "ET 1.510 Contingent Fees"], answer: "ET 1.260 Loans" },
     { label: "Inquiry 2 — vendor payment for recommendation(推薦の対価)", type: "select", options: ["ET 1.510 Contingent Fees", "ET 1.520 Commissions and Referral Fees", "ET 1.600 Advertising and Other Forms of Solicitation", "ET 1.110 Conflicts of Interest", "ET 1.295 Nonattest Services"], answer: "ET 1.520 Commissions and Referral Fees" },
     { label: "Inquiry 3 — returning client records(クライアント記録の返還)", type: "select", options: ["ET 1.700 Confidential Information", "ET 1.400 Acts Discreditable", "ET 1.230 Unpaid Fees", "ET 1.800 Form of Organization and Name", "ET 1.300 General Standards"], answer: "ET 1.400 Acts Discreditable" },
     { label: "Inquiry 4 — prior-year audit fee unpaid(前年監査報酬の未払い)", type: "select", options: ["ET 1.230 Unpaid Fees", "ET 1.260 Loans", "ET 1.510 Contingent Fees", "ET 1.400 Acts Discreditable", "ET 1.220 Accounting Firms"], answer: "ET 1.230 Unpaid Fees" },
     { label: "Inquiry 5 — fee based on refund obtained(還付額に応じた報酬)", type: "select", options: ["ET 1.520 Commissions and Referral Fees", "ET 1.510 Contingent Fees", "ET 1.230 Unpaid Fees", "ET 1.600 Advertising and Other Forms of Solicitation", "ET 1.100 Integrity and Objectivity"], answer: "ET 1.510 Contingent Fees" },
-    { label: "Inquiry 6 — client-paid resort trip(クライアント負担のリゾート旅行)", type: "select", options: ["ET 1.260 Loans", "ET 1.285 Gifts and Entertainment", "ET 1.520 Commissions and Referral Fees", "ET 1.270 Family Relationships With Attest Clients", "ET 1.224 Financial Interests"], answer: "ET 1.285 Gifts and Entertainment" },
+    { label: "Inquiry 6 — client-paid resort trip(クライアント負担のリゾート旅行)", type: "select", options: ["ET 1.260 Loans", "ET 1.285 Gifts and Entertainment", "ET 1.520 Commissions and Referral Fees", "ET 1.270 Family Relationships With Attest Clients", "ET 1.240 Financial Interests"], answer: "ET 1.285 Gifts and Entertainment" },
     { label: "Inquiry 7 — disclosure without consent(同意なき情報開示)", type: "select", options: ["ET 1.400 Acts Discreditable", "ET 1.700 Confidential Information", "ET 1.110 Conflicts of Interest", "ET 1.300 General Standards", "ET 1.230 Unpaid Fees"], answer: "ET 1.700 Confidential Information" },
   ],
   explain: `<p>1:クライアント(金融機関)からの借入はET 1.260「Loans」で扱う。住宅ローンは許容される融資(自動車ローン等)に該当せず、通常の条件でもない低利融資は独立性を損なう。</p>
-<p>2:推薦の対価として受け取る手数料はET 1.520「Commissions and Referral Fees」。調製を含む保証業務のクライアントに関しては受領が禁止される。</p>
+<p>2:推薦の対価として受け取る手数料はET 1.520「Commissions and Referral Fees」。監査・レビュー・予測財務情報の検証のクライアント、および第三者が利用し独立性の欠如を開示しない調製(compilation)のクライアントについては受領が禁止される。</p>
 <p>3:クライアント記録の返還要求はET 1.400「Acts Discreditable」の解釈(1.400.200 Records Requests)で扱う。報酬未払いでもクライアント提供の記録は留置できない。</p>
 <p>4:前年以前の未払報酬はET 1.230「Unpaid Fees」。当期報告書の発行日時点で1年超未払いの報酬は独立性を損なう。</p>
 <p>5:成果に応じた報酬はET 1.510「Contingent Fees」。修正申告による還付額に基づく報酬は例外に当たらず禁止される(税務当局の審査に関する場合等を除く)。</p>

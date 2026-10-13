@@ -70,7 +70,7 @@ CPA.tbs({
     { label: "Total AOCI at December 31, Year 3(第3年度末のAOCI合計)", type: "num", answer: -19500 },
     { label: "AFS component of AOCI at December 31, Year 3(期末AOCIのうち売却可能負債証券部分)", type: "num", answer: 54000 },
     { label: "Pension component of AOCI at December 31, Year 3(期末AOCIのうち年金部分)", type: "num", answer: -67500 },
-    { label: "Reclassification adjustment for AFS securities, net of tax(売却可能負債証券の組替調整額・税効果後)", type: "num", answer: 12000 },
+    { label: "Reclassification adjustment for AFS securities, net of tax — enter as a positive amount(売却可能負債証券の組替調整額・税効果後、正の値で入力)", type: "num", answer: 12000 },
     { label: "Which item is NOT reported in OCI?(OCIに計上されない項目はどれか)", type: "select", options: ["Unrealized holding gain on AFS debt securities", "Foreign currency translation adjustment", "Unrealized holding gain on equity securities with readily determinable fair values", "Effective portion of a cash flow hedge gain"], answer: "Unrealized holding gain on equity securities with readily determinable fair values" },
   ],
   explain: `<p>税引前OCI:売却可能証券 40,000 − 組替16,000 = +24,000/換算 −8,000/年金 −20,000 + 6,000 + 4,000 = −10,000(償却分は損益へ振り替えられるためAOCIを増やす方向)/ヘッジ +12,000 − 8,000 = +4,000。合計 +10,000、税2,500、<b>OCI(税後)= 7,500</b>。</p>
