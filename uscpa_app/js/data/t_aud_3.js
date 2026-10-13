@@ -191,3 +191,144 @@ CPA.tbs({
 <p>延滞料・駐車場収入$52,000は補助元帳と照合し明細テストで裏付けられたので差異から除く:75,920 − 52,000 = <b>$23,920</b>。これは閾値$40,000未満なので、残りについて追加調査は不要である(ただし勘定の内容としては賃料以外の収入が含まれる点を表示の観点で検討してもよい)。</p>
 <p>戸数・入居率・賃料という財務・非財務データから独立に金額を見積もる手法は<b>合理性テスト(reasonableness test)</b>である。月別・タイプ別に分解し、テスト済みのデータを用いるほど期待値の精度は高まる。前年比較や予算は精度が低く、閾値を上げることは精度向上ではない。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-AUD-56", section: "AUD", chapter: "AUD-04", title: "MUSのサンプル選定から上限虚偽表示額まで(差額法との比較を含む)",
+  scenario: `<p>The auditor of <b>Tamsin Electronics</b> is testing the existence and valuation of accounts receivable (book value <b>$3,000,000</b>, 1,500 customer accounts, all with debit balances) using monetary-unit sampling (MUS).</p>
+<p><b>Exhibit 1 — Planning parameters</b></p>
+<table><tr><th>Parameter</th><th>Value</th></tr>
+<tr><td>Tolerable misstatement</td><td>$130,000</td></tr>
+<tr><td>Expected misstatement</td><td>$25,000</td></tr>
+<tr><td>Risk of incorrect acceptance</td><td>5%</td></tr>
+<tr><td>Reliability factor (zero misstatements), 5%</td><td>3.00</td></tr>
+<tr><td>Expansion factor, 5%</td><td>1.6</td></tr></table>
+<p>Sample size = (Book value × Reliability factor) ÷ [Tolerable misstatement − (Expected misstatement × Expansion factor)]. Items are selected systematically from the cumulative balance with a random start of <b>$12,000</b>.</p>
+<p><b>Exhibit 2 — First five accounts in the listing</b></p>
+<table><tr><th>Account</th><th>Balance</th></tr>
+<tr><td>A</td><td>$9,500</td></tr><tr><td>B</td><td>$18,000</td></tr><tr><td>C</td><td>$6,200</td></tr><tr><td>D</td><td>$41,000</td></tr><tr><td>E</td><td>$3,000</td></tr></table>
+<p><b>Exhibit 3 — Misstatements found in the sample</b></p>
+<table><tr><th>Account</th><th>Book value</th><th>Audited value</th></tr>
+<tr><td>B</td><td>$18,000</td><td>$16,200</td></tr>
+<tr><td>D</td><td>$41,000</td><td>$39,500</td></tr>
+<tr><td>K</td><td>$4,000</td><td>$3,000</td></tr>
+<tr><td>R</td><td>$12,500</td><td>$12,000</td></tr></table>
+<p><b>Exhibit 4 — Confidence factors at 5% risk of incorrect acceptance</b></p>
+<table><tr><th>Number of overstatements</th><th>0</th><th>1</th><th>2</th><th>3</th></tr>
+<tr><td>Factor</td><td>3.00</td><td>4.75</td><td>6.30</td><td>7.76</td></tr></table>
+<p>Separately, a staff member suggested classical variables sampling (difference estimation). In a random sample of 100 accounts, the sum of (audited value − book value) was <b>−$2,400</b>.</p>
+<p class="ja">Tamsin Electronicsの監査人は売掛金(帳簿価額$3,000,000、得意先1,500口座、すべて借方残高)の実在性と評価を金額単位サンプリング(MUS)で検証する。許容虚偽表示$130,000、予想虚偽表示$25,000、誤受容リスク5%、信頼係数(虚偽表示ゼロ)3.00、拡張係数1.6。サンプル数 =(帳簿価額 × 信頼係数)÷[許容虚偽表示 −(予想虚偽表示 × 拡張係数)]。累積残高から無作為開始点$12,000で系統的に抽出する。最初の5口座:A $9,500、B $18,000、C $6,200、D $41,000、E $3,000。発見された虚偽表示:B 帳簿$18,000/監査$16,200、D $41,000/$39,500、K $4,000/$3,000、R $12,500/$12,000。5%での信頼係数:0件3.00、1件4.75、2件6.30、3件7.76。別途、古典的変数サンプリング(差額法)で無作為に100口座を検証した場合の(監査値 − 帳簿値)の合計は−$2,400であった。</p>`,
+  rows: [
+    { label: "Sample size(サンプル数)", type: "num", answer: 100 },
+    { label: "Number of accounts among A–E selected for testing(A〜Eのうち抽出される口座数)", type: "num", answer: 2 },
+    { label: "Total projected misstatement ($)(推定虚偽表示の合計)", type: "num", answer: 13200 },
+    { label: "Incremental allowance for sampling risk ($)(サンプリングリスクの増分許容額)", type: "num", answer: 7827 },
+    { label: "Upper limit on misstatement ($)(上限虚偽表示額)", type: "num", answer: 111027 },
+    { label: "Conclusion(結論)", type: "select", options: ["Reject — the upper limit exceeds expected misstatement", "Accept — the upper limit is less than tolerable misstatement", "Reject — four misstatements were found", "Inconclusive — MUS cannot be used when misstatements are found"], answer: "Accept — the upper limit is less than tolerable misstatement" },
+    { label: "Projected overstatement under difference estimation ($)(差額法による推定過大計上額)", type: "num", answer: 36000 },
+    { label: "Circumstance in which classical variables sampling is generally preferable to MUS(MUSより古典的変数サンプリングが適する状況)", type: "select", options: ["Few misstatements are expected and the main concern is overstatement", "Many differences are expected and the population includes zero and credit balances", "The auditor wants large items selected automatically without stratification", "The population size is unknown"], answer: "Many differences are expected and the population includes zero and credit balances" },
+  ],
+  explain: `<p><b>サンプル数</b>:3,000,000 × 3.00 ÷ (130,000 − 25,000 × 1.6) = 9,000,000 ÷ 90,000 = <b>100</b>。サンプリング間隔 = 3,000,000 ÷ 100 = $30,000。</p>
+<p><b>選定</b>:抽出点は12,000、42,000、72,000、102,000…。累積残高はA 9,500、B 27,500、C 33,700、D 74,700、E 77,700。12,000はBに、42,000と72,000はDに入る。Dは間隔以上の大口のため2回当たる(実質的に全数検討)。抽出口座は<b>2</b>(BとD)。</p>
+<p><b>推定虚偽表示</b>:間隔未満の項目はテインティング × 間隔で推定する。B:1,800 ÷ 18,000 = 10% → 3,000。K:1,000 ÷ 4,000 = 25% → 7,500。R:500 ÷ 12,500 = 4% → 1,200。Dは間隔($30,000)以上なので既知額1,500をそのまま加える。合計 = 3,000 + 7,500 + 1,200 + 1,500 = <b>$13,200</b>。</p>
+<p><b>基本精度</b> = 3.00 × 30,000 = 90,000。</p>
+<p><b>増分許容額</b>:間隔未満の推定額を大きい順に並べ、(係数の増分 − 1)を掛ける。7,500 × (4.75 − 3.00 − 1)= 7,500 × 0.75 = 5,625、3,000 × (6.30 − 4.75 − 1)= 3,000 × 0.55 = 1,650、1,200 × (7.76 − 6.30 − 1)= 1,200 × 0.46 = 552。合計 = <b>$7,827</b>。</p>
+<p><b>上限虚偽表示額</b> = 13,200 + 90,000 + 7,827 = <b>$111,027</b> < 許容虚偽表示$130,000 → 母集団を受け入れる。</p>
+<p><b>差額法</b>:平均差額 = −2,400 ÷ 100 = −24。母集団への推定 = −24 × 1,500 = −36,000、すなわち<b>$36,000</b>の過大計上。</p>
+<p>MUSは虚偽表示が少なく過大計上が主な関心である場合に効率的だが、ゼロ・貸方残高の項目は選ばれにくく、虚偽表示が多いと上限が過大になる。差異が多く予想され、ゼロや貸方残高を含む母集団では古典的変数サンプリングが適する。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-AUD-57", section: "AUD", chapter: "AUD-04", title: "経営者確認書と弁護士への照会状のドキュメントレビュー",
+  scenario: `<p>Lin &amp; Patel CPAs is completing the audit of <b>Marrow Foods, Inc.</b>, a nonissuer, for the year ended December 31, Year 2. The financial statements are presented comparatively for Years 1 and 2, and Lin &amp; Patel audited both years. The auditor's report will be dated <b>February 20, Year 3</b>. A staff accountant prepared the following drafts. Highlighted segments are numbered.</p>
+<p><b>Exhibit 1 — Draft management representation letter (excerpt)</b></p>
+<p>[1] <i>Dated December 31, Year 2</i><br>
+[2] <i>To the Board of Directors and Shareholders of Marrow Foods, Inc.:</i><br>
+We confirm, to the best of our knowledge and belief, the following representations made to you during your audit of [3] <i>the financial statements as of and for the year ended December 31, Year 2</i> ...<br>
+[4] <i>We have disclosed to you the results of our assessment of the risk that the financial statements may be materially misstated as a result of fraud.</i><br>
+[5] <i>Signed: Dana Ruiz, Controller</i></p>
+<p><b>Exhibit 2 — Draft inquiry letter to legal counsel (excerpt)</b></p>
+<p>[6] <i>Lin &amp; Patel CPAs, in connection with its audit of Marrow Foods, Inc., requests that you furnish us with information regarding pending or threatened litigation ...</i></p>
+<p><b>Exhibit 3 — Responses received from two law firms</b></p>
+<p>[7] Firm X: <i>"This response is limited to matters to which we have given substantive attention in the form of legal consultation or representation."</i><br>
+[8] Firm Y (handles the company's largest pending lawsuit): <i>"We decline to furnish any information regarding the matters listed."</i> Management cannot otherwise provide sufficient evidence about the lawsuit.</p>
+<p class="ja">Lin &amp; Patel CPAsは非発行体Marrow Foods, Inc.の第2年度12月31日終了年度の監査を完了しつつある。財務諸表は第1年度と第2年度の比較形式で、両年度とも同事務所が監査した。監査報告書日は第3年度2月20日である。スタッフが作成した経営者確認書の草案:[1]日付「第2年度12月31日」、[2]宛先「取締役会および株主」、[3]対象「第2年度12月31日現在および同日終了年度の財務諸表」、[4]「不正による重要な虚偽表示リスクの評価結果を開示した」、[5]署名「コントローラーのみ」。弁護士への照会状草案:[6]「Lin &amp; Patel CPAsが情報提供を依頼する」。回答:[7]X事務所「実質的な関与をした事項に限定して回答する」、[8]最大の係争案件を担当するY事務所「一切の情報提供を拒否する」、他に十分な証拠はない。</p>`,
+  rows: [
+    { label: "Segment [1](箇所[1]の正しい記載)", type: "select", options: ["No change", "February 20, Year 3 (the date of the auditor's report)", "The date the financial statements are issued", "January 31, Year 3 (end of fieldwork planning)"], answer: "February 20, Year 3 (the date of the auditor's report)" },
+    { label: "Segment [2](箇所[2]の正しい記載)", type: "select", options: ["No change", "To the Audit Committee of Marrow Foods, Inc.", "To Lin & Patel CPAs (the auditor)", "To the shareholders only"], answer: "To Lin & Patel CPAs (the auditor)" },
+    { label: "Segment [3](箇所[3]の正しい記載)", type: "select", options: ["No change", "the financial statements as of and for the years ended December 31, Year 2 and Year 1", "the financial statements for Year 1 only", "the interim financial information for the fourth quarter"], answer: "the financial statements as of and for the years ended December 31, Year 2 and Year 1" },
+    { label: "Segment [4](箇所[4]の正しい記載)", type: "select", options: ["No change", "Delete — fraud matters are not included in representation letters", "Replace with a statement that no fraud exists", "Move to the legal inquiry letter"], answer: "No change" },
+    { label: "Segment [5](箇所[5]の正しい記載)", type: "select", options: ["No change", "Signed by the engagement partner", "Signed by the chief executive officer and chief financial officer", "Signed by the company's legal counsel"], answer: "Signed by the chief executive officer and chief financial officer" },
+    { label: "Segment [6](箇所[6]の正しい記載)", type: "select", options: ["No change", "Management of Marrow Foods, Inc. requests that you furnish the information directly to our auditors, Lin & Patel CPAs", "The board of directors requests that you send the information to the shareholders", "Lin & Patel CPAs requests that you send the information to management"], answer: "Management of Marrow Foods, Inc. requests that you furnish the information directly to our auditors, Lin & Patel CPAs" },
+    { label: "Effect of response [7](回答[7]の影響)", type: "select", options: ["Scope limitation — qualified opinion", "Not a limitation on the scope of the audit", "Requires an emphasis-of-matter paragraph", "Requires withdrawal from the engagement"], answer: "Not a limitation on the scope of the audit" },
+    { label: "Effect of response [8](回答[8]の影響)", type: "select", options: ["No effect — a lawyer's refusal is common", "Scope limitation — qualified opinion or disclaimer of opinion, depending on pervasiveness", "Adverse opinion", "Unmodified opinion with an other-matter paragraph"], answer: "Scope limitation — qualified opinion or disclaimer of opinion, depending on pervasiveness" },
+  ],
+  explain: `<p>[1]経営者確認書の日付は監査報告書日と同日(それより後であってはならない)とする → <b>第3年度2月20日</b>。期末日ではない。</p>
+<p>[2]確認書は経営者から<b>監査人宛て</b>に提出される書面である。</p>
+<p>[3]監査報告書が対象とする<b>すべての期間</b>(比較財務諸表の両年度)について確認を得る。</p>
+<p>[4]不正リスク評価結果の開示は、AU-C 580が求める必須の確認事項であり<b>修正不要</b>である。</p>
+<p>[5]財務と業務に全般的な責任を有する経営者、通常は<b>CEOとCFO</b>が署名する。コントローラー単独では不十分である。</p>
+<p>[6]弁護士への照会状は<b>経営者(会社)が作成・送付</b>し、回答を<b>監査人へ直接</b>送るよう依頼する形をとる。監査人名義の依頼ではない。</p>
+<p>[7]実質的に関与した事項に限定する旨の記載は一般的な限定であり、<b>監査範囲の制約ではない</b>。</p>
+<p>[8]重要な係争案件について弁護士が回答を拒否し、他に十分な証拠が得られない場合は<b>監査範囲の制約</b>となり、影響の広範性に応じて限定付適正意見または意見不表明となる。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-AUD-58", section: "AUD", chapter: "AUD-04", title: "後発事象の修正金額・二重日付・事後判明事実の対応",
+  scenario: `<p>The auditor of <b>Ashby Logistics Corp.</b> (nonissuer, year-end December 31, Year 1) obtained sufficient appropriate audit evidence on <b>March 10, Year 2</b>; the financial statements were issued <b>March 20, Year 2</b>. Unadjusted pretax income is $1,900,000.</p>
+<p><b>Exhibit — Events after the balance sheet date</b></p>
+<table><tr><th>Date (Year 2)</th><th>Event</th></tr>
+<tr><td>Jan 25</td><td>Customer Beta, owing $80,000 at December 31, filed for bankruptcy because of financial difficulties that had worsened throughout Year 1. Ashby expects to recover 10%. The allowance at December 31 included a specific reserve of $20,000 for Beta.</td></tr>
+<tr><td>Feb 14</td><td>A lawsuit arising from an October, Year 1 warehouse accident was settled for $350,000. Ashby had accrued $200,000 at December 31.</td></tr>
+<tr><td>Feb 20</td><td>A flood destroyed a regional warehouse; the uninsured loss is estimated at $400,000.</td></tr>
+<tr><td>Mar 15</td><td>Ashby issued $5,000,000 of bonds. Management added Note 12 to disclose the issuance, and the auditor performed procedures on that matter only.</td></tr>
+<tr><td>Apr 30</td><td>The auditor learns that, at March 10, a major inventory location contained goods that had been double-counted, a fact unknown to management and the auditor at that date. The effect is material, and the financial statements are being relied on by a lender.</td></tr></table>
+<p class="ja">Ashby Logistics Corp.(非発行体、第1年度12月31日決算)の監査人は第2年度3月10日に十分かつ適切な監査証拠を入手し、財務諸表は3月20日に発行された。修正前税引前利益は$1,900,000。1月25日:期末残高$80,000の得意先Betaが第1年度を通じて悪化した財政状態により破産、回収見込10%、期末の貸倒引当金にはBeta個別分$20,000を含む。2月14日:第1年度10月の倉庫事故に起因する訴訟が$350,000で和解、期末計上額は$200,000。2月20日:洪水で地方倉庫が損壊、無保険損失見込$400,000。3月15日:社債$5,000,000を発行、経営者は注記12を追加し、監査人はその事項のみ手続を実施。4月30日:3月10日時点で主要拠点の在庫が二重計上されていた事実(当時誰も知らなかった)が判明、影響は重要で貸手が財務諸表に依拠している。</p>`,
+  rows: [
+    { label: "Additional allowance for doubtful accounts required at December 31 ($)(追加で必要な貸倒引当金)", type: "num", answer: 52000 },
+    { label: "Additional litigation accrual required at December 31 ($)(追加で必要な訴訟損失引当)", type: "num", answer: 150000 },
+    { label: "Adjusted Year 1 pretax income ($)(修正後の第1年度税引前利益)", type: "num", answer: 1698000 },
+    { label: "February 20 flood(2月20日の洪水)", type: "select", options: ["Recognized subsequent event — accrue $400,000 at December 31", "Nonrecognized subsequent event — disclose nature and estimate of loss", "No accounting or disclosure required", "Subsequently discovered fact — revise and reissue"], answer: "Nonrecognized subsequent event — disclose nature and estimate of loss" },
+    { label: "Appropriate dating of the auditor's report(監査報告書の適切な日付)", type: "select", options: ["March 10, Year 2", "March 20, Year 2", "March 10, Year 2, except for Note 12, as to which the date is March 15, Year 2", "December 31, Year 1, except for Note 12, as to which the date is March 15, Year 2"], answer: "March 10, Year 2, except for Note 12, as to which the date is March 15, Year 2" },
+    { label: "If the auditor instead dated the entire report March 15, Year 2(報告書全体を3月15日付とした場合)", type: "select", options: ["Responsibility for subsequent events would still end on March 10", "The auditor's subsequent-events procedures would need to be extended to March 15 for all matters", "The report would have to be withdrawn", "An adverse opinion would be required"], answer: "The auditor's subsequent-events procedures would need to be extended to March 15 for all matters" },
+    { label: "Auditor's responsibility for the April 30 matter(4月30日の事項に対する監査人の責任)", type: "select", options: ["None — the report has been issued", "Discuss with management, determine whether the financial statements need revision, and if management does not take appropriate action, act to prevent reliance on the auditor's report", "Perform a new audit of Year 2 interim statements", "Issue a separate report on the double-count without informing management"], answer: "Discuss with management, determine whether the financial statements need revision, and if management does not take appropriate action, act to prevent reliance on the auditor's report" },
+  ],
+  explain: `<p><b>Beta社</b>:破産は期末日に既に存在した財政状態の悪化を確認する証拠であり、認識される後発事象(Type I)。必要引当 = 80,000 × 90% = 72,000、既存20,000を控除し追加 <b>$52,000</b>。</p>
+<p><b>訴訟和解</b>:原因(事故)は第1年度に発生しており、和解額は期末の負債の見積りを確定させる → 認識される後発事象。追加計上 = 350,000 − 200,000 = <b>$150,000</b>。</p>
+<p>修正後税引前利益 = 1,900,000 − 52,000 − 150,000 = <b>$1,698,000</b>。</p>
+<p><b>洪水</b>:期末日後に生じた状況であり、認識されない後発事象(Type II)。金額を見積もって注記する。</p>
+<p><b>社債発行</b>:報告書日(3月10日)後、発行前に生じ注記が追加された事項 → <b>二重日付</b>「第2年度3月10日、ただし注記12については3月15日」とする。これにより3月15日までの責任はその事項に限定される。報告書全体を3月15日付にする場合、すべての事項について後発事象の手続を3月15日まで延長しなければならない。</p>
+<p><b>4月30日</b>:発行後に判明した、報告書日に存在した事実(AU-C 560の事後判明事実)。経営者と協議し、財務諸表の修正が必要かを判断し、経営者がどう対処するかを確かめる。修正再発行の場合は新しい報告書(修正に関する強調事項区分等)を発行し、経営者が必要な措置を取らなければ、監査報告書への依拠を防ぐ措置(経営者・規制当局・依拠している第三者への通知など、法律顧問への相談を含む)を講じる。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-AUD-59", section: "AUD", chapter: "AUD-04", title: "監査データ分析(ADA)の出力の解釈:二重支払とベンフォード分析",
+  scenario: `<p>The audit team for <b>Calloway Health Systems</b> ran audit data analytics over the full Year 2 vendor-payment population (<b>2,000</b> disbursements) extracted from the client's ERP system. Payments of $5,000 or more require a second approval.</p>
+<p><b>Exhibit 1 — Duplicate payment test output (same vendor, same or similar invoice number, same amount)</b></p>
+<table><tr><th>Pair</th><th>Vendor</th><th>Invoice no(s).</th><th>Amount each</th><th>Team follow-up</th></tr>
+<tr><td>1</td><td>1045</td><td>INV-7781 / INV-7781</td><td>$12,450</td><td>Paid by check 5521 (Mar 3) and check 5604 (Mar 17); both cleared the bank.</td></tr>
+<tr><td>2</td><td>2210</td><td>88-31 / 8831</td><td>$6,300</td><td>Same vendor invoice image; entered twice with different formatting; both paid.</td></tr>
+<tr><td>3</td><td>3300</td><td>R-0601 / R-0701</td><td>$9,000</td><td>Monthly building rent under lease; June and July invoices.</td></tr>
+<tr><td>4</td><td>1045</td><td>INV-7790 / INV-7790</td><td>$4,000</td><td>First check was voided (lost in mail) and reissued; only one cleared the bank.</td></tr></table>
+<p><b>Exhibit 2 — First-digit (Benford) analysis of payment amounts</b></p>
+<table><tr><th>First digit</th><th>Expected proportion (Benford)</th><th>Observed proportion</th></tr>
+<tr><td>1</td><td>30.1%</td><td>27.5%</td></tr>
+<tr><td>4</td><td>9.7%</td><td>22.0%</td></tr>
+<tr><td>5</td><td>7.9%</td><td>3.1%</td></tr></table>
+<p>Follow-up showed most digit-4 payments fall between $4,800 and $4,999.</p>
+<p class="ja">Calloway Health Systemsの監査チームは、ERPから抽出した第2年度の仕入先支払の全件(2,000件)に監査データ分析を実施した。$5,000以上の支払には二次承認が必要である。二重支払テストの出力:(1)仕入先1045、同一請求書INV-7781の$12,450を小切手5521(3月3日)と5604(3月17日)で支払、両方決済済み。(2)仕入先2210、請求書番号88-31と8831(同一の請求書画像を表記違いで2回入力)$6,300、両方支払済み。(3)仕入先3300、6月と7月の月額賃料$9,000。(4)仕入先1045、INV-7790 $4,000、最初の小切手は紛失のため無効化し再発行、決済は1回のみ。ベンフォード分析:先頭数字1は期待30.1%・実績27.5%、4は期待9.7%・実績22.0%、5は期待7.9%・実績3.1%。先頭4の支払の大半は$4,800〜$4,999である。</p>`,
+  rows: [
+    { label: "Pair 3(ペア3)", type: "select", options: ["Duplicate payment — overpayment", "Not a duplicate — recurring payment for different periods", "Duplicate payment — recover from vendor", "Indicator of a fictitious vendor"], answer: "Not a duplicate — recurring payment for different periods" },
+    { label: "Pair 4(ペア4)", type: "select", options: ["Duplicate payment — overpayment", "Not a duplicate — voided and reissued check", "Indicator of check kiting", "Cutoff error"], answer: "Not a duplicate — voided and reissued check" },
+    { label: "Total duplicate payments identified ($)(識別された二重支払の合計)", type: "num", answer: 18750 },
+    { label: "Expected number of payments with first digit 4(先頭数字4の期待件数)", type: "num", answer: 194 },
+    { label: "Excess of observed over expected digit-4 payments(先頭数字4の実績件数の期待件数超過)", type: "num", answer: 246 },
+    { label: "Most likely explanation of the digit-4/digit-5 pattern(先頭4・5のパターンの最も可能性の高い説明)", type: "select", options: ["Normal seasonal fluctuation", "Purchases split or priced to stay just under the $5,000 second-approval threshold — circumvention of a control", "Rounding by the ERP system", "Benford's Law does not apply to disbursements"], answer: "Purchases split or priced to stay just under the $5,000 second-approval threshold — circumvention of a control" },
+    { label: "Procedure required before relying on the ADA output(ADA出力に依拠する前に必要な手続)", type: "select", options: ["None — data from an ERP system is inherently reliable", "Evaluate the reliability of the data, e.g., reconcile record counts and totals to the general ledger and test controls over the extraction", "Obtain a representation letter from the IT department only", "Rerun the analysis on a sample of 25 items"], answer: "Evaluate the reliability of the data, e.g., reconcile record counts and totals to the general ledger and test controls over the extraction" },
+    { label: "Population for which first-digit analysis is least appropriate(先頭数字分析が最も適さない母集団)", type: "select", options: ["Vendor payment amounts", "Sales invoice amounts", "Sequentially assigned check numbers", "Journal entry amounts"], answer: "Sequentially assigned check numbers" },
+  ],
+  explain: `<p><b>二重支払</b>:ペア1は同一請求書を2回支払い両方決済 → 二重支払$12,450。ペア2は表記ゆれ(88-31と8831)による同一請求書の二重入力 → 二重支払$6,300(ファジーマッチで検出される典型例)。ペア3は異なる月の定額賃料で正当な反復支払。ペア4は無効化した小切手の再発行で、実際の支払は1回。合計 = 12,450 + 6,300 = <b>$18,750</b>。</p>
+<p><b>ベンフォード分析</b>:先頭4の期待件数 = 2,000 × 9.7% = <b>194件</b>。実績 = 2,000 × 22.0% = 440件。超過 = 440 − 194 = <b>246件</b>。</p>
+<p>先頭4が過多で先頭5が過少、かつ$4,800〜$4,999に集中していることから、$5,000の二次承認を回避するための発注分割・価格設定が疑われる(統制の無効化・不正の兆候)。該当支払を抽出し、同一仕入先・同日の分割発注などを追加調査する。</p>
+<p>ADAの出力は追加手続が必要な項目を示すものであり、それ自体で十分な証拠ではない。依拠する前に、抽出データの網羅性・正確性(件数・合計の総勘定元帳との照合、抽出に関する統制など)を評価する必要がある。</p>
+<p>ベンフォードの法則は自然に生じる金額に適用され、連番の小切手番号のように割り当てられた番号や、上限・下限が固定された母集団には適さない。</p>`,
+});

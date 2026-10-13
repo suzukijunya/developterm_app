@@ -160,7 +160,7 @@ CPA.tbs({ id: "TBS-TCP-36", section: "TCP", chapter: "TCP-02", title: "パート
     { label: "Total income Pete reports from OPQ for 2026(Peteが2026年に申告するOPQからの所得合計)", type: "num", answer: 140000 },
     { label: "Olga's outside basis on December 31, 2026(2026年12月31日のOlgaの持分の基準価額)", type: "num", answer: 155000 },
     { label: "Pete's outside basis on December 31, 2026(2026年12月31日のPeteの持分の基準価額)", type: "num", answer: 295000 },
-    { label: "If Quinn were instead a limited partner in a limited partnership (no guaranteed payments), his self-employment earnings would be(Quinnがリミテッド・パートナーで保証支払がない場合の自営業所得)", type: "select", options: ["$70,000 — his distributive share of ordinary income", "$80,000 — ordinary income plus capital gain", "$0 — a limited partner's distributive share is excluded under §1402(a)(13)", "$35,000 — one-half of his distributive share"], answer: "$0 — a limited partner's distributive share is excluded under §1402(a)(13)" },
+    { label: "If Quinn were instead a limited partner in a limited partnership who performs no services for it (no guaranteed payments), his self-employment earnings would be(Quinnが役務を提供しないリミテッド・パートナーで保証支払がない場合の自営業所得)", type: "select", options: ["$70,000 — his distributive share of ordinary income", "$80,000 — ordinary income plus capital gain", "$0 — a limited partner's distributive share is excluded under §1402(a)(13)", "$35,000 — one-half of his distributive share"], answer: "$0 — a limited partner's distributive share is excluded under §1402(a)(13)" },
   ],
   explain: `<p><b>設立時</b>:債務120,000は各自40,000ずつ負担に再配分される。Olgaは債務から解放された80,000(120,000 − 自己負担40,000)をみなし現金分配として扱う。基準価額 = 180,000 − 120,000 + 40,000 = <b>100,000</b>(みなし分配80,000は基準価額を超えないので利得なし)。Pete = 180,000 + 40,000 = <b>220,000</b>。Quinn = 150,000 + 40,000 = 190,000。OPQの建物の基準価額はOlgaの基準価額を引き継いで <b>180,000</b>(§723)。</p>
 <p><b>2026年の配分</b>:通常所得 = 270,000 − 60,000 = 210,000 → 各70,000。LTCG 30,000 → 各10,000。債務の減少15,000 → 各5,000のみなし分配。</p>
@@ -196,7 +196,7 @@ CPA.tbs({ id: "TBS-TCP-37", section: "TCP", chapter: "TCP-02", title: "パート
 });
 
 CPA.tbs({ id: "TBS-TCP-38", section: "TCP", chapter: "TCP-02", title: "S法人:損失年度の分配とAAAの純減少調整・株式と貸付金の基準価額",
-  scenario: `<p>Tara has owned 100% of T Inc. since it elected S status in 2020. T was a C corporation before 2020 and still has <b>accumulated E&amp;P of $15,000</b>. T has not made a §1368(e)(3) election. Balances on January 1, 2026:</p>
+  scenario: `<p>Tara has owned 100% of T Inc. since it elected S status in 2020. T was a C corporation before 2020 and still has <b>accumulated E&amp;P of $15,000</b>. T has not made a §1368(e)(3) election. Tara materially participates in T's business and is at risk for her stock and loan basis. Balances on January 1, 2026:</p>
 <table><tr><th>Item</th><th>Balance</th></tr>
 <tr><td>Tara's stock basis</td><td>$50,000</td></tr>
 <tr><td>Tara's loan to T (face and basis)</td><td>$20,000</td></tr>
@@ -208,7 +208,7 @@ CPA.tbs({ id: "TBS-TCP-38", section: "TCP", chapter: "TCP-02", title: "S法人:�
 <tr><td>Long-term capital gain</td><td>$4,000</td></tr>
 <tr><td>Nondeductible expenses</td><td>$3,000</td></tr>
 <tr><td>Cash distribution to Tara (July 2026)</td><td>$40,000</td></tr></table>
-<p class="ja">Taraは2020年にS法人を選択したT社の株式を100%保有している。Tは2020年前はC法人で、累積E&amp;P$15,000が残っている。§1368(e)(3)の選択はしていない。2026年1月1日残高:株式の基準価額$50,000、TaraのTへの貸付金(額面・基準価額)$20,000、AAA$30,000。2026年の結果:通常事業損失$(70,000)、非課税利息$6,000、長期キャピタルゲイン$4,000、控除不能費用$3,000、Taraへの現金分配$40,000(7月)。</p>`,
+<p class="ja">Taraは2020年にS法人を選択したT社の株式を100%保有している。Tは2020年前はC法人で、累積E&amp;P$15,000が残っている。§1368(e)(3)の選択はしていない。TaraはTの事業に実質的に関与しており、株式と貸付金の基準価額の範囲でat-riskである。2026年1月1日残高:株式の基準価額$50,000、TaraのTへの貸付金(額面・基準価額)$20,000、AAA$30,000。2026年の結果:通常事業損失$(70,000)、非課税利息$6,000、長期キャピタルゲイン$4,000、控除不能費用$3,000、Taraへの現金分配$40,000(7月)。</p>`,
   rows: [
     { label: "Portion of the distribution that is tax-free from AAA(AAAからの非課税分配額)", type: "num", answer: 30000 },
     { label: "Dividend income reported by Tara(Taraの配当所得)", type: "num", answer: 10000 },

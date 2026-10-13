@@ -34,3 +34,130 @@ Pico社はすべての資産・負債・NCI・対価の識別と測定を再検�
 <p>法務・評価費用25,000は発生時に費用処理する(ASC 805-10-25-23)。</p>
 <p>測定期間の修正:取得日に存在した事実に基づく情報なので、取得日の金額を遡って修正する。純資産は 710,000 − 20,000 = 690,000、割安購入益 = 690,000 − 670,000 = <b>20,000</b>。修正は判明した期間に認識し、過年度の再表示は行わない。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-BAR-51", section: "BAR", chapter: "BAR-02", title: "内部取引の設備売却と社債の擬制的償還(2年目の連結)",
+  scenario: `<p>Perry Co. owns <b>90%</b> of Sloan Inc. (acquired several years ago; no remaining acquisition-date fair value differentials). The Year 2 consolidation (calendar year) involves the following intercompany items.</p>
+<table><tr><th>Exhibit 1 — Intercompany equipment (upstream)</th><th>Detail</th></tr>
+<tr><td>Date of transfer</td><td>January 1, Year 1</td></tr>
+<tr><td>Sloan's original cost / accumulated depreciation at transfer</td><td>$150,000 / $70,000</td></tr>
+<tr><td>Price paid by Perry</td><td>$120,000</td></tr>
+<tr><td>Remaining useful life at transfer (straight-line, no salvage)</td><td>5 years</td></tr></table>
+<table><tr><th>Exhibit 2 — Intercompany bonds</th><th>Detail</th></tr>
+<tr><td>Bonds issued by Sloan in prior years; Perry bought $200,000 face on the open market on January 1, Year 2</td><td>Price paid: $190,000</td></tr>
+<tr><td>Sloan's carrying amount of those bonds on January 1, Year 2</td><td>$206,000</td></tr>
+<tr><td>Stated rate (paid annually Dec 31) / remaining term</td><td>8% / 4 years</td></tr>
+<tr><td>Premium and discount amortization</td><td>Straight-line</td></tr></table>
+<p><b>Exhibit 3 — Year 2 separate-company results:</b> Perry's income from its own operations (excluding any investment income from Sloan but including interest revenue on the Sloan bonds) was <b>$300,000</b>. Sloan reported net income of <b>$100,000</b>. Perry's policy assigns gains and losses on constructive retirement of debt to the issuer.</p>
+<p class="ja">Perry社はSloan社の90%を保有している(数年前に取得し、取得日の公正価値差額は残っていない)。暦年の2年目の連結で、次の内部取引がある。<br>
+資料1(上流の設備売却):1年目1月1日に移転。移転時のSloan社の取得原価$150,000、減価償却累計額$70,000。Perry社の支払額$120,000。移転時の残存耐用年数5年(定額法、残存価額なし)。<br>
+資料2(内部社債):Sloan社が過年度に発行した社債のうち額面$200,000を、Perry社が2年目1月1日に市場で$190,000で購入した。同日のSloan社における当該社債の帳簿価額は$206,000。表面利率8%(毎年12月31日払い)、残存期間4年。プレミアムとディスカウントは定額法で償却する。<br>
+資料3(2年目の個別業績):Perry社の自社営業利益(Sloan社からの投資利益を除き、Sloan社債の受取利息を含む)は$300,000、Sloan社の純利益は$100,000。Perry社は社債の擬制的償還損益を発行会社に帰属させる方針である。</p>`,
+  rows: [
+    { label: "Unrealized gain on equipment eliminated in the Year 1 consolidation(1年目連結で消去する設備の未実現利益)", type: "num", answer: 40000 },
+    { label: "Year 2 worksheet: debit to beginning retained earnings/NCI for the equipment(2年目精算表:設備に係る期首利益剰余金・NCIへの借方)", type: "num", answer: 32000 },
+    { label: "Year 2 worksheet: credit to accumulated depreciation(2年目精算表:減価償却累計額への貸方)", type: "num", answer: 54000 },
+    { label: "Gain on constructive retirement of bonds in Year 2 consolidated income(2年目の連結損益の社債擬制的償還益)", type: "num", answer: 16000 },
+    { label: "Interest revenue on Perry's books eliminated in Year 2(2年目に消去するPerry社の受取利息)", type: "num", answer: 18500 },
+    { label: "Year 2 consolidated net income(2年目の連結純利益)", type: "num", answer: 420000 },
+    { label: "Year 2 net income attributable to NCI(2年目の非支配持分に帰属する純利益)", type: "num", answer: 12000 },
+  ],
+  explain: `<p><b>設備</b>:Sloan社の簿価 = 150,000 − 70,000 = 80,000、売却益 = 120,000 − 80,000 = <b>40,000</b>(1年目に消去)。Perry社の減価償却 120,000 ÷ 5 = 24,000、連結上は 80,000 ÷ 5 = 16,000 で、毎年8,000ずつ実現する。</p>
+<p>2年目の消去仕訳:期首時点の未実現利益は 40,000 − 8,000 = <b>32,000</b>(上流なので期首利益剰余金とNCIに按分して借方)。設備は取得原価150,000に戻すため借方30,000。累計額は連結上 70,000 + 16,000 × 2 = 102,000、Perry社の帳簿は 24,000 × 2 = 48,000 なので、貸方 <b>54,000</b>。減価償却費の貸方8,000。借方 30,000 + 32,000 = 貸方 54,000 + 8,000 で一致する。</p>
+<p><b>社債</b>:連結上は2年目1月1日に償還したとみなす。償還益 = 帳簿価額206,000 − 支払額190,000 = <b>16,000</b>。Perry社の受取利息 = 表面利息16,000 + ディスカウント償却 10,000 ÷ 4 = <b>18,500</b>。Sloan社の支払利息 = 16,000 − プレミアム償却 6,000 ÷ 4 = 14,500。両者を消去すると連結利益は 18,500 − 14,500 = 4,000 減るので、社債の連結純利益への影響は 16,000 − 4,000 = +12,000(発行会社Sloan社に帰属)。</p>
+<p>連結純利益 = 300,000 + 100,000 + 設備の実現8,000 + 社債12,000 = <b>420,000</b>。<br>
+NCI = 10% × (100,000 + 8,000 + 12,000) = <b>12,000</b>(上流取引と発行会社帰属の社債損益はSloan社の利益を修正する)。親会社帰属は408,000となる。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-BAR-52", section: "BAR", chapter: "BAR-02", title: "連結精算表のレビュー:簡便法の修正仕訳と非支配持分の期末残高",
+  scenario: `<p>On January 1, Year 1, Pratt Corp. acquired <b>75%</b> of Stone Co. for <b>$900,000</b> cash. The fair value of the 25% NCI was <b>$290,000</b>. Stone's book value was $1,000,000 (common stock $400,000; retained earnings $600,000). Stone's building was undervalued by <b>$80,000</b> (10-year remaining life, straight-line); all other book values equaled fair value. Pratt accounts for the investment using the <b>initial value (cost) method</b> in its own books.</p>
+<table><tr><th>Stone</th><th>Net income</th><th>Dividends declared and paid</th></tr>
+<tr><td>Year 1</td><td>$150,000</td><td>$40,000</td></tr>
+<tr><td>Year 2</td><td>$180,000</td><td>$60,000</td></tr></table>
+<p>Intercompany inventory at December 31, Year 2 (none at the end of Year 1): Stone's ending inventory includes goods bought from Pratt containing <b>$12,000</b> of unrealized gross profit; Pratt's ending inventory includes goods bought from Stone containing <b>$8,000</b> of unrealized gross profit.</p>
+<p><b>Staff draft (for review):</b> "Goodwill $90,000; NCI in Year 2 net income $45,000 (25% × $180,000); Dec 31, Year 2 NCI $290,000 plus 25% of Stone's retained earnings growth; downstream profit allocated 75/25 between Pratt and NCI."</p>
+<p class="ja">1年目1月1日、Pratt社はStone社の75%を現金$900,000で取得した。25%のNCIの公正価値は$290,000。Stone社の簿価は$1,000,000(資本金$400,000、利益剰余金$600,000)。建物が$80,000過小評価されていた(残存耐用年数10年、定額法)。他の簿価は公正価値と等しい。Pratt社は自社の帳簿で投資を簡便法(原価法)で処理している。<br>
+Stone社の純利益と配当:1年目 純利益$150,000・配当$40,000、2年目 純利益$180,000・配当$60,000。<br>
+2年目12月31日の内部棚卸(1年目末はなし):Stone社の期末棚卸にPratt社から仕入れた商品の未実現利益$12,000、Pratt社の期末棚卸にStone社から仕入れた商品の未実現利益$8,000が含まれる。<br>
+担当者の草案(レビュー対象):「のれん$90,000。2年目のNCI純利益$45,000(25% × $180,000)。2年目末NCIは$290,000にStone社の利益剰余金増加額の25%を加算。下流取引の利益はPratt社とNCIに75/25で配分。」</p>`,
+  rows: [
+    { label: "Correct consolidated goodwill(正しい連結のれん)", type: "num", answer: 110000 },
+    { label: "Unamortized building fair value adjustment at Dec 31, Year 2(2年目末の建物の公正価値差額の未償却残高)", type: "num", answer: 64000 },
+    { label: "Conversion entry to Pratt's Jan 1, Year 2 retained earnings (initial value to equity basis)(簡便法から持分法ベースへの2年目期首利益剰余金の修正額)", type: "num", answer: 76500 },
+    { label: "Dividend income on Pratt's books eliminated in Year 2(2年目に消去するPratt社の受取配当)", type: "num", answer: 45000 },
+    { label: "Correct Year 2 net income attributable to NCI(正しい2年目の非支配持分帰属純利益)", type: "num", answer: 41000 },
+    { label: "Correct NCI balance at Dec 31, Year 2(正しい2年目末の非支配持分残高)", type: "num", answer: 341500 },
+    { label: "Allocation of the $12,000 downstream unrealized profit(下流取引の未実現利益$12,000の配分)", type: "select", options: ["75% to Pratt and 25% to NCI", "Entirely to the controlling interest (Pratt)", "Entirely to the NCI", "Not eliminated because Stone is the buyer"], answer: "Entirely to the controlling interest (Pratt)" },
+  ],
+  explain: `<p>取得日の公正価値総額 = 900,000 + 290,000 = 1,190,000。識別可能純資産 = 1,000,000 + 80,000 = 1,080,000。のれん = <b>110,000</b>(草案の90,000は親会社分 900,000 − 75% × 1,080,000 だけで、NCI分20,000が漏れている)。</p>
+<p>建物の差額償却は年8,000。2年目末の未償却残高 = 80,000 − 8,000 × 2 = <b>64,000</b>。</p>
+<p>修正仕訳(*C):1年目のStone社の利益剰余金増加 150,000 − 40,000 = 110,000 から償却8,000を引いた102,000の75% = <b>76,500</b> をPratt社の期首利益剰余金に加える(1年目末に内部未実現利益はない)。</p>
+<p>簡便法ではPratt社は配当を収益計上しているため、2年目の受取配当 75% × 60,000 = <b>45,000</b> を消去する。</p>
+<p>2年目のNCI純利益 = 25% × (180,000 − 償却8,000 − 上流の未実現利益8,000) = 25% × 164,000 = <b>41,000</b>。下流取引の未実現利益12,000は売り手である親会社が負担し、<b>全額を支配持分に配分</b>する。</p>
+<p>NCI残高 = 290,000 + 1年目 25% × (150,000 − 8,000) 35,500 − 配当10,000 + 2年目 41,000 − 配当15,000 = <b>341,500</b>。<br>
+検算:25% × (2年目末Stone社純資産1,230,000 + 未償却差額64,000 − 上流未実現8,000) + NCI分のれん20,000 = 321,500 + 20,000 = 341,500。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-BAR-53", section: "BAR", chapter: "BAR-02", title: "VIEの主たる受益者の判定グリッドと初度連結",
+  scenario: `<p>Harbor Inc., a public company, has relationships with five legal entities. For each, the controller prepared a summary (Exhibit 1). Harbor is not under common control with any of the entities.</p>
+<table><tr><th>Entity</th><th>Facts</th></tr>
+<tr><td>Lessor LLC</td><td>Owns one building leased to Harbor. Equity investment at risk is 2% of total assets; the rest is financed by a bank loan. Harbor guarantees the building's residual value and, under the lease, directs leasing decisions, capital improvements and maintenance.</td></tr>
+<tr><td>Delta Partners</td><td>Equity at risk is 30% of total assets and Delta has obtained non-recourse financing on its own. The equity holders, through voting rights, direct the significant activities, absorb expected losses and receive residual returns. Harbor owns 15% of the voting equity.</td></tr>
+<tr><td>Fund One</td><td>A VIE. Harbor holds subordinated notes that absorb most of the expected losses. An unrelated asset manager (with substantive authority that cannot be removed) makes all investment decisions that most significantly affect performance.</td></tr>
+<tr><td>Servicer Trust</td><td>A VIE. Harbor services the receivables and directs the activities that most significantly affect performance. Harbor's only interest is a market-rate fee that is commensurate with its services; Harbor holds no other interests.</td></tr>
+<tr><td>JV Energy</td><td>A VIE. Harbor and an unrelated party each hold 50% of the subordinated interests. All decisions on the significant activities require the consent of both parties.</td></tr></table>
+<p><b>Exhibit 2 — Initial consolidation of Lessor LLC:</b> Lessor LLC does not meet the definition of a business. On the date Harbor became the primary beneficiary, the fair values were: building $1,050,000; bank loan $980,000; equity interests held by the unrelated owners (NCI) $20,000. Harbor paid no consideration and had no previously held equity interest.</p>
+<p class="ja">上場会社のHarbor社は5つの事業体と関係がある(資料1)。Harbor社はいずれの事業体とも共通支配下にない。<br>
+Lessor LLC:Harbor社に賃貸する建物を1棟保有。リスクにさらされた持分投資は総資産の2%で、残りは銀行借入。Harbor社が建物の残存価額を保証し、リース契約に基づき賃貸の決定・資本的改良・維持管理を指示している。<br>
+Delta Partners:リスクにさらされた持分は総資産の30%で、自力でノンリコース融資を得ている。持分保有者が議決権により重要な活動を指示し、予想損失を負担し残余リターンを受け取る。Harbor社は議決権持分の15%を保有する。<br>
+Fund One:VIE。Harbor社は予想損失の大部分を負担する劣後債を保有する。業績に最も重要な影響を与える投資決定はすべて、関係のない資産運用会社(解任できない実質的な権限を持つ)が行う。<br>
+Servicer Trust:VIE。Harbor社は債権を回収管理し、業績に最も重要な影響を与える活動を指示する。Harbor社の唯一の持分は役務に見合う市場水準の報酬で、他の持分はない。<br>
+JV Energy:VIE。Harbor社と関係のない相手方がそれぞれ劣後持分の50%を保有し、重要な活動の決定はすべて両者の同意を要する。<br>
+資料2(Lessor LLCの初度連結):Lessor LLCは事業の定義を満たさない。Harbor社が主たる受益者となった日の公正価値は、建物$1,050,000、銀行借入$980,000、関係のない所有者の持分(NCI)$20,000。Harbor社は対価を支払っておらず、既存の持分もない。</p>`,
+  rows: [
+    { label: "Lessor LLC — conclusion for Harbor(Lessor LLCに関するHarbor社の結論)", type: "select", options: ["Consolidate as primary beneficiary", "Not a VIE — apply the voting interest model", "Not primary beneficiary — lacks power", "Not primary beneficiary — lacks a potentially significant economic interest", "No party consolidates — power is shared"], answer: "Consolidate as primary beneficiary" },
+    { label: "Delta Partners — conclusion for Harbor(Delta Partnersに関する結論)", type: "select", options: ["Consolidate as primary beneficiary", "Not a VIE — apply the voting interest model", "Not primary beneficiary — lacks power", "Not primary beneficiary — lacks a potentially significant economic interest", "No party consolidates — power is shared"], answer: "Not a VIE — apply the voting interest model" },
+    { label: "Fund One — conclusion for Harbor(Fund Oneに関する結論)", type: "select", options: ["Consolidate as primary beneficiary", "Not a VIE — apply the voting interest model", "Not primary beneficiary — lacks power", "Not primary beneficiary — lacks a potentially significant economic interest", "No party consolidates — power is shared"], answer: "Not primary beneficiary — lacks power" },
+    { label: "Servicer Trust — conclusion for Harbor(Servicer Trustに関する結論)", type: "select", options: ["Consolidate as primary beneficiary", "Not a VIE — apply the voting interest model", "Not primary beneficiary — lacks power", "Not primary beneficiary — lacks a potentially significant economic interest", "No party consolidates — power is shared"], answer: "Not primary beneficiary — lacks a potentially significant economic interest" },
+    { label: "JV Energy — conclusion for Harbor(JV Energyに関する結論)", type: "select", options: ["Consolidate as primary beneficiary", "Not a VIE — apply the voting interest model", "Not primary beneficiary — lacks power", "Not primary beneficiary — lacks a potentially significant economic interest", "No party consolidates — power is shared"], answer: "No party consolidates — power is shared" },
+    { label: "Goodwill recognized on initial consolidation of Lessor LLC(Lessor LLCの初度連結で認識するのれん)", type: "num", answer: 0 },
+    { label: "Gain recognized by Harbor on initial consolidation of Lessor LLC(Lessor LLCの初度連結でHarbor社が認識する利益)", type: "num", answer: 50000 },
+  ],
+  explain: `<p>主たる受益者は、(1) VIEの経済的成果に最も重要な影響を与える活動を指示する<b>パワー</b>と、(2) VIEにとって潜在的に重要となりうる損失を負担する義務または便益を受け取る権利の<b>両方</b>を持つ者である(ASC 810-10-25-38A)。</p>
+<p>Lessor LLC:持分投資2%では劣後的支援なしに活動資金を賄えずVIEに該当する。Harbor社は賃貸・改良・維持の指示権(パワー)と残存価額保証(重要な損失負担)を持つので<b>主たる受益者として連結</b>する。</p>
+<p>Delta Partners:持分が十分で、持分保有者がパワー・損失負担・残余リターンを持つためVIEではない。<b>議決権モデル</b>を適用し、15%保有では連結しない。</p>
+<p>Fund One:Harbor社は重要な経済的持分を持つが、パワーは解任不能な資産運用会社にあるので<b>パワーがなく</b>主たる受益者ではない。</p>
+<p>Servicer Trust:Harbor社はパワーを持つが、役務に見合う市場水準の報酬のみで他の持分がないため、報酬は変動持分に当たらず<b>重要な経済的持分がない</b>。</p>
+<p>JV Energy:重要な決定がすべて関係のない二者の同意を要するので<b>パワーは共有</b>され、どちらも主たる受益者にならない。</p>
+<p>初度連結:事業でないVIEの連結ではのれんを認識しない(<b>0</b>)。対価の公正価値0 + NCIの公正価値20,000 + 既存持分0 = 20,000 と、識別可能純資産 1,050,000 − 980,000 = 70,000 との差額 <b>50,000</b> を利益として認識する(ASC 810-10-30-4)。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-BAR-54", section: "BAR", chapter: "BAR-02", title: "報告単位別ののれん減損(1ステップ)と非公開会社の代替処理",
+  scenario: `<p><b>Part A.</b> Vega Corp., a public business entity, performs its annual goodwill impairment test at December 31, Year 3. Vega bypassed the qualitative assessment for Alpha and Beta and performed the quantitative test. For Gamma, the qualitative assessment concluded that it is <b>not more likely than not</b> that Gamma's fair value is less than its carrying amount. Data:</p>
+<table><tr><th>Reporting unit</th><th>Carrying amount (including goodwill)</th><th>Goodwill included</th><th>Fair value of the unit</th></tr>
+<tr><td>Alpha</td><td>$2,400,000</td><td>$500,000</td><td>$2,100,000</td></tr>
+<tr><td>Beta</td><td>$1,800,000</td><td>$200,000</td><td>$1,500,000</td></tr>
+<tr><td>Gamma</td><td>$1,200,000</td><td>$150,000</td><td>$1,350,000</td></tr></table>
+<p>Ignore income tax effects.</p>
+<p><b>Part B.</b> Lynx Co., a private company, elected the private company accounting alternative for goodwill (amortization over 10 years, impairment testing at the entity level only upon a triggering event). Lynx recognized goodwill of <b>$360,000</b> on January 1, Year 1. A triggering event occurred on December 31, Year 3. After recording Year 3 amortization, Lynx's entity-level carrying amount (including goodwill) was <b>$1,900,000</b> and its fair value was <b>$1,700,000</b>.</p>
+<p class="ja">A:上場企業(公開事業体)Vega社は3年目12月31日に年次ののれん減損テストを行う。AlphaとBetaは定性的評価を省略して定量的テストを行った。Gammaは定性的評価により、公正価値が帳簿価額を下回る可能性が50%超ではないと結論した。データ:Alpha 帳簿価額(のれん含む)$2,400,000・うちのれん$500,000・公正価値$2,100,000。Beta $1,800,000・$200,000・$1,500,000。Gamma $1,200,000・$150,000・$1,350,000。税効果は無視する。<br>
+B:非公開会社Lynx社は、のれんの非公開会社向け代替処理(10年償却、トリガー事象発生時のみ企業単位で減損テスト)を選択した。1年目1月1日にのれん$360,000を認識した。3年目12月31日にトリガー事象が発生した。3年目の償却計上後、企業単位の帳簿価額(のれん含む)は$1,900,000、公正価値は$1,700,000であった。</p>`,
+  rows: [
+    { label: "Goodwill impairment — Alpha(Alphaののれん減損損失)", type: "num", answer: 300000 },
+    { label: "Goodwill impairment — Beta(Betaののれん減損損失)", type: "num", answer: 200000 },
+    { label: "Required action for Gamma(Gammaに必要な対応)", type: "select", options: ["Perform the quantitative test anyway", "No further testing; no impairment", "Recognize impairment equal to $150,000", "Measure implied goodwill (former Step 2)"], answer: "No further testing; no impairment" },
+    { label: "Total goodwill impairment for Vega, Year 3(Vega社の3年目ののれん減損合計)", type: "num", answer: 500000 },
+    { label: "Lynx goodwill carrying amount before the impairment test(減損テスト前のLynx社ののれん帳簿価額)", type: "num", answer: 252000 },
+    { label: "Lynx goodwill impairment loss(Lynx社ののれん減損損失)", type: "num", answer: 200000 },
+    { label: "Lynx goodwill amortization for Year 4(Lynx社の4年目ののれん償却額)", type: "num", answer: 7429, tol: 1 },
+  ],
+  explain: `<p>ASU 2017-04後の1ステップ方式:減損損失 = 報告単位の帳簿価額 − 公正価値。ただし当該報告単位に配分されたのれんの額を上限とする。</p>
+<p>Alpha:2,400,000 − 2,100,000 = <b>300,000</b>(のれん500,000以内)。<br>
+Beta:1,800,000 − 1,500,000 = 300,000 だが上限はのれん200,000なので <b>200,000</b>。<br>
+Gamma:定性的評価で「50%超ではない」と結論したので定量的テストは不要で、<b>減損なし</b>(公正価値も帳簿価額を上回る)。旧ステップ2(含意されたのれんの測定)は廃止された。<br>
+合計 = 300,000 + 200,000 = <b>500,000</b>。</p>
+<p>Lynx社:年間償却 360,000 ÷ 10 = 36,000。3年目末の残高 = 360,000 − 36,000 × 3 = <b>252,000</b>。減損 = 1,900,000 − 1,700,000 = <b>200,000</b>(252,000以内)。減損後の残高52,000は残存期間7年で引き続き償却するので、4年目の償却 = 52,000 ÷ 7 ≒ <b>7,429</b>。</p>`,
+});
