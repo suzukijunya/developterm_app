@@ -101,3 +101,126 @@ CPA.tbs({
 <p>設立費:12,000は50,000以下なので即時控除5,000。残り7,000 ÷ 180 × 6 = 233.33。合計5,233.33 ≒ 5,233。</p>
 <p>株式の発行・販売費用は設立費に該当せず、控除も償却もできない(払込資本の減少)。同一取引で取得した§197無形資産の一部を処分して損失が生じても、他の無形資産を保持していれば損失は否認され、保持する§197無形資産の取得価額に加算される。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-REG-65", section: "REG", chapter: "REG-05", title: "Form 1120:会計上の利益からの課税所得計算(M-1・M-2、寄附金1%下限、DRDの課税所得制限)",
+  scenario: `<p>Pepper Corp., a calendar-year C corporation, provides its 2026 book income statement and supplemental notes.</p>
+<table><tr><th>Income statement — 2026</th><th>Amount</th></tr>
+<tr><td>Sales</td><td>$1,200,000</td></tr>
+<tr><td>Dividend from a domestic corporation in which Pepper owns 30%</td><td>100,000</td></tr>
+<tr><td>Interest on municipal bonds</td><td>8,000</td></tr>
+<tr><td>Loss on sale of stock investments (capital loss; no capital gains in 2026)</td><td>(7,000)</td></tr>
+<tr><td>Cost of goods sold</td><td>(800,000)</td></tr>
+<tr><td>Salaries</td><td>(250,000)</td></tr>
+<tr><td>Depreciation (book; MACRS depreciation is $55,000)</td><td>(40,000)</td></tr>
+<tr><td>Premiums on key-officer life insurance (Pepper is beneficiary)</td><td>(6,000)</td></tr>
+<tr><td>Business meals with clients (restaurant)</td><td>(10,000)</td></tr>
+<tr><td>Client entertainment (sporting events)</td><td>(4,000)</td></tr>
+<tr><td>Fines paid to a government agency</td><td>(3,000)</td></tr>
+<tr><td>Cash contributions to qualified public charities</td><td>(22,000)</td></tr>
+<tr><td>Other deductible operating expenses</td><td>(90,000)</td></tr>
+<tr><td>Federal income tax expense</td><td>(6,615)</td></tr>
+<tr><td><b>Net income per books</b></td><td><b>$69,385</b></td></tr></table>
+<p>Other data: unappropriated retained earnings at January 1, 2026 were $400,000; Pepper declared and paid cash dividends of $25,000 in 2026. Pepper has no NOL or contribution carryovers. <b>Assumptions (OBBBA, tax years beginning after 2025):</b> the corporate charitable deduction is allowed only for contributions in excess of 1% of taxable income computed before the charitable deduction and the DRD, and may not exceed 10% of that same amount; because Pepper's contributions exceed the 10% cap, all nondeductible contributions (including those disallowed by the 1% floor) carry forward 5 years. The corporate rate is 21%.</p>
+<p class="ja">暦年課税のC法人Pepper社の2026年の損益計算書(上表):売上$1,200,000、持株比率30%の内国法人からの受取配当$100,000、地方債利息$8,000、投資株式の売却損(資本損失、2026年に資本利得なし)$(7,000)、売上原価$(800,000)、給与$(250,000)、減価償却費(会計上。MACRSは$55,000)$(40,000)、役員保険料(受取人は会社)$(6,000)、顧客との飲食(レストラン)$(10,000)、顧客接待(スポーツ観戦)$(4,000)、政府機関への罰金$(3,000)、適格公益団体への現金寄附$(22,000)、その他の損金算入営業費用$(90,000)、連邦法人税費用$(6,615)、当期純利益$69,385。その他:2026年1月1日の未処分利益剰余金$400,000、2026年の現金配当支払$25,000。NOLや寄附金の繰越はない。前提(OBBBA、2025年後開始年度):法人の寄附金控除は、寄附金控除とDRD控除前の課税所得の1%を超える部分のみ認められ、同じ金額の10%が上限である。Pepper社の寄附は10%上限を超えるため、控除できない寄附(1%下限で否認された部分を含む)は全額5年間繰り越される。税率は21%。</p>`,
+  rows: [
+    { label: "Charitable contribution deduction for 2026(2026年の寄附金控除額)", type: "num", answer: 10000 },
+    { label: "Charitable contribution carryforward to 2027(2027年への寄附金繰越額)", type: "num", answer: 12000 },
+    { label: "Dividends-received deduction(受取配当控除)", type: "num", answer: 58500 },
+    { label: "Taxable income (Form 1120, line 30)(課税所得)", type: "num", answer: 31500 },
+    { label: "Schedule M-1, line 5 — expenses recorded on books not deducted on the return(M-1第5行:会計上の費用で申告書上控除しないもの)", type: "num", answer: 30000 },
+    { label: "Schedule M-1, line 10 — income (Form 1120, line 28)(M-1第10行:特別控除・NOL控除前の所得)", type: "num", answer: 90000 },
+    { label: "Schedule M-2 — unappropriated retained earnings at December 31, 2026(M-2:期末未処分利益剰余金)", type: "num", answer: 444385 },
+    { label: "Why the DRD is less than 65% of the dividend(DRDが配当の65%を下回る理由)", type: "select", options: ["The 1% charitable floor reduces the DRD", "The DRD is limited to 65% of taxable income before the DRD because the full DRD would not create an NOL", "The 30% ownership reduces the rate to 50%", "Dividends from domestic corporations are limited to $50,000"], answer: "The DRD is limited to 65% of taxable income before the DRD because the full DRD would not create an NOL" },
+  ],
+  explain: `<p>寄附金控除・DRD前の課税所得 = 売上1,200,000 + 配当100,000 − 売上原価800,000 − 給与250,000 − MACRS 55,000 − 飲食の50% 5,000 − その他90,000 = 100,000(地方債利息は非課税、資本損失は資本利得がないため控除不可、役員保険料・接待費・罰金・法人税は損金不算入)。</p>
+<p>寄附金:1%下限 = 1,000、10%上限 = 10,000。22,000 − 1,000 = 21,000 > 10,000 なので控除10,000、繰越 = 22,000 − 10,000 = 12,000。</p>
+<p>DRD前の課税所得 = 100,000 − 10,000 = 90,000(=1120第28行)。持株20%以上80%未満なので65%。65% × 100,000 = 65,000 と 65% × 90,000 = 58,500 を比較する。90,000 − 65,000 = 25,000 でNOLは生じないので課税所得制限が適用され、DRD = 58,500。課税所得 = 90,000 − 58,500 = 31,500(税額 31,500 × 21% = 6,615 で会計上の法人税費用と一致)。</p>
+<p>M-1:第1行 当期純利益69,385、第2行 法人税6,615、第3行 資本損失の超過7,000、第5行 = 役員保険料6,000 + 飲食の損金不算入5,000 + 接待4,000 + 罰金3,000 + 寄附金超過12,000 = 30,000、第6行合計113,000。第7行 地方債利息8,000、第8行 減価償却の税務超過額15,000。第10行 = 113,000 − 23,000 = 90,000。</p>
+<p>M-2:400,000 + 69,385 − 25,000 = 444,385。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-REG-66", section: "REG", chapter: "REG-05", title: "法人の純資本損失の3年繰戻し・5年繰越と大法人の見積税額の納付",
+  scenario: `<p>Baxter Corp., a calendar-year C corporation, reports the following for 2026 and prior years. The corporate rate was 21% in every year shown.</p>
+<table><tr><th>Year</th><th>Taxable income</th><th>Net capital gain included in taxable income</th><th>Total tax</th></tr>
+<tr><td>2023</td><td>$800,000</td><td>$10,000</td><td>$168,000</td></tr>
+<tr><td>2024</td><td>$1,400,000</td><td>$5,000</td><td>$294,000</td></tr>
+<tr><td>2025</td><td>$900,000</td><td>$15,000</td><td>$189,000</td></tr></table>
+<p>2026 capital transactions: long-term capital loss $50,000; short-term capital gain $12,000. Baxter's 2026 taxable income (from ordinary operations) is <b>$1,600,000</b>, and its 2026 tax liability is $336,000. Baxter does not use the annualized or adjusted seasonal installment methods.</p>
+<p class="ja">暦年課税のC法人Baxter社の資料(税率は各年21%)。2023年:課税所得$800,000(うち純資本利得$10,000)、税額$168,000。2024年:課税所得$1,400,000(うち純資本利得$5,000)、税額$294,000。2025年:課税所得$900,000(うち純資本利得$15,000)、税額$189,000。2026年の資本取引は長期資本損失$50,000、短期資本利得$12,000。2026年の課税所得(通常の営業から)は$1,600,000、2026年の税額は$336,000。年換算法や季節調整法は用いない。</p>`,
+  rows: [
+    { label: "2026 net capital loss(2026年の純資本損失)", type: "num", answer: 38000 },
+    { label: "Total net capital loss absorbed by carrybacks to 2023–2025(2023〜2025年への繰戻しで吸収される額)", type: "num", answer: 30000 },
+    { label: "Total refund from the carrybacks(繰戻しによる還付額合計)", type: "num", answer: 6300 },
+    { label: "Character and last year of use of the remaining carryforward(残りの繰越損失の性質と使用期限)", type: "select", options: ["$8,000 long-term capital loss, through 2031", "$8,000 short-term capital loss, through 2031", "$8,000 short-term capital loss, carried forward indefinitely", "$8,000 ordinary loss (NOL), through 2046"], answer: "$8,000 short-term capital loss, through 2031" },
+    { label: "Required first 2026 estimated tax installment (minimum)(2026年第1回見積納税額の最低額)", type: "num", answer: 47250 },
+    { label: "Required second 2026 estimated tax installment(2026年第2回見積納税額)", type: "num", answer: 120750 },
+    { label: "Why Baxter cannot base all four installments on its 2025 tax(全4回を2025年税額基準にできない理由)", type: "select", options: ["Its 2025 return showed a tax liability", "It had taxable income of $1 million or more in at least one of the three preceding years (large corporation)", "Its 2026 tax exceeds $250,000", "Corporations may never use the prior-year safe harbor"], answer: "It had taxable income of $1 million or more in at least one of the three preceding years (large corporation)" },
+    { label: "Due date of the fourth installment(第4回の納期限)", type: "select", options: ["December 15, 2026", "January 15, 2027", "March 15, 2027", "April 15, 2027"], answer: "December 15, 2026" },
+  ],
+  explain: `<p>純資本損失 = 50,000 − 12,000 = 38,000。法人は資本損失を通常所得から控除できず、3年繰戻し・5年繰越する(繰戻し・繰越分は短期資本損失として扱う)。</p>
+<p>繰戻しは古い年から順に、各年の純資本利得の範囲で充当する:2023年10,000、2024年5,000、2025年15,000 → 合計30,000。還付額 = 30,000 × 21% = 6,300。</p>
+<p>残り8,000は短期資本損失として2027〜2031年の5年間繰り越す。</p>
+<p>見積納税:2024年の課税所得が$1,000,000以上なので大法人に該当する。大法人は前年税額基準を第1回にしか使えない。第1回 = 189,000 × 25% = 47,250。第2回では当年税額基準で不足分を取り戻す:336,000 × 50% − 47,250 = 120,750。第3回・第4回は各84,000。暦年法人の納期限は4月15日、6月15日、9月15日、12月15日である。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-REG-67", section: "REG", chapter: "REG-05", title: "当期E&Pの計算と年2回の現金分配の性質決定(配当・資本の払戻し・譲渡益)",
+  scenario: `<p>Crane Corp., a calendar-year C corporation, is owned 100% by Lin Park, whose stock basis at January 1, 2026 was $70,000. Crane's accumulated E&P at January 1, 2026 was <b>$60,000</b>. Crane's tax manager provides the following 2026 data.</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Taxable income</td><td>$200,000</td></tr>
+<tr><td>Federal income tax liability (21%)</td><td>42,000</td></tr>
+<tr><td>Tax-exempt municipal bond interest</td><td>20,000</td></tr>
+<tr><td>Dividends-received deduction claimed (50%, on $70,000 of dividends from a 10%-owned corporation)</td><td>35,000</td></tr>
+<tr><td>MACRS depreciation deducted</td><td>120,000</td></tr>
+<tr><td>Depreciation under the alternative depreciation system (ADS) on the same assets</td><td>70,000</td></tr>
+<tr><td>Fines and penalties paid (nondeductible)</td><td>5,000</td></tr>
+<tr><td>Premiums on key-employee life insurance (no cash surrender value)</td><td>4,000</td></tr>
+<tr><td>Net capital loss for 2026 (not deductible)</td><td>6,000</td></tr>
+<tr><td>Charitable contributions in excess of the 10% limit</td><td>9,000</td></tr></table>
+<p>Cash distributions to Lin: <b>$200,000 on April 1</b> and <b>$200,000 on October 1, 2026</b>.</p>
+<p class="ja">暦年課税のC法人Crane社はLin Parkが100%所有し、2026年1月1日の株式の取得価額は$70,000である。2026年1月1日の累積E&Pは$60,000。2026年の資料:課税所得$200,000、連邦法人税(21%)$42,000、非課税の地方債利息$20,000、受取配当控除(持株10%の法人からの配当$70,000の50%)$35,000、MACRS減価償却$120,000、同一資産のADS減価償却$70,000、罰金(損金不算入)$5,000、役員保険料(解約返戻金なし)$4,000、2026年の純資本損失(控除不可)$6,000、10%限度超過の寄附金$9,000。Linへの現金分配は2026年4月1日に$200,000、10月1日に$200,000。</p>`,
+  rows: [
+    { label: "Current E&P for 2026(2026年の当期E&P)", type: "num", answer: 239000 },
+    { label: "Dividend income from the April 1 distribution(4月1日分配のうち配当所得)", type: "num", answer: 179500 },
+    { label: "Dividend income from the October 1 distribution(10月1日分配のうち配当所得)", type: "num", answer: 119500 },
+    { label: "Capital gain recognized by Lin in 2026(Linが2026年に認識する譲渡益)", type: "num", answer: 31000 },
+    { label: "Lin's stock basis at December 31, 2026(2026年末のLinの株式の取得価額)", type: "num", answer: 0 },
+    { label: "If accumulated E&P at January 1 had instead been a deficit of $(150,000), total 2026 dividend income would be(1月1日の累積E&Pが$(150,000)の欠損だった場合の配当所得合計)", type: "num", answer: 239000 },
+    { label: "Allocation rule for current vs. accumulated E&P(当期E&Pと累積E&Pの配分ルール)", type: "select", options: ["Both current and accumulated E&P are allocated pro rata to all distributions", "Current E&P is allocated pro rata to distributions; accumulated E&P is applied chronologically", "Current E&P is applied chronologically; accumulated E&P is allocated pro rata", "Accumulated E&P is used first, then current E&P"], answer: "Current E&P is allocated pro rata to distributions; accumulated E&P is applied chronologically" },
+  ],
+  explain: `<p>当期E&P = 課税所得200,000 + 地方債利息20,000 + DRD 35,000(E&Pでは控除不可) + 減価償却の超過額(120,000 − 70,000)50,000 − 法人税42,000 − 罰金5,000 − 保険料4,000 − 純資本損失6,000 − 寄附金限度超過額9,000 = 239,000。</p>
+<p>当期E&Pは分配額に比例配分する:239,000 × 200/400 = 119,500ずつ。累積E&P 60,000は時系列順に充当するので4月の分配に全額充てる。</p>
+<p>4月:配当 = 119,500 + 60,000 = 179,500。残り20,500は資本の払戻しで株式の取得価額を70,000 → 49,500に減額。</p>
+<p>10月:配当119,500。残り80,500のうち49,500は資本の払戻し(取得価額0)、超過31,000は資本利得。期末の取得価額は0。</p>
+<p>累積E&Pが欠損でも当期E&Pが正なら、当期E&Pの範囲で配当となる(欠損と相殺しない)。配当所得合計 = 239,000。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-REG-68", section: "REG", chapter: "REG-05", title: "株式償還(§302)の判定と§318のみなし保有(家族・パートナーシップからの帰属)",
+  scenario: `<p>Harbor Corp., a C corporation with 1,000 shares of a single class of common stock outstanding and accumulated E&P of $500,000, plans two possible stock redemptions at <b>$150 per share</b>. <b>Analyze each redemption independently, as if it were the only redemption.</b></p>
+<table><tr><th>Shareholder</th><th>Relationship</th><th>Shares owned directly</th></tr>
+<tr><td>Ana</td><td>—</td><td>300 (basis $40 per share)</td></tr>
+<tr><td>Ben</td><td>Ana's son</td><td>200</td></tr>
+<tr><td>Carl</td><td>Ana's father</td><td>100</td></tr>
+<tr><td>Dina</td><td>Ana's sister</td><td>100</td></tr>
+<tr><td>Delta Partnership</td><td>Ana is a 50% partner; the other partner is unrelated</td><td>200</td></tr>
+<tr><td>Ed</td><td>Unrelated to everyone</td><td>100 (basis $60 per share)</td></tr></table>
+<p><b>Redemption A:</b> Harbor redeems 200 of Ana's shares. <b>Redemption B:</b> Harbor redeems all 100 of Ed's shares.</p>
+<p class="ja">Harbor社(単一種類の普通株式1,000株発行済、累積E&P$500,000)は、1株$150で2つの償還を検討している。各償還はそれのみが行われたものとして独立に分析すること。株主:Ana 300株(1株当たり取得価額$40)、Anaの息子Ben 200株、Anaの父Carl 100株、Anaの姉妹Dina 100株、Delta Partnership(Anaが50%パートナー、他のパートナーは非関連者)200株、全員と無関係のEd 100株(1株当たり取得価額$60)。償還A:Anaの株式200株を償還。償還B:Edの株式100株全部を償還。</p>`,
+  rows: [
+    { label: "Shares attributed to Ana from her sister Dina under §318(§318でDinaからAnaに帰属する株式数)", type: "num", answer: 0 },
+    { label: "Ana's percentage ownership (direct + constructive) before Redemption A(償還A前のAnaの保有割合、%)", type: "num", answer: 70 },
+    { label: "Ana's percentage ownership (direct + constructive) after Redemption A(償還A後のAnaの保有割合、%)", type: "num", answer: 62.5, tol: 0.1 },
+    { label: "Tax treatment of Redemption A(償還Aの課税上の扱い)", type: "select", options: ["Exchange — substantially disproportionate under §302(b)(2)", "Exchange — complete termination under §302(b)(3)", "Exchange — not essentially equivalent to a dividend under §302(b)(1)", "§301 distribution (dividend to the extent of E&P)"], answer: "§301 distribution (dividend to the extent of E&P)" },
+    { label: "Ana's dividend income from Redemption A(償還AによるAnaの配当所得)", type: "num", answer: 30000 },
+    { label: "Ana's total basis in her 100 remaining shares after Redemption A(償還A後のAnaの残存100株の取得価額合計)", type: "num", answer: 12000 },
+    { label: "Ed's recognized capital gain from Redemption B(償還BによるEdの資本利得)", type: "num", answer: 9000 },
+  ],
+  explain: `<p>§318の家族帰属は配偶者・子・孫・親に限られ、兄弟姉妹や祖父母は含まれない。DinaからAnaへの帰属は0株。パートナーシップ所有株式はパートナーへ持分比率で帰属するので、Deltaの200株 × 50% = 100株がAnaに帰属する。</p>
+<p>償還A前:直接300 + Ben 200 + Carl 100 + Delta 100 = 700株 ÷ 1,000 = 70%。償還A後:直接100 + 200 + 100 + 100 = 500株 ÷ 800 = 62.5%。</p>
+<p>実質的不均衡償還の要件は、償還後の割合が50%未満かつ償還前の80%(70% × 80% = 56%)未満であることだが、62.5%なので満たさない。完全終了でもなく、支配権を維持しているため意味のある減少もない。よって§301の分配となり、E&Pが十分なので200株 × 150 = 30,000全額が配当である。</p>
+<p>配当扱いの場合、償還株式の取得価額200 × 40 = 8,000は残存株式に付け替えられる。残存100株の取得価額 = 100 × 40 + 8,000 = 12,000。</p>
+<p>償還B:Edは無関係で帰属株式がなく、全株式が償還されるので§302(b)(3)の完全終了として売却扱い。利得 = 15,000 − 6,000 = 9,000。</p>`,
+});

@@ -220,3 +220,102 @@ CPA.tbs({
 <p><b>調整表:</b>法定税額 420,000 − 地方債 16,800 + 損金不算入項目 (30,000 + 20,000 + 30,000) × 21% = 16,800 − 受取配当控除 65,000 × 21% = 13,650 = 406,350。</p>
 <p>一時差異は当期税金の減少と同額の繰延税金費用で相殺されるため実効税率に影響しない。ASU 2023-09 では、公開営利企業は特定カテゴリーごとに率と金額の両方を表形式で開示し、法定税額の5%以上の項目を区分開示する。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-FAR-84", section: "FAR", chapter: "FAR-07", title: "不確実な税務ポジションの測定(累積確率法)",
+  scenario: `<p>Erskine Corp. filed its 2026 federal return reporting tax payable of <b>$420,000</b> (21% rate). The return includes two positions:</p>
+<p><b>Position 1</b> — A $1,000,000 deduction for research costs (tax benefit $210,000). Based on technical merits, management concludes it is <b>more likely than not</b> the position will be sustained on examination. Estimated settlement outcomes:</p>
+<table><tr><th>Benefit sustained</th><th>Individual probability</th></tr>
+<tr><td>$210,000</td><td>20%</td></tr>
+<tr><td>$168,000</td><td>25%</td></tr>
+<tr><td>$126,000</td><td>20%</td></tr>
+<tr><td>$84,000</td><td>20%</td></tr>
+<tr><td>$0</td><td>15%</td></tr></table>
+<p><b>Position 2</b> — A $300,000 deduction for a disputed settlement payment (tax benefit $63,000). Counsel's memo: "We estimate only a <b>40%</b> chance this deduction would be sustained if examined."</p>
+<p>Erskine does not expect to settle either position within 12 months, and it has no net operating loss or credit carryforwards. Erskine has elected to classify interest and penalties related to unrecognized tax benefits as income tax expense; ignore interest and penalties for the computations below.</p>
+<p class="ja">Erskine社は2026年の連邦税申告で納付税額420,000ドル(税率21%)を報告した。申告には2つのポジションが含まれる。ポジション1:研究費1,000,000ドルの損金算入(税効果210,000ドル)。技術的な見地から調査で認められる可能性の方が高いと判断している。和解時の見積結果と個別確率:210,000ドル20%、168,000ドル25%、126,000ドル20%、84,000ドル20%、0ドル15%。ポジション2:係争中の和解金300,000ドルの損金算入(税効果63,000ドル)。弁護士のメモでは調査された場合に認められる可能性は40%にすぎない。いずれも12か月以内の解決は見込まれず、繰越欠損金・税額控除の繰越はない。未認識税務ベネフィットに係る利息・罰金は法人税等に含める方針だが、以下の計算では無視する。</p>`,
+  rows: [
+    { label: "Position 1 — tax benefit recognized in the financial statements(ポジション1:財務諸表で認識する税務ベネフィット)", type: "num", answer: 126000 },
+    { label: "Position 2 — tax benefit recognized in the financial statements(ポジション2:財務諸表で認識する税務ベネフィット)", type: "num", answer: 0 },
+    { label: "Total liability for unrecognized tax benefits at Dec 31, 2026(2026年末の未認識税務ベネフィットに係る負債合計)", type: "num", answer: 147000 },
+    { label: "Current income tax expense for 2026(2026年の当期税金費用)", type: "num", answer: 567000 },
+    { label: "Balance sheet classification of the liability for unrecognized tax benefits(未認識税務ベネフィットに係る負債の表示)", type: "select", options: ["Netted against deferred tax liabilities", "Separate liability; noncurrent because payment is not expected within 12 months", "Reduction of income taxes receivable, current", "Disclosed only, not recognized"], answer: "Separate liability; noncurrent because payment is not expected within 12 months" },
+    { label: "In February 2027, before the statements are issued, a court ruling causes Position 2 to meet the more-likely-than-not threshold. Accounting for the change(2027年2月、財務諸表発行前の判決でポジション2が認識要件を満たした場合の処理)", type: "select", options: ["Adjust the 2026 financial statements (recognized subsequent event)", "Recognize the change in the 2027 interim period in which the new information arises", "Restate prior periods as an error correction", "Recognize in other comprehensive income"], answer: "Recognize the change in the 2027 interim period in which the new information arises" },
+  ],
+  explain: `<p><b>ステップ1(認識):</b>ポジション1は「認められる可能性の方が高い(>50%)」ため認識要件を満たす。ポジション2は40%で要件を満たさず、ベネフィットは0。</p>
+<p><b>ステップ2(測定):</b>実現可能性が50%超となる最大の金額。累積確率:210,000 → 20%、168,000 → 45%、126,000 → 65%。初めて50%を超えるのは 126,000。</p>
+<p><b>負債:</b>ポジション1 210,000 − 126,000 = 84,000、ポジション2 63,000。合計 147,000。</p>
+<p><b>当期税金費用:</b>申告上の納付額 420,000 + 未認識税務ベネフィット 147,000 = 567,000(仕訳:借方 当期税金費用 567,000/貸方 未払税金 420,000・UTB 負債 147,000)。</p>
+<p><b>表示:</b>UTB 負債は繰延税金と相殺せず独立の負債とし、12か月以内に支払が見込まれる部分のみ流動とする。繰越欠損金等があればその DTA の減額として表示するが、本問では該当しない。</p>
+<p><b>事後の新情報:</b>認識・測定の変更は新たな情報を得た期間に反映する。期末後の新情報は修正を要しない後発事象として扱う。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-FAR-85", section: "FAR", chapter: "FAR-07", title: "比較貸借対照表からのキャッシュフロー計算書と直接法項目",
+  scenario: `<p>Fairhaven Supply Co. — comparative balance sheets at December 31:</p>
+<table><tr><th>Account</th><th>2026</th><th>2025</th></tr>
+<tr><td>Cash</td><td>$367,000</td><td>$120,000</td></tr>
+<tr><td>Accounts receivable, net</td><td>340,000</td><td>300,000</td></tr>
+<tr><td>Inventory</td><td>380,000</td><td>410,000</td></tr>
+<tr><td>Prepaid expenses</td><td>30,000</td><td>25,000</td></tr>
+<tr><td>Equipment</td><td>1,450,000</td><td>1,200,000</td></tr>
+<tr><td>Accumulated depreciation</td><td>(455,000)</td><td>(400,000)</td></tr>
+<tr><td>Accounts payable (inventory suppliers)</td><td>245,000</td><td>220,000</td></tr>
+<tr><td>Accrued liabilities</td><td>52,000</td><td>60,000</td></tr>
+<tr><td>Bonds payable</td><td>700,000</td><td>500,000</td></tr>
+<tr><td>Common stock</td><td>650,000</td><td>600,000</td></tr>
+<tr><td>Retained earnings</td><td>465,000</td><td>275,000</td></tr></table>
+<p><b>Additional information for 2026:</b></p>
+<ul><li>Net income $310,000; sales $2,400,000; cost of goods sold $1,500,000; depreciation expense $95,000.</li>
+<li>Equipment costing $150,000 with accumulated depreciation of $40,000 was sold for $125,000 cash.</li>
+<li>Equipment was purchased: $200,000 for cash and $200,000 by issuing bonds payable directly to the seller.</li>
+<li>Common stock was issued for cash; cash dividends were declared and paid. No receivables were written off.</li></ul>
+<p class="ja">Fairhaven Supply社の12月31日の比較貸借対照表は上表のとおり(2026年/2025年)。2026年の追加情報:当期純利益310,000ドル、売上高2,400,000ドル、売上原価1,500,000ドル、減価償却費95,000ドル。取得原価150,000ドル・減価償却累計額40,000ドルの設備を現金125,000ドルで売却。設備購入は現金200,000ドルと、売主へ直接社債を発行した200,000ドル。普通株式を現金で発行し、現金配当を宣言・支払った。売掛金の貸倒償却はない。</p>`,
+  rows: [
+    { label: "Net cash provided by operating activities (indirect method)(営業活動によるキャッシュフロー・間接法)", type: "num", answer: 392000 },
+    { label: "Net cash used in investing activities (enter as a positive number)(投資活動に使用したキャッシュ・正の数で入力)", type: "num", answer: 75000 },
+    { label: "Net cash used in financing activities (enter as a positive number)(財務活動に使用したキャッシュ・正の数で入力)", type: "num", answer: 70000 },
+    { label: "Amount disclosed as a noncash investing and financing activity(非資金投資・財務活動として開示する金額)", type: "num", answer: 200000 },
+    { label: "Direct method — cash collected from customers(直接法:顧客からの現金回収額)", type: "num", answer: 2360000 },
+    { label: "Direct method — cash paid to suppliers for inventory(直接法:仕入先への現金支払額)", type: "num", answer: 1445000 },
+    { label: "Treatment of the equipment sale(設備売却の表示)", type: "select", options: ["Gain of $15,000 added to net income; $125,000 in investing", "Gain of $15,000 deducted from net income; $125,000 in investing", "Gain of $15,000 deducted; $110,000 in investing", "No adjustment; $125,000 in operating"], answer: "Gain of $15,000 deducted from net income; $125,000 in investing" },
+  ],
+  explain: `<p><b>売却益:</b>125,000 − (150,000 − 40,000) = 15,000。減価償却累計額:400,000 + 95,000 − 40,000 = 455,000 で整合。</p>
+<p><b>営業CF:</b>310,000 + 減価償却 95,000 − 売却益 15,000 − 売掛金増 40,000 + 棚卸資産減 30,000 − 前払費用増 5,000 + 買掛金増 25,000 − 未払負債減 8,000 = 392,000。</p>
+<p><b>投資CF:</b>売却収入 125,000 − 現金での設備購入 200,000 = −75,000(設備:1,200,000 − 150,000 + 400,000 = 1,450,000)。</p>
+<p><b>財務CF:</b>株式発行 50,000 − 配当 120,000(275,000 + 310,000 − 465,000)= −70,000。社債増加 200,000 は全額が非資金取引。</p>
+<p><b>検算:</b>392,000 − 75,000 − 70,000 = 247,000 = 367,000 − 120,000。</p>
+<p><b>非資金開示:</b>社債発行による設備取得 200,000。</p>
+<p><b>直接法:</b>顧客からの回収 = 2,400,000 − 売掛金増 40,000 = 2,360,000。仕入 = 1,500,000 − 棚卸資産減 30,000 = 1,470,000、支払 = 1,470,000 − 買掛金増 25,000 = 1,445,000。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-FAR-86", section: "FAR", chapter: "FAR-07", title: "キャッシュフローの区分判定グリッド(非資金取引・条件付対価を含む)",
+  scenario: `<p>Glenwood Industries (U.S. GAAP) is preparing its 2026 statement of cash flows. Classify each item. Unless stated, amounts were paid or received in cash.</p>
+<table><tr><th>Item</th><th>Description</th></tr>
+<tr><td>1</td><td>Interest paid on long-term notes payable</td></tr>
+<tr><td>2</td><td>Cash dividends paid to Glenwood's shareholders</td></tr>
+<tr><td>3</td><td>Dividends received from an equity-method investee (cumulative earnings approach; distributions do not exceed cumulative equity in earnings)</td></tr>
+<tr><td>4</td><td>Conversion of preferred stock into common stock</td></tr>
+<tr><td>5</td><td>Repayment of a zero-coupon bond: portion of the payment attributable to accreted interest</td></tr>
+<tr><td>6</td><td>Insurance proceeds received for a warehouse destroyed by fire</td></tr>
+<tr><td>7</td><td>Contingent consideration of <b>$500,000</b> paid 18 months after a business combination; the acquisition-date fair value of the liability was <b>$420,000</b>. Classification of the portion up to the acquisition-date fair value.</td></tr></table>
+<p class="ja">Glenwood Industries(米国基準)が2026年のキャッシュフロー計算書を作成している。各項目を区分せよ(特記なき限り現金収支)。1:長期借入金の利息支払、2:自社株主への現金配当支払、3:持分法適用会社からの受取配当(累積利益アプローチ、累積持分利益を超えない)、4:優先株式の普通株式への転換、5:ゼロクーポン債返済のうち発生済み利息相当部分、6:火災で焼失した倉庫に係る保険金受取、7:企業結合の18か月後に支払った条件付対価500,000ドル(取得日の負債の公正価値は420,000ドル)のうち取得日公正価値までの部分。</p>`,
+  rows: [
+    { label: "Item 1(項目1)", type: "select", options: ["Operating", "Investing", "Financing", "Noncash disclosure only"], answer: "Operating" },
+    { label: "Item 2(項目2)", type: "select", options: ["Operating", "Investing", "Financing", "Noncash disclosure only"], answer: "Financing" },
+    { label: "Item 3(項目3)", type: "select", options: ["Operating", "Investing", "Financing", "Noncash disclosure only"], answer: "Operating" },
+    { label: "Item 4(項目4)", type: "select", options: ["Operating", "Investing", "Financing", "Noncash disclosure only"], answer: "Noncash disclosure only" },
+    { label: "Item 5(項目5)", type: "select", options: ["Operating", "Investing", "Financing", "Noncash disclosure only"], answer: "Operating" },
+    { label: "Item 6(項目6)", type: "select", options: ["Operating", "Investing", "Financing", "Noncash disclosure only"], answer: "Investing" },
+    { label: "Item 7(項目7)", type: "select", options: ["Operating", "Investing", "Financing", "Noncash disclosure only"], answer: "Financing" },
+    { label: "Item 7 — amount of the payment classified as operating(項目7のうち営業活動に区分する金額)", type: "num", answer: 80000 },
+  ],
+  explain: `<p><b>1:</b>米国基準では支払利息は営業活動(IFRS では選択可)。</p>
+<p><b>2:</b>配当の支払は財務活動。</p>
+<p><b>3:</b>累積利益アプローチでは、累積持分利益を超えない受取配当は投資のリターンとして営業活動。超過分は投資の回収として投資活動。</p>
+<p><b>4:</b>現金の動きがない資本取引のため、非資金財務活動として開示のみ。</p>
+<p><b>5:</b>ASU 2016-15 により、ゼロクーポン債の返済のうち発生済み利息部分は営業活動、元本部分は財務活動。</p>
+<p><b>6:</b>保険金は損失の性質で区分する。固定資産(倉庫)の損失に対する保険金は投資活動。</p>
+<p><b>7:</b>企業結合後すぐ(概ね3か月以内)ではない条件付対価の支払は、取得日公正価値 420,000 までを財務活動、それを超える部分 500,000 − 420,000 = 80,000 を営業活動とする。</p>`,
+});
