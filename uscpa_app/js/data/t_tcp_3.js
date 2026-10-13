@@ -201,3 +201,89 @@ CPA.tbs({ id: "TBS-TCP-47", section: "TCP", chapter: "TCP-03", title: "代替評
 <p>⑤§2032の選択は総遺産と(遺産税+GST税)の両方を減少させる場合に限り可能で、全資産に一括適用され、資産ごとの選択はできない。期限後1年以内のForm 706で行い取消不能。遺産税がゼロの遺産が基準価額を引き上げる目的で使うことはできない。</p>
 <p>⑥相続人の基準価額は遺産税上の評価額と一致する(§1014)。株式B = <b>7,800,000</b>。</p>`,
 });
+
+CPA.tbs({ id: "TBS-TCP-48", section: "TCP", chapter: "TCP-03", title: "相続による所得(IRD)と§691(c)の遺産税控除",
+  scenario: `<p>Naoko Abe, a never-married U.S. citizen, died on February 2, 2026. Her taxable estate is <b>$16,000,000</b>; she made no lifetime taxable gifts. The executor identified the following items of income in respect of a decedent (IRD), all included in the gross estate at the values shown, and one deduction in respect of a decedent (DRD), which was also deducted on Form 706 as a debt:</p>
+<table><tr><th>Item</th><th>Amount</th><th>Recipient</th></tr>
+<tr><td>Year-end bonus earned in 2025, paid in April 2026</td><td>$50,000</td><td>Estate</td></tr>
+<tr><td>Traditional IRA (no basis)</td><td>$400,000</td><td>Son, Jiro (named beneficiary)</td></tr>
+<tr><td>Deferred gain on an installment note</td><td>$100,000</td><td>Estate</td></tr>
+<tr><td>Accrued but unpaid business expenses (DRD)</td><td>($50,000)</td><td>Estate</td></tr></table>
+<p>Jiro withdrew <b>$100,000</b> from the inherited IRA in 2026. Assume a 2026 basic exclusion amount of $15,000,000 and a flat 40% marginal estate tax rate above the exclusion. Ignore any overall limitation on itemized deductions.</p>
+<p class="ja">未婚の米国市民Naoko Abeは2026年2月2日に死亡した。課税遺産は$16,000,000で、生前の課税贈与はない。遺言執行者は次の相続による所得(IRD)を特定した(いずれも表示額で総遺産に算入済)。また相続による控除(DRD)が1項目あり、Form 706でも債務として控除している。2025年に稼得し2026年4月に支払われた賞与$50,000(遺産が受領)、伝統的IRA(基準価額なし)$400,000(受取人に指定された息子Jiro)、割賦販売手形の繰延利得$100,000(遺産)、未払の事業経費(DRD)$50,000(遺産)。Jiroは2026年に相続IRAから$100,000を引き出した。2026年の基礎控除額は$15,000,000、控除額を超える部分の遺産税の限界税率は一律40%とする。項目別控除の全体的な制限は無視する。</p>`,
+  rows: [
+    { label: "Net value of IRD (IRD less DRD)(IRDの純額)", type: "num", answer: 500000 },
+    { label: "Federal estate tax actually payable(実際の連邦遺産税額)", type: "num", answer: 400000 },
+    { label: "Estate tax attributable to net IRD(純IRDに帰属する遺産税)", type: "num", answer: 200000 },
+    { label: "§691(c) deduction attributable to the entire IRA(IRA全体に帰属する§691(c)控除)", type: "num", answer: 145455, tol: 1 },
+    { label: "Jiro's 2026 §691(c) deduction(Jiroの2026年の§691(c)控除)", type: "num", answer: 36364, tol: 1 },
+    { label: "How Jiro claims the §691(c) deduction(Jiroの§691(c)控除の計上方法)", type: "select", options: ["Itemized deduction on Schedule A not treated as a miscellaneous itemized deduction", "Deduction in arriving at AGI", "Miscellaneous itemized deduction (disallowed)", "Credit against income tax"], answer: "Itemized deduction on Schedule A not treated as a miscellaneous itemized deduction" },
+    { label: "Income tax basis of the IRA in Jiro's hands(Jiroが受けたIRAの基準価額)", type: "select", options: ["Zero — IRD receives no §1014 step-up", "$400,000 — fair market value at death", "$400,000 reduced by the §691(c) deduction", "$145,455 — the estate tax attributable to the IRA"], answer: "Zero — IRD receives no §1014 step-up" },
+  ],
+  explain: `<p>①IRD合計 = 50,000 + 400,000 + 100,000 = 550,000。純IRD = 550,000 − DRD50,000 = <b>500,000</b>。</p>
+<p>②実際の遺産税 = (16,000,000 − 15,000,000) × 40% = <b>400,000</b>。</p>
+<p>③純IRDを除いた場合の課税遺産 = 16,000,000 − 500,000 = 15,500,000、遺産税 = 500,000 × 40% = 200,000。純IRDに帰属する遺産税 = 400,000 − 200,000 = <b>200,000</b>(限界税率で計算する)。</p>
+<p>④各IRD項目への配分は、IRD総額(DRD控除前)550,000に対する当該項目の比率による。IRA分 = 200,000 × 400,000/550,000 = 145,454.55 ≒ <b>145,455</b>(賞与分18,182、割賦手形分36,364)。</p>
+<p>⑤§691(c)控除はIRDを所得に含めた年に、含めた割合で控除する。Jiro = 145,455 × 100,000/400,000 = 36,363.6 ≒ <b>36,364</b>。残りは今後の引出し時に控除できる。</p>
+<p>⑥§691(c)控除は§67(b)(7)で雑多の項目別控除から除かれる項目別控除で、Schedule Aで控除できる(AGI算定上の控除ではない)。</p>
+<p>⑦IRDは§1014(c)により死亡時の時価への基準価額引上げを受けないため、IRAの基準価額は0で、引出額全額が通常所得となる。</p>`,
+});
+
+CPA.tbs({ id: "TBS-TCP-49", section: "TCP", chapter: "TCP-03", title: "パブリックチャリティの公的支援テストと私的財団の物品税(§4940・§4942)",
+  scenario: `<p><b>Part A.</b> Hope Learning Center, a §501(c)(3) organization, is testing public charity status under §170(b)(1)(A)(vi) for 2026 using its five-year (2021–2025) support data:</p>
+<table><tr><th>Source (2021–2025 total)</th><th>Amount</th></tr>
+<tr><td>Contributions from numerous individuals (no individual gave more than $50,000 in total)</td><td>$1,200,000</td></tr>
+<tr><td>Contributions from one founding family</td><td>$900,000</td></tr>
+<tr><td>Grants from a state government agency</td><td>$400,000</td></tr>
+<tr><td>Dividends and interest</td><td>$1,500,000</td></tr>
+<tr><td>Tuition and fees from its educational programs (exempt-function receipts)</td><td>$600,000</td></tr></table>
+<p><b>Part B.</b> The Kimura Foundation, a private nonoperating foundation, reports for 2026: net investment income $2,000,000; average fair market value of noncharitable-use assets $40,000,000; no unrelated business income tax. Qualifying distributions treated as made out of its 2026 undistributed income totaled only $1,500,000 by December 31, 2027.</p>
+<p class="ja">Part A:§501(c)(3)団体のHope Learning Centerは、§170(b)(1)(A)(vi)に基づく2026年のパブリックチャリティ判定を5年間(2021〜2025年)の支援データで行う。多数の個人からの寄附$1,200,000(どの個人も合計$50,000超の寄附なし)、創業家1家族からの寄附$900,000、州政府機関からの助成金$400,000、配当・利息$1,500,000、教育プログラムの授業料等(免税目的の事業収入)$600,000。Part B:私的非事業型財団のKimura財団の2026年の数値は、純投資所得$2,000,000、非慈善目的資産の平均時価$40,000,000、非関連事業所得税なしである。2026年の未分配所得から行われたとみなされる適格分配は、2027年12月31日までに$1,500,000にとどまった。</p>`,
+  rows: [
+    { label: "Total support for the §170(b)(1)(A)(vi) test(公的支援テストの総支援額)", type: "num", answer: 4000000 },
+    { label: "Public support(公的支援額)", type: "num", answer: 1680000 },
+    { label: "Public support percentage (%)(公的支援割合、%)", type: "num", answer: 42, tol: 0.1 },
+    { label: "Hope's classification for 2026(Hopeの2026年の区分)", type: "select", options: ["Public charity — meets the 33⅓% mechanical test", "Public charity — qualifies only under the 10% facts-and-circumstances test", "Private foundation — fails both tests", "Private operating foundation"], answer: "Public charity — meets the 33⅓% mechanical test" },
+    { label: "Kimura's §4940 excise tax on net investment income(Kimura財団の§4940純投資所得税)", type: "num", answer: 27800 },
+    { label: "Kimura's 2026 distributable amount(2026年の分配必要額)", type: "num", answer: 1972200 },
+    { label: "Kimura's §4942 initial (first-tier) tax(§4942の第1次税)", type: "num", answer: 141660 },
+  ],
+  explain: `<p>①§170(b)(1)(A)(vi)のテストでは免税目的の事業収入(授業料600,000)は総支援額に含めない(§509(a)(2)テストとの違い)。総支援額 = 1,200,000 + 900,000 + 400,000 + 1,500,000 = <b>4,000,000</b>。投資収益は総支援額には含むが公的支援には含まない。</p>
+<p>②1人の寄附者からの寄附は総支援額の2%(4,000,000 × 2% = 80,000)までしか公的支援に算入できない。創業家は80,000に制限され、個人寄附者はいずれも80,000以下なので全額算入。政府助成金は全額公的支援。公的支援 = 1,200,000 + 80,000 + 400,000 = <b>1,680,000</b>。</p>
+<p>③割合 = 1,680,000 / 4,000,000 = <b>42%</b> ≥ 33⅓%なので機械的テストでパブリックチャリティとなる(10%の事実・状況テストは不要)。</p>
+<p>④私的財団の純投資所得税は1.39%(OBBBAの最終法では段階税率は採用されなかった):2,000,000 × 1.39% = <b>27,800</b>。</p>
+<p>⑤最低投資収益 = 40,000,000 × 5% = 2,000,000。分配必要額 = 2,000,000 − §4940税27,800 = <b>1,972,200</b>。</p>
+<p>⑥翌年末までに分配されない未分配所得 = 1,972,200 − 1,500,000 = 472,200。第1次税 = 472,200 × 30% = <b>141,660</b>(さらに是正されなければ100%の第2次税)。</p>`,
+});
+
+CPA.tbs({ id: "TBS-TCP-50", section: "TCP", chapter: "TCP-03", title: "UBTIのサイロ規則(§512(a)(6))・負債調達資産とForm 990シリーズの選択",
+  scenario: `<p>Riverbend Youth Center, a calendar-year §501(c)(3) corporation, reports the following unrelated activities and other income for 2026:</p>
+<table><tr><th>Activity / item</th><th>Gross income</th><th>Directly connected expenses</th></tr>
+<tr><td>Fitness club open to the general public (unrelated trade or business)</td><td>$210,000</td><td>$140,000</td></tr>
+<tr><td>Catering for outside weddings (separate unrelated trade or business)</td><td>$60,000</td><td>$75,000</td></tr>
+<tr><td>Rental of debt-financed land to an unrelated party</td><td>$90,000</td><td>$50,000</td></tr>
+<tr><td>Royalty for licensing its name and logo</td><td>$25,000</td><td>—</td></tr></table>
+<p>Other data: the fitness club has a post-2017 NOL carryover of $10,000 from 2025. For the debt-financed land, average acquisition indebtedness was $420,000 and average adjusted basis was $1,050,000. The $1,000 specific deduction applies, and the corporate rate is 21%.</p>
+<p>The client also asks which annual return each of its affiliates should file:</p>
+<table><tr><th>Affiliate</th><th>Facts</th></tr>
+<tr><td>Affiliate X</td><td>§501(c)(3) public charity; gross receipts normally $40,000 per year</td></tr>
+<tr><td>Affiliate Y</td><td>§501(c)(3) private nonoperating foundation; total assets $300,000; gross receipts $60,000</td></tr></table>
+<p class="ja">暦年の§501(c)(3)法人Riverbend Youth Centerの2026年の非関連活動その他の所得は次のとおり。一般向けフィットネスクラブ(非関連事業):総収入$210,000、直接関連費用$140,000。外部の結婚式向けケータリング(別個の非関連事業):総収入$60,000、費用$75,000。無関係の第三者への負債調達土地の賃貸:賃料$90,000、費用$50,000。名称・ロゴのライセンスによるロイヤルティ$25,000。その他:フィットネスクラブには2025年からの2017年後発生NOL繰越$10,000がある。負債調達土地の年平均取得負債は$420,000、年平均調整基準価額は$1,050,000。$1,000の特別控除を適用し、法人税率は21%とする。顧客は関連団体の年次申告書の種類も質問している。関連団体X:§501(c)(3)パブリックチャリティで、総収入は通常年$40,000。関連団体Y:§501(c)(3)私的非事業型財団で、総資産$300,000、総収入$60,000。</p>`,
+  rows: [
+    { label: "UBTI from the debt-financed land(負債調達土地からのUBTI)", type: "num", answer: 16000 },
+    { label: "Fitness club UBTI after its NOL carryover(NOL控除後のフィットネスクラブのUBTI)", type: "num", answer: 60000 },
+    { label: "Total UBTI after the specific deduction(特別控除後のUBTI合計)", type: "num", answer: 75000 },
+    { label: "Unrelated business income tax(非関連事業所得税額)", type: "num", answer: 15750 },
+    { label: "Catering NOL carried forward (usable only against catering income)(ケータリングのNOL繰越額)", type: "num", answer: 15000 },
+    { label: "Treatment of the logo royalty(ロゴのロイヤルティの取扱い)", type: "select", options: ["Excluded from UBTI as a passive royalty", "Included in UBTI as a separate trade or business", "Included in UBTI because the logo is used commercially", "Excluded only if the licensee is another exempt organization"], answer: "Excluded from UBTI as a passive royalty" },
+    { label: "Annual return for Affiliate X(関連団体Xの年次申告書)", type: "select", options: ["Form 990-N (e-Postcard)", "Form 990-EZ", "Form 990", "Form 990-PF", "Form 990-T"], answer: "Form 990-N (e-Postcard)" },
+    { label: "Annual return for Affiliate Y(関連団体Yの年次申告書)", type: "select", options: ["Form 990-N (e-Postcard)", "Form 990-EZ", "Form 990", "Form 990-PF", "Form 990-T"], answer: "Form 990-PF" },
+  ],
+  explain: `<p>①負債調達比率 = 420,000 / 1,050,000 = 40%。UBTI = (90,000 − 50,000) × 40% = <b>16,000</b>。負債調達資産の賃料には受動的賃料の除外が適用されない(§514)。</p>
+<p>②§512(a)(6)のサイロ規則により、各非関連事業ごとにUBTIを計算し、ある事業の損失を他の事業の所得と相殺できない。フィットネス:210,000 − 140,000 = 70,000。2017年後のNOLは当該事業の所得の80%(56,000)まで控除でき、10,000は全額控除可能:70,000 − 10,000 = <b>60,000</b>。</p>
+<p>③ケータリングは15,000の損失で、他の事業と相殺できず、ケータリング事業のNOLとして <b>15,000</b> を繰り越す。負債調達資産などの投資活動は1つの区分として扱う。</p>
+<p>④UBTI合計 = 60,000 + 0 + 16,000 = 76,000、特別控除1,000後 <b>75,000</b>。税額 = 75,000 × 21% = <b>15,750</b>(総収入$1,000以上のためForm 990-Tを提出)。</p>
+<p>⑤名称・ロゴのライセンス料は受動的ロイヤルティとして§512(b)(2)でUBTIから除外(負債調達でない限り)。</p>
+<p>⑥関連団体X:総収入が通常$50,000以下の団体はForm 990-N(電子ポストカード)で足りる(990-EZ・990も任意で可)。</p>
+<p>⑦関連団体Y:私的財団は規模に関係なくForm 990-PFを提出する(990-EZや990-Nは使えない)。</p>`,
+});
