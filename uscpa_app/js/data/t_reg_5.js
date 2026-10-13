@@ -217,3 +217,68 @@ CPA.tbs({
 <p>株式取得価額:50,000 + 40,000 + 5,000 = 95,000。分配のうち配当以外の 60,000 を減算(分配は損金不算入費用より先)→ 35,000。損金不算入費用 3,000 を減算 → 32,000。払戻し 3,000 は取得価額の範囲内なのでキャピタル・ゲインは 0。</p>
 <p>非課税利息はAAAに影響しないが(OAA)、株式取得価額は増額する。E&Pを先に分配したい場合は、影響を受ける全株主の同意を得て§1368(e)(3)の選択を行う。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-REG-77", section: "REG", chapter: "REG-05", title: "単純信託のDNIと分配控除・信託の課税所得",
+  scenario: `<p>The Quinn Family Trust is a calendar-year <b>simple trust</b>: the trust instrument requires all fiduciary accounting income to be distributed currently to the sole beneficiary, Rosa, and allocates capital gains to corpus. No charitable distributions are made. Assume the personal exemption for a simple trust is <b>$300</b>.</p>
+<p><b>Exhibit 1 — Trust receipts and disbursements, 2026</b></p>
+<table><tr><th>Item</th><th>Amount</th><th>Allocated to</th></tr>
+<tr><td>Qualified dividends</td><td>$20,000</td><td>Income</td></tr>
+<tr><td>Taxable interest</td><td>$10,000</td><td>Income</td></tr>
+<tr><td>Tax-exempt municipal bond interest</td><td>$6,000</td><td>Income</td></tr>
+<tr><td>Long-term capital gain on sale of stock</td><td>$12,000</td><td>Corpus</td></tr>
+<tr><td>Trustee fees</td><td>$3,600</td><td>Corpus</td></tr></table>
+<p><b>Exhibit 2 — Trustee memo:</b> "The full amount of 2026 accounting income was paid to Rosa on December 31, 2026. The trustee fee must be apportioned between taxable and tax-exempt income in proportion to each type of income included in accounting income."</p>
+<p class="ja">Quinn Family Trustは暦年の単純信託で、信託証書により会計上の所得(FAI)の全額を唯一の受益者Rosaに当期分配し、キャピタル・ゲインは元本に配分する。慈善分配はない。単純信託の人的控除は$300とする。2026年の収支:適格配当$20,000(所得)、課税利息$10,000(所得)、非課税地方債利息$6,000(所得)、株式売却の長期キャピタル・ゲイン$12,000(元本)、受託者報酬$3,600(元本)。受託者メモ:「2026年の会計上の所得は全額を12月31日にRosaへ支払った。受託者報酬は会計上の所得に含まれる課税所得と非課税所得の割合で按分すること。」</p>`,
+  rows: [
+    { label: "Fiduciary accounting income(会計上の所得)", type: "num", answer: 36000 },
+    { label: "Nondeductible trustee fee allocable to tax-exempt income(非課税所得に配分され控除できない受託者報酬)", type: "num", answer: 600 },
+    { label: "Distributable net income (DNI)(分配可能純所得)", type: "num", answer: 32400 },
+    { label: "Income distribution deduction(分配控除)", type: "num", answer: 27000 },
+    { label: "Trust taxable income(信託の課税所得)", type: "num", answer: 11700 },
+    { label: "Amount Rosa must include in gross income(Rosaの総所得に含める額)", type: "num", answer: 27000 },
+    { label: "Treatment of the $12,000 capital gain(キャピタル・ゲイン$12,000の取扱い)", type: "select", options: ["Included in DNI and taxed to Rosa", "Excluded from DNI and taxed to the trust", "Excluded from both DNI and trust taxable income", "Taxed half to the trust and half to Rosa"], answer: "Excluded from DNI and taxed to the trust" },
+    { label: "Character of the amounts Rosa receives(Rosaが受け取る金額の性質)", type: "select", options: ["All ordinary income regardless of source", "Same character as in the trust's hands (conduit principle), including tax-exempt interest", "All tax-exempt because trust income is taxed at the trust level", "Capital gain to the extent of corpus"], answer: "Same character as in the trust's hands (conduit principle), including tax-exempt interest" },
+  ],
+  explain: `<p>FAI = 20,000 + 10,000 + 6,000 = 36,000(キャピタル・ゲインと受託者報酬は元本に配分されるためFAIに影響しない)。</p>
+<p>受託者報酬の非課税所得配分額 = 3,600 × 6,000 / 36,000 = 600(§265により控除不可)。控除可能額 = 3,000。</p>
+<p>DNI = 課税利息・配当 30,000 + 非課税利息 6,000 − 受託者報酬 3,600 = 32,400(元本に配分されたキャピタル・ゲインは除外)。</p>
+<p>分配控除 = 分配額 36,000 と DNI 32,400 の小さい方 32,400 − DNIに含まれる純非課税所得(6,000 − 600 = 5,400)= 27,000。</p>
+<p>信託の課税所得 = 総所得(20,000 + 10,000 + 12,000 = 42,000)− 受託者報酬 3,000 − 分配控除 27,000 − 人的控除 300 = 11,700(キャピタル・ゲイン 12,000 − 300 に相当)。</p>
+<p>Rosaの総所得算入額は分配控除と同額の 27,000(他に非課税利息 5,400 を受け取る)。導管原則により、受益者が受け取る所得は信託段階と同じ性質(配当・利息・非課税利息)を保つ。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-REG-78", section: "REG", chapter: "REG-05", title: "免税団体のUBTI計算とForm 990・990-Tの提出",
+  scenario: `<p>Riverbend Museum is a calendar-year §501(c)(3) public charity. For 2026 it reported gross receipts of <b>$1,800,000</b> and total assets of <b>$3,000,000</b> at year-end. Each activity below is a separate trade or business for §512(a)(6) purposes.</p>
+<p><b>Exhibit 1 — Activity schedule (net amounts after directly connected expenses)</b></p>
+<table><tr><th>Activity</th><th>Net income</th></tr>
+<tr><td>Gift shop — reproductions of museum artworks</td><td>$40,000</td></tr>
+<tr><td>Gift shop — city-scene souvenirs and T-shirts unrelated to the collection</td><td>$25,000</td></tr>
+<tr><td>Public parking lot operated by museum employees for downtown commuters</td><td>$30,000</td></tr>
+<tr><td>Dividends and interest from endowment securities</td><td>$50,000</td></tr>
+<tr><td>Café staffed entirely by unpaid volunteers</td><td>$10,000</td></tr>
+<tr><td>Rental of an office building (no services); rent $20,000, expenses $5,000; average acquisition indebtedness equals 40% of average adjusted basis</td><td>$15,000</td></tr></table>
+<p><b>Exhibit 2 — Assumptions provided by the CFO</b></p>
+<table><tr><th>Item</th><th>Amount / rule</th></tr>
+<tr><td>UBTI specific deduction</td><td>$1,000</td></tr>
+<tr><td>Tax rate on UBTI of a corporation</td><td>21%</td></tr>
+<tr><td>Form 990-N threshold (gross receipts normally)</td><td>≤ $50,000</td></tr>
+<tr><td>Form 990-EZ thresholds</td><td>Gross receipts &lt; $200,000 and total assets &lt; $500,000</td></tr>
+<tr><td>Form 990-T filing threshold</td><td>Gross UBI of $1,000 or more</td></tr></table>
+<p class="ja">Riverbend Museumは暦年の§501(c)(3)パブリック・チャリティである。2026年の総収入は$1,800,000、期末総資産は$3,000,000。各活動は§512(a)(6)上の別個の事業とする。活動(直接関連費用控除後の純額):美術品の複製を販売するギフトショップ$40,000、収蔵品と無関係な街並みの土産物・Tシャツの販売$25,000、職員が運営する通勤者向け有料駐車場$30,000、基金の配当・利息$50,000、無給ボランティアのみで運営するカフェ$10,000、事務所ビルの賃貸(役務提供なし。賃料$20,000、費用$5,000、平均取得債務は平均調整取得価額の40%)$15,000。CFOの前提:特別控除$1,000、税率21%、Form 990-Nは総収入が通常$50,000以下、990-EZは総収入$200,000未満かつ総資産$500,000未満、990-Tは総UBIが$1,000以上で提出。</p>`,
+  rows: [
+    { label: "UBTI from the debt-financed office building(負債で取得した事務所ビルからのUBTI)", type: "num", answer: 6000 },
+    { label: "Total UBTI after the specific deduction(特別控除後のUBTI合計)", type: "num", answer: 60000 },
+    { label: "Unrelated business income tax(非関連事業所得税)", type: "num", answer: 12600 },
+    { label: "Classification of the volunteer-staffed café income(ボランティア運営カフェの所得の区分)", type: "select", options: ["UBTI", "Excluded — substantially all work performed by volunteers", "Excluded — passive investment income", "Excluded — convenience of members exception"], answer: "Excluded — substantially all work performed by volunteers" },
+    { label: "Classification of the unrelated souvenir and T-shirt sales(無関係な土産物・Tシャツ販売の区分)", type: "select", options: ["UBTI", "Excluded — related to exempt purpose", "Excluded — donated goods exception", "Excluded — passive income"], answer: "UBTI" },
+    { label: "Annual information return required(提出すべき年次情報申告書)", type: "select", options: ["Form 990-N (e-Postcard)", "Form 990-EZ", "Form 990", "No return — churches and museums are exempt from filing"], answer: "Form 990" },
+    { label: "Due date of Form 990-T without extension(延長なしのForm 990-Tの期限)", type: "select", options: ["March 15, 2027", "April 15, 2027", "May 17, 2027", "November 15, 2027"], answer: "May 17, 2027" },
+  ],
+  explain: `<p>負債融資資産の賃料は、通常の不動産賃料の除外にかかわらず、負債割合分がUBTIとなる:(20,000 − 5,000)× 40% = 6,000。</p>
+<p>UBTI:関連性のない土産物販売 25,000 + 駐車場 30,000 + 負債融資賃料 6,000 = 61,000 − 特別控除 1,000 = 60,000。美術品複製の販売は免税目的(教育)に関連するので除外、配当・利息は受動的所得として除外、ボランティアのみで運営するカフェは「実質的にすべての労働を無給ボランティアが行う事業」の例外で除外。各事業はすべて黒字なので§512(a)(6)の区分計算でも合計に影響はない。</p>
+<p>税額 = 60,000 × 21% = 12,600。</p>
+<p>総収入 1,800,000 は 200,000 以上、総資産も 500,000 以上なのでForm 990(990-EZ・990-Nは不可)。総UBIが 1,000 以上なのでForm 990-Tも必要。</p>
+<p>Form 990-T(および990)の期限は課税年度終了後5か月目の15日であり、2027年5月15日は土曜日のため翌営業日の2027年5月17日(月)となる。</p>`,
+});

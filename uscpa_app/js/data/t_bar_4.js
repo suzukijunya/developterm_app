@@ -94,3 +94,104 @@ CPA.tbs({
 <p>債務返済の制限付純ポジション = 制限付資産900,000 − それから支払う未払利息100,000 = 800,000。</p>
 <p>無制限 = 11,470,000 − 10,870,000 − 800,000 = −200,000(検算:1,500,000 + 700,000 − 400,000 − 1,800,000 − 200,000 = −200,000)。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-BAR-63", section: "BAR", chapter: "BAR-03", title: "基金残高の分類グリッド:安定化積立・翌年度予算充当・特別収入基金の赤字",
+  scenario: `<p>Lakeshore Township's General Fund reports total fund balance of <b>$1,400,000</b> at December 31, Year 2. The finance director provides the following analysis:</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>(a) Inventory of supplies</td><td>$45,000</td></tr>
+<tr><td>(b) Prepaid insurance</td><td>$15,000</td></tr>
+<tr><td>(c) Unspent state grant restricted by the grantor to library programs</td><td>$120,000</td></tr>
+<tr><td>(d) Stabilization (“rainy day”) amount set aside by ordinance of the Township Board (highest level of decision-making authority); the ordinance specifies the circumstances for use and can be changed only by another ordinance</td><td>$300,000</td></tr>
+<tr><td>(e) Outstanding purchase orders approved by the finance director under authority delegated by Board policy</td><td>$80,000</td></tr>
+<tr><td>(f) Portion of fund balance appropriated in the Year 3 budget to eliminate a projected budget deficit</td><td>$100,000</td></tr></table>
+<p>The Township's Street Lighting Special Revenue Fund has a fund balance <b>deficit of $30,000</b> because expenditures exceeded restricted revenues.</p>
+<p class="ja">Lakeshore町の一般基金の2年目12月31日現在の基金残高合計は$1,400,000である。(a)消耗品在庫$45,000、(b)前払保険料$15,000、(c)交付者により図書館事業に使途制限された未使用の州補助金$120,000、(d)町議会(最高意思決定機関)の条例で設定した安定化(レイニーデイ)積立$300,000(使用状況を条例で特定し、変更には別の条例が必要)、(e)議会方針で委任された権限に基づき財務部長が承認した未済発注$80,000、(f)3年目予算で見込まれる赤字を解消するために充当した基金残高$100,000。<br>
+また、街路照明特別収入基金は支出が制限付収入を上回ったため、基金残高が$30,000の赤字である。</p>`,
+  rows: [
+    { label: "Classification of item (b) prepaid insurance(前払保険料の分類)", type: "select", options: ["Nonspendable", "Restricted", "Committed", "Assigned", "Unassigned"], answer: "Nonspendable" },
+    { label: "Classification of item (d) stabilization amount(安定化積立の分類)", type: "select", options: ["Nonspendable", "Restricted", "Committed", "Assigned", "Unassigned"], answer: "Committed" },
+    { label: "Classification of item (f) appropriation to eliminate the Year 3 deficit(翌年度赤字解消のための充当額の分類)", type: "select", options: ["Nonspendable", "Restricted", "Committed", "Assigned", "Unassigned"], answer: "Assigned" },
+    { label: "General Fund — total nonspendable fund balance(一般基金の非支出可能残高合計)", type: "num", answer: 60000 },
+    { label: "General Fund — total assigned fund balance(一般基金の指定済残高合計)", type: "num", answer: 180000 },
+    { label: "General Fund — unassigned fund balance(一般基金の未指定残高)", type: "num", answer: 740000 },
+    { label: "Reporting of the Street Lighting fund deficit(特別収入基金の赤字の表示)", type: "select", options: ["Negative restricted fund balance", "Negative unassigned fund balance", "Negative committed fund balance", "Reclassified to the General Fund as a liability"], answer: "Negative unassigned fund balance" },
+    { label: "Total unassigned fund balance — all governmental funds (General Fund + Street Lighting)(政府資金全体の未指定残高合計)", type: "num", answer: 710000 },
+  ],
+  explain: `<p>(a)在庫と(b)前払費用は支出可能な形態でないため非支出可能(Nonspendable)= 45,000 + 15,000 = 60,000。</p>
+<p>(c)外部の交付者による制限 → 制限付(Restricted)120,000。(d)最高意思決定機関の正式な措置(条例)による拘束で、同じ措置でしか変更できない → 拘束済(Committed)300,000。</p>
+<p>(e)委任された財務部長による意図の表明 → 指定済(Assigned)。(f)翌年度予算の赤字解消への充当も指定済に分類する。指定済合計 = 80,000 + 100,000 = 180,000。</p>
+<p>未指定 = 1,400,000 − 60,000 − 120,000 − 300,000 − 180,000 = 740,000。</p>
+<p>一般基金以外の政府資金では正の未指定残高は報告しないが、赤字(支出が制限・拘束・指定額を超過)は負の未指定残高として報告する。政府資金全体の未指定 = 740,000 − 30,000 = 710,000。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-BAR-64", section: "BAR", chapter: "BAR-03", title: "主要基金の判定:10%基準と5%基準の計算",
+  scenario: `<p>Westbrook City is determining which funds to present as major funds for Year 6. Totals (in dollars):</p>
+<table><tr><th>Element</th><th>Total governmental funds</th><th>Total enterprise funds</th></tr>
+<tr><td>Assets + deferred outflows</td><td>20,000,000</td><td>30,000,000</td></tr>
+<tr><td>Liabilities + deferred inflows</td><td>6,000,000</td><td>14,000,000</td></tr>
+<tr><td>Revenues (excluding other financing sources)</td><td>30,000,000</td><td>10,000,000</td></tr>
+<tr><td>Expenditures / expenses (excluding other financing uses)</td><td>28,000,000</td><td>9,000,000</td></tr></table>
+<table><tr><th>Individual fund</th><th>Assets + DO</th><th>Liabilities + DI</th><th>Revenues</th><th>Expenditures / expenses</th></tr>
+<tr><td>Road Special Revenue Fund</td><td>2,200,000</td><td>300,000</td><td>3,200,000</td><td>2,500,000</td></tr>
+<tr><td>Debt Service Fund</td><td>1,900,000</td><td>500,000</td><td>2,900,000</td><td>2,700,000</td></tr>
+<tr><td>Parking Enterprise Fund</td><td>2,800,000</td><td>1,500,000</td><td>800,000</td><td>700,000</td></tr>
+<tr><td>Golf Course Enterprise Fund</td><td>2,400,000</td><td>600,000</td><td>1,100,000</td><td>950,000</td></tr></table>
+<p>Management does not elect to report any fund as major for public-interest reasons.</p>
+<p class="ja">Westbrook市は6年目に主要基金として表示する基金を判定している。政府資金合計:資産+繰延資源流出20,000,000、負債+繰延資源流入6,000,000、収益30,000,000、支出28,000,000。企業基金合計:それぞれ30,000,000、14,000,000、10,000,000、9,000,000。<br>
+個別基金(資産+DO/負債+DI/収益/支出・費用):道路特別収入基金 2,200,000/300,000/3,200,000/2,500,000、債務返済基金 1,900,000/500,000/2,900,000/2,700,000、駐車場企業基金 2,800,000/1,500,000/800,000/700,000、ゴルフ場企業基金 2,400,000/600,000/1,100,000/950,000。経営者が重要性を理由に任意で主要基金とするものはない。</p>`,
+  rows: [
+    { label: "10% threshold — governmental funds revenues(政府資金の収益の10%基準額)", type: "num", answer: 3000000 },
+    { label: "5% threshold — combined governmental and enterprise liabilities + deferred inflows(政府資金と企業基金合算の負債+DIの5%基準額)", type: "num", answer: 1000000 },
+    { label: "Road Special Revenue Fund(道路特別収入基金)", type: "select", options: ["Major fund", "Nonmajor — meets a 10% test but not the 5% test for the same element", "Nonmajor — fails every 10% test"], answer: "Major fund" },
+    { label: "Debt Service Fund(債務返済基金)", type: "select", options: ["Major fund", "Nonmajor — meets a 10% test but not the 5% test for the same element", "Nonmajor — fails every 10% test"], answer: "Nonmajor — fails every 10% test" },
+    { label: "Parking Enterprise Fund(駐車場企業基金)", type: "select", options: ["Major fund", "Nonmajor — meets a 10% test but not the 5% test for the same element", "Nonmajor — fails every 10% test"], answer: "Major fund" },
+    { label: "Golf Course Enterprise Fund(ゴルフ場企業基金)", type: "select", options: ["Major fund", "Nonmajor — meets a 10% test but not the 5% test for the same element", "Nonmajor — fails every 10% test"], answer: "Nonmajor — meets a 10% test but not the 5% test for the same element" },
+    { label: "Presentation of nonmajor governmental funds in the fund statements(非主要政府資金の表示)", type: "select", options: ["Each in a separate column", "Aggregated in a single column", "Omitted from the fund statements and shown only in notes", "Combined with the General Fund"], answer: "Aggregated in a single column" },
+  ],
+  explain: `<p>基準:個別基金のいずれかの要素が①同種基金(政府資金または企業基金)合計の10%以上、かつ②同じ要素について政府資金+企業基金合算の5%以上なら主要基金。一般基金は常に主要基金。</p>
+<p>政府資金の10%基準:資産2,000,000、負債600,000、収益3,000,000、支出2,800,000。企業基金の10%基準:3,000,000、1,400,000、1,000,000、900,000。合算の5%基準:資産50,000,000×5% = 2,500,000、負債20,000,000×5% = 1,000,000、収益40,000,000×5% = 2,000,000、支出37,000,000×5% = 1,850,000。</p>
+<p>道路基金:収益3,200,000 ≥ 3,000,000 かつ ≥ 2,000,000 → 主要基金(資産2,200,000は10%を満たすが5%の2,500,000未満)。</p>
+<p>債務返済基金:資産1,900,000 < 2,000,000、負債500,000 < 600,000、収益2,900,000 < 3,000,000、支出2,700,000 < 2,800,000 → 10%基準をすべて満たさず非主要。</p>
+<p>駐車場:負債1,500,000 ≥ 1,400,000 かつ ≥ 1,000,000 → 主要基金。</p>
+<p>ゴルフ場:収益1,100,000 ≥ 1,000,000、費用950,000 ≥ 900,000 と10%は満たすが、5%基準(2,000,000、1,850,000)は満たさない。資産・負債は10%未満 → 非主要。</p>
+<p>非主要の政府資金は1つの列に集約して表示する。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-BAR-65", section: "BAR", chapter: "BAR-03", title: "企業基金のキャッシュ・フロー計算書:4区分への分類と合計",
+  scenario: `<p>The Northgate Transit Authority (an enterprise fund) had the following cash transactions for Year 7. Assume GASB Statement No. 103 is effective and that, for this task, it does not change the four cash flow categories or the classification of interest applied below.</p>
+<table><tr><th>Cash transaction</th><th>Amount</th></tr>
+<tr><td>Cash received from customers (fares)</td><td>$2,400,000</td></tr>
+<tr><td>Cash paid to employees</td><td>$900,000</td></tr>
+<tr><td>Cash paid to suppliers</td><td>$600,000</td></tr>
+<tr><td>Operating subsidy received from the county (not restricted to capital)</td><td>$150,000</td></tr>
+<tr><td>Transfer out to the General Fund</td><td>$200,000</td></tr>
+<tr><td>Proceeds of short-term note to cover operating cash needs</td><td>$100,000</td></tr>
+<tr><td>Interest paid on the short-term operating note</td><td>$10,000</td></tr>
+<tr><td>Proceeds from issuance of revenue bonds for bus purchases</td><td>$3,000,000</td></tr>
+<tr><td>Acquisition of buses</td><td>$2,800,000</td></tr>
+<tr><td>Principal paid on revenue bonds</td><td>$400,000</td></tr>
+<tr><td>Interest paid on revenue bonds</td><td>$180,000</td></tr>
+<tr><td>Federal capital grant received for bus purchases</td><td>$500,000</td></tr>
+<tr><td>Interest received on investments</td><td>$40,000</td></tr>
+<tr><td>Purchase of investments</td><td>$300,000</td></tr></table>
+<p class="ja">Northgate交通局(企業基金)の7年目の現金取引。GASB 103号は適用済みとし、本問では以下で用いる4区分および利息の分類を変更しないものとする。<br>
+顧客からの運賃収入$2,400,000、従業員への支払$900,000、仕入先への支払$600,000、郡からの経常補助金(資本目的に制限なし)$150,000、一般基金への繰出$200,000、運転資金のための短期借入$100,000、その短期借入の利息支払$10,000、バス購入のためのレベニュー債発行収入$3,000,000、バスの取得$2,800,000、レベニュー債元本返済$400,000、レベニュー債利息支払$180,000、バス購入のための連邦資本補助金$500,000、投資の受取利息$40,000、投資の購入$300,000。</p>`,
+  rows: [
+    { label: "Net cash provided by operating activities(営業活動による純キャッシュ・フロー)", type: "num", answer: 900000 },
+    { label: "Net cash provided by noncapital financing activities(非資本財務活動による純キャッシュ・フロー)", type: "num", answer: 40000 },
+    { label: "Net cash provided by capital and related financing activities(資本及び関連財務活動による純キャッシュ・フロー)", type: "num", answer: 120000 },
+    { label: "Net cash used by investing activities (enter negative)(投資活動による純キャッシュ・フロー)", type: "num", answer: -260000 },
+    { label: "Net increase in cash and cash equivalents(現金及び現金同等物の純増加額)", type: "num", answer: 800000 },
+    { label: "Classification of interest paid on the revenue bonds(レベニュー債の利息支払の分類)", type: "select", options: ["Operating activities", "Noncapital financing activities", "Capital and related financing activities", "Investing activities"], answer: "Capital and related financing activities" },
+    { label: "Method of presenting operating activities(営業活動の表示方法)", type: "select", options: ["Indirect method only", "Direct method required, with a reconciliation of operating income to net operating cash flows", "Either method; no reconciliation required", "Direct method; reconciliation starts with change in net position"], answer: "Direct method required, with a reconciliation of operating income to net operating cash flows" },
+  ],
+  explain: `<p>営業活動 = 2,400,000 − 900,000 − 600,000 = 900,000。</p>
+<p>非資本財務活動 = 経常補助金150,000 − 繰出200,000 + 短期借入100,000 − その利息10,000 = 40,000。資本目的でない借入の利息は非資本財務活動に分類する(GASBでは支払利息は営業活動にしない)。</p>
+<p>資本及び関連財務活動 = 社債発行3,000,000 − バス取得2,800,000 − 元本400,000 − 利息180,000 + 資本補助金500,000 = 120,000。</p>
+<p>投資活動 = 受取利息40,000 − 投資購入300,000 = −260,000(受取利息は投資活動)。</p>
+<p>純増加 = 900,000 + 40,000 + 120,000 − 260,000 = 800,000。</p>
+<p>GASBでは直接法が必須で、営業利益から営業活動の純キャッシュ・フローへの調整表を併せて表示する。</p>`,
+});

@@ -248,3 +248,73 @@ CPA.tbs({
 <p>6:AUPも証明業務であり、AICPA職業行為規程上、独立性が必要である。</p>
 <p>7:AT-C 305では予測財務情報のレビューは認められない。検証、調製、またはAUPを提案する。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-AUD-68", section: "AUD", chapter: "AUD-05", title: "単一監査:主要プログラムの決定・カバー率と発見事項",
+  scenario: `<p>You are planning the Single Audit of the <b>City of Brookfield</b> for the fiscal year ended June 30, 2026 under the Uniform Guidance (2 CFR 200 Subpart F, as revised in 2024). The City is <b>not</b> a low-risk auditee. Total federal awards expended: <b>$20,000,000</b>.</p>
+<p><b>Exhibit 1 — Thresholds (assume the following)</b>: Single Audit required when expenditures are $1,000,000 or more. Type A threshold: $1,000,000 for total expenditures of $1,000,000 to $34,000,000. Type B programs are risk-assessed only if they exceed 25% of the Type A threshold. The auditor must audit high-risk Type B programs equal to at least one fourth of the number of low-risk Type A programs. Percentage-of-coverage rule: 40% (20% for a low-risk auditee). Known or likely questioned costs greater than $25,000 for a type of compliance requirement for a major program must be reported as a finding.</p>
+<p><b>Exhibit 2 — Programs (expenditures)</b></p>
+<table><tr><th>Program</th><th>Expenditures</th><th>Risk information</th></tr>
+<tr><td>A</td><td>$6,000,000</td><td>Audited as major in 2025; no findings</td></tr>
+<tr><td>B</td><td>$4,000,000</td><td>Audited as major in 2025; material weakness in internal control over compliance</td></tr>
+<tr><td>C</td><td>$2,000,000</td><td>Not audited as a major program in either 2024 or 2025</td></tr>
+<tr><td>G</td><td>$2,500,000</td><td>Audited as major in 2024; no findings</td></tr>
+<tr><td>H</td><td>$1,500,000</td><td>Audited as major in 2025; no findings</td></tr>
+<tr><td>I</td><td>$1,200,000</td><td>Audited as major in 2024; no findings</td></tr>
+<tr><td>D</td><td>$900,000</td><td>Assessed high risk (new grantee system)</td></tr>
+<tr><td>E</td><td>$600,000</td><td>Assessed high risk</td></tr>
+<tr><td>F</td><td>$200,000</td><td>—</td></tr>
+<tr><td>Other (12 programs, each under $150,000)</td><td>$1,100,000</td><td>—</td></tr></table>
+<p>The auditor will audit as major all high-risk Type A programs and the larger high-risk Type B program (D), then add the smallest single low-risk Type A program needed to meet coverage.</p>
+<p><b>Exhibit 3 — Draft finding (Program B)</b>: known questioned costs $18,000; likely questioned costs projected at $31,000 for the allowable-costs requirement.</p>
+<p class="ja">Brookfield市の2026年6月期の単一監査(統一ガイダンス、2024年改正)を計画する。低リスク被監査体ではない。連邦補助金支出総額$20,000,000。展示1(前提):支出$1,000,000以上で単一監査が必要。支出$1,000,000〜$34,000,000ではタイプA閾値$1,000,000。タイプBはタイプA閾値の25%を超える場合のみリスク評価。高リスクのタイプBは低リスクのタイプA数の4分の1以上を監査。カバー率40%(低リスク被監査体は20%)。主要プログラムの各遵守要件について既知または推定の疑義費用が$25,000超なら発見事項として報告。展示2:各プログラムの支出とリスク情報(表参照)。監査人は高リスクのタイプAすべてと、大きい方の高リスクのタイプB(D)を主要プログラムとし、カバー率を満たすのに必要な最小の低リスクのタイプAを1つ追加する。展示3:プログラムBで既知の疑義費用$18,000、推定疑義費用$31,000。</p>`,
+  rows: [
+    { label: "Type A threshold($)(タイプA閾値)", type: "num", answer: 1000000 },
+    { label: "Minimum Type B size subject to risk assessment($)(リスク評価対象となるタイプBの下限)", type: "num", answer: 250000 },
+    { label: "Classification of Program C(プログラムCの分類)", type: "select", options: ["Low-risk Type A", "High-risk Type A — must be audited as major", "Type B — not risk-assessed", "Low-risk Type B"], answer: "High-risk Type A — must be audited as major" },
+    { label: "Number of high-risk Type B programs required(監査が必要な高リスクのタイプB数)", type: "num", answer: 1 },
+    { label: "Coverage before additions(%)(追加前カバー率)", type: "num", answer: 34.5, tol: 0.1 },
+    { label: "Additional expenditures needed to reach coverage($)(カバー率達成に必要な追加額)", type: "num", answer: 1100000 },
+    { label: "Program added to meet coverage(追加するプログラム)", type: "select", options: ["A", "G", "H", "I", "E"], answer: "I" },
+    { label: "Reporting of the Program B questioned costs(疑義費用の報告)", type: "select", options: ["Not reported — known questioned costs are under $25,000", "Reported as a finding — likely questioned costs exceed $25,000", "Reported only in the management letter", "Reported only if the program is Type B"], answer: "Reported as a finding — likely questioned costs exceed $25,000" },
+  ],
+  explain: `<p>タイプA閾値:支出総額$20,000,000は$1,000,000〜$34,000,000の範囲 → $1,000,000。タイプA:A・B・C・G・H・I(各$1,000,000以上)。</p>
+<p>タイプBのリスク評価下限:1,000,000 × 25% = 250,000。D($900,000)とE($600,000)が対象、F($200,000)とその他は対象外。</p>
+<p>プログラムC:低リスクのタイプAとなるには、直近2監査期間の少なくとも1期で主要プログラムとして監査されていることが必要。Cはどちらでも監査されていないため高リスク → 主要プログラム。Bも前期に重要な不備(material weakness)があり高リスク。</p>
+<p>高リスクのタイプB数:低リスクのタイプAはA・G・H・Iの4つ。4 × 1/4 = 1 → 1つ(D)。</p>
+<p>追加前カバー率:B 4,000,000 + C 2,000,000 + D 900,000 = 6,900,000。6,900,000 ÷ 20,000,000 = 34.5%。</p>
+<p>必要追加額:20,000,000 × 40% = 8,000,000。8,000,000 − 6,900,000 = 1,100,000。</p>
+<p>追加プログラム:$1,100,000以上の低リスクのタイプAのうち最小はI($1,200,000)。合計8,100,000で40.5%となる。</p>
+<p>疑義費用:既知$18,000は$25,000以下だが、推定(likely)疑義費用$31,000が$25,000を超えるため、発見事項として報告する。発見事項は基準(criteria)、状況(condition)、原因(cause)、影響(effect)などの要素で記述する(GAGAS)。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-AUD-69", section: "AUD", chapter: "AUD-05", title: "内部統制統合監査(AU-C 940)とGAGAS報告の要素",
+  scenario: `<p>Calder & Moss CPAs performs an integrated audit (AU-C 940) of the financial statements and internal control over financial reporting (ICFR) of <b>Riverside Community Credit Union</b>, a nonissuer, as of and for the year ended December 31, 2026. Because the credit union receives a state grant, the audit is also performed in accordance with <i>Government Auditing Standards</i> (GAGAS, 2024 revision).</p>
+<p><b>Exhibit 1 — Results</b></p>
+<table><tr><th>#</th><th>Matter</th></tr>
+<tr><td>1</td><td>A control deficiency over loan-loss allowance review exists at December 31, 2026; there is a reasonable possibility that a material misstatement would not be prevented or detected on a timely basis. The resulting misstatement was corrected by management before the statements were issued.</td></tr>
+<tr><td>2</td><td>Evidence for both audits was completed on March 12, 2027.</td></tr>
+<tr><td>3</td><td>Management requests that the auditor issue separate reports on the financial statements and on ICFR.</td></tr>
+<tr><td>4</td><td>Hypothetical: management had prohibited testing of IT general controls, preventing the auditor from obtaining sufficient evidence on ICFR.</td></tr>
+<tr><td>5</td><td>A noncompliance with the state grant agreement was identified that is not material to the financial statements but warrants the attention of those charged with governance.</td></tr>
+<tr><td>6</td><td>The draft GAGAS finding states: "The credit union's grant agreement requires quarterly reconciliations of grant draws" and "Reconciliations were not performed for three of four quarters."</td></tr></table>
+<p class="ja">Calder & Moss会計事務所は非公開企業Riverside信用組合の2026年度について、財務諸表と財務報告に係る内部統制(ICFR)の統合監査(AU-C 940)を行う。州の補助金を受けているため政府監査基準(GAGAS 2024年改訂)にも準拠する。1:貸倒引当金の検証統制に、重要な虚偽表示が適時に防止・発見されない合理的な可能性がある不備が期末に存在。虚偽表示は発行前に修正済み。2:両監査の証拠入手完了は2027年3月12日。3:経営者は財務諸表とICFRで別個の報告書を希望。4:仮定:経営者がIT全般統制のテストを禁止し、ICFRについて十分な証拠が得られない。5:財務諸表には重要でないが統治責任者の注意に値する補助金契約違反を識別。6:発見事項ドラフト「補助金契約は四半期ごとの照合を要求している」「4四半期中3四半期で照合が行われていない」。</p>`,
+  rows: [
+    { label: "1 Opinion on ICFR(ICFRに対する意見)", type: "select", options: ["Unmodified", "Qualified", "Adverse", "Disclaimer"], answer: "Adverse" },
+    { label: "1 Opinion on the financial statements(財務諸表に対する意見)", type: "select", options: ["Unmodified", "Qualified", "Adverse", "Disclaimer"], answer: "Unmodified" },
+    { label: "2 Date of the ICFR report(ICFR報告書の日付)", type: "select", options: ["December 31, 2026", "March 12, 2027 — same date as the financial statement report", "Any date after the financial statement report", "Date the ICFR report is delivered"], answer: "March 12, 2027 — same date as the financial statement report" },
+    { label: "3 Separate reports(別個の報告書の場合)", type: "select", options: ["Not permitted under AU-C 940", "Permitted; each report includes an other-matter paragraph referring to the other report", "Permitted; no cross-reference is needed", "Permitted only if the ICFR opinion is unmodified"], answer: "Permitted; each report includes an other-matter paragraph referring to the other report" },
+    { label: "4 Scope limitation in ICFR audit(ICFR監査の範囲制約)", type: "select", options: ["Qualified opinion on ICFR", "Disclaim an opinion on ICFR or withdraw", "Adverse opinion on ICFR", "Unmodified opinion with emphasis paragraph"], answer: "Disclaim an opinion on ICFR or withdraw" },
+    { label: "5 Communication of the grant noncompliance(補助金違反の伝達)", type: "select", options: ["Include in the GAGAS report as a material finding", "Communicate in writing to audited entity officials", "No communication required", "Report only to the grantor agency"], answer: "Communicate in writing to audited entity officials" },
+    { label: "6 Elements present in the draft finding(ドラフトに含まれる要素)", type: "select", options: ["Criteria and condition", "Cause and effect", "Condition and recommendation", "Criteria and effect"], answer: "Criteria and condition" },
+    { label: "Required before issuing the GAGAS report(GAGAS報告書発行前の要求事項)", type: "select", options: ["Obtain and report the views of responsible officials on the findings", "Obtain grantor approval of the findings", "Submit the draft to the GAO", "Obtain a peer reviewer's sign-off"], answer: "Obtain and report the views of responsible officials on the findings" },
+  ],
+  explain: `<p>1:期末日時点で重要な虚偽表示が適時に防止・発見されない合理的な可能性がある不備は重要な不備(material weakness)。ICFRは期末日時点(as of)で評価するため、ICFRには否定的意見(Adverse)。一方、虚偽表示は修正済みなので財務諸表には無限定意見を表明できる。</p>
+<p>2:AU-C 940では、ICFR報告書と財務諸表監査報告書は同一日付とする。十分な証拠入手完了の3月12日である。</p>
+<p>3:統合報告書・別個の報告書のどちらも認められる。別個の場合は、各報告書にもう一方の報告書に言及するその他の事項区分を設ける。</p>
+<p>4:ICFR監査で範囲制約がある場合、限定付意見は認められず、意見不表明または契約解除とする。</p>
+<p>5:GAGASでは、財務諸表に重要な影響がある違反は報告書に記載し、重要でないが統治責任者の注意に値する違反は被監査体の担当者に書面で伝達する。</p>
+<p>6:「補助金契約が照合を要求している」はあるべき姿=基準(criteria)、「照合が行われていない」は現状=状況(condition)。原因(cause)・影響(effect)・勧告(recommendation)はまだ記載されていない。</p>
+<p>GAGASでは、発見事項・結論・勧告について責任ある職員の見解を入手し、報告書に含める(書面回答があれば添付等)。補助金交付機関やGAOの承認は不要である。</p>`,
+});
