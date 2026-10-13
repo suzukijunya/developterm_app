@@ -232,3 +232,38 @@ CPA.tbs({
 <p><b>6</b>:業務を終えた後の私的目的の大きな逸脱(frolic)は職務の範囲外であり、使用者は責任を負わない。運転手のみが責任を負う。</p>
 <p><b>事業体比較</b>:LLCのメンバーは事業体の債務について個人責任を負わず、損失は出資額に限られる。ゼネラル・パートナーシップのパートナーは、関与の有無にかかわらずパートナーシップの全債務について連帯して無限責任を負う(通常、債権者はまずパートナーシップの財産から回収する)。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-REG-42", section: "REG", chapter: "REG-02", title: "担保権の優先順位から第7章破産の配当まで(事前登録・PMSI・否認・偏頗弁済)",
+  scenario: `<p>Delta Co., a manufacturer, filed a voluntary Chapter 7 petition on <b>October 15</b>. Exhibit 1 — Secured financing history (all in the same year; the security agreements were signed and value given on the dates shown):</p>
+<table><tr><th>Date</th><th>Event</th></tr>
+<tr><td>February 1</td><td>Second Bank filed a financing statement covering Delta's equipment.</td></tr>
+<tr><td>February 15</td><td>First Bank lent <b>$100,000</b> secured by all of Delta's equipment; First Bank filed a financing statement on February 20.</td></tr>
+<tr><td>March 1</td><td>Second Bank lent <b>$60,000</b> under a security agreement covering all of Delta's equipment.</td></tr>
+<tr><td>April 1</td><td>Supplier sold Delta a new press on credit for <b>$40,000</b>, retaining a security interest; Delta received the press April 1; Supplier filed a financing statement on April 15.</td></tr>
+<tr><td>May 1</td><td>Cred Co. lent <b>$30,000</b> under a security agreement covering Delta's equipment; Cred Co. never filed or otherwise perfected.</td></tr></table>
+<p>Exhibit 2 — Other facts: On <b>September 1</b>, while insolvent, Delta paid <b>$20,000</b> to trade creditor T on a long-overdue <b>$50,000</b> account (a lump-sum catch-up payment, not in the ordinary course). The trustee liquidated the estate:</p>
+<table><tr><th>Asset</th><th>Proceeds</th></tr>
+<tr><td>Equipment other than the press</td><td>$130,000</td></tr>
+<tr><td>Press</td><td>$35,000</td></tr>
+<tr><td>Unencumbered inventory and cash</td><td>$70,000</td></tr></table>
+<p>Claims (in addition to the secured lenders and T's remaining $30,000): administrative expenses <b>$15,000</b>; wages of <b>$8,000</b> earned by one employee within 180 days before the petition (assume the per-employee priority limit is <b>$17,150</b>); federal income taxes for the prior year <b>$12,000</b>; other general unsecured trade claims <b>$105,000</b>. The trustee exercises all avoidance powers available.</p>
+<p class="ja">製造業のDelta社は10月15日に任意の第7章破産を申し立てた。資料1(同一年、担保契約の署名と価値の供与は記載日):2月1日 Second BankがDeltaの設備を対象とする融資届出書を登録。2月15日 First BankがDeltaの全設備を担保に$100,000を貸付け、2月20日に融資届出書を登録。3月1日 Second Bankが全設備を対象とする担保契約に基づき$60,000を貸付け。4月1日 Supplierが新しいプレス機を$40,000で掛売りし担保権を留保、Deltaは4月1日に受領、Supplierは4月15日に融資届出書を登録。5月1日 Cred Co.が設備を対象とする担保契約に基づき$30,000を貸付けたが、登録その他の対抗要件具備をしなかった。資料2:9月1日、支払不能状態のDeltaは長期延滞していた取引債権者Tの$50,000の債権に$20,000を支払った(通常の取引過程外の一括支払)。管財人の換価:プレス機以外の設備$130,000、プレス機$35,000、担保の付いていない在庫と現金$70,000。担保債権者とTの残額$30,000以外の債権:管理費用$15,000、申立前180日以内に1人の従業員が稼得した賃金$8,000(従業員1人当たりの優先限度額は$17,150と仮定)、前年度の連邦所得税$12,000、その他の一般無担保取引債権$105,000。管財人は利用可能なすべての否認権を行使する。</p>`,
+  rows: [
+    { label: "First priority in the equipment other than the press(プレス機以外の設備に対する第1順位)", type: "select", options: ["First Bank", "Second Bank", "Cred Co.", "Shared pro rata"], answer: "Second Bank" },
+    { label: "First priority in the press(プレス機に対する第1順位)", type: "select", options: ["First Bank", "Second Bank", "Supplier", "Cred Co."], answer: "Supplier" },
+    { label: "Amount First Bank receives from the equipment proceeds(First Bankが設備の換価代金から受け取る額)", type: "num", answer: 70000 },
+    { label: "Status of Cred Co.'s claim in the bankruptcy(破産手続におけるCred Co.の債権の地位)", type: "select", options: ["Secured, ranking after First Bank", "Secured, ranking after Supplier only", "General unsecured, because the trustee can avoid its unperfected interest", "Disallowed entirely"], answer: "General unsecured, because the trustee can avoid its unperfected interest" },
+    { label: "Amount the trustee recovers from T(管財人がTから回収する額)", type: "num", answer: 20000 },
+    { label: "Percentage paid on general unsecured claims (%)(一般無担保債権への配当率(%))", type: "num", answer: 25, tol: 0.01 },
+    { label: "Total amount First Bank receives(First Bankの受取総額)", type: "num", answer: 77500 },
+    { label: "Amount T receives in the distribution(Tが配当で受け取る額)", type: "num", answer: 12500 },
+  ],
+  explain: `<p><b>設備の優先順位</b>:対抗要件を具備した担保権同士は「登録または対抗要件具備のいずれか早い時点」で優先する。Second Bankは担保権設定(3月1日)前の2月1日に事前登録しており、その日が基準となるため、2月20日に登録したFirst Bankに優先する。</p>
+<p><b>プレス機</b>:設備のPMSIは、債務者の占有取得後20日以内に登録すれば、先行する担保権者に優先する。4月1日受領、4月15日登録(14日後)なのでSupplierが優先。</p>
+<p><b>設備の配分</b>:$130,000のうちSecond Bankに60,000、残り70,000をFirst Bankへ。First Bankの不足額30,000は一般無担保債権となる。プレス機$35,000はSupplierへ、不足額5,000は一般無担保債権。</p>
+<p><b>Cred Co.</b>:対抗要件を具備していない担保権は、管財人が仮想差押債権者の地位(strong-arm power)により否認できるため、$30,000全額が一般無担保債権となる。</p>
+<p><b>偏頗弁済</b>:申立前90日以内(9月1日→10月15日は44日)に、支払不能状態で、既存債務のため無担保債権者に支払い、配当以上を受け取らせる通常取引外の支払であり否認される。管財人は20,000を回収し、Tの債権は50,000に戻る。</p>
+<p><b>配当</b>:無担保財産 = 70,000 + 20,000 = 90,000。優先債権 = 管理費用15,000 + 賃金8,000(限度額内)+ 所得税12,000 = 35,000。一般無担保への配当原資 = 90,000 − 35,000 = 55,000。一般無担保債権 = First Bank 30,000 + Supplier 5,000 + Cred Co. 30,000 + T 50,000 + その他105,000 = 220,000。配当率 = 55,000 ÷ 220,000 = 25%。</p>
+<p>First Bank = 70,000 + 30,000 × 25% = 77,500。T = 50,000 × 25% = 12,500(9月1日に受け取った20,000は返還済み)。</p>`,
+});

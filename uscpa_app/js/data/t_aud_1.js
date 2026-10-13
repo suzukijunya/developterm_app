@@ -272,3 +272,39 @@ CPA.tbs({
 <p>6:AU-C 230では、監査ファイルの最終整理は報告書発行日後<b>60日</b>以内に完了しなければならない。</p>
 <p>7:非発行体の監査調書は報告書発行日から少なくとも<b>5年</b>保存する(PCAOBは7年)。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-AUD-39", section: "AUD", chapter: "AUD-02", title: "計画段階の分析的手続:比率の計算とリスクのある勘定の特定",
+  scenario: `<p>As part of planning the Year 2 audit of <b>Summit Outdoor Gear, Inc.</b>, you are performing preliminary analytical procedures. All sales are on credit. Industry gross margin has been stable at about 30%, and industry inventory turnover is about 7 times. Summit's bank loan agreement requires a current ratio of at least <b>2.5</b> at year-end.</p>
+<p><b>Exhibit 1 — Selected financial data</b></p>
+<table><tr><th>Item</th><th>Year 2 (unaudited)</th><th>Year 1 (audited)</th><th>Year 0 (audited)</th></tr>
+<tr><td>Net sales</td><td>$12,000,000</td><td>$11,500,000</td><td>—</td></tr>
+<tr><td>Cost of goods sold</td><td>$7,800,000</td><td>$8,050,000</td><td>—</td></tr>
+<tr><td>Accounts receivable, net (year-end)</td><td>$2,300,000</td><td>$1,450,000</td><td>—</td></tr>
+<tr><td>Inventory (year-end)</td><td>$2,600,000</td><td>$1,300,000</td><td>$1,000,000</td></tr></table>
+<p><b>Exhibit 2 — Year 2 current accounts (unaudited)</b></p>
+<table><tr><th>Current assets</th><th>Amount</th><th>Current liabilities</th><th>Amount</th></tr>
+<tr><td>Cash</td><td>$400,000</td><td>Accounts payable</td><td>$1,500,000</td></tr>
+<tr><td>Accounts receivable, net</td><td>$2,300,000</td><td>Accrued liabilities</td><td>$300,000</td></tr>
+<tr><td>Inventory</td><td>$2,600,000</td><td>Current portion of long-term debt</td><td>$200,000</td></tr>
+<tr><td>Prepaid expenses</td><td>$100,000</td><td></td><td></td></tr></table>
+<p>Use a 365-day year and year-end receivables for days sales outstanding; use average inventory for inventory turnover.</p>
+<p class="ja">Summit Outdoor Gear社の2年目監査の計画として、予備的な分析的手続を行う。売上はすべて掛売上である。業界の売上総利益率は約30%で安定し、業界の棚卸資産回転率は約7回である。銀行借入契約は期末の流動比率2.5以上を要求している。資料1:売上高(2年目$12,000,000/1年目$11,500,000)、売上原価($7,800,000/$8,050,000)、期末売掛金純額($2,300,000/$1,450,000)、期末棚卸資産($2,600,000/$1,300,000/0年目$1,000,000)。資料2:2年目の流動資産 — 現金$400,000、売掛金$2,300,000、棚卸資産$2,600,000、前払費用$100,000。流動負債 — 買掛金$1,500,000、未払費用$300,000、1年内返済長期債務$200,000。売上債権回転日数は365日・期末売掛金で、棚卸資産回転率は平均棚卸資産で計算する。</p>`,
+  rows: [
+    { label: "Year 2 gross margin percentage (%)(2年目の売上総利益率)", type: "num", answer: 35, tol: 0.1 },
+    { label: "Year 2 days sales outstanding (days)(2年目の売上債権回転日数)", type: "num", answer: 69.96, tol: 0.1 },
+    { label: "Year 2 inventory turnover (times)(2年目の棚卸資産回転率)", type: "num", answer: 4, tol: 0.01 },
+    { label: "Year 1 inventory turnover (times)(1年目の棚卸資産回転率)", type: "num", answer: 7, tol: 0.01 },
+    { label: "Year 2 current ratio(2年目の流動比率)", type: "num", answer: 2.7, tol: 0.01 },
+    { label: "Ratio change most indicative of fictitious sales or collectibility problems(架空売上・回収可能性の問題を最も示唆する変化)", type: "select", options: ["Gross margin percentage", "Days sales outstanding", "Current ratio", "Inventory turnover compared with industry only"], answer: "Days sales outstanding" },
+    { label: "Misstatement most consistent with the higher margin and slower inventory turnover(利益率上昇と回転率低下に最も整合する虚偽表示)", type: "select", options: ["Overstated ending inventory (understated cost of goods sold)", "Understated net sales", "Overstated accounts payable", "Understated prepaid expenses"], answer: "Overstated ending inventory (understated cost of goods sold)" },
+    { label: "Given the covenant, the assertion most warranting attention for current liabilities(財務制限条項を踏まえた流動負債の重点アサーション)", type: "select", options: ["Existence", "Completeness", "Valuation of prepaid expenses", "Rights and obligations"], answer: "Completeness" },
+  ],
+  explain: `<p>売上総利益率:(12,000,000 − 7,800,000) ÷ 12,000,000 = 4,200,000 ÷ 12,000,000 = <b>35.0%</b>(1年目は3,450,000 ÷ 11,500,000 = 30.0%、業界30%)。</p>
+<p>売上債権回転日数:2,300,000 ÷ 12,000,000 × 365 = <b>69.96日</b>(1年目は1,450,000 ÷ 11,500,000 × 365 = 46.02日)。</p>
+<p>2年目の棚卸資産回転率:7,800,000 ÷ ((2,600,000 + 1,300,000) ÷ 2 = 1,950,000) = <b>4.0回</b>。1年目:8,050,000 ÷ ((1,300,000 + 1,000,000) ÷ 2 = 1,150,000) = <b>7.0回</b>(業界並み)。</p>
+<p>流動比率:流動資産 400,000 + 2,300,000 + 2,600,000 + 100,000 = 5,400,000、流動負債 1,500,000 + 300,000 + 200,000 = 2,000,000 → 5,400,000 ÷ 2,000,000 = <b>2.70</b>。</p>
+<p>売上の伸びは約4%なのに売掛金は約59%増加し、回転日数が46日から70日へ悪化 → 架空売上(発生)や貸倒引当金不足(評価)のリスクを示す。</p>
+<p>業界が30%で安定する中で利益率が35%に上昇し、棚卸資産が倍増して回転率が7.0回から4.0回へ低下 → 期末棚卸資産の過大計上(売上原価の過小計上)や陳腐化在庫の評価減漏れのリスクが高い。</p>
+<p>流動比率2.70は条項2.5に近く、流動負債を過小計上する動機がある → 買掛金・未払費用の<b>網羅性</b>に重点を置き、未計上負債の検索を行う。</p>`,
+});
