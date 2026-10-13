@@ -224,3 +224,29 @@ CPA.tbs({
 <p>配当扱いの場合、償還株式の取得価額200 × 40 = 8,000は残存株式に付け替えられる。残存100株の取得価額 = 100 × 40 + 8,000 = 12,000。</p>
 <p>償還B:Edは無関係で帰属株式がなく、全株式が償還されるので§302(b)(3)の完全終了として売却扱い。利得 = 15,000 − 6,000 = 9,000。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-REG-69", section: "REG", chapter: "REG-05", title: "子会社の完全清算(§332・§337と少数株主への§331・§336)と留保金課税・PHC税",
+  scenario: `<p><b>Exhibit 1 — Liquidation.</b> Pine Corp. (a C corporation, not a personal service corporation) adopted a plan of complete liquidation and distributed all of its assets in 2026. Pine is owned 85% by Oak Corp. (stock basis $300,000, held since 2015) and 15% by Nora, an individual (stock basis $20,000, held since 2018). Amounts below are net of all Pine liabilities, including the tax on the liquidation.</p>
+<table><tr><th>Asset</th><th>Pine's adjusted basis</th><th>FMV</th><th>Distributed to</th></tr>
+<tr><td>Land (held for investment)</td><td>$200,000</td><td>$500,000</td><td>Oak</td></tr>
+<tr><td>Cash</td><td>350,000</td><td>350,000</td><td>Oak</td></tr>
+<tr><td>Equipment (cost $150,000; accumulated depreciation $110,000)</td><td>40,000</td><td>100,000</td><td>Nora</td></tr>
+<tr><td>Cash</td><td>50,000</td><td>50,000</td><td>Nora</td></tr></table>
+<p><b>Exhibit 2 — Planning memo (prior year).</b> "Before deciding to liquidate, Pine's board retained most of its earnings in marketable securities with no documented business need, and about 70% of its adjusted ordinary gross income was dividends and interest. Please confirm the accumulated earnings tax (AET) and personal holding company (PHC) rules that could have applied."</p>
+<p class="ja">資料1(清算):Pine社(C法人、人的役務法人ではない)は完全清算計画を採択し、2026年に全資産を分配した。Pine社はOak社が85%(株式の取得価額$300,000、2015年から保有)、個人Noraが15%(取得価額$20,000、2018年から保有)を所有する。金額は清算に係る税金を含むPine社の全負債控除後である。土地(投資目的):Pine社の取得価額$200,000、時価$500,000、Oak社へ。現金$350,000、Oak社へ。設備(取得原価$150,000、減価償却累計額$110,000):取得価額$40,000、時価$100,000、Noraへ。現金$50,000、Noraへ。資料2(前年の検討メモ):「清算決定前、Pine社の取締役会は文書化された事業上の必要性なく利益の大半を有価証券で留保し、調整後通常総所得の約70%が配当と利息であった。適用されえた留保金課税(AET)と同族持株会社(PHC)の規定を確認してほしい。」</p>`,
+  rows: [
+    { label: "Gain recognized by Pine on the liquidating distributions(清算分配によりPine社が認識する利得)", type: "num", answer: 60000 },
+    { label: "Character of Pine's recognized gain(Pine社の認識利得の性質)", type: "select", options: ["Long-term capital gain", "§1231 gain", "Ordinary income (§1245 recapture)", "Unrecaptured §1250 gain"], answer: "Ordinary income (§1245 recapture)" },
+    { label: "Gain recognized by Oak(Oak社が認識する利得)", type: "num", answer: 0 },
+    { label: "Oak's basis in the land(Oak社の土地の取得価額)", type: "num", answer: 200000 },
+    { label: "Gain recognized by Nora(Noraが認識する利得)", type: "num", answer: 130000 },
+    { label: "Nora's basis in the equipment(Noraの設備の取得価額)", type: "num", answer: 100000 },
+    { label: "Minimum accumulated earnings credit available to Pine (not a personal service corporation)(Pine社の最低留保金控除額)", type: "select", options: ["$100,000", "$150,000", "$250,000", "$500,000"], answer: "$250,000" },
+    { label: "PHC status and tax rate on undistributed PHC income(PHC該当性と未分配PHC所得への税率)", type: "select", options: ["PHC if more than 50% of stock is owned by 5 or fewer individuals in the last half of the year and at least 60% of AOGI is PHC income; tax rate 20%", "PHC if at least 80% of gross income is passive; tax rate 39.6%", "PHC if more than 50% of stock is owned by 5 or fewer individuals; tax rate 21%", "Pine cannot be a PHC because it is subject to the AET"], answer: "PHC if more than 50% of stock is owned by 5 or fewer individuals in the last half of the year and at least 60% of AOGI is PHC income; tax rate 20%" },
+  ],
+  explain: `<p>Oak社は80%以上を保有するので、Oak社への分配は§332により親会社で非課税、§337により子会社Pine社でも利得を認識しない。Oak社は資産の取得価額を引き継ぐ(土地200,000)。Oak社の実現利得(850,000 − 300,000 = 550,000)は認識されない。</p>
+<p>少数株主Noraへの分配には§336が適用され、Pine社は時価で売却したものとして利得を認識する:設備 100,000 − 40,000 = 60,000。減価償却累計額110,000以内なので全額§1245リキャプチャーの通常所得。</p>
+<p>Noraは§331により株式を売却したものとして扱う:受取額(100,000 + 50,000) − 20,000 = 130,000の長期資本利得。受け取った資産の取得価額は時価(設備100,000)。</p>
+<p>AET:人的役務法人以外の最低留保金控除は$250,000(人的役務法人は$150,000)で、税率は20%。PHC:課税年度後半に発行済株式の50%超を5人以下の個人が保有し、かつ調整後通常総所得の60%以上がPHC所得である場合に該当し、未分配PHC所得に20%で課税される。PHCに該当する場合はAETは適用されない。</p>`,
+});

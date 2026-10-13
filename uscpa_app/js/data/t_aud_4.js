@@ -129,3 +129,58 @@ CPA.tbs({
 <p>E:前期について過去と異なる意見を表明する場合、その他の事項区分で前回の意見の内容と異なる意見を表明する理由を開示する(AU-C 700)。修正再表示で逸脱は解消されたので無限定意見となる。</p>
 <p>F:前期がレビュー(または調製)の場合、当期の監査報告書のその他の事項区分で、実施した業務、報告書の日付、レビューは監査より範囲が大幅に狭く意見は表明しない旨を記載する。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-AUD-64", section: "AUD", chapter: "AUD-05", title: "その他の記載内容・補足情報・RSIに対する監査人の責任",
+  scenario: `<p>Marlow CPAs audits two nonissuer clients for fiscal 2026: <b>Pinecrest County Water District</b> (a governmental entity reporting under GASB) and <b>Tamsin Industries</b> (a private company that issues an annual report to its lenders and shareholders). The annual report and all accompanying information were obtained before the date of the auditor's report.</p>
+<table><tr><th>#</th><th>Client</th><th>Item / situation</th></tr>
+<tr><td>1</td><td>Tamsin</td><td>Chair's letter and five-year operating highlights in the annual report</td></tr>
+<tr><td>2</td><td>Pinecrest</td><td>Management's discussion and analysis and the pension schedules required by GASB</td></tr>
+<tr><td>3</td><td>Tamsin</td><td>Consolidating schedules; Marlow is engaged to report on them</td></tr>
+<tr><td>4</td><td>Pinecrest</td><td>Management omits the MD&A that GASB requires</td></tr>
+<tr><td>5</td><td>Tamsin</td><td>The chair's letter states revenue grew 18%; audited statements show 8%. Management refuses to correct the letter.</td></tr>
+<tr><td>6</td><td>Tamsin</td><td>Effect of item 5 on the opinion on the financial statements (statements are fairly presented)</td></tr></table>
+<p class="ja">Marlow会計事務所は2社の2026年度を監査する。Pinecrest郡水道区(GASB準拠の政府機関)とTamsin社(貸手と株主に年次報告書を発行する非公開会社)。年次報告書等はすべて監査報告書日前に入手した。1:年次報告書内の会長の挨拶文と5年間の業績ハイライト。2:GASBが要求するMD&Aと年金スケジュール。3:連結精算表(報告を受嘱)。4:経営者がGASBの要求するMD&Aを省略。5:会長挨拶文では売上成長18%、監査済財務諸表では8%で、経営者は修正を拒否。6:5が財務諸表の意見に与える影響(財務諸表自体は適正)。</p>`,
+  rows: [
+    { label: "1 Classification and auditor responsibility(区分と責任)", type: "select", options: ["Supplementary information — opinion 'in relation to' the FS as a whole", "Required supplementary information — limited procedures", "Other information — read and consider material inconsistency; report in an 'Other Information' section", "Not addressed by the auditor in any way"], answer: "Other information — read and consider material inconsistency; report in an 'Other Information' section" },
+    { label: "2 Classification and auditor responsibility(区分と責任)", type: "select", options: ["Supplementary information — opinion 'in relation to' the FS as a whole", "Required supplementary information — limited procedures (inquiry, comparison for consistency, written representations); RSI section/paragraph in the report", "Other information — read only, no reporting", "Part of the basic financial statements — fully audited"], answer: "Required supplementary information — limited procedures (inquiry, comparison for consistency, written representations); RSI section/paragraph in the report" },
+    { label: "3 Procedures and reporting(手続と報告)", type: "select", options: ["Read only; no opinion", "Trace/reconcile to underlying records and the FS, evaluate form and content; report whether fairly stated in all material respects in relation to the FS as a whole", "Separate examination under SSAEs", "Limited procedures; no opinion or assurance"], answer: "Trace/reconcile to underlying records and the FS, evaluate form and content; report whether fairly stated in all material respects in relation to the FS as a whole" },
+    { label: "4 Effect of omitted RSI(RSI省略の影響)", type: "select", options: ["Qualified opinion", "Adverse opinion", "Unmodified opinion; RSI paragraph explains the omission", "Disclaimer of opinion"], answer: "Unmodified opinion; RSI paragraph explains the omission" },
+    { label: "5 Auditor response to uncorrected inconsistency(未修正の不整合への対応)", type: "select", options: ["No action — other information is not audited", "Describe the uncorrected material misstatement of the other information in the Other Information section (or withdraw if permitted)", "Issue an adverse opinion on the financial statements", "Restate the chair's letter in the auditor's report as an exhibit"], answer: "Describe the uncorrected material misstatement of the other information in the Other Information section (or withdraw if permitted)" },
+    { label: "6 Opinion on financial statements(財務諸表の意見)", type: "select", options: ["Unmodified", "Qualified", "Adverse", "Disclaimer"], answer: "Unmodified" },
+  ],
+  explain: `<p>1:年次報告書に含まれる財務・非財務情報(監査済財務諸表と監査報告書を除く)は「その他の記載内容」(AU-C 720、SAS 137)。監査人は通読し、財務諸表や監査で得た知識との重要な不整合を検討する。報告書日までに入手した場合は「Other Information」区分を設けるが、保証は提供しない。</p>
+<p>2:GASBが要求するMD&A等は「要求補足情報(RSI)」(AU-C 730)。経営者への質問、財務諸表等との整合性の比較、確認書入手といった限定的手続を実施し、報告書にRSIに関する区分(段落)を必ず含める。意見・保証は表明しない。</p>
+<p>3:補足情報(AU-C 725)について報告する場合、基礎記録・財務諸表への照合、表示形式の評価などを行い、「財務諸表全体との関連において、すべての重要な点において適正に記載されている」旨の意見を表明する。</p>
+<p>4:RSIの省略は財務諸表の意見に影響しない。無限定意見のまま、RSIが省略されている旨を区分で説明する。</p>
+<p>5:経営者がその他の記載内容の重要な誤りを修正しない場合、Other Information区分で未修正の重要な誤りを記述する(法令上可能なら契約解除も検討)。</p>
+<p>6:財務諸表自体は適正に表示されているため、その他の記載内容の誤りは財務諸表の意見を修正する理由にならない。無限定意見である。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-AUD-65", section: "AUD", chapter: "AUD-05", title: "SSARS調製・レビュー報告書のレビューと独立性欠如の開示",
+  scenario: `<p>Ortega CPA LLC performs SSARS engagements for <b>Sable Bakeries, LLC</b> (nonissuer) for the year ended December 31, 2026. During the year, an Ortega staff accountant assigned to the engagement acquired a direct financial interest in Sable; the firm concluded it is <b>not independent</b>. Management prefers a review but will accept a compilation. Management also wants to omit substantially all disclosures required by GAAP.</p>
+<p><b>Exhibit — Draft compilation report (excerpts)</b></p>
+<p>[1] "We have performed a compilation engagement in accordance with auditing standards generally accepted in the United States of America."<br>
+[2] "Accordingly, we express limited assurance on these financial statements."<br>
+[3] "We are not independent with respect to Sable Bakeries, LLC because a member of the engagement team has a direct financial interest in Sable and because the firm performed certain bookkeeping services." (Only the first reason was approved for disclosure by the partner.)</p>
+<p><b>Exhibit — Draft review report language prepared by a junior (for training)</b></p>
+<p>[4] "A review includes primarily applying analytical procedures to management's financial data and making inquiries of company management... we obtained <i>reasonable assurance</i> as a basis for reporting..."</p>
+<p class="ja">Ortega会計事務所は非公開企業Sable社の2026年度のSSARS業務を行う。期中に業務チームのスタッフがSable社に直接的な財務的利害を取得し、事務所は独立性がないと結論した。経営者はレビューを希望するが調製も受け入れる。またGAAPが要求する開示の実質的にすべてを省略したい。調製報告書ドラフト:[1]GAASに準拠して調製業務を行った、[2]限定的保証を表明する、[3]独立性がない理由として財務的利害と記帳業務の2つを記載(パートナーが承認したのは1つ目のみ)。研修用レビュー報告書ドラフト:[4]レビューで「合理的保証」を得た。</p>`,
+  rows: [
+    { label: "Engagement Ortega may perform(実施可能な業務)", type: "select", options: ["Review, with independence impairment disclosed", "Compilation, with lack of independence disclosed", "Neither — the firm must withdraw from all SSARS services", "Audit"], answer: "Compilation, with lack of independence disclosed" },
+    { label: "Omitting substantially all disclosures(開示の実質的省略)", type: "select", options: ["Permitted in both compilation and review", "Permitted in a compilation only, if disclosed in the report and not intended to mislead", "Permitted in a review only", "Never permitted"], answer: "Permitted in a compilation only, if disclosed in the report and not intended to mislead" },
+    { label: "[1] Replacement(差替え)", type: "select", options: ["No change needed", "…in accordance with Statements on Standards for Accounting and Review Services promulgated by the Accounting and Review Services Committee of the AICPA", "…in accordance with Statements on Standards for Attestation Engagements", "…in accordance with PCAOB standards"], answer: "…in accordance with Statements on Standards for Accounting and Review Services promulgated by the Accounting and Review Services Committee of the AICPA" },
+    { label: "[2] Replacement(差替え)", type: "select", options: ["No change needed", "Accordingly, we do not express an opinion, a conclusion, nor provide any form of assurance on these financial statements.", "Accordingly, we express reasonable assurance on these financial statements.", "Accordingly, we are not aware of any material modifications that should be made."], answer: "Accordingly, we do not express an opinion, a conclusion, nor provide any form of assurance on these financial statements." },
+    { label: "[3] Disclosure of reasons(理由の開示)", type: "select", options: ["Reasons must never be disclosed", "Reasons are optional, but if any reason is disclosed, all reasons must be disclosed", "Only the most significant reason may be disclosed", "Disclosure of independence status is optional"], answer: "Reasons are optional, but if any reason is disclosed, all reasons must be disclosed" },
+    { label: "[4] Replacement(差替え)", type: "select", options: ["No change needed", "limited assurance", "absolute assurance", "no assurance"], answer: "limited assurance" },
+    { label: "Required report element when not independent(独立性欠如時の必須記載)", type: "select", options: ["A separate paragraph stating that the accountant is not independent with respect to the entity", "An emphasis-of-matter paragraph in the notes", "A statement only in the engagement letter", "Nothing — compilations do not require independence"], answer: "A separate paragraph stating that the accountant is not independent with respect to the entity" },
+  ],
+  explain: `<p>業務:レビュー(AR-C 90)は独立性が必須で、独立性がなければレビュー報告書は発行できない。調製(AR-C 80)は独立性がなくても実施でき、報告書の最終段落で独立していない旨を記載する。</p>
+<p>開示の省略:実質的にすべての開示の省略は、省略が利用者を誤導する意図でない限り調製でのみ認められ、報告書にその旨を記載する。レビューでは認められない。</p>
+<p>[1] 調製はSSARS(AICPAの会計・レビューサービス委員会が公表)に準拠する。GAASは監査の基準である。</p>
+<p>[2] 調製は保証を提供しない。「意見、結論のいずれも表明せず、いかなる形の保証も提供しない」が正しい。</p>
+<p>[3] 独立性欠如の理由の記載は任意だが、理由を記載する場合はすべての理由を記載しなければならない。2つ目の理由(記帳業務)も独立性欠如の理由であるなら含める必要があり、一部のみの開示は不可である。</p>
+<p>[4] レビューは限定的保証であり、「財務諸表に重要な修正を要する事項に気付かなかったか」を報告する基礎として限定的保証を得る。</p>
+<p>必須記載:独立していない場合、調製報告書には「当該企業に関して独立していない」旨を独立の段落(最終段落)として必ず記載する。</p>`,
+});
