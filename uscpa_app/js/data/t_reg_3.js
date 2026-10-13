@@ -7,8 +7,8 @@ CPA.tbs({
 <tr><td>Duplex rental (Ortizes own 100%)</td><td>Active participation (approve tenants, set rents); no material participation</td><td>Net loss $(34,000)</td></tr>
 <tr><td>LP A — limited partnership interest</td><td>Limited partner only</td><td>Net income $6,000</td></tr>
 <tr><td>LP B — limited partnership interest</td><td>Limited partner only</td><td>Net loss $(9,000)</td></tr>
-<tr><td>LP C — entire interest sold on Sept. 30, 2026 to an unrelated buyer in a fully taxable transaction</td><td>Limited partner only</td><td>Current-year operating loss $(2,000); suspended prior-year losses $8,000</td></tr></table>
-<p class="ja">Ortiz夫妻は2026年に夫婦合算で申告する。賃貸不動産特別控除の判定に用いる修正AGI(受動的活動損失を考慮しない)は$128,000である。特別控除額は$25,000で、修正AGIが$100,000を超える額の50%だけ減額される($150,000で全額消失。いずれもインフレ調整なし)。夫婦とも不動産専門家ではない。活動:デュプレックス賃貸(100%所有、積極的参加あり・重要な参加なし)は純損失$(34,000)、LP A(有限責任パートナー)は純利益$6,000、LP B(同)は純損失$(9,000)、LP C(同)は2026年9月30日に持分全部を非関連者へ完全課税取引で売却し、当期営業損失$(2,000)と過年度の停止損失$8,000がある。</p>`,
+<tr><td>LP C — entire interest sold on Sept. 30, 2026 to an unrelated buyer in a fully taxable transaction for an amount equal to its adjusted basis (no gain or loss on the sale)</td><td>Limited partner only</td><td>Current-year operating loss $(2,000); suspended prior-year losses $8,000</td></tr></table>
+<p class="ja">Ortiz夫妻は2026年に夫婦合算で申告する。賃貸不動産特別控除の判定に用いる修正AGI(受動的活動損失を考慮しない)は$128,000である。特別控除額は$25,000で、修正AGIが$100,000を超える額の50%だけ減額される($150,000で全額消失。いずれもインフレ調整なし)。夫婦とも不動産専門家ではない。活動:デュプレックス賃貸(100%所有、積極的参加あり・重要な参加なし)は純損失$(34,000)、LP A(有限責任パートナー)は純利益$6,000、LP B(同)は純損失$(9,000)、LP C(同)は2026年9月30日に持分全部を非関連者へ完全課税取引で売却し(売却価額は調整後取得価額と同額で売却損益なし)、当期営業損失$(2,000)と過年度の停止損失$8,000がある。</p>`,
   rows: [
     { label: "Reduction of the special allowance due to the MAGI phase-out(修正AGIによる特別控除の減額)", type: "num", answer: 14000 },
     { label: "Rental real estate special allowance available for 2026(2026年の賃貸不動産特別控除額)", type: "num", answer: 11000 },
@@ -125,16 +125,16 @@ CPA.tbs({
 <tr><td>4</td><td>Stock inherited from father</td><td>Father's basis $12,000; FMV at death (11/2025) $40,000; Pat sold 1/2026 for $37,000</td></tr>
 <tr><td>5</td><td>Stock received as a gift (2024)</td><td>Donor's basis $25,000; FMV at gift $18,000; Pat sold 2026 for $21,000</td></tr>
 <tr><td>6</td><td>Stock Z</td><td>Basis $15,000; sold 12/5/2026 for $11,000; identical shares repurchased 12/15/2026 for $11,500</td></tr>
-<tr><td>7</td><td>Rental building (Form 4797)</td><td>Net §1231 gain of $12,000, all of which is unrecaptured §1250 gain</td></tr></table>
-<p class="ja">独身のPat Quinnの2026年の取引は上表のとおり。通常所得は35%の税率区分で課税される。2026年の独身者の純キャピタルゲイン0%税率は課税所得$49,450まで、15%税率は$545,500までとし、Patの課税所得はこの間にある。2025年からの長期キャピタルロス繰越$5,000がある。表:①株式X 2025/3/1取得$20,000、2026/2/10売却$14,000。②株式Y 2019年取得$30,000、2026年売却$52,000。③金貨(収集品)2018年取得$10,000、2026年売却$18,000。④父からの相続株式(父の取得価額$12,000、死亡時(2025年11月)時価$40,000)を2026年1月に$37,000で売却。⑤2024年の受贈株式(贈与者の取得価額$25,000、贈与時時価$18,000)を2026年に$21,000で売却。⑥株式Z(取得価額$15,000)を2026/12/5に$11,000で売却し、12/15に同一株式を$11,500で買い戻した。⑦賃貸建物:§1231純利益$12,000(全額が未回収§1250利益)。</p>`,
+<tr><td>7</td><td>Rental building (Form 4797)</td><td>Net §1231 gain of $12,000, all of which is unrecaptured §1250 gain (Pat has no nonrecaptured net §1231 losses from prior years)</td></tr></table>
+<p class="ja">独身のPat Quinnの2026年の取引は上表のとおり。通常所得は35%の税率区分で課税される。2026年の独身者の純キャピタルゲイン0%税率は課税所得$49,450まで、15%税率は$545,500までとし、Patの課税所得はこの間にある。2025年からの長期キャピタルロス繰越$5,000がある。表:①株式X 2025/3/1取得$20,000、2026/2/10売却$14,000。②株式Y 2019年取得$30,000、2026年売却$52,000。③金貨(収集品)2018年取得$10,000、2026年売却$18,000。④父からの相続株式(父の取得価額$12,000、死亡時(2025年11月)時価$40,000)を2026年1月に$37,000で売却。⑤2024年の受贈株式(贈与者の取得価額$25,000、贈与時時価$18,000)を2026年に$21,000で売却。⑥株式Z(取得価額$15,000)を2026/12/5に$11,000で売却し、12/15に同一株式を$11,500で買い戻した。⑦賃貸建物:§1231純利益$12,000(全額が未回収§1250利益。過年度の未回収§1231純損失はない)。</p>`,
   rows: [
     { label: "Gain or loss recognized on the gifted stock (#5)(受贈株式の認識損益)", type: "num", answer: 0 },
     { label: "Long-term capital loss recognized on the inherited stock (#4)(相続株式の長期譲渡損)", type: "num", answer: 3000 },
     { label: "Basis of the repurchased Stock Z shares (#6)(買い戻した株式Zの取得価額)", type: "num", answer: 15500 },
-    { label: "Net 28% rate gain after netting(ネッティング後の28%区分の利益)", type: "num", answer: 2000 },
-    { label: "Net 15% rate gain after netting(ネッティング後の15%区分の利益)", type: "num", answer: 14000 },
+    { label: "Net 28% rate gain after netting(ネッティング後の28%区分の利益)", type: "num", answer: 0 },
+    { label: "Net 15% rate gain after netting(ネッティング後の15%区分の利益)", type: "num", answer: 19000 },
     { label: "Net capital gain for 2026(2026年の純キャピタルゲイン)", type: "num", answer: 28000 },
-    { label: "Total tax on the net capital gain(純キャピタルゲインに対する税額)", type: "num", answer: 5660 },
+    { label: "Total tax on the net capital gain(純キャピタルゲインに対する税額)", type: "num", answer: 5100 },
     { label: "Holding period of the inherited stock(相続株式の保有期間)", type: "select", options: ["Short-term, because Pat held it less than one year", "Long-term automatically, regardless of how long Pat or the decedent held it", "Includes the decedent's holding period only if the basis is carried over", "Begins on the date the estate distributed the shares"], answer: "Long-term automatically, regardless of how long Pat or the decedent held it" },
   ],
   explain: `<p>①短期譲渡損:14,000 − 20,000 = (6,000)。②長期譲渡益22,000(15%区分)。③収集品の長期譲渡益8,000(28%区分)。</p>
@@ -142,9 +142,9 @@ CPA.tbs({
 <p>⑤贈与時時価が贈与者の取得価額を下回る場合、利益計算の基準額は25,000、損失計算の基準額は18,000。売却価額21,000はその間にあるため損益なし(0)。</p>
 <p>⑥30日以内に同一株式を買い戻したためウォッシュセールとなり損失4,000は否認。新株の取得価額 = 11,500 + 4,000 = 15,500。</p>
 <p>⑦未回収§1250利益12,000(25%区分)。</p>
-<p>区分ごとの集計:28%区分 8,000、25%区分 12,000、15%区分 22,000 − 3,000 − 繰越5,000 = 14,000、短期 (6,000)。純短期損失は28%区分 → 25%区分 → 15%区分の順に充当するため、28%区分 = 8,000 − 6,000 = 2,000。</p>
-<p>純キャピタルゲイン = 2,000 + 12,000 + 14,000 = 28,000。</p>
-<p>税額:2,000 × 28% = 560、12,000 × 25% = 3,000(通常税率35%より低い上限税率)、14,000 × 15% = 2,100。合計5,660。</p>`,
+<p>区分ごとの集計:28%区分 8,000、25%区分 12,000、15%区分 22,000 − 3,000 = 19,000、短期 (6,000)。§1(h)(4)により、長期キャピタルロス繰越5,000と純短期損失6,000はまず28%区分に充当する(Schedule Dの28% Rate Gain Worksheet)。28%区分 = 8,000 − 5,000 − 6,000 = (3,000) → 0。充当しきれない3,000は25%区分を減額する:12,000 − 3,000 = 9,000。15%区分は19,000のまま。</p>
+<p>純キャピタルゲイン = 0 + 9,000 + 19,000 = 28,000(検算:純長期利益34,000 − 純短期損失6,000)。</p>
+<p>税額:9,000 × 25% = 2,250(通常税率35%より低い上限税率)、19,000 × 15% = 2,850。合計5,100。</p>`,
 });
 
 CPA.tbs({

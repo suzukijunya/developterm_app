@@ -143,3 +143,111 @@ CPA.tbs({
 <p><b>InvestCustodyへの対応</b>:ギャップが6か月と長く、投資は重要である。期末残高を受託会社に直接確認する、Orchid社の照合統制をテストするなど追加の証拠を得る。ギャップの存在自体で意見を限定することはなく、受託会社監査人に言及することもない。</p>
 <p><b>HostIT</b>:Type 1は特定時点の記述とデザインに関する報告書であり、運用状況の有効性の証拠にはならない。統制の理解には役立つが、依拠するには別途の証拠が必要である。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-ISC-42", section: "ISC", chapter: "ISC-03", title: "SOC 2統制のTSCへの対応付け(CC1~CC9・PI・P)",
+  scenario: `<p>DataNest LLC is preparing for a SOC 2 Type 2 examination covering the security, processing integrity, and privacy categories under the 2017 Trust Services Criteria (with revised points of focus, 2022). The compliance team must map each control below to the criteria series it primarily addresses.</p>
+<table><tr><th>#</th><th>Control</th></tr>
+<tr><td>1</td><td>The board's audit committee includes members independent of management who oversee the internal control system.</td></tr>
+<tr><td>2</td><td>Management performs an annual risk assessment that considers the potential for fraud and changes in the business and vendor environment.</td></tr>
+<tr><td>3</td><td>Internal audit performs ongoing and separate evaluations of controls and reports deficiencies to senior management and the audit committee.</td></tr>
+<tr><td>4</td><td>DataNest maintains cyber insurance and a vendor risk-management program to mitigate risks from business disruption and third parties.</td></tr>
+<tr><td>5</td><td>Multi-factor authentication is required for remote access and for all access to production systems.</td></tr>
+<tr><td>6</td><td>Weekly vulnerability scans are run; detected anomalies are evaluated and remediation is tracked to closure.</td></tr>
+<tr><td>7</td><td>Input edit checks reject incomplete records, and output totals are reconciled to input totals before reports are released.</td></tr>
+<tr><td>8</td><td>A notice describing the purposes for collecting personal information is provided to data subjects, and consent is obtained.</td></tr>
+</table>
+<p class="ja">DataNest LLCは、2017年トラストサービス規準(2022年改訂の着眼点)に基づくセキュリティ・処理のインテグリティ・プライバシーを対象とするSOC 2 Type 2の検証を準備している。各統制が主に対応する規準区分を選ぶ。1:取締役会の監査委員会に経営者から独立したメンバーが含まれ、内部統制を監督する。2:経営者は不正の可能性と事業・ベンダー環境の変化を考慮した年次リスク評価を行う。3:内部監査が統制の日常的・独立的評価を行い、不備を上級経営者と監査委員会に報告する。4:事業中断や第三者のリスクを軽減するため、サイバー保険とベンダーリスク管理プログラムを維持する。5:リモートアクセスと本番環境への全アクセスに多要素認証を要求する。6:週次の脆弱性スキャンを行い、検知した異常を評価し、是正を完了まで追跡する。7:入力エディットチェックで不完全なレコードを拒否し、出力合計を入力合計と照合してから報告書を出す。8:個人情報の収集目的を示す通知をデータ主体に提供し、同意を得る。</p>`,
+  rows: [
+    { label: "Control 1(統制1)", type: "select", options: ["CC1 Control environment", "CC2 Communication and information", "CC3 Risk assessment", "CC4 Monitoring activities", "CC9 Risk mitigation"], answer: "CC1 Control environment" },
+    { label: "Control 2(統制2)", type: "select", options: ["CC1 Control environment", "CC2 Communication and information", "CC3 Risk assessment", "CC4 Monitoring activities", "CC9 Risk mitigation"], answer: "CC3 Risk assessment" },
+    { label: "Control 3(統制3)", type: "select", options: ["CC1 Control environment", "CC2 Communication and information", "CC3 Risk assessment", "CC4 Monitoring activities", "CC9 Risk mitigation"], answer: "CC4 Monitoring activities" },
+    { label: "Control 4(統制4)", type: "select", options: ["CC1 Control environment", "CC3 Risk assessment", "CC5 Control activities", "CC7 System operations", "CC9 Risk mitigation"], answer: "CC9 Risk mitigation" },
+    { label: "Control 5(統制5)", type: "select", options: ["CC5 Control activities", "CC6 Logical and physical access controls", "CC7 System operations", "CC8 Change management", "A1 Availability"], answer: "CC6 Logical and physical access controls" },
+    { label: "Control 6(統制6)", type: "select", options: ["CC4 Monitoring activities", "CC6 Logical and physical access controls", "CC7 System operations", "CC8 Change management", "A1 Availability"], answer: "CC7 System operations" },
+    { label: "Control 7(統制7)", type: "select", options: ["CC8 Change management", "A1 Availability", "C1 Confidentiality", "PI1 Processing integrity", "P Privacy"], answer: "PI1 Processing integrity" },
+    { label: "Control 8(統制8)", type: "select", options: ["CC2 Communication and information", "C1 Confidentiality", "PI1 Processing integrity", "P Privacy (notice, choice and consent)"], answer: "P Privacy (notice, choice and consent)" },
+  ],
+  explain: `<p>共通規準CC1~CC5はCOSOの5要素、CC6~CC9はセキュリティ固有の追加規準である。</p>
+<p><b>1</b>:取締役会の独立性と監督責任はCC1(統制環境、CC1.2)。</p>
+<p><b>2</b>:不正の可能性の考慮(CC3.3)や重要な変化の識別(CC3.4)はCC3(リスク評価)。</p>
+<p><b>3</b>:日常的・独立的評価と不備の伝達はCC4(モニタリング活動)。</p>
+<p><b>4</b>:事業中断リスクの軽減(保険等、CC9.1)とベンダー・取引先のリスク管理(CC9.2)はCC9(リスク軽減)。</p>
+<p><b>5</b>:多要素認証による論理アクセス制限はCC6(論理・物理アクセス)。</p>
+<p><b>6</b>:脆弱性の検知・監視、異常の評価と対応はCC7(システム運用)。CC4は内部統制全体のモニタリングであり別物である。</p>
+<p><b>7</b>:入力・処理・出力の完全性・正確性はPI1(処理のインテグリティ)。</p>
+<p><b>8</b>:個人情報に関する通知・選択・同意はプライバシー規準(P1・P2)である。機密性(C1)は個人情報に限らない機密情報の保護を扱う。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-ISC-43", section: "ISC", chapter: "ISC-03", title: "統制の頻度に応じたサンプル数と逸脱の評価(受託会社監査人)",
+  scenario: `<p>You are a senior on a SOC 1 Type 2 examination of Ledgerly Inc. for the period January 1 – December 31, 2025. The firm's sampling policy for tests of operating effectiveness (no deviations expected) is:</p>
+<table><tr><th>Control frequency</th><th>Initial sample</th><th>Policy on deviations</th></tr>
+<tr><td>Annual</td><td>1</td><td rowspan="4">Any deviation — conclude the control is not operating effectively (no sample expansion)</td></tr>
+<tr><td>Quarterly</td><td>2</td></tr>
+<tr><td>Monthly</td><td>3</td></tr>
+<tr><td>Weekly</td><td>10</td></tr>
+<tr><td>Daily</td><td>25</td><td rowspan="2">Exactly 1 deviation in the initial sample — may extend by 15 (daily) or 20 (multiple times per day); if no further deviations, conclude operating effectively and describe the deviation. 2 or more deviations — not operating effectively.</td></tr>
+<tr><td>Multiple times per day</td><td>40</td></tr>
+<tr><td>Automated (ITGCs effective)</td><td>1 instance of each relevant configuration</td><td>—</td></tr>
+</table>
+<p>Controls and results:</p>
+<table><tr><th>Control</th><th>Frequency</th><th>Results</th></tr>
+<tr><td>C1 Annual review of customer contract terms</td><td>Annual</td><td>No deviations</td></tr>
+<tr><td>C2 Review of bank reconciliations</td><td>Monthly</td><td>1 of 3 reconciliations lacked evidence of review</td></tr>
+<tr><td>C3 Review of failed batch-job log</td><td>Weekly</td><td>No deviations</td></tr>
+<tr><td>C4 Review of daily exception report</td><td>Daily</td><td>1 deviation in initial sample; sample extended, no further deviations</td></tr>
+<tr><td>C5 Automated three-way match (ITGCs tested and effective)</td><td>Automated</td><td>Configuration agreed to design; no deviations</td></tr>
+<tr><td>C6 Manual approval of outgoing wire transfers (about 80 per day)</td><td>Multiple times per day</td><td>2 deviations in initial sample</td></tr>
+</table>
+<p class="ja">Ledgerly社の2025年1月1日~12月31日を対象とするSOC 1 Type 2検証のシニアである。事務所の運用評価手続のサンプル方針(逸脱を予想しない場合)は上表のとおり:年次1、四半期2、月次3、週次10、日次25、1日複数回40、自動化統制(ITGC有効)は関連設定ごとに1件。年次~週次は逸脱が1件でもあれば有効でないと結論し拡大しない。日次・1日複数回は当初サンプルで逸脱がちょうど1件なら日次は15件、1日複数回は20件追加でき、追加で逸脱がなければ有効と結論して逸脱を記載する。2件以上なら有効でない。統制と結果:C1 契約条件の年次レビュー(逸脱なし)、C2 銀行勘定調整表の月次レビュー(3件中1件でレビュー証跡なし)、C3 失敗バッチジョブログの週次レビュー(逸脱なし)、C4 日次例外レポートのレビュー(当初サンプルで逸脱1件、拡大後は追加逸脱なし)、C5 自動3点照合(ITGCは有効、設定を確認し逸脱なし)、C6 送金の手作業承認(1日約80件、当初サンプルで逸脱2件)。</p>`,
+  rows: [
+    { label: "Sample size for C1(C1のサンプル数)", type: "num", answer: 1 },
+    { label: "Sample size for C3(C3のサンプル数)", type: "num", answer: 10 },
+    { label: "Initial sample size for C6(C6の当初サンプル数)", type: "num", answer: 40 },
+    { label: "Total items tested for C4 after the extension(拡大後のC4のテスト件数合計)", type: "num", answer: 40 },
+    { label: "Sample size for C5(C5のサンプル数)", type: "num", answer: 1 },
+    { label: "Conclusion for C4(C4の結論)", type: "select", options: ["Operating effectively; the deviation is described in the tests of controls and results", "Operating effectively; the deviation need not be reported", "Not operating effectively", "Unable to conclude; disclaim on C4"], answer: "Operating effectively; the deviation is described in the tests of controls and results" },
+    { label: "Conclusion for C6(C6の結論)", type: "select", options: ["Operating effectively after extending the sample by 20", "Not operating effectively", "Operating effectively because the deviation rate is 5%", "Retest using a sample of 60"], answer: "Not operating effectively" },
+    { label: "Conclusion for C2(C2の結論)", type: "select", options: ["Extend the sample to 6 months and re-evaluate", "Operating effectively because 2 of 3 were reviewed", "Not operating effectively; no sample expansion under the policy", "Treat as an automated control and test 1 instance"], answer: "Not operating effectively; no sample expansion under the policy" },
+  ],
+  explain: `<p><b>C1</b>:年次統制なのでサンプルは1。</p>
+<p><b>C3</b>:週次統制なので10。</p>
+<p><b>C6</b>:1日に約80回実行される統制は「1日複数回」で40。</p>
+<p><b>C4</b>:日次の当初サンプル25件で逸脱1件、15件追加して 25 + 15 = 40件。</p>
+<p><b>C5</b>:自動化統制はITGCが有効であれば、関連する設定ごとに1件のテストで足りる。</p>
+<p><b>C4の結論</b>:逸脱がちょうど1件で、拡大サンプルで追加逸脱がないため有効と結論できる。ただし発見した逸脱は第4部(統制テストと結果)に記載する。</p>
+<p><b>C6の結論</b>:当初サンプルで2件の逸脱があり、方針上サンプル拡大は認められず、有効でないと結論する(2 ÷ 40 = 5%という率で判断しない)。関連する統制目的が達成されたかを他の統制も含めて評価する。</p>
+<p><b>C2の結論</b>:月次統制は逸脱が1件でもあれば有効でないと結論し、拡大しない。母集団が12件と小さく、1件の逸脱でも重要な割合となるためである。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-ISC-44", section: "ISC", chapter: "ISC-03", title: "経営者の記述書(DC 200)の不備のレビューと報告書の修正",
+  scenario: `<p>Ward LLP is performing a SOC 2 Type 2 examination of CloudLedger Inc. (security and availability categories) for the period January 1 – December 31, 2025. The criteria for the description are DC 200 (2018 Description Criteria, with revised implementation guidance, 2022). You are reviewing excerpts from management's draft description against the engagement team's findings.</p>
+<table><tr><th>Excerpt</th><th>Draft description text</th><th>Engagement team finding</th></tr>
+<tr><td>E1</td><td>"CloudLedger's principal service commitments to customers include 99.9% monthly availability of the platform and encryption of customer data in transit."</td><td>Consistent with customer contracts.</td></tr>
+<tr><td>E2</td><td>"Production systems are hosted in CloudLedger's on-premises data center."</td><td>In July 2025, all production systems migrated to a public cloud provider; the description does not mention the migration.</td></tr>
+<tr><td>E3</td><td>"Access to production is reviewed by system owners quarterly."</td><td>Throughout the period, the review was designed and performed semiannually.</td></tr>
+<tr><td>E4</td><td>"CloudLedger's AI forecasting module, planned for release in 2026, will offer customers predictive analytics."</td><td>The module is not part of the system during the period.</td></tr>
+<tr><td>E5</td><td>(No text on system incidents.)</td><td>A ransomware incident caused the platform to be unavailable for 3 full days (72 hours) in March 2025, and CloudLedger did not meet its availability commitment for that month.</td></tr>
+</table>
+<p class="ja">Ward LLPはCloudLedger社のSOC 2 Type 2検証(セキュリティ・可用性、2025年1月1日~12月31日)を行っている。記述の規準はDC 200(2018年記述規準、2022年改訂の適用指針)である。経営者の記述書ドラフトの抜粋を発見事項と照合する。E1:主要なサービスコミットメントとして月次可用性99.9%と通信中データの暗号化(契約と整合)。E2:「本番システムは自社オンプレミスDCでホストされている」(2025年7月に全本番システムをパブリッククラウドへ移行したが言及なし)。E3:「本番アクセスはシステムオーナーが四半期ごとにレビューする」(期間を通じて半期ごとにデザイン・実施)。E4:「2026年リリース予定のAI予測モジュールが予測分析を提供する」(期間中はシステムの一部ではない)。E5:システムインシデントの記載なし(2025年3月にランサムウェアで丸3日間=72時間停止し、同月の可用性コミットメントを未達成)。</p>`,
+  rows: [
+    { label: "Excerpt E1(抜粋E1)", type: "select", options: ["Appropriate as drafted", "Omits a disclosure required by DC 200", "Misstates the controls actually implemented", "Includes information outside the system — remove or present as other information not covered by the opinion"], answer: "Appropriate as drafted" },
+    { label: "Excerpt E2(抜粋E2)", type: "select", options: ["Appropriate as drafted", "Omits a disclosure required by DC 200", "Misstates the controls actually implemented", "Includes information outside the system — remove or present as other information not covered by the opinion"], answer: "Omits a disclosure required by DC 200" },
+    { label: "Excerpt E3(抜粋E3)", type: "select", options: ["Appropriate as drafted", "Omits a disclosure required by DC 200", "Misstates the controls actually implemented", "Includes information outside the system — remove or present as other information not covered by the opinion"], answer: "Misstates the controls actually implemented" },
+    { label: "Excerpt E4(抜粋E4)", type: "select", options: ["Appropriate as drafted", "Omits a disclosure required by DC 200", "Misstates the controls actually implemented", "Includes information outside the system — remove or present as other information not covered by the opinion"], answer: "Includes information outside the system — remove or present as other information not covered by the opinion" },
+    { label: "Excerpt E5(抜粋E5)", type: "select", options: ["Appropriate as drafted", "Omits a disclosure required by DC 200", "Misstates the controls actually implemented", "Includes information outside the system — remove or present as other information not covered by the opinion"], answer: "Omits a disclosure required by DC 200" },
+    { label: "Maximum downtime permitted in March 2025 under the 99.9% commitment, in minutes(99.9%のコミットメントで2025年3月に許容される最大停止時間・分)", type: "num", answer: 44.64, tol: 0.01 },
+    { label: "Actual availability in March 2025, in percent (2 decimals)(2025年3月の実際の可用性・%・小数第2位)", type: "num", answer: 90.32, tol: 0.01 },
+    { label: "Effect if management refuses to disclose the March incident(経営者が3月のインシデントの開示を拒否した場合の影響)", type: "select", options: ["Unmodified opinion with an emphasis-of-matter paragraph", "Modified (qualified or adverse) opinion on the fair presentation of the description", "No effect, because incidents are evaluated only in tests of controls", "Disclaimer of opinion on operating effectiveness only"], answer: "Modified (qualified or adverse) opinion on the fair presentation of the description" },
+  ],
+  explain: `<p><b>E1</b>:DC 200は主要なサービスコミットメントとシステム要件の記載を求めており、契約とも整合する。適切。</p>
+<p><b>E2</b>:DC 200は期間中のシステムの重要な変更の開示を求める。7月の本番環境移行は重要な変更であり、記載がない(しかも7月以降の記述は事実と異なる)。必要な開示の欠落である。再委託先(クラウド事業者)の取扱い(カーブアウト/一括)とCSOCも併せて記載が必要になる。</p>
+<p><b>E3</b>:実際にデザイン・実施された統制は半期ごとであり、記述書は統制を誤って記載している。記述書を修正したうえで、半期のレビューでCC6の規準を満たすデザインかを評価する。</p>
+<p><b>E4</b>:期間中のシステムの一部でない将来の製品の説明である。記述書から削除するか、意見の対象外の「その他の情報」として区分する。</p>
+<p><b>E5</b>:DC 200はサービスコミットメント・システム要件の達成に重要な失敗をもたらしたシステムインシデントの開示を求める。記載がないので開示の欠落である。</p>
+<p><b>許容停止時間</b>:3月は31日 × 24時間 × 60分 = 44,640分。44,640 × (1 − 0.999) = 44.64分。</p>
+<p><b>実際の可用性</b>:停止 72時間 × 60 = 4,320分。(44,640 − 4,320) ÷ 44,640 = 40,320 ÷ 44,640 = 90.32%。コミットメント99.9%を大きく下回る。</p>
+<p><b>開示拒否の影響</b>:記述書がDC 200に照らして適正に表示されていないため、記述書の適正表示に関する意見を修正する(重要性と広範性に応じて限定付または否定的意見)。強調事項で済ませることはできない。あわせて、インシデントの原因となった統制の運用状況の有効性も評価する。</p>`,
+});

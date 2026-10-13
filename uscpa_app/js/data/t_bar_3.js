@@ -56,7 +56,7 @@ CPA.tbs({
   rows: [
     { label: "Unrealized gain on equipment eliminated in the Year 1 consolidation(1年目連結で消去する設備の未実現利益)", type: "num", answer: 40000 },
     { label: "Year 2 worksheet: debit to beginning retained earnings/NCI for the equipment(2年目精算表:設備に係る期首利益剰余金・NCIへの借方)", type: "num", answer: 32000 },
-    { label: "Year 2 worksheet: credit to accumulated depreciation(2年目精算表:減価償却累計額への貸方)", type: "num", answer: 54000 },
+    { label: "Year 2 worksheet: net credit to accumulated depreciation, after the Year 2 excess-depreciation adjustment(2年目精算表:当期の超過減価償却修正後の減価償却累計額への貸方純額)", type: "num", answer: 54000 },
     { label: "Gain on constructive retirement of bonds in Year 2 consolidated income(2年目の連結損益の社債擬制的償還益)", type: "num", answer: 16000 },
     { label: "Interest revenue on Perry's books eliminated in Year 2(2年目に消去するPerry社の受取利息)", type: "num", answer: 18500 },
     { label: "Year 2 consolidated net income(2年目の連結純利益)", type: "num", answer: 420000 },
