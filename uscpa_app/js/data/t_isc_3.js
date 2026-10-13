@@ -86,3 +86,60 @@ CPA.tbs({
 <p><b>意見の範囲</b>:一括方式では、再委託先の関連する統制も記述書・意見の対象になる。</p>
 <p><b>ユーザー監査人</b>:カーブアウトされた統制は PayStream の報告書ではカバーされない。TaxLink自身のSOC 1 Type 2報告書を入手・評価するか、利用企業側の照合など他の手続で証拠を得る(AU-C 402)。他の監査人として意見で言及することはない。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-ISC-40", section: "ISC", chapter: "ISC-03", title: "CUECの識別とユーザー監査人のフォローアップ",
+  scenario: `<p>Lin &amp; Ortiz CPAs audits Harbor Credit Union (December 31, 2025 year end). Harbor uses CoreBank Data, a core-processing service organization, and obtained CoreBank's unmodified SOC 1 Type 2 report covering January 1 – December 31, 2025. The report's description lists the items below. The audit team's walkthroughs and tests at Harbor produced the findings shown.</p>
+<table><tr><th>Item</th><th>Text in CoreBank's description</th><th>Findings at Harbor</th></tr>
+<tr><td>A</td><td>User entities review daily rejected-transaction reports and resubmit corrected items.</td><td>Operations supervisor performs daily; 25 days tested with no exceptions.</td></tr>
+<tr><td>B</td><td>User entities restrict access to the CoreBank application to authorized personnel and review user listings quarterly.</td><td>No reviews were performed for Q2 and Q3; three terminated employees' IDs remained active until November.</td></tr>
+<tr><td>C</td><td>User entities reconcile their general ledger to CoreBank's month-end trial balance.</td><td>Controller performs monthly; 3 months tested with no exceptions.</td></tr>
+<tr><td>D</td><td>User entities using the ACH module transmit ACH files only through the encrypted file-transfer portal.</td><td>Harbor does not use CoreBank's ACH module; ACH is processed by a different bank.</td></tr>
+<tr><td>E</td><td>CoreBank calculates daily interest accruals using the rate tables in the application.</td><td>—</td></tr>
+</table>
+<p class="ja">Lin &amp; Ortiz会計事務所はHarbor信用組合(2025年12月31日決算)を監査している。Harborは勘定系の受託会社CoreBank Data社を利用し、2025年1月1日~12月31日を対象とする無限定のSOC 1 Type 2報告書を入手した。記述書の項目と、Harborでのウォークスルー・テストの結果は次のとおり。A:利用企業は日次の不備取引リストをレビューし修正して再送信する(業務責任者が毎日実施、25日テストし例外なし)。B:利用企業はCoreBankアプリへのアクセスを権限者に制限し、ユーザー一覧を四半期ごとにレビューする(第2・第3四半期は未実施、退職者3名のIDが11月まで有効)。C:利用企業は総勘定元帳をCoreBankの月末試算表と照合する(コントローラーが毎月実施、3か月テストし例外なし)。D:ACHモジュールを利用する利用企業は暗号化ポータル経由でのみACHファイルを送信する(HarborはACHモジュールを利用していない)。E:CoreBankがアプリ内の利率テーブルで日次の利息見越を計算する。</p>`,
+  rows: [
+    { label: "Item A(項目A)", type: "select", options: ["Relevant CUEC operating effectively — supports reliance", "Relevant CUEC not operating — reliance limited; additional procedures needed", "CUEC not relevant to Harbor — no procedures needed", "Not a CUEC — a control performed by CoreBank"], answer: "Relevant CUEC operating effectively — supports reliance" },
+    { label: "Item B(項目B)", type: "select", options: ["Relevant CUEC operating effectively — supports reliance", "Relevant CUEC not operating — reliance limited; additional procedures needed", "CUEC not relevant to Harbor — no procedures needed", "Not a CUEC — a control performed by CoreBank"], answer: "Relevant CUEC not operating — reliance limited; additional procedures needed" },
+    { label: "Item D(項目D)", type: "select", options: ["Relevant CUEC operating effectively — supports reliance", "Relevant CUEC not operating — reliance limited; additional procedures needed", "CUEC not relevant to Harbor — no procedures needed", "Not a CUEC — a control performed by CoreBank"], answer: "CUEC not relevant to Harbor — no procedures needed" },
+    { label: "Item E(項目E)", type: "select", options: ["Relevant CUEC operating effectively — supports reliance", "Relevant CUEC not operating — reliance limited; additional procedures needed", "CUEC not relevant to Harbor — no procedures needed", "Not a CUEC — a control performed by CoreBank"], answer: "Not a CUEC — a control performed by CoreBank" },
+    { label: "Number of CUECs (items A–E) relevant to Harbor's audit(Harborの監査に関連するCUECの数)", type: "num", answer: 3 },
+    { label: "Most appropriate response to the Item B finding(項目Bの発見事項への最も適切な対応)", type: "select", options: ["None — CoreBank's report is unmodified", "Examine transactions initiated under the three terminated users' IDs and assess control risk higher for affected assertions, expanding substantive procedures", "Ask CoreBank's service auditor to modify the SOC 1 opinion", "Refer to CoreBank's service auditor in the auditor's report"], answer: "Examine transactions initiated under the three terminated users' IDs and assess control risk higher for affected assertions, expanding substantive procedures" },
+    { label: "Reference to the service auditor in Lin & Ortiz's unmodified opinion(無限定意見における受託会社監査人への言及)", type: "select", options: ["Required, to divide responsibility", "Permitted if the service auditor consents", "Not permitted", "Required only when CUECs were not operating"], answer: "Not permitted" },
+  ],
+  explain: `<p><b>A</b>:Harborに関連するCUECで、テストの結果有効に運用されている。CoreBankの関連する統制目的への依拠を支える。</p>
+<p><b>B</b>:関連するCUECだが、2四半期レビューがなく退職者IDが残存した。CoreBank側の統制が有効でも、利用企業側の補完統制が機能しないため、アクセス関連の統制目的への依拠は制限される。</p>
+<p><b>C</b>:関連するCUECで有効に運用(行としては問わないが、関連CUECの数に含む)。</p>
+<p><b>D</b>:HarborはACHモジュールを利用していないため関連がなく、手続は不要。</p>
+<p><b>E</b>:CoreBank自身が行う統制(受託会社の統制)であり、CUECではない。SOC 1報告書のテスト結果で評価する。</p>
+<p><b>関連CUEC数</b>:A・B・Cの3つ(Dは無関係、EはCUECではない)。</p>
+<p><b>Bへの対応</b>:退職者IDで行われた取引の有無・内容を調べ、影響を受けるアサーションの統制リスクを高く評価して実証手続を拡大する。受託会社の報告書は受託会社の統制を対象としており、利用企業側の不備によって修正されるものではない。</p>
+<p><b>言及</b>:AU-C 402では、無限定意見の監査報告書で受託会社監査人の作業に言及してはならない(責任の分担はできない)。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-ISC-41", section: "ISC", chapter: "ISC-03", title: "対象期間のギャップとブリッジレターの評価",
+  scenario: `<p>Orchid Corp. has a December 31, 2025 fiscal year end. Its auditor has obtained the following reports from Orchid's service organizations:</p>
+<table><tr><th>Service organization</th><th>Report obtained</th><th>Period / date</th></tr>
+<tr><td>PayCo (payroll)</td><td>SOC 1 Type 2, unmodified</td><td>October 1, 2024 – September 30, 2025</td></tr>
+<tr><td>InvestCustody (investment custody)</td><td>SOC 1 Type 2, unmodified</td><td>July 1, 2024 – June 30, 2025</td></tr>
+<tr><td>HostIT (hosting of the general-ledger system)</td><td>SOC 1 Type 1, unmodified</td><td>As of November 30, 2025</td></tr>
+</table>
+<p>PayCo's management provided a letter dated January 20, 2026, stating that there were no significant changes to its system or controls from October 1 through December 31, 2025, and that it is not aware of any control deficiencies during that time. Investments held at InvestCustody are material to Orchid's balance sheet.</p>
+<p class="ja">Orchid社の決算日は2025年12月31日である。監査人は受託会社から次の報告書を入手した。PayCo(給与):SOC 1 Type 2・無限定、2024年10月1日~2025年9月30日。InvestCustody(投資有価証券の保管):SOC 1 Type 2・無限定、2024年7月1日~2025年6月30日。HostIT(総勘定元帳システムのホスティング):SOC 1 Type 1・無限定、2025年11月30日現在。PayCo社の経営者は2026年1月20日付の書簡で、2025年10月1日~12月31日にシステム・統制の重要な変更はなく、統制の不備も認識していないと述べた。InvestCustodyで保管される投資はOrchid社の貸借対照表にとって重要である。</p>`,
+  rows: [
+    { label: "Months of Orchid's fiscal year not covered by PayCo's report(PayCo報告書でカバーされない月数)", type: "num", answer: 3 },
+    { label: "Months of Orchid's fiscal year not covered by InvestCustody's report(InvestCustody報告書でカバーされない月数)", type: "num", answer: 6 },
+    { label: "Months of Orchid's fiscal year covered by PayCo's report(PayCo報告書でカバーされる会計年度の月数)", type: "num", answer: 9 },
+    { label: "Nature of PayCo's January 20 letter(1月20日付書簡の性質)", type: "select", options: ["A bridge (gap) letter — a representation by service organization management not examined by the service auditor", "An update to the service auditor's opinion covering the gap period", "A Type 1 report on the gap period", "An agreed-upon procedures report"], answer: "A bridge (gap) letter — a representation by service organization management not examined by the service auditor" },
+    { label: "Appropriate response for PayCo(PayCoに関する適切な対応)", type: "select", options: ["Treat the letter as audit evidence equal to a Type 2 report and perform no further procedures", "Consider the letter with inquiry and evidence from Orchid's own controls (e.g., payroll review) over the 3-month gap", "Withdraw from the engagement", "Obtain a new SOC 1 report covering only the gap before issuing the opinion"], answer: "Consider the letter with inquiry and evidence from Orchid's own controls (e.g., payroll review) over the 3-month gap" },
+    { label: "Appropriate response for InvestCustody(InvestCustodyに関する適切な対応)", type: "select", options: ["Rely on the report because it is unmodified", "Obtain additional evidence for the longer gap, such as confirming holdings directly with InvestCustody at year end and testing Orchid's reconciliations", "Issue a qualified opinion because the gap exceeds three months", "Refer to InvestCustody's service auditor in the opinion"], answer: "Obtain additional evidence for the longer gap, such as confirming holdings directly with InvestCustody at year end and testing Orchid's reconciliations" },
+    { label: "Use of HostIT's Type 1 report(HostITのType 1報告書の利用)", type: "select", options: ["Provides evidence of operating effectiveness for the full year", "Helps understand controls and their design but provides no evidence of operating effectiveness", "Can be used only if a bridge letter is obtained", "Cannot be used at all because it is as of a date"], answer: "Helps understand controls and their design but provides no evidence of operating effectiveness" },
+  ],
+  explain: `<p><b>PayCo</b>:報告期間の終了は2025年9月30日。会計年度のうち10~12月の3か月がギャップである。カバーされる月は2025年1~9月の9か月。</p>
+<p><b>InvestCustody</b>:報告期間の終了は2025年6月30日。7~12月の6か月がギャップ(カバーは1~6月の6か月)。</p>
+<p><b>書簡の性質</b>:ブリッジレター(ギャップレター)は受託会社経営者の陳述であり、受託会社監査人は検証していない。意見の延長ではない。</p>
+<p><b>PayCoへの対応</b>:ギャップの長さとリスクに応じて、ブリッジレター、受託会社への質問、利用企業側の統制(給与台帳のレビュー等)の証拠を組み合わせる。ギャップ期間だけの新報告書は通常入手できない。</p>
+<p><b>InvestCustodyへの対応</b>:ギャップが6か月と長く、投資は重要である。期末残高を受託会社に直接確認する、Orchid社の照合統制をテストするなど追加の証拠を得る。ギャップの存在自体で意見を限定することはなく、受託会社監査人に言及することもない。</p>
+<p><b>HostIT</b>:Type 1は特定時点の記述とデザインに関する報告書であり、運用状況の有効性の証拠にはならない。統制の理解には役立つが、依拠するには別途の証拠が必要である。</p>`,
+});
