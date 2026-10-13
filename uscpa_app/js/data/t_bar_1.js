@@ -176,7 +176,7 @@ CPA.tbs({
 
 CPA.tbs({
   id: "TBS-BAR-35", section: "BAR", chapter: "BAR-01", title: "データ品質の問題の識別と可視化手法の選択",
-  scenario: `<p>Before building a sales dashboard, the internal audit analytics team at Finch Retail extracted March 2026 sales data on <b>April 5, 2026</b>. The company's data standards require: every field populated; two-letter USPS state codes; one row per invoice; sale quantities and amounts greater than zero; and transaction dates within the extraction period.</p>
+  scenario: `<p>Before building a sales dashboard, the internal audit analytics team at Finch Retail extracted March 2026 sales data on <b>April 5, 2026</b>. The company's data standards require: every field populated; two-letter USPS state codes; one row per invoice; sale quantities and amounts greater than zero; and transaction dates within the extraction period. When an invoice appears more than once, treat its first occurrence as the valid record.</p>
 <p><b>Exhibit 1 — Sample of extracted records</b></p>
 <table><tr><th>Row</th><th>Invoice</th><th>Date</th><th>Customer</th><th>Region</th><th>State</th><th>Qty</th><th>Amount</th></tr>
 <tr><td>1</td><td>INV-1001</td><td>2026-03-02</td><td>C-210</td><td>West</td><td>CA</td><td>10</td><td>$1,200</td></tr>
@@ -187,10 +187,10 @@ CPA.tbs({
 <tr><td>6</td><td>INV-1005</td><td>2026-03-09</td><td>C-207</td><td>West</td><td>WA</td><td>−4</td><td>−$480</td></tr>
 <tr><td>7</td><td>INV-1006</td><td>2027-03-11</td><td>C-140</td><td>Central</td><td>IL</td><td>6</td><td>$720</td></tr>
 <tr><td>8</td><td>INV-1007</td><td>2026-03-12</td><td>C-221</td><td>West</td><td>OR</td><td>2</td><td>$240</td></tr></table>
-<p class="ja">Finch Retail社の内部監査データ分析チームは、売上ダッシュボード作成に先立ち<b>2026年4月5日</b>に2026年3月の売上データを抽出した。同社のデータ基準は、全項目入力済み、州コードはUSPSの2文字コード、請求書1件につき1行、販売数量・金額はゼロ超、取引日は抽出対象期間内であることを求めている。Exhibit 1は抽出レコードのサンプル(行1〜8)である。</p>`,
+<p class="ja">Finch Retail社の内部監査データ分析チームは、売上ダッシュボード作成に先立ち<b>2026年4月5日</b>に2026年3月の売上データを抽出した。同社のデータ基準は、全項目入力済み、州コードはUSPSの2文字コード、請求書1件につき1行、販売数量・金額はゼロ超、取引日は抽出対象期間内であることを求めている。同一請求書が複数行ある場合は最初の行を有効なレコードとして扱う。Exhibit 1は抽出レコードのサンプル(行1〜8)である。</p>`,
   rows: [
     { label: "Row 2 — primary data quality dimension violated(行2:主に損なわれているデータ品質の側面)", type: "select", options: ["Completeness", "Consistency", "Uniqueness", "Validity"], answer: "Completeness" },
-    { label: "Row 3 — primary data quality dimension violated(行3:主に損なわれているデータ品質の側面)", type: "select", options: ["Completeness", "Consistency", "Uniqueness", "Validity"], answer: "Consistency" },
+    { label: "Row 3 — primary data quality dimension violated(行3:主に損なわれているデータ品質の側面)", type: "select", options: ["Completeness", "Consistency", "Uniqueness", "Timeliness"], answer: "Consistency" },
     { label: "Row 5 — primary data quality dimension violated(行5:主に損なわれているデータ品質の側面)", type: "select", options: ["Completeness", "Consistency", "Uniqueness", "Validity"], answer: "Uniqueness" },
     { label: "Row 6 — primary data quality dimension violated(行6:主に損なわれているデータ品質の側面)", type: "select", options: ["Completeness", "Consistency", "Uniqueness", "Validity"], answer: "Validity" },
     { label: "Number of rows in the sample that meet all data standards(全基準を満たす行数)", type: "num", answer: 3 },
@@ -199,7 +199,7 @@ CPA.tbs({
     { label: "Visualization to compare March revenue across the four regions(4地域の3月売上を比較する可視化)", type: "select", options: ["Bar chart", "Scatter plot", "Line chart", "Histogram"], answer: "Bar chart" },
   ],
   explain: `<p>行2:地域(Region)が空欄であり、全項目入力の要件に反する(完全性)。</p>
-<p>行3:州コードが「N.Y.」で、他の行の2文字コード(NY)と表記が統一されていない(一貫性)。</p>
+<p>行3:州コードが「N.Y.」で、他の行の2文字コード(NY)と表記が統一されていない(一貫性)。なお書式規則への不適合は妥当性に分類されることもあるため、本行の選択肢には妥当性を含めていない。</p>
 <p>行5:行4と請求書番号を含め全項目が同一の重複行であり、1請求書1行の要件に反する(一意性)。行4自体は最初の出現であり基準を満たす。</p>
 <p>行6:販売取引で数量・金額がマイナスであり、許容値の範囲外である(妥当性)。行7も取引日2027-03-11が抽出期間(2026年3月)外かつ抽出日より後であり、妥当性の問題がある。</p>
 <p>全基準を満たす行は行1・行4・行8の3行である(行2、3、5、6、7は問題あり)。</p>

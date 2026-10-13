@@ -174,3 +174,61 @@ CPA.tbs({
 <p><b>自動車</b>:未成年者の契約は未成年者側から取り消しうる。多くの州では、未成年者は手元の物(損傷した車)を返還すれば取り消せる。</p>
 <p><b>報酬</b>:公衆保護を目的とする規制的資格(免許)のない者との契約は違法で無効であり、報酬を請求できない(歳入目的の免許とは異なる)。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-REG-40", section: "REG", chapter: "REG-02", title: "UCC売買の救済:逸失利益・代金請求・保証違反の損害額と追完",
+  scenario: `<p>A litigation-support engagement involves the following independent sales-of-goods disputes. All parties are merchants unless stated otherwise, and all contracts satisfy the statute of frauds.</p>
+<table><tr><th>Part</th><th>Facts</th></tr>
+<tr><td>A</td><td>Maple Pianos, a dealer with an unlimited supply of a standard model, contracted to sell a piano to a buyer for <b>$12,000</b>. Maple's cost is <b>$7,500</b>. The buyer repudiated. Maple later sold the same piano to another customer for $12,000 — a sale it would have made anyway. Maple incurred <b>$200</b> of incidental expenses (storage and re-delivery arrangements).</td></tr>
+<tr><td>B</td><td>Print Co. manufactured 3,000 tote bags printed with a buyer's logo for <b>$9,000</b>. The buyer wrongfully refused delivery. The bags cannot reasonably be resold. Print Co. incurred <b>$300</b> to store them.</td></tr>
+<tr><td>C</td><td>A buyer accepted a machine for <b>$18,000</b>, then discovered a breach of warranty and promptly notified the seller. Exhibit — Valuation report: value of the machine as warranted <b>$20,000</b>; value as accepted <b>$14,000</b>. The buyer incurred <b>$500</b> of inspection costs and lost <b>$3,000</b> of profits that the seller had reason to know would result and that could not be prevented by cover.</td></tr>
+<tr><td>D</td><td>A seller delivered nonconforming goods on June 5. The contract delivery date is June 30. The seller promptly notified the buyer that it would deliver conforming goods by June 30.</td></tr>
+<tr><td>E</td><td>A collector prepaid the full price for a one-of-a-kind antique clock. The seller refuses to deliver and offers to return the money.</td></tr></table>
+<p class="ja">訴訟支援業務で次の独立した物品売買の紛争を扱う。特記がない限り当事者は商人で、契約は詐欺防止法を満たしている。A:標準モデルを無制限に供給できる販売店Maple Pianosが、ピアノを$12,000で販売する契約をした。原価は$7,500。買主は履行を拒絶した。Mapleは後に同じピアノを別の顧客に$12,000で販売したが、これはいずれにせよ行えた販売である。付随費用(保管・再配送手配)$200が生じた。B:Print社は買主のロゴ入りトートバッグ3,000個を$9,000で製造した。買主は不当に受領を拒否した。バッグは合理的に転売できない。保管費$300が生じた。C:買主は$18,000の機械を受領した後、保証違反を発見し速やかに売主に通知した。評価報告書:保証どおりの価値$20,000、受領時の実際の価値$14,000。買主は検査費$500を負担し、売主が生じることを知りうべきでカバーによって防げなかった逸失利益$3,000を被った。D:売主は6月5日に不適合品を引き渡した。契約上の引渡日は6月30日。売主は6月30日までに適合品を引き渡すと速やかに買主に通知した。E:収集家が唯一無二のアンティーク時計の代金を全額前払いした。売主は引渡しを拒み、代金の返還を申し出ている。</p>`,
+  rows: [
+    { label: "Part A — Maple's recoverable damages(Part A:Mapleが回収できる損害額)", type: "num", answer: 4700 },
+    { label: "Part B — Print Co.'s total recovery(Part B:Print社の回収総額)", type: "num", answer: 9300 },
+    { label: "Part B — remedy Print Co. uses(Part B:Print社が用いる救済)", type: "select", options: ["Action for the price", "Resale damages", "Market-price damages", "Specific performance"], answer: "Action for the price" },
+    { label: "Part C — buyer's total recoverable damages(Part C:買主が回収できる損害総額)", type: "num", answer: 9500 },
+    { label: "Part C — consequence if the buyer had failed to notify the seller within a reasonable time after discovering the breach(Part C:発見後合理的期間内に通知しなかった場合)", type: "select", options: ["Barred from any remedy for the breach", "May still revoke acceptance", "Recovery limited to incidental damages", "No effect because the buyer is a merchant"], answer: "Barred from any remedy for the breach" },
+    { label: "Part D — the seller's right(Part D:売主の権利)", type: "select", options: ["May cure by delivering conforming goods by June 30", "Has no right to cure once nonconforming goods are tendered", "May cure only if the buyer consents in writing", "May cure only by reducing the price"], answer: "May cure by delivering conforming goods by June 30" },
+    { label: "Part E — the collector's best remedy(Part E:収集家にとって最善の救済)", type: "select", options: ["Specific performance", "Cover damages", "Market-price damages", "Rescission and restitution only"], answer: "Specific performance" },
+  ],
+  explain: `<p><b>A</b>:Mapleは供給無制限の大量販売者(lost-volume seller)であり、再販売しても1件分の販売を失っている。再販売価格・市場価格による算定では損害が0となり不十分なので、逸失利益で算定する。12,000 − 7,500 = 4,500、付随費用200を加え4,700。</p>
+<p><b>B</b>:特注品で合理的に転売できない場合、売主は代金請求訴訟(action for the price)ができる。9,000 + 付随費用300 = 9,300。売主は物品を買主のために保管する。</p>
+<p><b>C</b>:受領した物品の保証違反の損害 =(保証どおりの価値 − 受領時の価値)+ 付随損害 + 結果的損害。(20,000 − 14,000)+ 500 + 3,000 = 9,500。契約価格$18,000ではなく保証どおりの価値$20,000を用いる点に注意。</p>
+<p>受領後に違反を発見した買主は合理的期間内に売主へ通知しなければならず、怠るとあらゆる救済を失う。</p>
+<p><b>D</b>:履行期限前に不適合品を提供した売主は、追完の意図を適時に通知すれば、期限内に適合品を引き渡して追完できる。</p>
+<p><b>E</b>:目的物が唯一無二(unique)であれば、金銭賠償は不十分なので買主は特定履行を求められる。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-REG-41", section: "REG", chapter: "REG-02", title: "代理における本人・代理人の責任と事業体所有者の責任比較",
+  scenario: `<p>Coast LLC, a manager-managed limited liability company, distributes marine supplies. Exhibit — Incident log prepared by Coast's general counsel:</p>
+<table><tr><th>No.</th><th>Event</th></tr>
+<tr><td>1</td><td>Ken, Coast's purchasing agent with written authority to buy inventory up to $50,000 per order, signed a $30,000 inventory contract "Coast LLC, by Ken, Purchasing Agent."</td></tr>
+<tr><td>2</td><td>Coast fired Ken on June 1 but did not notify suppliers. On June 10, Ken ordered $20,000 of goods in Coast's name from Vendor V, who had regularly dealt with Ken and did not know of the termination.</td></tr>
+<tr><td>3</td><td>Before his termination, at Coast's instruction, Ken bought a waterfront lot in his own name without disclosing that he was acting for Coast. The seller later learned of Coast's role and seeks payment of the price.</td></tr>
+<tr><td>4</td><td>Before his termination, Ken signed a $80,000 contract for a forklift in Coast's name, exceeding his authority. Coast's manager, with full knowledge of the facts, later approved the contract.</td></tr>
+<tr><td>5</td><td>Coast's employee-driver, while making a scheduled delivery, ran a red light and injured a pedestrian.</td></tr>
+<tr><td>6</td><td>The same driver, after finishing all deliveries, drove 40 miles in the opposite direction to attend a friend's party and injured a cyclist.</td></tr></table>
+<p>Coast later suffered a <b>$200,000</b> judgment that exceeds its assets. Counsel asks how the owners' exposure would differ by entity form.</p>
+<p class="ja">Coast LLCはマネージャー管理型のLLCで、船舶用品を販売している。顧問弁護士の事案記録:1:1件$50,000まで在庫を購入する書面による権限を持つ購買担当代理人Kenが、「Coast LLC, by Ken, Purchasing Agent」として$30,000の在庫契約に署名した。2:CoastはKenを6月1日に解雇したが仕入先に通知しなかった。6月10日、KenはCoast名義で、以前からKenと取引し解雇を知らないVendor Vに$20,000の商品を注文した。3:解雇前、Coastの指示により、KenはCoastのために行動していることを明かさず自己名義で海辺の土地を購入した。売主は後にCoastの関与を知り代金の支払を求めている。4:解雇前、Kenは権限を超えてCoast名義で$80,000のフォークリフト契約に署名した。Coastのマネージャーは事実を完全に知った上で後に契約を承認した。5:Coastの従業員である運転手が予定の配送中に赤信号を無視し歩行者を負傷させた。6:同じ運転手が全配送を終えた後、友人のパーティーに出るため反対方向に40マイル運転し、自転車の人を負傷させた。Coastは後に資産を上回る$200,000の判決を受けた。事業体の形態により所有者の責任がどう異なるかを問われている。</p>`,
+  rows: [
+    { label: "Event 1 — liable to the seller(事象1:売主に対する責任者)", type: "select", options: ["Coast only", "Agent/employee only", "Either Coast or the agent (third party elects)", "Both Coast and the agent/employee", "Neither"], answer: "Coast only" },
+    { label: "Event 2 — liable to Vendor V(事象2:Vendor Vに対する責任者)", type: "select", options: ["Coast only", "Agent/employee only", "Either Coast or the agent (third party elects)", "Both Coast and the agent/employee", "Neither"], answer: "Coast only" },
+    { label: "Event 3 — liable to the land seller(事象3:土地の売主に対する責任者)", type: "select", options: ["Coast only", "Agent/employee only", "Either Coast or the agent (third party elects)", "Both Coast and the agent/employee", "Neither"], answer: "Either Coast or the agent (third party elects)" },
+    { label: "Event 4 — liable to the forklift seller(事象4:フォークリフトの売主に対する責任者)", type: "select", options: ["Coast only", "Agent/employee only", "Either Coast or the agent (third party elects)", "Both Coast and the agent/employee", "Neither"], answer: "Coast only" },
+    { label: "Event 5 — liable to the pedestrian(事象5:歩行者に対する責任者)", type: "select", options: ["Coast only", "Agent/employee only", "Either Coast or the agent (third party elects)", "Both Coast and the agent/employee", "Neither"], answer: "Both Coast and the agent/employee" },
+    { label: "Event 6 — liable to the cyclist(事象6:自転車の人に対する責任者)", type: "select", options: ["Coast only", "Agent/employee only", "Either Coast or the agent (third party elects)", "Both Coast and the agent/employee", "Neither"], answer: "Agent/employee only" },
+    { label: "Exposure of a non-managing member of Coast LLC for the unpaid judgment(未払判決に対するCoast LLCの非業務執行メンバーの責任)", type: "select", options: ["Personally liable for the full unpaid amount", "Loss limited to her investment in the entity", "Liable pro rata by ownership percentage", "Liable only if she signed the underlying contract"], answer: "Loss limited to her investment in the entity" },
+    { label: "Exposure of a partner who took no part in the events if Coast had been a general partnership(Coastがゼネラル・パートナーシップだった場合の、事象に関与していないパートナーの責任)", type: "select", options: ["Personally liable for the full unpaid amount", "Loss limited to her investment in the entity", "Liable pro rata by ownership percentage", "Liable only if she signed the underlying contract"], answer: "Personally liable for the full unpaid amount" },
+  ],
+  explain: `<p><b>1</b>:明示の実権限内で、本人を開示して本人名義で署名しているので、本人Coastのみが責任を負い、代理人は責任を負わない。</p>
+<p><b>2</b>:解雇で実権限は消滅したが、以前の取引相手には実際の通知が必要であり、通知していないので表見代理(apparent authority)が残る。Coastが責任を負う(Kenは本人Coastに損害を賠償する責任を負う)。第三者は期待どおりの相手方を得ており、Kenは第三者に責任を負わない。</p>
+<p><b>3</b>:非開示本人(undisclosed principal)の場合、代理人は契約当事者として責任を負い、本人が判明すれば第三者は本人にも請求できるが、いずれかを選択しなければならない。</p>
+<p><b>4</b>:権限外の行為でも、本人が事実を完全に知った上で全体を追認(ratification)すれば、契約時に遡って本人が拘束され、代理人は責任を免れる。</p>
+<p><b>5</b>:職務の範囲内の従業員の不法行為には使用者責任(respondeat superior)が及び、不法行為者本人も責任を負う。両者が連帯して責任を負う。</p>
+<p><b>6</b>:業務を終えた後の私的目的の大きな逸脱(frolic)は職務の範囲外であり、使用者は責任を負わない。運転手のみが責任を負う。</p>
+<p><b>事業体比較</b>:LLCのメンバーは事業体の債務について個人責任を負わず、損失は出資額に限られる。ゼネラル・パートナーシップのパートナーは、関与の有無にかかわらずパートナーシップの全債務について連帯して無限責任を負う(通常、債権者はまずパートナーシップの財産から回収する)。</p>`,
+});

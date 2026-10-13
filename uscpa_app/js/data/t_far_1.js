@@ -240,3 +240,91 @@ CPA.tbs({
 <p>取引4:価格は会場が決め、履行責任も会場にあるため代理人。収益 = 300,000 × 10% = <b>30,000</b>。</p>
 <p>合計 = 120,000 + 500,000 + 200,000 + 30,000 = <b>850,000</b>。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-FAR-44", section: "FAR", chapter: "FAR-02", title: "SaaS契約のコスト資産計上と契約変更後の契約負債残高",
+  scenario: `<p>On January 1, Year 1, Velora Software signed a 3-year cloud subscription contract with a customer for $36,000 per year, payable at the start of each year. Velora's fiscal year ends December 31.</p>
+<table><tr><th>Exhibit 1 — Costs related to the contract</th><th>Amount</th></tr>
+<tr><td>Sales commission paid on signing (renewal commissions are only $1,000 and are not commensurate)</td><td>$9,000</td></tr>
+<tr><td>External legal fees for negotiating the contract (incurred whether or not the contract was obtained)</td><td>2,000</td></tr>
+<tr><td>Data migration setup costs (do not transfer a service; generate a resource used to satisfy the contract and expected to be recovered)</td><td>3,000</td></tr></table>
+<p>Velora expects the customer relationship to last 5 years (the original term plus an anticipated 2-year renewal) and amortizes capitalized costs straight-line over that period.</p>
+<p>Exhibit 2 — Memo, January 1, Year 3: "The customer paid the Year 3 fee of $36,000 today and agreed to extend the subscription by two years (Years 4 and 5) at $27,000 per year, payable at the start of each year. Our standalone selling price for the subscription is $34,000 per year. The discount was granted to retain the customer, and the remaining months of service are distinct from those already provided."</p>
+<p class="ja">第1年度1月1日、Velora社は顧客と年額$36,000(各年度初めに前払い)の3年間のクラウド・サブスクリプション契約を締結した。決算日は12月31日である。</p>
+<p class="ja">資料1(契約関連コスト):契約締結時に支払った販売手数料$9,000(更新時の手数料は$1,000にすぎず釣り合っていない)、契約交渉のための外部弁護士費用$2,000(契約獲得の成否にかかわらず発生)、データ移行の初期設定コスト$3,000(サービスを移転しないが、契約の履行に用いる資源を生み出し、回収が見込まれる)。顧客関係は5年(当初期間+見込まれる2年の更新)と見込まれ、資産計上したコストはその期間で定額償却する。</p>
+<p class="ja">資料2(第3年度1月1日のメモ):「顧客は本日第3年度分$36,000を支払い、第4・5年度の2年間を年額$27,000(各年度初めに支払)で延長することに合意した。当社の独立販売価格は年額$34,000である。値引きは顧客維持のためであり、残りの期間のサービスはすでに提供したものと区別できる。」</p>`,
+  rows: [
+    { label: "Incremental cost of obtaining the contract capitalized on January 1, Year 1(第1年度1月1日に資産計上する契約獲得の増分コスト)", type: "num", answer: 9000 },
+    { label: "Contract costs expensed as incurred in Year 1(第1年度に発生時費用とするコスト)", type: "num", answer: 2000 },
+    { label: "Carrying amount of the capitalized setup (fulfillment) cost at December 31, Year 1(第1年度末の初期設定コスト資産の帳簿価額)", type: "num", answer: 2400 },
+    { label: "Accounting for the January 1, Year 3 modification(第3年度1月1日の契約変更の会計処理)", type: "select", options: ["Separate contract", "Termination of the existing contract and creation of a new contract (prospective)", "Part of the existing contract — cumulative catch-up adjustment", "No accounting until Year 4 services begin"], answer: "Termination of the existing contract and creation of a new contract (prospective)" },
+    { label: "Subscription revenue recognized in Year 3(第3年度のサブスクリプション収益)", type: "num", answer: 30000 },
+    { label: "Contract liability at December 31, Year 3(第3年度末の契約負債)", type: "num", answer: 6000 },
+    { label: "Contract liability at December 31, Year 4(第4年度末の契約負債)", type: "num", answer: 3000 },
+    { label: "Carrying amount of the capitalized commission at December 31, Year 3(第3年度末の資産計上した手数料の帳簿価額)", type: "num", answer: 3600 },
+  ],
+  explain: `<p>契約獲得の増分コスト(契約を獲得しなければ発生しないもの)である販売手数料<b>9,000</b>を資産計上する。更新手数料が当初手数料と釣り合わないため、見込まれる更新を含む5年で償却する(年1,800)。弁護士費用は契約獲得の成否にかかわらず発生するので<b>2,000</b>を発生時に費用処理する。</p>
+<p>初期設定コストは履行コストの資産計上要件(契約に直接関連、資源を生成、回収見込み)を満たすので資産計上し、5年で償却する:3,000 − 600 = <b>2,400</b>。</p>
+<p>契約変更:追加サービスは区別できるが価格が独立販売価格を反映していない(27,000 < 34,000)。残りのサービスは移転済みのものと区別できるため、既存契約の解約と新契約の創設として将来に向かって処理する。</p>
+<p>新契約の対価 = 当初契約の未認識対価36,000(第3年度分、受領済)+ 延長分27,000 × 2 = 90,000。残り3年で年額 <b>30,000</b>。</p>
+<p>第3年度:1/1 借方 現金36,000/貸方 契約負債36,000、期中 借方 契約負債30,000/貸方 収益30,000 → 期末契約負債 <b>6,000</b>。第4年度:6,000 + 27,000 − 30,000 = <b>3,000</b>(第5年度末にはゼロになる)。</p>
+<p>手数料資産:9,000 − 1,800 × 3年 = <b>3,600</b>(延長後の契約期間も当初見積りの5年と一致するため償却期間の変更はない)。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-FAR-45", section: "FAR", chapter: "FAR-02", title: "返品権付販売と保証型・サービス型製品保証の仕訳金額",
+  scenario: `<p>In the fourth quarter of Year 1, Solano Appliances sold 2,000 dishwashers on credit at $500 each. Each unit cost $300. Solano's fiscal year ends December 31.</p>
+<ul><li>Customers may return a unit within 60 days for a full refund. Based on extensive history, Solano expects 4% of units to be returned (the estimate is not constrained). Returned units can be resold after refurbishing costs of $10 per unit. By December 31, Year 1, 30 units had been returned and customers' accounts credited; the 4% estimate is unchanged.</li>
+<li>Every unit includes a 1-year standard warranty that only assures the product meets agreed specifications. Expected repair cost is $12 per unit kept by customers. Warranty repair costs incurred in Year 1 were $6,000.</li>
+<li>At the time of sale, 500 customers (none expected to return their units) also purchased a separately priced 2-year extended warranty for $60 each, covering Years 2 and 3 after the standard warranty expires. Coverage is provided evenly over time.</li></ul>
+<p class="ja">第1年度第4四半期、Solano社は食器洗い機2,000台を1台$500で掛け販売した。1台の原価は$300。決算日は12月31日である。</p>
+<p class="ja">・顧客は60日以内であれば全額返金で返品できる。十分な実績から4%の返品を見込む(制約なし)。返品された製品は1台$10の整備コストをかけて再販売できる。第1年度末までに30台が返品され顧客勘定を減額した。4%の見積りは変わらない。</p>
+<p class="ja">・全製品に、合意された仕様を満たすことのみを保証する1年間の標準保証が付いている。顧客が保有する製品1台当たりの修理見込額は$12。第1年度に発生した保証修理費は$6,000。</p>
+<p class="ja">・販売時に500人の顧客(返品は見込まれない)が、標準保証終了後の第2・第3年度をカバーする別価格の2年間延長保証を1件$60で購入した。保証は期間にわたり均等に提供される。</p>`,
+  rows: [
+    { label: "Net product sales revenue for Year 1 (excluding extended warranties)(第1年度の製品売上収益・延長保証除く)", type: "num", answer: 960000 },
+    { label: "Refund liability at December 31, Year 1(第1年度末の返金負債)", type: "num", answer: 25000 },
+    { label: "Return asset (right to recover products) recorded at the time of sale(販売時に計上する返品資産)", type: "num", answer: 23200 },
+    { label: "Debit to cost of goods sold at the time of sale, including expected refurbishing costs(販売時の売上原価計上額・見込整備費を含む)", type: "num", answer: 576800 },
+    { label: "Standard warranty liability at December 31, Year 1(第1年度末の標準保証引当金)", type: "num", answer: 17040 },
+    { label: "Accounting for the extended warranty(延長保証の会計処理)", type: "select", options: ["Assurance-type warranty — accrue expected cost (ASC 460)", "Service-type warranty — separate performance obligation (ASC 606)", "Variable consideration — reduce transaction price", "Material right — recognize when exercised"], answer: "Service-type warranty — separate performance obligation (ASC 606)" },
+    { label: "Contract liability for extended warranties at December 31, Year 1(第1年度末の延長保証に係る契約負債)", type: "num", answer: 30000 },
+    { label: "Extended warranty revenue to be recognized in Year 2(第2年度に認識する延長保証収益)", type: "num", answer: 15000 },
+  ],
+  explain: `<p>返品見込み:2,000 × 4% = 80台。製品売上収益 = (2,000 − 80) × 500 = <b>960,000</b>。返金負債当初40,000、期中返品30台 × 500 = 15,000を取り崩し、期末 <b>25,000</b>。</p>
+<p>返品資産 = 80台 × (原価300 − 整備費10)= <b>23,200</b>(回収コストを控除)。販売時の仕訳:借方 返品資産23,200・売上原価576,800/貸方 棚卸資産600,000。売上原価 = 1,920台 × 300 + 見込整備費80 × 10 = 576,000 + 800 = <b>576,800</b>。</p>
+<p>標準保証は保証型であり履行義務ではなく、見積費用を引き当てる:1,920台 × 12 = 23,040、発生額6,000を控除して <b>17,040</b>。</p>
+<p>延長保証は別価格で販売され仕様保証を超えるサービスを提供するサービス型保証であり、別個の履行義務として契約負債に計上する:500 × 60 = <b>30,000</b>。保証期間(第2・3年度)にわたって収益認識するため第1年度は0、第2年度は30,000 ÷ 2 = <b>15,000</b>。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-FAR-46", section: "FAR", chapter: "FAR-02", title: "原価比例法(未据付資材の除外)と損失契約の引当",
+  scenario: `<p>On January 1, Year 1, Halden Builders agreed to construct an office building for a fixed price of $5,000,000. The contract is a single performance obligation satisfied over time, and Halden measures progress using costs incurred relative to total estimated costs (cost-to-cost).</p>
+<p>The budget includes $200,000 of specialized elevators purchased from a third-party manufacturer. The elevators were delivered to the site in Year 1, at which time the customer obtained control of them, but they will not be installed until Year 2. Halden is not involved in designing or manufacturing the elevators. Halden therefore excludes the elevator cost from its measure of progress and recognizes revenue equal to their cost when the customer obtains control.</p>
+<table><tr><th>Exhibit — Contract data</th><th>Year 1</th><th>Year 2</th><th>Year 3</th></tr>
+<tr><td>Cumulative costs incurred (including elevators)</td><td>$1,200,000</td><td>$3,320,000</td><td>$5,250,000</td></tr>
+<tr><td>Estimated costs to complete at year-end</td><td>3,000,000</td><td>1,880,000</td><td>—</td></tr>
+<tr><td>Billings during the year</td><td>1,300,000</td><td>1,900,000</td><td>1,800,000</td></tr>
+<tr><td>Collections during the year</td><td>1,100,000</td><td>1,800,000</td><td>2,100,000</td></tr></table>
+<p>Halden recognizes a provision for an anticipated loss on the contract in accordance with ASC 605-35. Enter losses as negative numbers.</p>
+<p class="ja">第1年度1月1日、Halden社はオフィスビルを固定価格$5,000,000で建設する契約を締結した。契約は一定期間にわたり充足される単一の履行義務であり、進捗度は原価比例法で測定する。</p>
+<p class="ja">予算には第三者メーカーから購入する特殊エレベーター$200,000が含まれる。エレベーターは第1年度に現場に納入され、その時点で顧客が支配を獲得したが、据付は第2年度である。Haldenはその設計・製造に関与していない。このためエレベーターの原価を進捗度の測定から除外し、顧客が支配を獲得した時点で原価と同額の収益を認識する。</p>
+<p class="ja">資料(第1年度/第2年度/第3年度):累積発生原価(エレベーター含む)$1,200,000/$3,320,000/$5,250,000、期末の完成までの見積原価$3,000,000/$1,880,000/—、請求額$1,300,000/$1,900,000/$1,800,000、回収額$1,100,000/$1,800,000/$2,100,000。</p>
+<p class="ja">損失契約の引当はASC 605-35に従って認識する。損失はマイナスで入力する。</p>`,
+  rows: [
+    { label: "Measure of progress at December 31, Year 1, in percent(第1年度末の進捗度・%)", type: "num", answer: 25, tol: 0.1 },
+    { label: "Revenue recognized in Year 1(第1年度の収益)", type: "num", answer: 1400000 },
+    { label: "Gross profit recognized in Year 1(第1年度の売上総利益)", type: "num", answer: 200000 },
+    { label: "Contract asset (liability) at December 31, Year 1(第1年度末の契約資産(負債))", type: "num", answer: 100000 },
+    { label: "Revenue recognized in Year 2(第2年度の収益)", type: "num", answer: 1795200, tol: 1 },
+    { label: "Gross profit (loss) recognized in Year 2(第2年度の売上総損益)", type: "num", answer: -400000 },
+    { label: "Provision for the anticipated loss on remaining work at December 31, Year 2(第2年度末の残存作業に係る損失引当金)", type: "num", answer: 75200, tol: 1 },
+    { label: "Gross profit (loss) recognized in Year 3(第3年度の売上総損益)", type: "num", answer: -50000 },
+  ],
+  explain: `<p><b>第1年度</b>:見積総原価 = 1,200,000 + 3,000,000 = 4,200,000。エレベーターを除くと、進捗度 = (1,200,000 − 200,000) ÷ (4,200,000 − 200,000) = 1,000,000 ÷ 4,000,000 = <b>25%</b>。収益 = エレベーター200,000 + (5,000,000 − 200,000) × 25% = 200,000 + 1,200,000 = <b>1,400,000</b>。売上総利益 = 1,400,000 − 1,200,000 = <b>200,000</b>。</p>
+<p>契約資産 = 累積収益1,400,000 − 累積請求1,300,000 = <b>100,000</b>(別途、売掛金は請求1,300,000 − 回収1,100,000 = 200,000)。</p>
+<p><b>第2年度</b>:見積総原価 = 3,320,000 + 1,880,000 = 5,200,000 > 契約価格5,000,000 → 契約全体の損失200,000。進捗度 = 3,120,000 ÷ 5,000,000 = 62.4%。累積収益 = 200,000 + 4,800,000 × 62.4% = 3,195,200、第2年度収益 = 3,195,200 − 1,400,000 = <b>1,795,200</b>。</p>
+<p>損失契約では見込まれる損失の全額を判明した期に認識する。第2年度の売上総損益 = 契約全体の損失(−200,000)− 認識済み利益200,000 = <b>−400,000</b>。</p>
+<p>損失引当金 = 残存収益(5,000,000 − 3,195,200 = 1,804,800)− 残存原価(1,880,000)= −75,200 → <b>75,200</b>。検算:第2年度の発生原価2,120,000 + 引当75,200 = 2,195,200、収益1,795,200 − 2,195,200 = −400,000。</p>
+<p><b>第3年度</b>:実際総原価5,250,000により契約全体の損失は250,000。第3年度の売上総損益 = −250,000 − (200,000 − 400,000)= <b>−50,000</b>(収益1,804,800 − (発生原価1,930,000 − 引当金取崩75,200)= −50,000)。</p>`,
+});
