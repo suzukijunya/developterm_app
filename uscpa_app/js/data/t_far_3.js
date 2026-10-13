@@ -286,3 +286,85 @@ CPA.tbs({
 <p>⑦ ファイナンス・リースの元本返済部分は財務活動(利息部分は営業活動)。</p>
 <p>⑧ オペレーティング・リースの支払は営業活動に区分する。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-FAR-65", section: "FAR", chapter: "FAR-04", title: "貸手のリース分類(販売型・直接金融・オペレーティング)",
+  scenario: `<p>Westbrook Equipment Finance is a lessor with a December 31 year-end. On January 1, Year 1, it entered into the three leases below. Collectibility of all lease payments is probable in each case.</p>
+<table><tr><th>Exhibit 1 — Lease X (Westbrook manufactured the asset)</th><th>Data</th></tr>
+<tr><td>Annual payments, due each January 1 beginning Year 1</td><td>$100,000 × 4</td></tr>
+<tr><td>Ownership transfers to lessee at end of term</td><td>Yes</td></tr>
+<tr><td>Fair value of equipment / Westbrook's cost</td><td>$357,710 / $300,000</td></tr>
+<tr><td>Rate implicit in the lease</td><td>8% (PV of annuity due, 4 periods = 3.57710)</td></tr></table>
+<table><tr><th>Exhibit 2 — Lease Y (purchased asset)</th><th>Data</th></tr>
+<tr><td>Annual payments, due each January 1 beginning Year 1</td><td>$70,000 × 3</td></tr>
+<tr><td>Economic life / ownership transfer / purchase option</td><td>8 years / No / None</td></tr>
+<tr><td>Residual value at end of term, guaranteed by an unrelated third-party insurer (not the lessee)</td><td>$60,000</td></tr>
+<tr><td>Fair value = Westbrook's carrying amount</td><td>$245,539</td></tr>
+<tr><td>Rate implicit in the lease</td><td>7% (PV of annuity due, 3 periods = 2.80802; PV of $1, 3 periods = 0.81630)</td></tr></table>
+<table><tr><th>Exhibit 3 — Lease Z (office floor in owned building)</th><th>Data</th></tr>
+<tr><td>Lease term</td><td>3 years</td></tr>
+<tr><td>Rent: Year 1 / Year 2 / Year 3</td><td>$60,000 / $90,000 / $90,000</td></tr>
+<tr><td>Cost of the leased floor (40-year life, straight-line, no salvage)</td><td>$1,200,000</td></tr>
+<tr><td>Broker commission paid to obtain the lease (initial direct cost)</td><td>$6,000</td></tr></table>
+<p class="ja">Westbrook Equipment Finance社(貸手、12月31日決算)は第1年度1月1日に以下の3件のリースを締結した。いずれもリース料の回収可能性は高い。</p>
+<p class="ja">リースX(自社製造):毎年1月1日払い$100,000×4回、期末に所有権移転、公正価値$357,710・原価$300,000、計算利子率8%(4期期首払年金現価係数3.57710)。</p>
+<p class="ja">リースY(購入資産):毎年1月1日払い$70,000×3回、経済的耐用年数8年、所有権移転・購入オプションなし、期末残存価値$60,000を無関係の第三者保険会社が保証(借手ではない)、公正価値=帳簿価額$245,539、計算利子率7%(3期期首払年金現価係数2.80802、3期現価係数0.81630)。</p>
+<p class="ja">リースZ(自社ビルの1フロア):期間3年、賃料は第1年度$60,000・第2年度$90,000・第3年度$90,000、当該フロアの取得原価$1,200,000(耐用年数40年、定額法、残存価額なし)、仲介手数料(当初直接コスト)$6,000。</p>`,
+  rows: [
+    { label: "Classification of Lease X(リースXの分類)", type: "select", options: ["Sales-type lease", "Direct financing lease", "Operating lease"], answer: "Sales-type lease" },
+    { label: "Lease X — selling profit recognized at commencement(リースXの販売利益)", type: "num", answer: 57710, tol: 2 },
+    { label: "Lease X — interest income for Year 1(リースXの第1年度受取利息)", type: "num", answer: 20617, tol: 2 },
+    { label: "Classification of Lease Y(リースYの分類)", type: "select", options: ["Sales-type lease", "Direct financing lease", "Operating lease"], answer: "Direct financing lease" },
+    { label: "Lease Y — interest income for Year 1(リースYの第1年度受取利息)", type: "num", answer: 12288, tol: 2 },
+    { label: "Lease Z — lease income for Year 1(リースZの第1年度リース収益)", type: "num", answer: 80000 },
+    { label: "Lease Z — net effect on Year 1 pretax income (income less depreciation and IDC amortization)(リースZの第1年度税引前利益への影響)", type: "num", answer: 48000 },
+  ],
+  explain: `<p>① リースXは所有権が移転するため販売型リースである(ASC 842-10-25-2のいずれかの要件に該当)。</p>
+<p>② 正味リース投資 = $100,000 × 3.57710 = $357,710。販売利益 = 収益$357,710 − 売上原価$300,000 = $57,710(開始日に認識)。</p>
+<p>③ 初回受取後の正味投資 $257,710 × 8% = $20,617。</p>
+<p>④ リースYは販売型要件に該当しない:所有権移転・オプションなし、期間3/8年、借手の支払現在価値 $70,000 × 2.80802 = $196,561 は公正価値の80%で90%未満。しかし第三者保証残存価値を加えると $196,561 + $60,000 × 0.81630 = $48,978 → $245,539(100%)となり、回収可能性も高いので直接金融リースである(販売利益があれば繰り延べるが、本件は公正価値=帳簿価額で利益なし)。</p>
+<p>⑤ 初回受取後の正味投資 ($245,539 − $70,000) × 7% = $12,288。</p>
+<p>⑥ リースZはオペレーティング・リース。賃料総額$240,000を期間で定額認識:$240,000 ÷ 3 = $80,000(差額$20,000は未収賃料)。</p>
+<p>⑦ 減価償却 $1,200,000 ÷ 40 = $30,000、当初直接コストの償却 $6,000 ÷ 3 = $2,000。$80,000 − $30,000 − $2,000 = $48,000。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-FAR-66", section: "FAR", chapter: "FAR-04", title: "セール・アンド・リースバック(成立・不成立)とリースの条件変更",
+  scenario: `<p>You are reviewing three lease-related transactions of Ridgeway Holdings (seller-lessee / lessee). Ridgeway does not know the lessors' implicit rates. All transfers satisfy the ASC 606 criteria for a contract, except as noted.</p>
+<table><tr><th>Exhibit 1 — Building sale-leaseback (January 1, Year 1)</th><th>Data</th></tr>
+<tr><td>Building cost / accumulated depreciation</td><td>$1,000,000 / $400,000</td></tr>
+<tr><td>Sale price (equal to fair value)</td><td>$900,000</td></tr>
+<tr><td>Leaseback term / remaining economic life</td><td>5 years / 30 years</td></tr>
+<tr><td>Annual leaseback payment, paid each December 31 (market rate)</td><td>$60,000</td></tr>
+<tr><td>Repurchase option / ownership transfer</td><td>None / No</td></tr>
+<tr><td>Incremental borrowing rate; PV of ordinary annuity, 5 periods, 5%</td><td>5%; 4.32948</td></tr></table>
+<table><tr><th>Exhibit 2 — Equipment sale-leaseback (January 1, Year 1)</th><th>Data</th></tr>
+<tr><td>Equipment carrying amount / sale price</td><td>$420,000 / $500,000</td></tr>
+<tr><td>Ridgeway may repurchase the equipment at the end of Year 3 for a fixed price of</td><td>$450,000</td></tr>
+<tr><td>Equipment is customized; alternative assets are not readily available in the marketplace</td><td>—</td></tr></table>
+<table><tr><th>Exhibit 3 — Warehouse operating lease modification (January 1, Year 3)</th><th>Data</th></tr>
+<tr><td>Remaining payments before modification (each December 31; original discount rate 5%)</td><td>3 × $50,000</td></tr>
+<tr><td>PV of ordinary annuity, 3 periods, 5%</td><td>2.72325</td></tr>
+<tr><td>Modification: term extended 2 years at the same $50,000 annual payment (no additional space)</td><td>Remaining payments 5 × $50,000</td></tr>
+<tr><td>Incremental borrowing rate at modification; PV of ordinary annuity, 5 periods, 6%</td><td>6%; 4.21236</td></tr></table>
+<p class="ja">Ridgeway Holdings社(売手・借手)の3件のリース関連取引を検討する。貸手の計算利子率は不明である。特記事項を除き、ASC 606の契約要件は満たされている。</p>
+<p class="ja">資料1(建物のセール・アンド・リースバック、第1年度1月1日):取得原価$1,000,000、減価償却累計額$400,000、売却価格$900,000(公正価値と同額)、リースバック期間5年・残存経済的耐用年数30年、年額$60,000を毎年12月31日払い(市場賃料)、買戻オプション・所有権移転なし、追加借入利子率5%、5期5%の年金現価係数4.32948。</p>
+<p class="ja">資料2(設備のセール・アンド・リースバック、第1年度1月1日):帳簿価額$420,000、売却価格$500,000。第3年度末に固定価格$450,000で買い戻すオプションがある。設備はカスタマイズ品で、代替資産は市場で容易に入手できない。</p>
+<p class="ja">資料3(倉庫オペレーティング・リースの条件変更、第3年度1月1日):変更前の残りリース料は毎年12月31日払い$50,000×3回(当初割引率5%、3期5%の年金現価係数2.72325)。変更により同額のまま期間を2年延長(追加の使用権なし)、残り支払は$50,000×5回。変更日の追加借入利子率6%、5期6%の年金現価係数4.21236。</p>`,
+  rows: [
+    { label: "Exhibit 1 — gain recognized on the building sale(建物売却益)", type: "num", answer: 300000 },
+    { label: "Exhibit 1 — classification of the leaseback by Ridgeway(リースバックの分類)", type: "select", options: ["Finance lease", "Operating lease", "Short-term lease exempt from recognition"], answer: "Operating lease" },
+    { label: "Exhibit 1 — ROU asset recognized for the leaseback(リースバックの使用権資産)", type: "num", answer: 259769, tol: 2 },
+    { label: "Exhibit 2 — accounting for the equipment transaction(設備取引の会計処理)", type: "select", options: ["Successful sale-leaseback; recognize gain immediately", "Successful sale-leaseback; defer gain over the lease term", "Failed sale; continue to recognize the equipment and record a financial liability", "Failed sale; derecognize the equipment and record a deposit"], answer: "Failed sale; continue to recognize the equipment and record a financial liability" },
+    { label: "Exhibit 2 — gain recognized in Year 1 on the equipment transaction(設備取引の第1年度売却益)", type: "num", answer: 0 },
+    { label: "Exhibit 3 — remeasured lease liability on January 1, Year 3(条件変更後のリース負債)", type: "num", answer: 210618, tol: 2 },
+    { label: "Exhibit 3 — increase in the ROU asset from the modification(条件変更による使用権資産の増加額)", type: "num", answer: 74456, tol: 2 },
+  ],
+  explain: `<p>① 資料1:買戻オプションがなく支配が買手に移転し、リースバックもファイナンス・リースではないので売却が成立する(ASC 842-40)。売却益 = $900,000 −($1,000,000 − $400,000)= $300,000を一時に認識する(売却価格=公正価値のため調整不要)。</p>
+<p>② リースバック期間5/30年は主要部分ではなく、支払現在価値$259,769は公正価値$900,000の約29%で、他の要件にも該当しないためオペレーティング・リースである。</p>
+<p>③ 使用権資産=リース負債 = $60,000 × 4.32948 = $259,769。</p>
+<p>④ 資料2:売手借手が固定価格で買い戻せるオプションがあり、資産が市場で容易に入手できないため支配が移転せず、売却不成立(failed sale)。設備は引き続き計上・償却し、受取額$500,000を金融負債として計上する。</p>
+<p>⑤ 売却不成立なので利益は認識しない(0)。</p>
+<p>⑥ 別個の契約として扱われない条件変更(期間延長)では、変更日の割引率でリース負債を再測定する:$50,000 × 4.21236 = $210,618。</p>
+<p>⑦ 変更前の負債 $50,000 × 2.72325 = $136,162。差額 $210,618 − $136,162 = $74,456 を使用権資産の増加として調整する。</p>`,
+});

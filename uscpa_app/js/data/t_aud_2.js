@@ -231,3 +231,61 @@ CPA.tbs({
 <p>[F]:「重要な不備は存在しない」といった書面を発行してはならない。財務諸表監査の範囲では、そのような保証を与える根拠がなく誤解を招くためである。</p>
 <p>[G]:書面伝達は報告書発行日までに行うのが望ましいが、遅くとも報告書発行日の60日後までに行う。3月10日 + 60日:3月の残り21日 + 4月30日 = 51日、残り9日 → 5月9日。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-AUD-48", section: "AUD", chapter: "AUD-03", title: "ユーザー監査人によるSOC 1報告書の利用",
+  scenario: `<p><b>Tamsin Home Goods</b> (nonissuer, year end December 31, Year 1) outsources payroll processing to <b>PayCore Services</b>. The auditor of Tamsin (the user auditor) plans to rely on controls at PayCore to reduce substantive testing of payroll expense. PayCore provided the following report.</p>
+<table><tr><th>Feature of PayCore's report</th><th>Detail</th></tr>
+<tr><td>Report type</td><td>SOC 1 <b>Type 2</b> report on the description of PayCore's system and the suitability of design and operating effectiveness of controls</td></tr>
+<tr><td>Period covered</td><td>January 1, Year 1 through <b>September 30, Year 1</b></td></tr>
+<tr><td>Complementary user entity controls</td><td>"User entities should review payroll registers for accuracy and approve them before funds are released."</td></tr>
+<tr><td>Subservice organization</td><td>PayCore uses DataHarbor for hosting; DataHarbor's controls are excluded from the description (<b>carve-out method</b>).</td></tr>
+<tr><td>Service auditor's opinion</td><td>Qualified for deviations in PayCore's control over changes to tax tables.</td></tr></table>
+<p class="ja">Tamsin Home Goods社(非発行体、12月31日決算)は給与計算をPayCore Servicesに委託している。Tamsinの監査人(ユーザー監査人)は給与費用の実証手続を減らすためPayCoreの統制に依拠する予定である。PayCoreの報告書:SOC 1 Type 2報告書(システムの記述、統制のデザインの適切性と運用の有効性)、対象期間は1年目1月1日〜9月30日、補完的なユーザー・エンティティ統制として「ユーザーは資金の支払前に給与台帳の正確性を確認し承認すべきである」、サブサービス組織DataHarbor(ホスティング)の統制は記述から除外(カーブアウト方式)、受託会社監査人の意見は税率テーブル変更の統制の逸脱について限定付き。</p>`,
+  rows: [
+    { label: "Number of months in Tamsin's fiscal year not covered by the SOC 1 report(SOC 1報告書の対象外となる会計期間の月数)", type: "num", answer: 3 },
+    { label: "Appropriate response to the uncovered period(対象外期間への適切な対応)", type: "select", options: ["No action; nine months of coverage is sufficient", "Obtain additional evidence, such as inquiring of user entity and service organization personnel about changes (e.g., a bridge letter) and considering further tests", "Request that the service auditor reissue the report dated December 31", "Treat the uncovered period as a material weakness"], answer: "Obtain additional evidence, such as inquiring of user entity and service organization personnel about changes (e.g., a bridge letter) and considering further tests" },
+    { label: "Responsibility for the complementary user entity control(補完的ユーザー・エンティティ統制の検証責任)", type: "select", options: ["The service auditor tests it at PayCore", "The user auditor evaluates and, if relying on it, tests the control at Tamsin", "DataHarbor tests it", "No one; it is outside the scope of the audit"], answer: "The user auditor evaluates and, if relying on it, tests the control at Tamsin" },
+    { label: "Effect of the carve-out of DataHarbor(DataHarborのカーブアウトの影響)", type: "select", options: ["The SOC 1 report already provides evidence on DataHarbor's controls", "The user auditor considers whether evidence about DataHarbor's relevant controls is needed, e.g., a SOC 1 report from DataHarbor or other procedures", "The user auditor must visit DataHarbor in all cases", "The SOC 1 report cannot be used at all"], answer: "The user auditor considers whether evidence about DataHarbor's relevant controls is needed, e.g., a SOC 1 report from DataHarbor or other procedures" },
+    { label: "Effect of the qualified service auditor's opinion(受託会社監査人の限定付意見の影響)", type: "select", options: ["Ignore it, because it relates to the service organization", "Evaluate its effect on the assessment of risk and on planned reliance on payroll controls, and perform additional procedures as needed", "Issue a qualified opinion on Tamsin's financial statements", "Withdraw from the engagement"], answer: "Evaluate its effect on the assessment of risk and on planned reliance on payroll controls, and perform additional procedures as needed" },
+    { label: "Reference to the service auditor in the user auditor's unmodified opinion(ユーザー監査人の無限定意見での受託会社監査人への言及)", type: "select", options: ["Required, to divide responsibility", "Permitted if the service auditor consents", "Not permitted", "Required only for a Type 1 report"], answer: "Not permitted" },
+    { label: "If PayCore had provided only a SOC 1 Type 1 report, it would provide evidence of(SOC 1 Type 1報告書のみの場合に得られる証拠)", type: "select", options: ["Operating effectiveness of controls over the period", "The fairness of the description and the suitability of design of controls as of a specified date only", "Controls relevant to security, availability, and confidentiality (Trust Services Criteria)", "The accuracy of Tamsin's payroll expense balance"], answer: "The fairness of the description and the suitability of design of controls as of a specified date only" },
+  ],
+  explain: `<p>対象外期間:報告書は9月30日までであり、10月1日〜12月31日の3か月が対象外である(12 − 9 = 3)。ユーザー監査人は、残りの期間について経営者や受託会社への質問(ブリッジ・レター等による重要な変更の有無の確認)、追加の統制テスト等により追加的な証拠を入手する。対象外期間があること自体は重要な欠陥ではない。</p>
+<p>補完的ユーザー・エンティティ統制(CUEC):受託会社の統制目的の達成にはユーザー側の統制が前提となっている。ユーザー監査人はTamsinでこの統制(給与台帳の確認・承認)を評価し、依拠するならテストする必要がある。</p>
+<p>カーブアウト方式:サブサービス組織の統制はSOC 1報告書の記述とテストに含まれない。ユーザー監査人はDataHarborの関連統制について証拠が必要かを検討し、DataHarbor自身のSOC 1報告書の入手その他の手続を行う(インクルーシブ方式なら一体として報告される)。</p>
+<p>限定付意見:受託会社監査人の報告書における逸脱や限定は、ユーザー監査人のリスク評価と依拠計画への影響を評価し、必要に応じて追加手続を行う。直ちにTamsinの財務諸表意見が限定されるわけではない。</p>
+<p>言及:AU-C 402では、無限定意見の監査報告書で受託会社監査人の作業に言及してはならない(法令で求められる場合を除く)。限定等の意見に関連する場合に限り言及でき、その場合も責任は軽減されない旨を示す。</p>
+<p>Type 1:特定時点の記述の適正性とデザインの適切性のみで、運用の有効性の証拠にはならない。運用評価の証拠を得るにはType 2が必要である。セキュリティ等のトラスト・サービス規準はSOC 2の対象である。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-AUD-49", section: "AUD", chapter: "AUD-03", title: "現金・棚卸資産サイクルの職務分掌マトリクスの評価",
+  scenario: `<p><b>Fairhaven Garden Supply</b> is a small wholesale company. As part of understanding the control environment and control activities, you prepared the following segregation-of-duties matrix for the cash and inventory cycles.</p>
+<table><tr><th>Employee</th><th>Duties performed</th></tr>
+<tr><td>Ana</td><td>Opens the mail and receives customer checks; posts customer payments to the accounts receivable subsidiary ledger.</td></tr>
+<tr><td>Ben</td><td>Warehouse manager with keys to the warehouse; approves write-offs of obsolete inventory and personally arranges their disposal.</td></tr>
+<tr><td>Carla</td><td>Reports to the controller; prepares the monthly bank reconciliations directly from bank statements received unopened. Performs no cash receipts or disbursements duties.</td></tr>
+<tr><td>Dev</td><td>Records inventory receipts and shipments in the perpetual inventory records; also compares the perpetual records to cycle counts and posts the adjustments without review.</td></tr>
+<tr><td>Eve</td><td>Approves vendor invoices for payment and records them in the accounts payable ledger.</td></tr>
+<tr><td>Fay</td><td>Treasurer; signs checks after reviewing supporting documents approved and recorded by others, and mails the checks directly. Has no recording duties.</td></tr></table>
+<p class="ja">Fairhaven Garden Supply社は小規模な卸売会社である。統制環境と統制活動の理解の一環として、現金・棚卸資産サイクルの職務分掌マトリクスを作成した。Ana:郵便物を開封して顧客の小切手を受け取り、売掛金補助元帳に入金を記帳する。Ben:倉庫の鍵を持つ倉庫管理者で、陳腐化在庫の廃棄を承認し、自ら廃棄の手配をする。Carla:コントローラーに報告し、未開封で受け取った銀行取引明細書から毎月の銀行勘定調整表を作成する。入出金の業務は行わない。Dev:継続記録に在庫の受入・出荷を記帳し、継続記録と循環棚卸の結果を照合して、レビューなしで修正を記帳する。Eve:仕入先請求書の支払を承認し、買掛金元帳に記帳する。Fay:財務責任者で、他者が承認・記帳した証憑を確認して小切手に署名し、直接郵送する。記帳業務はない。</p>`,
+  rows: [
+    { label: "Ana(Ana)", type: "select", options: ["No incompatible duties", "Custody + recording", "Authorization + custody", "Authorization + recording", "Recording + reconciliation"], answer: "Custody + recording" },
+    { label: "Ben(Ben)", type: "select", options: ["No incompatible duties", "Custody + recording", "Authorization + custody", "Authorization + recording", "Recording + reconciliation"], answer: "Authorization + custody" },
+    { label: "Carla(Carla)", type: "select", options: ["No incompatible duties", "Custody + recording", "Authorization + custody", "Authorization + recording", "Recording + reconciliation"], answer: "No incompatible duties" },
+    { label: "Dev(Dev)", type: "select", options: ["No incompatible duties", "Custody + recording", "Authorization + custody", "Authorization + recording", "Recording + reconciliation"], answer: "Recording + reconciliation" },
+    { label: "Eve(Eve)", type: "select", options: ["No incompatible duties", "Custody + recording", "Authorization + custody", "Authorization + recording", "Recording + reconciliation"], answer: "Authorization + recording" },
+    { label: "Fay(Fay)", type: "select", options: ["No incompatible duties", "Custody + recording", "Authorization + custody", "Authorization + recording", "Recording + reconciliation"], answer: "No incompatible duties" },
+    { label: "Number of employees with incompatible duties(職務の兼務に問題がある従業員数)", type: "num", answer: 4 },
+    { label: "Fraud scheme most directly enabled by Ana's duties(Anaの職務により最も直接的に可能となる不正)", type: "select", options: ["Lapping of accounts receivable", "Kiting between bank accounts", "Fictitious vendor payments", "Ghost employees on the payroll"], answer: "Lapping of accounts receivable" },
+  ],
+  explain: `<p>職務分掌の基本は、取引の承認(authorization)、資産の保管(custody)、記録(recording)、独立的な照合・検証(reconciliation)を別の者に担当させることである。</p>
+<p>Ana:小切手の受領(保管)と売掛金の記帳(記録)を兼務 → 保管+記録。入金を着服し、後の別顧客の入金で穴埋めするラッピング(lapping)が可能となる。</p>
+<p>Ben:廃棄の承認(承認)と在庫への物理的アクセス・廃棄の実行(保管) → 承認+保管。良品を陳腐化品として廃棄承認し持ち出すことができる。</p>
+<p>Carla:入出金にも記帳にも関与せず、未開封の明細書から調整表を作成する独立した照合担当 → 問題なし。</p>
+<p>Dev:在庫の記録者が実地との照合・修正記帳もレビューなしで行う → 記録+照合。記録の誤りや差異を隠ぺいできる。</p>
+<p>Eve:支払の承認と買掛金の記帳 → 承認+記録。架空請求の承認・計上が可能となる。</p>
+<p>Fay:他者が承認・記帳した証憑に基づき署名し、小切手を直接郵送する(保管のみで記帳しない) → 問題なし。</p>
+<p>問題のある従業員数 = Ana、Ben、Dev、Eve の4名。カイティングは銀行口座間の資金移動のタイミングを利用する不正、架空仕入先・架空従業員はそれぞれ購買・給与サイクルの不正であり、Anaの職務とは直接結び付かない。</p>`,
+});

@@ -96,3 +96,80 @@ CPA.tbs({
 <p>⑦ 共通鍵方式では全ての組合せに鍵が必要:n(n−1)/2 = 50×49÷2 = 1,225。</p>
 <p>⑧ 公開鍵方式では1人1ペア:2n = 2×50 = 100。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-ISC-32", section: "ISC", chapter: "ISC-02", title: "ファイアウォールのルールセットのレビュー(許可・拒否の判定)",
+  scenario: `<p>As part of an IT audit at Delmore Retail, you review the perimeter firewall rule set. The firewall is <b>stateful</b>, evaluates rules <b>top-down</b>, and applies the <b>first matching rule</b> only. Internal subnets: 10.1.5.0/24 = IT administrators; 10.2.0.0/16 = database zone; 203.0.113.0/24 = DMZ (web server 203.0.113.10).</p>
+<p><b>Exhibit 1 — Rule set</b></p>
+<table><tr><th>Rule</th><th>Action</th><th>Protocol</th><th>Source</th><th>Destination</th><th>Dest. port</th></tr>
+<tr><td>1</td><td>Deny</td><td>Any</td><td>198.51.100.0/24 (threat-intel blocklist)</td><td>Any</td><td>Any</td></tr>
+<tr><td>2</td><td>Allow</td><td>TCP</td><td>Any</td><td>203.0.113.10</td><td>443</td></tr>
+<tr><td>3</td><td>Allow</td><td>TCP</td><td>Any</td><td>203.0.113.10</td><td>80</td></tr>
+<tr><td>4</td><td>Allow</td><td>TCP</td><td>10.1.5.0/24</td><td>203.0.113.0/24</td><td>22</td></tr>
+<tr><td>5</td><td>Allow</td><td>TCP</td><td>203.0.113.10</td><td>10.2.0.50</td><td>1433</td></tr>
+<tr><td>6</td><td>Deny</td><td>Any</td><td>Any</td><td>10.2.0.0/16</td><td>Any</td></tr>
+<tr><td>7</td><td>Allow</td><td>TCP</td><td>10.0.0.0/8</td><td>Any</td><td>443</td></tr>
+<tr><td>8</td><td>Deny</td><td>Any</td><td>Any</td><td>Any</td><td>Any</td></tr></table>
+<p><b>Exhibit 2 — Test packets (new connections)</b></p>
+<table><tr><th>Packet</th><th>Source</th><th>Destination:port</th></tr>
+<tr><td>P1</td><td>198.51.100.7</td><td>203.0.113.10:443</td></tr>
+<tr><td>P2</td><td>192.0.2.44</td><td>203.0.113.10:443</td></tr>
+<tr><td>P3</td><td>192.0.2.44</td><td>203.0.113.10:22</td></tr>
+<tr><td>P4</td><td>203.0.113.10</td><td>10.2.0.50:1433</td></tr>
+<tr><td>P5</td><td>192.0.2.44</td><td>10.2.0.50:1433</td></tr>
+<tr><td>P6</td><td>10.1.5.23</td><td>203.0.113.10:22</td></tr>
+<tr><td>P7</td><td>10.3.8.9</td><td>93.184.216.34:443</td></tr></table>
+<p><b>Exhibit 3 — Change request</b>: To stop employees from uploading files to an unapproved file-sharing site (93.184.216.34), the network engineer proposes appending a new Rule 9: Deny TCP 10.0.0.0/8 → 93.184.216.34 port 443.</p>
+<p class="ja">Delmore Retail社のIT監査で境界ファイアウォールのルールセットをレビューする。ファイアウォールは<b>ステートフル</b>で、ルールを<b>上から順に</b>評価し、<b>最初に一致したルール</b>のみを適用する。10.1.5.0/24はIT管理者、10.2.0.0/16はデータベースゾーン、203.0.113.0/24はDMZ(Webサーバーは203.0.113.10)である。ルールセットとテストパケットは英文の表のとおり。変更依頼(Exhibit 3):未承認のファイル共有サイト(93.184.216.34)へのアップロードを止めるため、ネットワーク技術者は末尾に新ルール9「Deny TCP 10.0.0.0/8 → 93.184.216.34 ポート443」を追加することを提案している。</p>`,
+  rows: [
+    { label: "P1 — rule number applied(P1に適用されるルール番号)", type: "num", answer: 1 },
+    { label: "P2 — outcome(P2の結果)", type: "select", options: ["Allowed", "Denied"], answer: "Allowed" },
+    { label: "P3 — rule number applied(P3に適用されるルール番号)", type: "num", answer: 8 },
+    { label: "P4 — outcome(P4の結果)", type: "select", options: ["Allowed", "Denied"], answer: "Allowed" },
+    { label: "P5 — rule number applied(P5に適用されるルール番号)", type: "num", answer: 6 },
+    { label: "P6 — outcome(P6の結果)", type: "select", options: ["Allowed", "Denied"], answer: "Allowed" },
+    { label: "Number of the seven packets that are allowed(7つのパケットのうち許可される数)", type: "num", answer: 4 },
+    { label: "Evaluation of the proposed Rule 9(提案されたルール9の評価)", type: "select", options: ["Effective as proposed, because deny rules take precedence over allow rules", "Ineffective, because Rule 7 (and Rule 8) are matched first; it must be placed above Rule 7", "Ineffective, because a stateful firewall cannot filter outbound traffic", "Unnecessary, because Rule 6 already blocks the traffic"], answer: "Ineffective, because Rule 7 (and Rule 8) are matched first; it must be placed above Rule 7" },
+  ],
+  explain: `<p>① P1:送信元198.51.100.7はブロックリスト(198.51.100.0/24)に含まれ、宛先が許可対象のWebサーバーでも最初に一致するルール1で拒否される。</p>
+<p>② P2:ルール1に該当せず、宛先203.0.113.10:443でルール2に一致し許可。</p>
+<p>③ P3:SSH(22)を許可するルール4は送信元が管理者サブネットに限られる。外部の192.0.2.44はルール1〜7のいずれにも一致せず、ルール8(全拒否)で拒否される。</p>
+<p>④ P4:WebサーバーからDBサーバーへの1433はルール5に一致し許可。ルール6の全拒否より上にあるため有効である。</p>
+<p>⑤ P5:外部からDBへの直接接続はルール5(送信元がWebサーバー限定)に一致せず、ルール6で拒否。</p>
+<p>⑥ P6:管理者サブネット10.1.5.23からDMZへのSSHはルール4に一致し許可。</p>
+<p>⑦ P7:社内10.3.8.9から外部の443はルール7に一致し許可。許可は P2・P4・P6・P7 の4つ(拒否は P1・P3・P5)。</p>
+<p>⑧ 先頭一致方式では、末尾に置いたルール9に到達する前に、対象通信はルール7で許可されてしまう(仮にそれがなくてもルール8で処理される)。ブロックするにはルール7より上に配置する必要がある。拒否ルールが自動的に優先されるわけではなく、ステートフルFWも送信方向を制御でき、ルール6はDBゾーン宛てのみが対象である。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-ISC-33", section: "ISC", chapter: "ISC-02", title: "脆弱性スキャン結果の優先順位付けと是正投資のROSI",
+  scenario: `<p>Fenwick Payments' quarterly vulnerability scan produced the findings below. Under the company's vulnerability management policy, each finding receives a <b>risk score = CVSS base score × asset criticality weight × exposure factor</b>.</p>
+<p><b>Exhibit 1 — Scoring weights</b>: Criticality — High 3, Medium 2, Low 1. Exposure — Internet-facing 1.5, Internal 1.0, Isolated (no network connectivity) 0.5.</p>
+<p><b>Exhibit 2 — Remediation SLAs</b>: risk score ≥ 20.0 → 15 days; 10.0–19.9 → 30 days; below 10.0 → 90 days.</p>
+<p><b>Exhibit 3 — Scan findings</b></p>
+<table><tr><th>ID</th><th>Asset</th><th>CVSS</th><th>Criticality</th><th>Exposure</th></tr>
+<tr><td>V1</td><td>Payment web application server</td><td>9.8</td><td>High</td><td>Internet-facing</td></tr>
+<tr><td>V2</td><td>Legacy test server (decommission pending)</td><td>9.1</td><td>Low</td><td>Isolated</td></tr>
+<tr><td>V3</td><td>ERP database server</td><td>7.5</td><td>High</td><td>Internal</td></tr>
+<tr><td>V4</td><td>HR laptops</td><td>5.3</td><td>Medium</td><td>Internal</td></tr>
+<tr><td>V5</td><td>Marketing brochure website</td><td>4.0</td><td>Low</td><td>Internet-facing</td></tr></table>
+<p><b>Exhibit 4 — Risk analysis for V1</b>: The payment platform is valued at $2,000,000. A successful exploit is expected to cause a loss of 40% of that value (exposure factor). Without remediation, the annualized rate of occurrence (ARO) is 0.25. A patch plus a web application firewall would cost $45,000 per year and reduce the ARO to 0.02.</p>
+<p class="ja">Fenwick Payments社の四半期脆弱性スキャンの結果である。方針により、各指摘には<b>リスクスコア=CVSS基本値×資産重要度の重み×露出係数</b>を付す。重要度は高3・中2・低1、露出はインターネット公開1.5・内部1.0・隔離(ネットワーク接続なし)0.5。是正期限はスコア20.0以上は15日、10.0〜19.9は30日、10.0未満は90日。V1について、決済基盤の価値は2,000,000ドル、攻撃成功時の損失はその40%(エクスポージャー・ファクター)、是正しない場合の年間発生率(ARO)は0.25。パッチ適用とWAF導入の年間費用は45,000ドルで、AROは0.02に下がる。</p>`,
+  rows: [
+    { label: "Risk score of V1(V1のリスクスコア)", type: "num", answer: 44.1, tol: 0.05 },
+    { label: "Risk score of V3(V3のリスクスコア)", type: "num", answer: 22.5, tol: 0.05 },
+    { label: "Finding ranked second in remediation priority(是正優先順位が2位の指摘)", type: "select", options: ["V2", "V3", "V4", "V5"], answer: "V3" },
+    { label: "Remediation SLA for V2(V2の是正期限)", type: "select", options: ["15 days", "30 days", "90 days"], answer: "90 days" },
+    { label: "Remediation SLA for V4(V4の是正期限)", type: "select", options: ["15 days", "30 days", "90 days"], answer: "30 days" },
+    { label: "Single loss expectancy for V1, $(V1の単一損失予測額)", type: "num", answer: 800000 },
+    { label: "Annualized loss expectancy for V1 before remediation, $(是正前のV1の年間損失予測額)", type: "num", answer: 200000 },
+    { label: "Return on security investment (ROSI) of the V1 remediation, %(V1是正のROSI、%)", type: "num", answer: 308.9, tol: 0.1 },
+  ],
+  explain: `<p>各スコア:V1 = 9.8×3×1.5 = 44.1、V2 = 9.1×1×0.5 = 4.55、V3 = 7.5×3×1.0 = 22.5、V4 = 5.3×2×1.0 = 10.6、V5 = 4.0×1×1.5 = 6.0。</p>
+<p>① V1 = 44.1。② V3 = 22.5。</p>
+<p>③ 順位は V1(44.1)> V3(22.5)> V4(10.6)> V5(6.0)> V2(4.55)。CVSSだけならV2(9.1)が2位だが、隔離された低重要度資産のため実質リスクは最も低い。2位はV3である。</p>
+<p>④ V2は4.55で10.0未満のため90日。⑤ V4は10.6で10.0〜19.9のため30日。</p>
+<p>⑥ SLE = 資産価値×EF = 2,000,000×40% = 800,000ドル。</p>
+<p>⑦ ALE = SLE×ARO = 800,000×0.25 = 200,000ドル。</p>
+<p>⑧ 対策後ALE = 800,000×0.02 = 16,000ドル。ROSI =(対策前ALE − 対策後ALE − 対策コスト)÷対策コスト =(200,000 − 16,000 − 45,000)÷45,000 = 139,000÷45,000 ≒ 3.089 → 308.9%。</p>`,
+});
