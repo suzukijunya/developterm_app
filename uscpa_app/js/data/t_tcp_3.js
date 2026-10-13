@@ -109,3 +109,95 @@ CPA.tbs({ id: "TBS-TCP-44", section: "TCP", chapter: "TCP-03", title: "遺産の
 <p>⑤Umaは特定遺贈の受遺者で残余受益者ではないため配分は <b>0</b>。</p>
 <p>⑥キャピタルロス繰越は性質(長期)を保持して残余受益者に引き継がれ、受益者の段階で無期限に繰り越せる。最終年度は課税所得がマイナスのため$3,000の控除による繰越の減少もない。Tina = 8,000 × 40% = <b>3,200</b>(Samは4,800)。</p>`,
 });
+
+CPA.tbs({ id: "TBS-TCP-45", section: "TCP", chapter: "TCP-03", title: "総遺産算入の判定グリッド:合有財産・生命保険・§2036・3年内贈与・年金",
+  scenario: `<p>Hiro Tanaka, a U.S. citizen, died on March 10, 2026, survived by his wife, Emi (a U.S. citizen). The executor's worksheet lists the following (values at date of death unless stated; no alternate valuation election):</p>
+<table><tr><th>#</th><th>Item</th><th>Value</th></tr>
+<tr><td>1</td><td>Residence held by Hiro and Emi as joint tenants with right of survivorship</td><td>$900,000</td></tr>
+<tr><td>2</td><td>Brokerage account held with Hiro's brother as joint tenants with right of survivorship; Hiro furnished 75% of the consideration</td><td>$300,000</td></tr>
+<tr><td>3</td><td>Life insurance on Hiro's life, owned by Hiro, payable to his daughter</td><td>$1,000,000</td></tr>
+<tr><td>4</td><td>Life insurance on Hiro's life, transferred by Hiro to an irrevocable life insurance trust in June 2024 (face amount)</td><td>$500,000</td></tr>
+<tr><td>5</td><td>Life insurance owned by Hiro on Emi's life (face $300,000; interpolated terminal reserve plus unearned premium)</td><td>$40,000</td></tr>
+<tr><td>6</td><td>Vacation home deeded to his son in 2023; Hiro kept the right to use it rent-free for life and did so until death</td><td>$600,000</td></tr>
+<tr><td>7</td><td>Assets in Hiro's revocable living trust</td><td>$1,200,000</td></tr>
+<tr><td>8</td><td>Stock given to his niece in 2025 (FMV at gift $100,000; no gift tax paid)</td><td>$130,000</td></tr>
+<tr><td>9</td><td>Joint-and-survivor annuity purchased solely by Hiro; value of Emi's survivor payments</td><td>$250,000</td></tr>
+<tr><td>10</td><td>Single-life annuity on Hiro's life that ceased at his death</td><td>$0</td></tr></table>
+<p class="ja">米国市民のHiro Tanakaは2026年3月10日に死亡し、妻Emi(米国市民)が生存している。遺言執行者のワークシートの項目は次のとおり(特記なき限り死亡日の価値、代替評価日の選択なし)。1:HiroとEmiの生存者権付き合有の自宅$900,000。2:Hiroの兄弟との生存者権付き合有の証券口座$300,000(Hiroが対価の75%を拠出)。3:Hiroが所有し娘が受取人のHiroの生命保険$1,000,000。4:Hiroが2024年6月に取消不能生命保険信託へ移転したHiroの生命保険(保険金額)$500,000。5:Hiroが所有するEmiの生命保険(保険金額$300,000、補間ターミナルリザーブ+未経過保険料)$40,000。6:2023年に息子へ譲渡したが生涯無償使用権を留保し死亡まで使用した別荘$600,000。7:Hiroの撤回可能生前信託の資産$1,200,000。8:2025年に姪へ贈与した株式(贈与時の時価$100,000、贈与税の納付なし)$130,000。9:Hiroが単独で購入した連生終身年金のうちEmiの生存者給付の価値$250,000。10:Hiroの死亡で終了した単生年金$0。</p>`,
+  rows: [
+    { label: "Item 1 — amount included(項目1の算入額)", type: "num", answer: 450000 },
+    { label: "Item 2 — amount included(項目2の算入額)", type: "num", answer: 225000 },
+    { label: "Item 4 — treatment(項目4の取扱い)", type: "select", options: ["Included at $500,000 under §2035 (incident of ownership transferred within 3 years of death)", "Excluded because the ILIT owns the policy at death", "Included only to the extent of premiums paid within 3 years", "Included at the policy's cash value on the transfer date"], answer: "Included at $500,000 under §2035 (incident of ownership transferred within 3 years of death)" },
+    { label: "Item 5 — amount included(項目5の算入額)", type: "num", answer: 40000 },
+    { label: "Item 6 — basis for inclusion(項目6の算入根拠)", type: "select", options: ["§2036 retained life estate — included at $600,000", "§2035 gift within 3 years — included at value on the 2023 gift date", "§2038 revocable transfer — included at $600,000", "Not included; completed gift in 2023"], answer: "§2036 retained life estate — included at $600,000" },
+    { label: "Item 8 — amount included(項目8の算入額)", type: "num", answer: 0 },
+    { label: "Item 9 — amount included(項目9の算入額)", type: "num", answer: 250000 },
+    { label: "Gross estate (items 1–10)(総遺産額)", type: "num", answer: 4265000 },
+  ],
+  explain: `<p>①配偶者間の生存者権付き合有は適格合有財産(§2040(b))として拠出に関係なく半分を算入:900,000 × 1/2 = <b>450,000</b>。</p>
+<p>②配偶者以外との合有は拠出割合で算入(拠出ルール):300,000 × 75% = <b>225,000</b>。</p>
+<p>③本人が付随的権利を保有する生命保険は§2042で全額1,000,000を算入。</p>
+<p>④死亡前3年以内に生命保険の付随的権利を移転した場合は§2035(a)で保険金額500,000を算入(2024年6月は3年以内)。</p>
+<p>⑤他人の生命に掛けた保険を被相続人が所有する場合は保険金ではなく保険契約の価値(補間ターミナルリザーブ+未経過保険料)<b>40,000</b>を§2033で算入。</p>
+<p>⑥生涯の使用・収益権を留保した譲渡は§2036で死亡時の時価 <b>600,000</b> を算入(贈与時期に関係ない)。</p>
+<p>⑦撤回可能信託は§2038で1,200,000を算入。</p>
+<p>⑧3年内贈与のルールは生命保険や§2036〜2038の権利の移転と贈与税の納付額(グロスアップ)に限られる。株式の贈与は算入しない:<b>0</b>(贈与額は調整課税贈与として税額計算の基礎に反映される)。</p>
+<p>⑨被相続人が購入した連生年金は生存者の受取分の価値を§2039で <b>250,000</b> 算入。単生年金は死亡で消滅し0。</p>
+<p>⑩総遺産 = 450,000 + 225,000 + 1,000,000 + 500,000 + 40,000 + 600,000 + 1,200,000 + 0 + 250,000 + 0 = <b>4,265,000</b>。</p>`,
+});
+
+CPA.tbs({ id: "TBS-TCP-46", section: "TCP", chapter: "TCP-03", title: "遺産税の計算:調整課税贈与・DSUE(ポータビリティ)・州死亡税控除",
+  scenario: `<p>Helen Ito, a U.S. citizen, died in 2026 unmarried. Her husband, Ken, died in 2021 when the basic exclusion amount was $11,700,000; Ken's taxable estate plus adjusted taxable gifts totaled $4,700,000, and his executor elected portability on a timely filed Form 706. Helen never remarried.</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Gross estate</td><td>$24,000,000</td></tr>
+<tr><td>Funeral expenses</td><td>$30,000</td></tr>
+<tr><td>Administration expenses (deducted on Form 706)</td><td>$170,000</td></tr>
+<tr><td>Debts and mortgages</td><td>$300,000</td></tr>
+<tr><td>Bequest to a qualified public charity</td><td>$1,000,000</td></tr>
+<tr><td>State estate tax paid</td><td>$400,000</td></tr></table>
+<p>In 2019 Helen gave stock worth $2,015,000 to her son; she claimed the $15,000 annual exclusion, paid no gift tax and did not split gifts. The stock was worth $3,100,000 at Helen's death and is not included in her gross estate. Assume a 2026 basic exclusion amount of <b>$15,000,000</b> (OBBBA) and the unified rate schedule: tax on $1,000,000 is $345,800, plus 40% of the excess.</p>
+<p class="ja">米国市民のHelen Itoは2026年に未婚で死亡した。夫Kenは基礎控除額$11,700,000であった2021年に死亡し、Kenの課税遺産と調整課税贈与の合計は$4,700,000で、遺言執行者は期限内のForm 706でポータビリティを選択した。Helenは再婚していない。Helenの総遺産$24,000,000、葬儀費用$30,000、遺産管理費用(Form 706で控除)$170,000、債務・抵当債務$300,000、適格公益慈善団体への遺贈$1,000,000、支払った州遺産税$400,000。2019年にHelenは息子へ時価$2,015,000の株式を贈与し、$15,000の年間除外を適用、贈与税の納付はなく贈与分割もしていない。死亡時の株式の時価は$3,100,000で総遺産には含まれない。2026年の基礎控除額はOBBBAにより$15,000,000、統一税率表は$1,000,000に対する税額$345,800に超過額の40%を加えるものとする。</p>`,
+  rows: [
+    { label: "Taxable estate(課税遺産額)", type: "num", answer: 22100000 },
+    { label: "Adjusted taxable gifts(調整課税贈与)", type: "num", answer: 2000000 },
+    { label: "Tentative tax base(暫定税額計算の基礎)", type: "num", answer: 24100000 },
+    { label: "DSUE amount available to Helen's estate(Helenの遺産が使えるDSUE)", type: "num", answer: 7000000 },
+    { label: "Helen's applicable exclusion amount(Helenの適用除外額)", type: "num", answer: 22000000 },
+    { label: "Net federal estate tax payable(納付すべき連邦遺産税)", type: "num", answer: 840000 },
+    { label: "Which statement about the DSUE is correct?(DSUEに関する正しい記述)", type: "select", options: ["DSUE comes from the last deceased spouse and is not indexed for inflation after the first spouse's death", "DSUE is recomputed using the $15,000,000 basic exclusion in effect at Helen's death", "DSUE is available only if Helen's executor files Form 706 within 9 months of Ken's death", "DSUE can also be used to offset the generation-skipping transfer tax"], answer: "DSUE comes from the last deceased spouse and is not indexed for inflation after the first spouse's death" },
+  ],
+  explain: `<p>①課税遺産 = 24,000,000 − 葬儀30,000 − 管理費170,000 − 債務300,000 − 慈善1,000,000 − 州遺産税400,000(§2058)= <b>22,100,000</b>。</p>
+<p>②調整課税贈与 = 1976年後の課税贈与で総遺産に含まれないもの。贈与時の価値で評価する:2,015,000 − 15,000 = <b>2,000,000</b>(死亡時の3,100,000ではない)。</p>
+<p>③暫定税額計算の基礎 = 22,100,000 + 2,000,000 = <b>24,100,000</b>。暫定税額 = 345,800 + (24,100,000 − 1,000,000) × 40% = 9,585,800。</p>
+<p>④DSUE = Kenの死亡時の基礎控除額11,700,000 − 使用額4,700,000 = <b>7,000,000</b>。</p>
+<p>⑤適用除外額 = 基礎控除15,000,000 + DSUE7,000,000 = <b>22,000,000</b>。適用控除額(統一税額控除)= 345,800 + 21,000,000 × 40% = 8,745,800。</p>
+<p>⑥過去の贈与税納付額は0なので遺産税 = 9,585,800 − 8,745,800 = <b>840,000</b>(= (24,100,000 − 22,000,000) × 40%)。</p>
+<p>⑦DSUEは「最後に死亡した配偶者」から引き継ぎ、第1死亡時の金額で固定されインフレ調整されない。ポータビリティは第1死亡配偶者の遺産の期限内(Rev. Proc. 2022-32では5年以内の簡易救済あり)のForm 706で選択する。GST税の非課税枠には使えない。</p>`,
+});
+
+CPA.tbs({ id: "TBS-TCP-47", section: "TCP", chapter: "TCP-03", title: "代替評価日(§2032)の選択:6か月内の売却・分配と時の経過による減価",
+  scenario: `<p>Masao Kudo, a never-married U.S. citizen, died on <b>January 10, 2026</b>. His executor is considering the alternate valuation date election. Values:</p>
+<table><tr><th>Asset</th><th>Value at death</th><th>Event within 6 months</th><th>Value on July 10, 2026</th></tr>
+<tr><td>Stock A</td><td>$6,000,000</td><td>Sold May 1, 2026 for $5,100,000</td><td>$4,500,000</td></tr>
+<tr><td>Stock B</td><td>$9,000,000</td><td>None</td><td>$7,800,000</td></tr>
+<tr><td>Land</td><td>$4,500,000</td><td>Distributed to heir June 1, 2026 (FMV $4,350,000)</td><td>$4,200,000</td></tr>
+<tr><td>Patent (remaining life 10 years)</td><td>$1,200,000</td><td>None; decline solely from lapse of time</td><td>$1,020,000</td></tr>
+<tr><td>Cash</td><td>$1,500,000</td><td>None</td><td>$1,500,000</td></tr></table>
+<p>Debts and funeral expenses deductible on Form 706 total $200,000. Masao made no lifetime taxable gifts. Assume a 2026 basic exclusion amount of $15,000,000 and a flat 40% marginal rate above the exclusion.</p>
+<p class="ja">未婚の米国市民Masao Kudoは2026年1月10日に死亡した。遺言執行者は代替評価日の選択を検討している。株式A:死亡時$6,000,000、2026年5月1日に$5,100,000で売却、7月10日の価値$4,500,000。株式B:死亡時$9,000,000、7月10日$7,800,000。土地:死亡時$4,500,000、2026年6月1日に相続人へ分配(時価$4,350,000)、7月10日$4,200,000。特許(残存期間10年):死亡時$1,200,000、7月10日$1,020,000で、減少は時の経過のみによる。現金$1,500,000(変動なし)。Form 706で控除できる債務・葬儀費用は$200,000。生前の課税贈与はない。2026年の基礎控除額は$15,000,000、控除額を超える部分の限界税率は一律40%とする。</p>`,
+  rows: [
+    { label: "Alternate-valuation value of Stock A(株式Aの代替評価額)", type: "num", answer: 5100000 },
+    { label: "Alternate-valuation value of the land(土地の代替評価額)", type: "num", answer: 4350000 },
+    { label: "Alternate-valuation value of the patent(特許の代替評価額)", type: "num", answer: 1200000 },
+    { label: "Gross estate if the election is made(選択した場合の総遺産額)", type: "num", answer: 19950000 },
+    { label: "Estate tax if the election is made(選択した場合の遺産税額)", type: "num", answer: 1900000 },
+    { label: "May the executor make the §2032 election?(§2032の選択は可能か)", type: "select", options: ["Yes — it reduces both the gross estate and the estate tax; it applies to all assets and is irrevocable", "Yes — and it may be applied asset by asset", "No — alternate valuation is unavailable when assets are sold within 6 months", "No — the election is available only when no estate tax would otherwise be due"], answer: "Yes — it reduces both the gross estate and the estate tax; it applies to all assets and is irrevocable" },
+    { label: "Heir's income tax basis in Stock B if the election is made(選択時の相続人の株式Bの基準価額)", type: "num", answer: 7800000 },
+  ],
+  explain: `<p>①代替評価日は死亡後6か月(2026年7月10日)。その間に売却・分配された資産は処分日の価値で評価する。株式A = 売却日5,100,000、土地 = 分配日4,350,000。</p>
+<p>②時の経過のみによる価値の変動(特許・年金・終身権など)は代替評価で考慮しないので、特許は死亡日の <b>1,200,000</b>。</p>
+<p>③代替評価による総遺産 = 5,100,000 + 7,800,000 + 4,350,000 + 1,200,000 + 1,500,000 = <b>19,950,000</b>(死亡日評価では22,200,000)。</p>
+<p>④遺産税(選択時)= (19,950,000 − 200,000 − 15,000,000) × 40% = 4,750,000 × 40% = <b>1,900,000</b>。選択しない場合は (22,200,000 − 200,000 − 15,000,000) × 40% = 2,800,000 で、900,000の減少。</p>
+<p>⑤§2032の選択は総遺産と(遺産税+GST税)の両方を減少させる場合に限り可能で、全資産に一括適用され、資産ごとの選択はできない。期限後1年以内のForm 706で行い取消不能。遺産税がゼロの遺産が基準価額を引き上げる目的で使うことはできない。</p>
+<p>⑥相続人の基準価額は遺産税上の評価額と一致する(§1014)。株式B = <b>7,800,000</b>。</p>`,
+});
