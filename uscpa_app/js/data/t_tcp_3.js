@@ -276,8 +276,8 @@ CPA.tbs({ id: "TBS-TCP-50", section: "TCP", chapter: "TCP-03", title: "UBTIの�
     { label: "Unrelated business income tax(非関連事業所得税額)", type: "num", answer: 15750 },
     { label: "Catering NOL carried forward (usable only against catering income)(ケータリングのNOL繰越額)", type: "num", answer: 15000 },
     { label: "Treatment of the logo royalty(ロゴのロイヤルティの取扱い)", type: "select", options: ["Excluded from UBTI as a passive royalty", "Included in UBTI as a separate trade or business", "Included in UBTI because the logo is used commercially", "Excluded only if the licensee is another exempt organization"], answer: "Excluded from UBTI as a passive royalty" },
-    { label: "Annual return for Affiliate X(関連団体Xの年次申告書)", type: "select", options: ["Form 990-N (e-Postcard)", "Form 990-EZ", "Form 990", "Form 990-PF", "Form 990-T"], answer: "Form 990-N (e-Postcard)" },
-    { label: "Annual return for Affiliate Y(関連団体Yの年次申告書)", type: "select", options: ["Form 990-N (e-Postcard)", "Form 990-EZ", "Form 990", "Form 990-PF", "Form 990-T"], answer: "Form 990-PF" },
+    { label: "Minimum annual information return required of Affiliate X(関連団体Xに最低限要求される年次申告書)", type: "select", options: ["Form 990-N (e-Postcard)", "Form 990-EZ", "Form 990", "Form 990-PF", "Form 990-T"], answer: "Form 990-N (e-Postcard)" },
+    { label: "Minimum annual information return required of Affiliate Y(関連団体Yに最低限要求される年次申告書)", type: "select", options: ["Form 990-N (e-Postcard)", "Form 990-EZ", "Form 990", "Form 990-PF", "Form 990-T"], answer: "Form 990-PF" },
   ],
   explain: `<p>①負債調達比率 = 420,000 / 1,050,000 = 40%。UBTI = (90,000 − 50,000) × 40% = <b>16,000</b>。負債調達資産の賃料には受動的賃料の除外が適用されない(§514)。</p>
 <p>②§512(a)(6)のサイロ規則により、各非関連事業ごとにUBTIを計算し、ある事業の損失を他の事業の所得と相殺できない。フィットネス:210,000 − 140,000 = 70,000。2017年後のNOLは当該事業の所得の80%(56,000)まで控除でき、10,000は全額控除可能:70,000 − 10,000 = <b>60,000</b>。</p>
