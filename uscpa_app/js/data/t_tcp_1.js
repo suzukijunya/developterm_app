@@ -69,7 +69,52 @@ CPA.tbs({ id: "TBS-TCP-23", section: "TCP", chapter: "TCP-01", title: "RSU・ISO
     { label: "Restricted stock: ordinary income recognized in 2026(譲渡制限株式:2026年に認識する通常所得)", type: "num", answer: 3000 },
   ],
   explain: `<p><b>RSU</b>:付与時は課税なし。権利確定・決済時に 500 × 60 = <b>30,000</b>を給与所得として認識し、株式の取得価額は30,000。売却益 500 × (70 − 60) = <b>5,000</b>。保有期間は確定日から起算するため6か月で<b>短期</b>。</p>
-<p><b>ISO#1</b>:行使から1年以内(付与から2年以内でもない場合を含む)の売却は不適格処分。通常所得 = 行使時の差益 (50 − 20) × 1,000 = 30,000 と実際の利益 (45 − 20) × 1,000 = 25,000 の少ない方 = <b>25,000</b>。取得価額は 20,000 + 25,000 = 45,000、売却額45,000のためキャピタル損益は <b>0</b>。</p>
+<p><b>ISO#1</b>:行使から1年以内の売却は保有要件を満たさないため不適格処分となる。通常所得 = 行使時の差益 (50 − 20) × 1,000 = 30,000 と実際の利益 (45 − 20) × 1,000 = 25,000 の少ない方 = <b>25,000</b>。取得価額は 20,000 + 25,000 = 45,000、売却額45,000のためキャピタル損益は <b>0</b>。</p>
 <p><b>AMT</b>:行使と同一年に不適格処分したISO#1はAMT調整が不要(通常税で既に所得計上)。ISO#2の差益 (25 − 5) × 2,000 = <b>40,000</b>のみが加算調整。ISO#2の通常税上の取得価額は10,000、AMT上は 10,000 + 40,000 = <b>50,000</b>。</p>
 <p><b>譲渡制限株式</b>:§83(b)選択により受領時の時価 1,000 × 3 = <b>3,000</b>を2026年に通常所得として認識。2028年の権利確定時には課税されず、将来の値上り益はキャピタルゲインとなる。</p>`,
+});
+
+CPA.tbs({ id: "TBS-TCP-24", section: "TCP", chapter: "TCP-01", title: "Roth IRAの分配順序(転換の5年ルール)と10%追加税の例外",
+  scenario: `<p>Kenji, age 45, files jointly. His 2026 AGI is <b>$100,000</b> (including the traditional IRA distribution below). He received the following in 2026:</p>
+<table><tr><th>Account</th><th>Facts</th></tr>
+<tr><td>Roth IRA (first opened in 2015)</td><td>Before the distribution: regular contributions <b>$18,000</b>; conversion in 2022 <b>$30,000</b> (fully taxable when converted); conversion in 2024 <b>$20,000</b> (fully taxable when converted); earnings <b>$12,000</b>. Distribution in 2026: <b>$60,000</b>, of which <b>$10,000</b> was used to buy his first principal residence (no prior first-time homebuyer distributions).</td></tr>
+<tr><td>Traditional IRA (no basis)</td><td>Distribution in 2026: <b>$15,000</b>. Kenji paid <b>$13,000</b> of unreimbursed deductible medical expenses in 2026, and his child was born in 2026; he designates <b>$5,000</b> of the distribution as a qualified birth or adoption distribution.</td></tr></table>
+<p class="ja">45歳のKenjiは夫婦合算申告で、2026年のAGIは$100,000(下記の伝統的IRA分配を含む)である。Roth IRA(2015年に初めて開設):分配前の内訳は通常拠出$18,000、2022年の転換$30,000(転換時に全額課税済み)、2024年の転換$20,000(同)、運用益$12,000。2026年に$60,000の分配を受け、うち$10,000で初めての主たる住居を購入した(初回住宅購入の分配は過去になし)。伝統的IRA(取得価額なし):2026年に$15,000の分配。2026年に補填されない控除対象医療費$13,000を支払い、同年に子が誕生したため分配のうち$5,000を適格出産・養子縁組分配として指定した。</p>`,
+  rows: [
+    { label: "Taxable amount of the Roth IRA distribution(Roth IRA分配の課税額)", type: "num", answer: 0 },
+    { label: "Roth distribution amount subject to the 10% additional tax before any exception(例外適用前に10%追加税の対象となるRoth分配額)", type: "num", answer: 42000 },
+    { label: "10% additional tax on the Roth IRA distribution(Roth IRA分配に係る10%追加税)", type: "num", answer: 3200 },
+    { label: "Taxable amount of the traditional IRA distribution(伝統的IRA分配の課税額)", type: "num", answer: 15000 },
+    { label: "10% additional tax on the traditional IRA distribution(伝統的IRA分配に係る10%追加税)", type: "num", answer: 450 },
+    { label: "Total 10% additional tax for 2026(2026年の10%追加税合計)", type: "num", answer: 3650 },
+    { label: "Required minimum distributions from Kenji's Roth IRA during his lifetime(Kenji存命中のRoth IRAの最低必要分配)", type: "select", options: ["Begin at age 73", "Begin at age 75", "Not required while the owner is alive", "Required only after the five-year period ends"], answer: "Not required while the owner is alive" },
+  ],
+  explain: `<p><b>Roth</b>:59½歳未満のため適格分配ではなく、順序規則が適用される:①通常拠出 → ②転換額(古い順、各転換の課税済部分から) → ③運用益。60,000 = 拠出18,000 + 2022年転換30,000 + 2024年転換12,000。運用益には到達しないので課税額は <b>0</b>。</p>
+<p>転換額には転換年の1月1日から起算する転換ごとの5年ルールがある。2022年転換の5年間は2022〜2026年で、2026年の分配はまだ期間内。2024年転換も期間内。よって追加税の対象は 30,000 + 12,000 = <b>42,000</b>。初回住宅購入の例外(生涯$10,000)を差し引き (42,000 − 10,000) × 10% = <b>3,200</b>。</p>
+<p><b>伝統的IRA</b>:取得価額がないため <b>15,000</b>全額が課税。例外:医療費のAGI 7.5%超過額 13,000 − 100,000 × 7.5% = 5,500(項目別控除の有無を問わない)と、出産分配5,000。対象額 15,000 − 5,500 − 5,000 = 4,500 × 10% = <b>450</b>。</p>
+<p>合計 3,200 + 450 = <b>3,650</b>。Roth IRAは所有者の存命中はRMDが不要である。</p>`,
+});
+
+CPA.tbs({ id: "TBS-TCP-25", section: "TCP", chapter: "TCP-01", title: "基準価額・アットリスク・パッシブの3段階制限と停止損失",
+  scenario: `<p>Rio is a limited partner in Harbor LP, an equipment leasing partnership in which she does not materially participate. She is not a real estate professional. At the beginning of Year 1:</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Cash contributed by Rio</td><td>$20,000</td></tr>
+<tr><td>Rio's share of Harbor LP nonrecourse liabilities (not qualified nonrecourse financing)</td><td>$30,000</td></tr></table>
+<p>Rio's distributive share of Harbor LP's results: Year 1 ordinary loss <b>$(45,000)</b>; Year 2 ordinary income <b>$10,000</b>. Her only other passive activity, Delta LLC, produced net passive income of <b>$8,000</b> in Year 1 and $0 in Year 2. Harbor LP made no distributions, and its liabilities did not change.</p>
+<p class="ja">RioはHarbor LP(設備リースのパートナーシップ)のリミテッド・パートナーで、実質的に関与していない。不動産専門家ではない。第1年度期首:Rioの出資現金$20,000、Harbor LPのノンリコース負債のRio持分$30,000(適格ノンリコース融資ではない)。Rioの持分損益:第1年度は通常損失$(45,000)、第2年度は通常所得$10,000。他の唯一のパッシブ活動Delta LLCの純パッシブ所得は第1年度$8,000、第2年度$0。分配はなく、負債も変動していない。</p>`,
+  rows: [
+    { label: "Year 1 loss allowed under the basis limitation (§704(d))(第1年度:基準価額制限を通過する損失)", type: "num", answer: 45000 },
+    { label: "Year 1 loss suspended under the at-risk rules (§465)(第1年度:アットリスク規定で停止される損失)", type: "num", answer: 25000 },
+    { label: "Year 1 Harbor loss deductible after the passive activity rules(第1年度:パッシブ規定適用後に控除できるHarborの損失)", type: "num", answer: 8000 },
+    { label: "Year 1 suspended passive activity loss(第1年度:停止されるパッシブ損失)", type: "num", answer: 12000 },
+    { label: "Rio's outside basis at the end of Year 1(第1年度末のRioの持分基準価額)", type: "num", answer: 5000 },
+    { label: "Year 2 at-risk carryover loss allowed under §465(第2年度:§465上で認められるアットリスク繰越損失)", type: "num", answer: 10000 },
+    { label: "Total suspended losses (at-risk plus passive) carried to Year 3(第3年度へ繰り越される停止損失合計(アットリスク+パッシブ))", type: "num", answer: 27000 },
+    { label: "Which liability would have increased Rio's amount at risk?(Rioのアットリスク額を増加させた負債は)", type: "select", options: ["Nonrecourse loan from the equipment seller", "Qualified nonrecourse financing secured by real property from a commercial lender", "Nonrecourse loan from another partner", "Any nonrecourse liability included in outside basis"], answer: "Qualified nonrecourse financing secured by real property from a commercial lender" },
+  ],
+  explain: `<p>損失は①基準価額 → ②アットリスク → ③パッシブの順に判定する。</p>
+<p>①基準価額 = 20,000 + 30,000 = 50,000 ≥ 45,000 → <b>45,000</b>が通過。②アットリスク額は現金20,000のみ(適格でないノンリコース負債は含まない)→ 20,000を通過し <b>25,000</b>を停止。③パッシブ損失20,000はパッシブ所得(Delta 8,000)の範囲でのみ控除 → <b>8,000</b>控除、<b>12,000</b>停止。</p>
+<p>期末基準価額 = 50,000 − 45,000 = <b>5,000</b>(§704(d)を通過した損失は、アットリスクで停止されていても基準価額を減らす)。</p>
+<p>第2年度:持分所得10,000でアットリスク額が0 → 10,000に増加し、アットリスク繰越損失25,000のうち <b>10,000</b>が通過。Harborの所得10,000と通過損失10,000は相殺されて純額0、他のパッシブ所得もないため、過年度の停止パッシブ損失12,000は使えない。繰越合計 = アットリスク 25,000 − 10,000 = 15,000 + パッシブ12,000 = <b>27,000</b>。</p>
+<p>適格ノンリコース融資(不動産を担保とする商業金融機関等からの借入)のみがノンリコースでもアットリスク額に含まれる。売主や関係者からのノンリコース借入は含まれない。</p>`,
 });

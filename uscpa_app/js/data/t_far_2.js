@@ -121,3 +121,52 @@ CPA.tbs({
 <p>火災損失(保険前)= 20,000 − 3,000(無傷)− 2,500(損傷品のNRV)= 14,500。純損失 = 14,500 − 12,000 = 2,500。</p>
 <p>ASU 2015-01で異常項目の区分は廃止され、継続事業の損益に含める(異常または稀な項目は別掲・注記)。売上総利益率法は見積り・期中報告用であり、年次財務諸表の棚卸評価としては認められない。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-FAR-51", section: "FAR", chapter: "FAR-03", title: "棚卸資産の誤謬が2年度に与える影響と前期損益修正",
+  scenario: `<p>During the Year 3 audit of Kudo Retail Inc. (periodic inventory system, calendar year), the audit senior documented the following. The Year 2 books have been closed. Ignore income taxes.</p>
+<table><tr><th>Item</th><th>Finding</th></tr>
+<tr><td>1</td><td>Ending inventory at December 31, Year 1 was overstated by $15,000 because of a double count.</td></tr>
+<tr><td>2</td><td>Ending inventory at December 31, Year 2 was understated by $9,000 because one aisle was omitted from the count.</td></tr>
+<tr><td>3</td><td>Goods costing $6,000, received December 28, Year 2 and included in the Year 2 count, were not recorded as a purchase until January Year 3 (the January entry was later reversed).</td></tr></table>
+<p>Exhibit 2: Reported net income was $120,000 for Year 1 and $135,000 for Year 2. Kudo presents comparative financial statements for Year 2 and Year 3.</p>
+<p class="ja">Kudo Retail社(棚卸計算法、暦年決算)の第3年度監査で次が判明した。第2年度の帳簿は締め切られている。税金は無視する。(1)第1年度末の棚卸高は二重計上により$15,000過大。(2)第2年度末の棚卸高は一部の棚の計上漏れにより$9,000過少。(3)第2年度12月28日に受け入れ第2年度末の実地棚卸に含めた原価$6,000の商品が、仕入として計上されていなかった(第3年度1月の計上は後に取消済)。報告純利益は第1年度$120,000、第2年度$135,000。比較財務諸表は第2年度と第3年度を表示する。</p>`,
+  rows: [
+    { label: "Corrected net income for Year 1(第1年度の修正後純利益)", type: "num", answer: 105000 },
+    { label: "Corrected net income for Year 2(第2年度の修正後純利益)", type: "num", answer: 153000 },
+    { label: "Amount by which reported Year 2 cost of goods sold was overstated(第2年度の報告売上原価の過大額)", type: "num", answer: 18000 },
+    { label: "Misstatement of retained earnings at December 31, Year 1(第1年度末利益剰余金の誤謬)", type: "select", options: ["Overstated by $15,000", "Understated by $15,000", "Overstated by $9,000", "No misstatement"], answer: "Overstated by $15,000" },
+    { label: "Net adjustment to retained earnings at December 31, Year 2 (increase)(第2年度末利益剰余金の修正額(増加))", type: "num", answer: 3000 },
+    { label: "Accounts payable at December 31, Year 2 was(第2年度末の買掛金)", type: "select", options: ["Overstated by $6,000", "Understated by $6,000", "Understated by $3,000", "Correctly stated"], answer: "Understated by $6,000" },
+    { label: "Required accounting for the errors(誤謬の会計処理)", type: "select", options: ["Correct prospectively in Year 3 income", "Restate prior-period financial statements; adjust opening retained earnings (ASC 250)", "Treat as a change in accounting estimate", "Disclose only, because Year 1 error has self-corrected"], answer: "Restate prior-period financial statements; adjust opening retained earnings (ASC 250)" },
+  ],
+  explain: `<p>第1年度:期末棚卸の過大15,000 → 売上原価過少 → 純利益過大15,000。修正後 = 120,000 − 15,000 = 105,000。第1年度末の利益剰余金も15,000過大。</p>
+<p>第2年度:①期首棚卸の過大15,000 → 売上原価過大 → 純利益 +15,000。②期末棚卸の過少9,000 → 売上原価過大 → +9,000。③仕入計上漏れ6,000 → 売上原価過少 → −6,000。修正後 = 135,000 + 15,000 + 9,000 − 6,000 = 153,000。</p>
+<p>第2年度の売上原価の過大額 = 15,000 + 9,000 − 6,000 = 18,000(= 153,000 − 135,000)。</p>
+<p>第2年度末の利益剰余金:第1年度の誤謬(−15,000過大)は第2年度で自動的に解消し、残るのは棚卸過少9,000と買掛金過少6,000の差額で、純資産が3,000過少。よって利益剰余金を3,000増加させる(仕訳:棚卸資産9,000/買掛金6,000・利益剰余金3,000)。</p>
+<p>買掛金は仕入計上漏れの6,000だけ過少。誤謬の訂正はASC 250により過年度の修正再表示(比較表示する第2年度を修正し、表示される最も古い期間の期首利益剰余金を調整)で行い、自動解消していても修正再表示が必要である。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-FAR-52", section: "FAR", chapter: "FAR-03", title: "有形固定資産の取得原価スケジュール(一括購入・延払い・自家建設と利息資本化)",
+  scenario: `<p>Nagano Manufacturing completed three capital transactions in Year 1. Prepare the acquisition-cost schedule. Round to the nearest dollar.</p>
+<p><b>Exhibit 1 — Lump-sum purchase (January 2):</b> Land, a building, and equipment were acquired for $1,800,000 cash plus $20,000 of legal fees for the purchase contract. Appraised fair values: land $600,000; building $1,200,000; equipment $200,000. Nagano also paid $4,000 for title insurance on the land and $6,000 of property taxes on the land that were in arrears from the seller's ownership.</p>
+<p><b>Exhibit 2 — Deferred payment (January 2):</b> A machine was acquired for $50,000 down plus a non-interest-bearing note requiring three annual payments of $100,000 beginning December 31, Year 1. The imputed rate is 8% (PV of an ordinary annuity of $1, 3 periods, 8% = 2.5771). Installation cost was $7,290.</p>
+<p><b>Exhibit 3 — Self-constructed warehouse:</b> Construction began January 1 and was completed December 31, Year 1. Expenditures: Jan 1 $600,000; Apr 1 $800,000; Sep 1 $900,000; Dec 31 $300,000. A $1,000,000, 9% construction loan was obtained Jan 1; idle loan proceeds earned $5,000 of interest income. Other debt outstanding all year: $2,000,000 at 10% and $3,000,000 at 7%.</p>
+<p class="ja">Nagano Manufacturing社の第1年度の3つの取引について取得原価を集計する(1ドル未満四捨五入)。Exhibit 1:1月2日、土地・建物・設備を現金$1,800,000+契約の弁護士費用$20,000で一括取得。公正価値は土地$600,000、建物$1,200,000、設備$200,000。土地の権原保険$4,000と売主の滞納固定資産税$6,000も支払った。Exhibit 2:1月2日、頭金$50,000と第1年度12月31日から毎年$100,000を3回支払う無利息手形で機械を取得。帰属利率8%(3期年金現価係数2.5771)。据付費$7,290。Exhibit 3:倉庫を1月1日着工・12月31日完成。支出は1/1 $600,000、4/1 $800,000、9/1 $900,000、12/31 $300,000。1月1日に建設専用借入$1,000,000(9%)、未使用資金の運用益$5,000。その他の借入は年間を通じて$2,000,000(10%)と$3,000,000(7%)。</p>`,
+  rows: [
+    { label: "Cost of land(土地の取得原価)", type: "num", answer: 556000 },
+    { label: "Cost of building(建物の取得原価)", type: "num", answer: 1092000 },
+    { label: "Cost of machine (Exhibit 2)(機械の取得原価)", type: "num", answer: 315000, tol: 1 },
+    { label: "Interest expense on the note for Year 1(手形の第1年度支払利息)", type: "num", answer: 20617, tol: 1 },
+    { label: "Weighted-average accumulated expenditures(加重平均累積支出額)", type: "num", answer: 1500000 },
+    { label: "Interest capitalized in Year 1(第1年度の資本化利息)", type: "num", answer: 131000 },
+    { label: "Total cost of the warehouse(倉庫の取得原価合計)", type: "num", answer: 2731000 },
+    { label: "Treatment of the $5,000 interest income on idle loan proceeds(未使用借入資金の運用益$5,000の処理)", type: "select", options: ["Offset against capitalized interest", "Recognize as interest income; do not offset", "Deduct from the cost of the warehouse directly", "Defer and amortize over the warehouse life"], answer: "Recognize as interest income; do not offset" },
+  ],
+  explain: `<p>一括購入の総額 = 1,800,000 + 20,000 = 1,820,000 を公正価値比(30%:60%:10%)で配分:土地546,000、建物1,092,000、設備182,000。土地には権原保険4,000と売主の滞納税6,000(取得のための支出)を加算し、546,000 + 10,000 = 556,000。</p>
+<p>機械:手形の現在価値 = 100,000 × 2.5771 = 257,710。取得原価 = 50,000 + 257,710 + 7,290(据付費)= 315,000。第1年度の支払利息 = 257,710 × 8% = 20,617。</p>
+<p>加重平均累積支出額 = 600,000 × 12/12 + 800,000 × 9/12 + 900,000 × 4/12 + 300,000 × 0/12 = 600,000 + 600,000 + 300,000 = 1,500,000。</p>
+<p>その他借入の加重平均利率 = (200,000 + 210,000) ÷ 5,000,000 = 8.2%。回避可能利息 = 1,000,000 × 9% + 500,000 × 8.2% = 90,000 + 41,000 = 131,000。実際の利息 = 90,000 + 410,000 = 500,000 より小さいので131,000を資本化する。</p>
+<p>倉庫の取得原価 = 支出合計2,600,000 + 131,000 = 2,731,000。US GAAPでは(免税借入を除き)借入資金の運用益を資本化利息と相殺しないため、5,000は受取利息として計上する(IFRSでは特定借入の運用益を控除する)。</p>`,
+});
