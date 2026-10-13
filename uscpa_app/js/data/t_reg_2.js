@@ -162,3 +162,121 @@ CPA.tbs({
 <p>申告資格:未婚で、適格子女(Jacob・Mia)と同居し住居費の半分超を負担 → 世帯主(HOH)。なお親(Rosa)は同居していなくても HOH の適格者になる。</p>
 <p>税額控除:Jacob 500 + Mia 500 + Rosa 500 = 1,500(AGI 85,000は段階的縮小の開始額未満)。標準控除:HOH 24,150。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-REG-48", section: "REG", chapter: "REG-03", title: "子供・扶養家族介護費用控除と教育税額控除(AOTC・LLC)の段階的縮小",
+  scenario: `<p>Daniel and Priya Okafor file a joint 2026 return. Their modified AGI is <b>$170,000</b>. Daniel's earned income is $122,000 and Priya's is $48,000. Assume the following 2026 amounts:</p>
+<ul><li>Child and dependent care credit: expense limit $3,000 (one qualifying person) / $6,000 (two or more), reduced by amounts excluded under an employer dependent care FSA. At the Okafors' AGI the applicable credit percentage is <b>30%</b>.</li>
+<li>Child tax credit $2,200 per qualifying child under age 17; credit for other dependents $500; phase-out begins at $400,000 (joint).</li>
+<li>American opportunity tax credit (AOTC): 100% of the first $2,000 and 25% of the next $2,000 of qualified expenses per eligible student; 40% refundable. Lifetime learning credit (LLC): 20% of up to $10,000 of qualified expenses per return. Both credits phase out ratably between MAGI of <b>$160,000 and $180,000</b> (joint).</li></ul>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Ava (age 4): licensed day-care center while both parents work</td><td>$7,000</td></tr>
+<tr><td>Ben (age 10): after-school care program</td><td>$2,500</td></tr>
+<tr><td>Ben: two-week overnight summer camp</td><td>$1,500</td></tr>
+<tr><td>Daniel's employer dependent care FSA reimbursements (excluded from wages)</td><td>$2,000</td></tr>
+<tr><td>Chloe (age 19, dependent, first year of college, full-time): tuition</td><td>$5,200</td></tr>
+<tr><td>Chloe: required enrollment fees</td><td>$400</td></tr>
+<tr><td>Chloe: required textbooks</td><td>$600</td></tr>
+<tr><td>Chloe: room and board</td><td>$9,000</td></tr>
+<tr><td>Chloe: tax-free scholarship applied to tuition</td><td>$1,800</td></tr>
+<tr><td>Priya: one graduate course to improve job skills (not degree program): tuition</td><td>$3,000</td></tr></table>
+<p class="ja">Daniel と Priya Okafor は2026年に夫婦合算申告する。修正AGIは<b>$170,000</b>。Danielの勤労所得は$122,000、Priyaは$48,000。2026年の金額は以下を前提とする:介護費用控除の対象費用上限は1人$3,000/2人以上$6,000で、雇用主の扶養介護FSAで除外した額だけ減額。夫婦のAGIでの控除率は<b>30%</b>。児童税額控除は17歳未満の適格子女1人$2,200、その他扶養親族控除$500、縮小開始$400,000(合算)。AOTCは学生1人あたり最初の$2,000の100%と次の$2,000の25%、40%が還付可能。LLCは申告書あたり$10,000までの20%。両控除はMAGI <b>$160,000〜$180,000</b>(合算)で比例縮小する。資料:Ava(4歳)認可保育所$7,000、Ben(10歳)放課後プログラム$2,500、Benの2週間の宿泊サマーキャンプ$1,500、DanielのFSA払戻(給与から除外)$2,000、Chloe(19歳・扶養親族・大学1年・フルタイム)授業料$5,200・必須登録料$400・必須教科書$600・寮費食費$9,000・授業料に充当された非課税奨学金$1,800、Priyaの職業能力向上目的の大学院科目1つ(学位課程外)授業料$3,000。</p>`,
+  rows: [
+    { label: "Qualifying child care expenses before the dollar limit(上限適用前の適格介護費用)", type: "num", answer: 9500 },
+    { label: "Child and dependent care credit(子供・扶養家族介護費用控除)", type: "num", answer: 1200 },
+    { label: "Child tax credit plus credit for other dependents(児童税額控除+その他扶養親族控除)", type: "num", answer: 4900 },
+    { label: "AOTC for Chloe after phase-out(縮小後のChloeのAOTC)", type: "num", answer: 1250 },
+    { label: "Refundable portion of the AOTC(AOTCの還付可能部分)", type: "num", answer: 500 },
+    { label: "Credit available for Priya's course(Priyaの受講に使える控除)", type: "select", options: ["American opportunity tax credit", "Lifetime learning credit", "No education credit — not a degree program", "Tuition and fees deduction"], answer: "Lifetime learning credit" },
+    { label: "Lifetime learning credit after phase-out(縮小後のLLC)", type: "num", answer: 300 },
+  ],
+  explain: `<p>適格介護費用:13歳未満の子の就労のための介護費用が対象。保育所7,000 + 放課後プログラム2,500 = 9,500。宿泊型キャンプ1,500は対象外。</p>
+<p>介護費用控除:対象者2人なので上限6,000 − FSA除外額2,000 = 4,000(低い方の勤労所得48,000を下回る)。4,000 × 30% = 1,200。</p>
+<p>児童税額控除:Ava・Benは17歳未満 → 2 × 2,200 = 4,400。Chloe(19歳)はその他扶養親族控除500。合計4,900(AGI 170,000は縮小開始額400,000未満)。</p>
+<p>AOTC:対象費用は授業料・必須登録料・必須教科書(AOTCでは教材も対象)= 5,200 + 400 + 600 = 6,200、寮費食費は対象外、非課税奨学金1,800を控除 → 4,400、上限4,000。控除額 = 2,000 + 25% × 2,000 = 2,500。縮小:(170,000 − 160,000) ÷ 20,000 = 50%減 → 1,250。</p>
+<p>還付可能部分:1,250 × 40% = 500。</p>
+<p>Priya:学位課程外・半期未満でもLLCは職業能力向上目的の科目を対象とする。AOTCは学位課程で半期以上在籍が要件(かつ大学4年分まで)。授業料・手数料控除は2020年で廃止。</p>
+<p>LLC:3,000 × 20% = 600、50%縮小 → 300。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-REG-49", section: "REG", chapter: "REG-03", title: "予定納税のセーフハーバー(前年税額110%基準)と四半期ごとの過少納付額",
+  scenario: `<p>Marisol Vega, a single filer, is a self-employed architect. Her prior-year (2025) return showed AGI of <b>$180,000</b> and total tax of <b>$30,000</b> (a full 12-month return). Her 2026 total tax is <b>$48,000</b>. During 2026 she also worked a short W-2 engagement on which <b>$6,000</b> of federal income tax was withheld; she makes no election to treat withholding as paid on the actual dates. She did not use the annualized income installment method.</p>
+<table><tr><th>Installment due date</th><th>Estimated tax paid on the due date</th></tr>
+<tr><td>April 15, 2026</td><td>$4,000</td></tr>
+<tr><td>June 15, 2026</td><td>$4,000</td></tr>
+<tr><td>September 15, 2026</td><td>$9,000</td></tr>
+<tr><td>January 15, 2027</td><td>$9,000</td></tr></table>
+<p>Tax law excerpt (IRC §6654): The required annual payment is the lesser of (1) 90% of the current-year tax or (2) 100% of the prior-year tax (110% if prior-year AGI exceeded $150,000). No penalty applies if the tax shown on the return, reduced by withholding and credits, is less than $1,000.</p>
+<p class="ja">個人申告者のMarisol Vegaは自営の建築家。前年(2025年、12か月の申告)のAGIは<b>$180,000</b>、税額合計は<b>$30,000</b>。2026年の税額合計は<b>$48,000</b>。2026年には短期の給与所得もあり、源泉徴収額は<b>$6,000</b>で、源泉徴収を実際の日に納付したものとして扱う選択はしていない。年換算所得法は使っていない。予定納税は4/15に$4,000、6/15に$4,000、9/15に$9,000、2027/1/15に$9,000(いずれも期限日に納付)。条文要旨(IRC §6654):年間必要納付額は(1)当年税額の90%と(2)前年税額の100%(前年AGIが$150,000超なら110%)のいずれか少ない額。申告税額から源泉徴収・税額控除を差し引いた額が$1,000未満ならペナルティはない。</p>`,
+  rows: [
+    { label: "90% of current-year tax(当年税額の90%)", type: "num", answer: 43200 },
+    { label: "Required annual payment(年間必要納付額)", type: "num", answer: 33000 },
+    { label: "Required installment for each quarter(各四半期の必要納付額)", type: "num", answer: 8250 },
+    { label: "Underpayment for the April 15 installment(4/15期の過少納付額)", type: "num", answer: 2750 },
+    { label: "Cumulative underpayment as of June 15(6/15時点の累積過少納付額)", type: "num", answer: 5500 },
+    { label: "Cumulative underpayment as of September 15(9/15時点の累積過少納付額)", type: "num", answer: 3250 },
+    { label: "Cumulative underpayment as of January 15, 2027(2027/1/15時点の累積過少納付額)", type: "num", answer: 1000 },
+    { label: "Is an underpayment penalty potentially due?(過少納付ペナルティの可能性)", type: "select", options: ["No — the $1,000 de minimis exception applies", "No — withholding alone covers 100% of the prior-year tax", "Yes — the balance due exceeds $1,000 and installments fell short", "No — self-employed individuals are exempt"], answer: "Yes — the balance due exceeds $1,000 and installments fell short" },
+  ],
+  explain: `<p>当年基準:48,000 × 90% = 43,200。</p>
+<p>前年基準:前年AGI 180,000 > 150,000 なので 30,000 × 110% = 33,000。少ない方 → 年間必要納付額33,000。</p>
+<p>各期:33,000 ÷ 4 = 8,250。源泉徴収6,000は各期に均等(1,500ずつ)納付されたものとみなす。</p>
+<p>4/15期:8,250 − (1,500 + 4,000) = 2,750。</p>
+<p>6/15時点:必要累計16,500 − 納付累計(3,000 + 8,000 = 11,000)= 5,500。</p>
+<p>9/15時点:必要累計24,750 − 納付累計(4,500 + 17,000 = 21,500)= 3,250。</p>
+<p>1/15時点:必要累計33,000 − 納付累計(6,000 + 26,000 = 32,000)= 1,000。</p>
+<p>判定:申告税額48,000 − 源泉6,000 = 42,000 ≥ 1,000 なので少額免除はなく、各期の納付が不足しているためペナルティ(過少額 × 期間 × 利率)が生じ得る。申告時の納付残高は48,000 − 32,000 = 16,000。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-REG-50", section: "REG", chapter: "REG-03", title: "複数事業のQBI控除(W-2賃金・UBIA制限、SSTB、REIT配当、課税所得制限)",
+  scenario: `<p>Graham and Lena Holt file a joint 2026 return. Their taxable income before the QBI deduction is <b>$600,000</b>, which includes <b>$50,000</b> of net capital gain (long-term gains and qualified dividends). Assume the 2026 §199A threshold amount for joint filers is <b>$403,500</b> and the phase-in range is <b>$150,000</b> (so limitations apply fully at $553,500 and above). Each activity below is a separate trade or business; no aggregation election is made.</p>
+<table><tr><th>Activity</th><th>QBI</th><th>Allocable W-2 wages</th><th>UBIA of qualified property</th></tr>
+<tr><td>Holt Fabrication (S corporation, manufacturing) — K-1</td><td>$300,000</td><td>$80,000</td><td>$600,000</td></tr>
+<tr><td>Holt Advisory LLC (management consulting) — Schedule C</td><td>$150,000</td><td>$40,000</td><td>$20,000</td></tr>
+<tr><td>Apartment building (rental rising to the level of a trade or business) — Schedule E</td><td>$100,000</td><td>$0</td><td>$1,200,000</td></tr></table>
+<p>They also received <b>$10,000</b> of qualified REIT dividends (Form 1099-DIV box 5) and have no PTP income.</p>
+<p class="ja">Graham と Lena Holt は2026年に夫婦合算申告する。QBI控除前の課税所得は<b>$600,000</b>で、そのうち<b>$50,000</b>は純キャピタルゲイン(長期譲渡益と適格配当)。2026年の§199Aの基準額は合算で<b>$403,500</b>、段階適用幅は<b>$150,000</b>(つまり$553,500以上で制限が全面適用)と仮定する。各活動は別個の事業で、合算(aggregation)選択はしていない。Holt Fabrication(S法人・製造業、K-1):QBI $300,000、W-2賃金$80,000、適格資産のUBIA $600,000。Holt Advisory LLC(経営コンサルティング、Schedule C):QBI $150,000、W-2賃金$40,000、UBIA $20,000。賃貸アパート(事業に該当、Schedule E):QBI $100,000、W-2賃金$0、UBIA $1,200,000。ほかに適格REIT配当$10,000(1099-DIV 5欄)があり、PTP所得はない。</p>`,
+  rows: [
+    { label: "QBI component — Holt Fabrication(Holt FabricationのQBI構成額)", type: "num", answer: 40000 },
+    { label: "Treatment of Holt Advisory LLC(Holt Advisoryの取扱い)", type: "select", options: ["Specified service trade or business — excluded entirely at this income level", "Eligible, limited to 50% of W-2 wages", "Eligible, no wage limit because it is a sole proprietorship", "Eligible, limited to 2.5% of UBIA"], answer: "Specified service trade or business — excluded entirely at this income level" },
+    { label: "QBI component — apartment building(賃貸アパートのQBI構成額)", type: "num", answer: 20000 },
+    { label: "REIT/PTP component(REIT・PTP構成額)", type: "num", answer: 2000 },
+    { label: "Overall taxable-income limitation(課税所得による全体制限額)", type: "num", answer: 110000 },
+    { label: "QBI deduction(QBI控除額)", type: "num", answer: 62000 },
+    { label: "Holt Fabrication component if taxable income were $478,500 instead(課税所得が$478,500だった場合のHolt Fabrication構成額)", type: "num", answer: 50000 },
+  ],
+  explain: `<p>Holt Fabrication:20% × 300,000 = 60,000。W-2/UBIA制限は (a) 50% × 80,000 = 40,000 と (b) 25% × 80,000 + 2.5% × 600,000 = 20,000 + 15,000 = 35,000 の大きい方 = 40,000。課税所得600,000は553,500以上なので制限が全面適用 → 40,000。</p>
+<p>Holt Advisory:コンサルティングは特定サービス事業(SSTB)。課税所得が段階適用幅の上限を超えるため、QBI・賃金・UBIAのすべてが除外され構成額は0。</p>
+<p>賃貸アパート:20% × 100,000 = 20,000。制限は 50% × 0 = 0 と 25% × 0 + 2.5% × 1,200,000 = 30,000 の大きい方 = 30,000 → 20,000(制限内)。</p>
+<p>REIT構成額:適格REIT配当にはW-2/UBIA制限がない → 20% × 10,000 = 2,000。</p>
+<p>全体制限:20% × (600,000 − 50,000) = 110,000。</p>
+<p>QBI控除:(40,000 + 0 + 20,000) + 2,000 = 62,000 < 110,000 → 62,000。</p>
+<p>課税所得478,500の場合:段階適用率 = (478,500 − 403,500) ÷ 150,000 = 50%。20%QBI 60,000 − 制限額40,000 = 20,000 の50%を減額 → 60,000 − 10,000 = 50,000。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-REG-51", section: "REG", chapter: "REG-03", title: "AMTワークシート(ISO・私的活動債利子・減価償却調整と免除額の50%縮小)",
+  scenario: `<p>Nathan Cole, a single filer, has 2026 regular taxable income of <b>$450,000</b> and a regular tax liability of <b>$126,269</b> (no capital gains or qualified dividends). He itemized deductions, including <b>$10,000</b> of state and local taxes and <b>$18,000</b> of home mortgage interest on acquisition debt used to buy his residence. Additional facts:</p>
+<ul><li>In 2026 he exercised incentive stock options (ISOs) and held the shares at year-end. Fair market value at exercise exceeded the exercise price by <b>$120,000</b>.</li>
+<li>He received <b>$15,000</b> of interest on specified private activity bonds issued in 2019 (excluded from regular gross income).</li>
+<li>On a Schedule C rental-equipment activity, regular-tax MACRS depreciation was <b>$25,000</b>; depreciation under the AMT (150% declining balance) method was <b>$18,000</b>.</li></ul>
+<p>Assume the following 2026 AMT amounts for single filers: exemption <b>$90,100</b>, reduced by <b>50%</b> of AMTI over <b>$500,000</b>; tax rates 26% on the first <b>$244,500</b> of the AMT base and 28% on the excess.</p>
+<p class="ja">個人申告者のNathan Coleの2026年の通常課税所得は<b>$450,000</b>、通常税額は<b>$126,269</b>(キャピタルゲイン・適格配当なし)。項目別控除を選択し、州・地方税<b>$10,000</b>と自宅取得のための借入の住宅ローン利息<b>$18,000</b>を含む。追加事項:2026年にISOを行使し年末まで株式を保有、行使時の時価が行使価格を<b>$120,000</b>上回った。2019年発行の特定私的活動債の利息<b>$15,000</b>を受領(通常の総所得からは除外)。Schedule Cの機器賃貸事業の通常税上のMACRS減価償却費は<b>$25,000</b>、AMT上(150%定率法)は<b>$18,000</b>。2026年の単身者のAMT金額は次を仮定する:免除額<b>$90,100</b>、AMTIが<b>$500,000</b>を超える額の<b>50%</b>だけ減額。税率はAMT課税ベースの最初の<b>$244,500</b>まで26%、超過分28%。</p>`,
+  rows: [
+    { label: "Total AMT adjustments and preferences(AMT調整項目・優遇項目の合計)", type: "num", answer: 152000 },
+    { label: "Alternative minimum taxable income (AMTI)(代替ミニマム課税所得)", type: "num", answer: 602000 },
+    { label: "AMT exemption after phase-out(縮小後の免除額)", type: "num", answer: 39100 },
+    { label: "Tentative minimum tax(暫定ミニマム税)", type: "num", answer: 152722 },
+    { label: "Alternative minimum tax(代替ミニマム税)", type: "num", answer: 26453 },
+    { label: "Treatment of the mortgage interest(住宅ローン利息の取扱い)", type: "select", options: ["No adjustment — qualified housing interest on acquisition debt", "Add back in full", "Add back only the portion over $10,000", "Tax preference item"], answer: "No adjustment — qualified housing interest on acquisition debt" },
+    { label: "Items that generate a minimum tax credit carryforward(最低税額控除の繰越を生む項目)", type: "select", options: ["All four items (SALT, ISO, bond interest, depreciation)", "ISO bargain element and depreciation (deferral items) only", "SALT and private activity bond interest (exclusion items) only", "None — the minimum tax credit was repealed"], answer: "ISO bargain element and depreciation (deferral items) only" },
+  ],
+  explain: `<p>調整・優遇項目:SALTの加算10,000 + ISOのバーゲン要素120,000 + 私的活動債利子15,000(優遇項目)+ 減価償却調整(25,000 − 18,000 = 7,000)= 152,000。取得債務の住宅ローン利息は調整不要。</p>
+<p>AMTI:450,000 + 152,000 = 602,000。</p>
+<p>免除額:90,100 − 50% × (602,000 − 500,000) = 90,100 − 51,000 = 39,100。</p>
+<p>暫定ミニマム税:課税ベース602,000 − 39,100 = 562,900。26% × 244,500 = 63,570、28% × (562,900 − 244,500 = 318,400) = 89,152、合計152,722。</p>
+<p>AMT:152,722 − 通常税額126,269 = 26,453。</p>
+<p>最低税額控除:将来の通常税で逆転する繰延項目(ISO・減価償却)から生じたAMTだけが控除の対象。SALTや私的活動債利子は恒久的な除外項目で控除を生まない。</p>`,
+});

@@ -274,7 +274,7 @@ CPA.tbs({
     { label: "Ana(Ana)", type: "select", options: ["No incompatible duties", "Custody + recording", "Authorization + custody", "Authorization + recording", "Recording + reconciliation"], answer: "Custody + recording" },
     { label: "Ben(Ben)", type: "select", options: ["No incompatible duties", "Custody + recording", "Authorization + custody", "Authorization + recording", "Recording + reconciliation"], answer: "Authorization + custody" },
     { label: "Carla(Carla)", type: "select", options: ["No incompatible duties", "Custody + recording", "Authorization + custody", "Authorization + recording", "Recording + reconciliation"], answer: "No incompatible duties" },
-    { label: "Dev(Dev)", type: "select", options: ["No incompatible duties", "Custody + recording", "Authorization + custody", "Authorization + recording", "Recording + reconciliation"], answer: "Recording + reconciliation" },
+    { label: "Dev(Dev)", type: "select", options: ["No incompatible duties", "Custody + recording", "Authorization + custody", "Custody + reconciliation", "Recording + reconciliation"], answer: "Recording + reconciliation" },
     { label: "Eve(Eve)", type: "select", options: ["No incompatible duties", "Custody + recording", "Authorization + custody", "Authorization + recording", "Recording + reconciliation"], answer: "Authorization + recording" },
     { label: "Fay(Fay)", type: "select", options: ["No incompatible duties", "Custody + recording", "Authorization + custody", "Authorization + recording", "Recording + reconciliation"], answer: "No incompatible duties" },
     { label: "Number of employees with incompatible duties(職務の兼務に問題がある従業員数)", type: "num", answer: 4 },
