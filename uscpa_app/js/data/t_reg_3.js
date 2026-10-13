@@ -155,9 +155,9 @@ CPA.tbs({
 <tr><td>Equipment</td><td>2021</td><td>$60,000</td><td>$20,000</td><td>$75,000</td></tr>
 <tr><td>Factory building (nonresidential)</td><td>2012</td><td>$500,000</td><td>$160,000</td><td>$420,000</td></tr>
 <tr><td>Land under the factory</td><td>2012</td><td>$100,000</td><td>—</td><td>$70,000</td></tr>
-<tr><td>Delivery truck</td><td>May 2026 (held 8 months)</td><td>$40,000</td><td>$6,000</td><td>$31,000</td></tr></table>
+<tr><td>Delivery truck</td><td>March 2026 (held 8 months)</td><td>$40,000</td><td>$6,000</td><td>$31,000</td></tr></table>
 <p><b>Prior-year Form 4797 history (net §1231 results):</b> 2020 net loss $(7,000); 2021 net loss $(12,000); 2022 none; 2023 net gain $4,000 (all recaptured as ordinary income under the lookback rule); 2024 net loss $(9,000); 2025 none.</p>
-<p class="ja">個人事業主Elena Ruizは製造業を営む。建物の減価償却はすべて定額法である。2026年に非関連者へ次の資産を売却した:機械(2022年取得、原価$80,000、償却累計額$50,000、売却価額$45,000)、設備(2021年取得、$60,000、$20,000、$75,000)、工場建物(非住宅用、2012年取得、$500,000、$160,000、$420,000)、工場の土地(2012年取得、$100,000、売却価額$70,000)、配送トラック(2026年5月取得・保有8か月、$40,000、$6,000、$31,000)。過年度の§1231純損益:2020年純損失$(7,000)、2021年純損失$(12,000)、2022年なし、2023年純利益$4,000(ルックバックにより全額通常所得として回収済)、2024年純損失$(9,000)、2025年なし。</p>`,
+<p class="ja">個人事業主Elena Ruizは製造業を営む。建物の減価償却はすべて定額法である。2026年に非関連者へ次の資産を売却した:機械(2022年取得、原価$80,000、償却累計額$50,000、売却価額$45,000)、設備(2021年取得、$60,000、$20,000、$75,000)、工場建物(非住宅用、2012年取得、$500,000、$160,000、$420,000)、工場の土地(2012年取得、$100,000、売却価額$70,000)、配送トラック(2026年3月取得・保有8か月、$40,000、$6,000、$31,000)。過年度の§1231純損益:2020年純損失$(7,000)、2021年純損失$(12,000)、2022年なし、2023年純利益$4,000(ルックバックにより全額通常所得として回収済)、2024年純損失$(9,000)、2025年なし。</p>`,
   rows: [
     { label: "Total §1245 depreciation recapture (ordinary income)(§1245による減価償却リキャプチャーの合計)", type: "num", answer: 35000 },
     { label: "Section 1231 gain on the equipment(設備の§1231利益)", type: "num", answer: 15000 },
@@ -239,10 +239,10 @@ CPA.tbs({
 <table><tr><th>Asset</th><th>MACRS class</th><th>Placed in service</th><th>Cost</th></tr>
 <tr><td>Production machinery</td><td>7-year</td><td>March 10, 2026</td><td>$3,000,000</td></tr>
 <tr><td>Office furniture</td><td>7-year</td><td>June 5, 2026</td><td>$400,000</td></tr>
-<tr><td>Computers and servers</td><td>5-year</td><td>November 12, 2026</td><td>$900,000</td></tr>
+<tr><td>Computers and servers</td><td>5-year</td><td>August 12, 2026</td><td>$900,000</td></tr>
 <tr><td>Office building (land excluded)</td><td>39-year nonresidential real property</td><td>February 2, 2026</td><td>$2,000,000</td></tr></table>
 <p><b>Assumptions and elections:</b> For 2026, assume the §179 dollar limit is <b>$2,560,000</b>, reduced dollar-for-dollar by the cost of §179 property placed in service in excess of <b>$4,090,000</b>. Under the One Big Beautiful Bill Act, 100% bonus depreciation applies to qualified property acquired after January 19, 2025. Brightline (1) elects the maximum §179 deduction, applied entirely to the production machinery; (2) elects out of bonus depreciation for the 7-year class; and (3) claims bonus depreciation on the 5-year class. First-year MACRS table rates: 7-year half-year 14.29%; 5-year half-year 20.00%; 39-year property placed in service in February 2.247%.</p>
-<p class="ja">暦年決算のC法人Brightline Fabrication社は2026年に次の新規資産を事業の用に供した(いずれも2025年1月19日後に締結した拘束力ある契約で取得)。事業からの課税所得(§179控除前)は$5,000,000。資産:製造機械(7年、2026/3/10、$3,000,000)、事務用家具(7年、6/5、$400,000)、コンピュータ・サーバー(5年、11/12、$900,000)、事務所建物(土地除く、39年非住宅用不動産、2/2、$2,000,000)。前提と選択:2026年の§179上限は$2,560,000とし、§179対象資産の供用額が$4,090,000を超える額だけ1ドルずつ減額される。OBBBAにより2025年1月19日後取得の適格資産には100%ボーナス償却が適用される。同社は(1)§179の最大額を全額製造機械に適用し、(2)7年クラスについてボーナス償却の不適用を選択し、(3)5年クラスにはボーナス償却を適用する。初年度MACRS表の率:7年・ハーフイヤー14.29%、5年・ハーフイヤー20.00%、2月供用の39年資産2.247%。</p>`,
+<p class="ja">暦年決算のC法人Brightline Fabrication社は2026年に次の新規資産を事業の用に供した(いずれも2025年1月19日後に締結した拘束力ある契約で取得)。事業からの課税所得(§179控除前)は$5,000,000。資産:製造機械(7年、2026/3/10、$3,000,000)、事務用家具(7年、6/5、$400,000)、コンピュータ・サーバー(5年、8/12、$900,000)、事務所建物(土地除く、39年非住宅用不動産、2/2、$2,000,000)。前提と選択:2026年の§179上限は$2,560,000とし、§179対象資産の供用額が$4,090,000を超える額だけ1ドルずつ減額される。OBBBAにより2025年1月19日後取得の適格資産には100%ボーナス償却が適用される。同社は(1)§179の最大額を全額製造機械に適用し、(2)7年クラスについてボーナス償却の不適用を選択し、(3)5年クラスにはボーナス償却を適用する。初年度MACRS表の率:7年・ハーフイヤー14.29%、5年・ハーフイヤー20.00%、2月供用の39年資産2.247%。</p>`,
   rows: [
     { label: "Maximum §179 deduction for 2026 after the phase-out(段階的縮小後の2026年の§179最大控除額)", type: "num", answer: 2350000 },
     { label: "Applicable convention for the 7-year and 5-year property(7年・5年資産に適用される期中慣行)", type: "select", options: ["Half-year convention", "Mid-quarter convention", "Mid-month convention", "Full-month convention"], answer: "Half-year convention" },
@@ -253,7 +253,7 @@ CPA.tbs({
     { label: "Total 2026 cost recovery deduction (§179 + bonus + MACRS)(2026年の費用回収控除の合計)", type: "num", answer: 3444985 },
   ],
   explain: `<p>§179:対象資産(機械・家具・コンピュータ。建物は対象外)の供用額 = 3,000,000 + 400,000 + 900,000 = 4,300,000。超過額 = 4,300,000 − 4,090,000 = 210,000。上限 = 2,560,000 − 210,000 = 2,350,000。課税所得制限5,000,000は拘束しない。</p>
-<p>期中慣行:第4四半期の供用額900,000 ÷ 動産合計(§179控除分2,350,000を除外すると1,950,000、除外しなくても4,300,000)は40%以下(約46%?の誤りに注意:900,000 ÷ 1,950,000 = 46.2%となるが、§179を除外した後の基準でも判定する必要がある)。</p>
+<p>期中慣行:第4四半期(10〜12月)に供用した動産はない。期中四半期慣行は、§179で費用化した額を除いた動産の取得価額のうち40%超が第4四半期に供用された場合にのみ適用されるため、本問はハーフイヤー慣行である(建物は月央慣行)。</p>
 <p>機械:(3,000,000 − 2,350,000) × 14.29% = 650,000 × 14.29% = 92,885。家具:400,000 × 14.29% = 57,160(7年クラスはボーナス不適用を選択)。</p>
 <p>コンピュータ:100%ボーナス償却 = 900,000(残額0のため通常MACRSなし)。</p>
 <p>建物:39年資産はボーナス対象外、月央慣行。2,000,000 × 2.247% = 44,940。</p>

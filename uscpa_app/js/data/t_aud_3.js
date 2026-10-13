@@ -10,7 +10,7 @@ CPA.tbs({
 <tr><td>4</td><td>Inspect certificates of title for delivery vehicles and property tax bills for the land and building.</td></tr>
 <tr><td>5</td><td>Recompute depreciation expense using the company's policy and compare useful lives with industry experience.</td></tr>
 <tr><td>6</td><td>Send confirmations to major vendors, including vendors with zero balances at year-end, requesting a statement of the amount owed.</td></tr>
-<tr><td>7</td><td>For a sample of employees on the payroll register, compare names, pay rates, and Social Security numbers to personnel files and verify that each employee is currently employed.</td></tr>
+<tr><td>7</td><td>For a sample of employees on the payroll register, compare names and Social Security numbers to personnel files and verify that each employee is currently employed.</td></tr>
 <tr><td>8</td><td>Read loan agreements and board minutes to determine whether any portion of long-term debt is due within twelve months of the balance sheet date.</td></tr></table>
 <p class="ja">Reyes &amp; Okafor CPAsは非発行体であるCorbin Tool Co.の第2年度12月31日の財務諸表を監査している。シニアが購買・買掛金、有形固定資産、人件費、借入金について次の実証手続を立案した。各手続が主として対応するアサーションを選択せよ。(1)第2年度最後の10日間と第3年度最初の10日間の受入報告書を仕入帳・請求書へ追跡し計上期間を確かめる。(2)当期の設備取得を請求書に証憑突合し、現物を視察する。(3)修繕費勘定から多額・異常な項目を閲覧し証憑を調べる。(4)車両の所有権証書と土地建物の固定資産税請求書を閲覧する。(5)会社の方針で減価償却費を再計算し、耐用年数を業界実績と比べる。(6)期末残高ゼロの仕入先を含む主要仕入先に残高確認を送付する。(7)給与台帳の従業員を人事ファイルと照合し在籍を確かめる。(8)借入契約書と取締役会議事録を読み、1年以内返済部分の有無を確かめる。</p>`,
   rows: [
