@@ -135,8 +135,8 @@ CPA.tbs({
   rows: [
     { label: "Series A issue price on January 1, Year 1(A社債の発行価額)", type: "num", answer: 922783, tol: 5 },
     { label: "Series A interest expense for Year 1(A社債の第1年度支払利息)", type: "num", answer: 92585, tol: 3 },
-    { label: "Series A carrying amount on July 1, Year 2, before retirement(償還直前のA社債帳簿価額)", type: "num", answer: 942136, tol: 3 },
-    { label: "Loss on extinguishment of Series A bonds(A社債の償還損失)", type: "num", answer: 37864, tol: 3 },
+    { label: "Series A carrying amount on July 1, Year 2, before retirement(償還直前のA社債帳簿価額)", type: "num", answer: 942136, tol: 5 },
+    { label: "Loss on extinguishment of Series A bonds(A社債の償還損失)", type: "num", answer: 37864, tol: 5 },
     { label: "Presentation of the extinguishment loss(償還損失の表示)", type: "select", options: ["Extraordinary item, net of tax", "Other comprehensive income", "Income from continuing operations (not extraordinary)", "Adjustment to additional paid-in capital"], answer: "Income from continuing operations (not extraordinary)" },
     { label: "Cash received from issuing Series B bonds on May 1, Year 1(B社債発行時の受取現金)", type: "num", answer: 515000 },
     { label: "Series B interest expense for Year 1(B社債の第1年度支払利息)", type: "num", answer: 19286, tol: 1 },
@@ -144,7 +144,7 @@ CPA.tbs({
   explain: `<p>① 発行価額:$40,000 × 7.72173 + $1,000,000 × 0.61391 = $308,869 + $613,910 ≒ $922,783(係数の端数により$922,779〜$922,783)。</p>
 <p>② 6/30 Y1:$922,783 × 5% = $46,139(償却$6,139、簿価$928,922)。12/31 Y1:$928,922 × 5% = $46,446(償却$6,446、簿価$935,368)。第1年度支払利息 = $46,139 + $46,446 = $92,585。</p>
 <p>③ 6/30 Y2:$935,368 × 5% = $46,768、償却$6,768 → 簿価$942,136。</p>
-<p>④ 償還損失:支払額$1,000,000 × 98% = $980,000 − 簿価$942,136 = $37,864(損失)。</p>
+<p>④ 償還損失:支払額$1,000,000 × 98% = $980,000 − 簿価$942,136 = $37,864(損失)。係数表の発行価額$922,779から計算すると簿価$942,132・損失$37,868となる(端数差)。</p>
 <p>⑤ 債務消滅損益は異常項目ではなく継続事業の損益に含める(ASU 2015-01で異常項目は廃止)。</p>
 <p>⑥ B社債:$500,000 × 101% = $505,000 + 経過利息 $500,000 × 6% × 4/12 = $10,000 → $515,000。</p>
 <p>⑦ 支払利息:支払利息$15,000 × 2 = $30,000 − 受取経過利息$10,000 = $20,000。プレミアム$5,000を発行日から満期まで56か月で償却し、第1年度は8か月分 $5,000 × 8/56 = $714。$20,000 − $714 = $19,286。</p>`,
@@ -172,7 +172,7 @@ CPA.tbs({
     { label: "Method to allocate proceeds of the bonds with detachable warrants(分離型の払込金配分方法)", type: "select", options: ["Allocate all proceeds to the bonds", "Relative fair value method", "Incremental method, valuing the bonds first", "Allocate based on par values"], answer: "Relative fair value method" },
     { label: "Amount credited to APIC — warrants on January 1, Year 1(新株予約権に配分される金額)", type: "num", answer: 158000 },
     { label: "Discount on bonds payable on January 1, Year 1(社債発行差金・割引額)", type: "num", answer: 104000 },
-    { label: "Increase in APIC (excess over par) from the July 1, Year 2 warrant exercise(行使によるAPIC増加額)", type: "num", answer: 279000 },
+    { label: "APIC — common stock (excess over par) credited on the July 1, Year 2 warrant exercise(行使による普通株式APICの貸方計上額)", type: "num", answer: 279000 },
     { label: "Amount of the convertible bond proceeds recorded in equity at issuance(転換社債のうち資本に計上される額)", type: "num", answer: 0 },
     { label: "APIC credited on conversion of the convertible bonds(転換時のAPIC計上額)", type: "num", answer: 966000 },
     { label: "Gain or loss on conversion(転換損益)", type: "select", options: ["Gain equal to carrying amount minus market value of shares", "Loss equal to market value of shares minus carrying amount", "No gain or loss — book value method", "Gain equal to unamortized premium"], answer: "No gain or loss — book value method" },
@@ -180,7 +180,7 @@ CPA.tbs({
   explain: `<p>① 社債と新株予約権の双方の公正価値が分かるので相対的公正価値法で配分する(片方のみ判明なら増分法)。</p>
 <p>② 公正価値:社債 $2,000,000 × 96% = $1,920,000、新株予約権 2,000口 × 10個 × $8 = $160,000、合計$2,080,000。新株予約権 = $2,054,000 × 160,000/2,080,000 = $158,000。</p>
 <p>③ 社債への配分 = $2,054,000 × 1,920,000/2,080,000 = $1,896,000。割引額 = $2,000,000 − $1,896,000 = $104,000。</p>
-<p>④ 行使:現金 10,000 × $30 = $300,000 + 新株予約権APIC取崩 $158,000 × 10,000/20,000 = $79,000 − 資本金 10,000 × $10 = $100,000 → APIC $279,000。</p>
+<p>④ 行使:現金 10,000 × $30 = $300,000 + 新株予約権APIC取崩 $158,000 × 10,000/20,000 = $79,000 − 資本金 10,000 × $10 = $100,000 → 普通株式APIC $279,000(新株予約権APICの減少$79,000を差し引いたAPIC純増は$200,000)。</p>
 <p>⑤ ASU 2020-06後、区分不要な転換社債は全額を負債として計上する(資本区分は0、受取額$1,010,000が社債+プレミアム)。</p>
 <p>⑥ 転換:1,000口 × 40株 = 40,000株 × $1 = $40,000が資本金。APIC = $1,006,000 − $40,000 = $966,000。</p>
 <p>⑦ 簿価法(book value method)によるため転換損益は認識しない。</p>`,
