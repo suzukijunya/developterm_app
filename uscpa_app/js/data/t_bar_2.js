@@ -152,3 +152,70 @@ CPA.tbs({
 <p>営業利益 = 8,000 × 88 − 528,000 = 176,000。営業レバレッジ係数 = 貢献利益704,000 ÷ 176,000 = 4.0。</p>
 <p>Proは単位貢献利益が大きい(貢献利益率も40%で同じ)ため、Proの比率が上がると組合せ当たり貢献利益が増え、損益分岐点の総数量は減少する。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-BAR-45", section: "BAR", chapter: "BAR-01", title: "全部原価計算と直接原価計算の営業利益差異の調整",
+  scenario: `<p>Nakamura Industries makes a single product and uses FIFO. Management prepares variable costing statements internally and absorption costing statements for external reporting.</p>
+<table><tr><th>Exhibit 1 — Current year data</th><th>Amount</th></tr>
+<tr><td>Beginning finished goods inventory</td><td>4,000 units (fixed overhead of $7 per unit under absorption costing)</td></tr>
+<tr><td>Units produced</td><td>50,000</td></tr>
+<tr><td>Units sold</td><td>48,000</td></tr>
+<tr><td>Selling price per unit</td><td>$60</td></tr>
+<tr><td>Variable manufacturing cost per unit (same as prior year)</td><td>$22</td></tr>
+<tr><td>Fixed manufacturing overhead (actual = budget)</td><td>$400,000</td></tr>
+<tr><td>Variable selling and administrative cost per unit sold</td><td>$4</td></tr>
+<tr><td>Fixed selling and administrative costs</td><td>$250,000</td></tr></table>
+<p>Fixed manufacturing overhead is assigned to units based on actual production. There are no work-in-process inventories.</p>
+<p class="ja">Nakamura Industries社は単一製品を製造し、FIFOを採用している。内部管理用に直接原価計算、外部報告用に全部原価計算の損益計算書を作成する。当期データ:期首製品4,000個(全部原価計算での固定製造間接費は1個当たり$7)、生産量50,000個、販売量48,000個、販売価格$60、変動製造原価$22/個(前期と同じ)、固定製造間接費$400,000(実際=予算)、変動販管費は販売1個当たり$4、固定販管費$250,000。固定製造間接費は実際生産量で製品に配賦する。仕掛品はない。</p>`,
+  rows: [
+    { label: "Current-year unit product cost under absorption costing(全部原価計算による当期の製品単位原価)", type: "num", answer: 30 },
+    { label: "Operating income under variable costing(直接原価計算による営業利益)", type: "num", answer: 982000 },
+    { label: "Cost of goods sold under absorption costing(全部原価計算による売上原価)", type: "num", answer: 1436000 },
+    { label: "Operating income under absorption costing(全部原価計算による営業利益)", type: "num", answer: 1002000 },
+    { label: "Fixed manufacturing overhead deferred in ending inventory(期末製品に繰り延べられる固定製造間接費)", type: "num", answer: 48000 },
+    { label: "Ending finished goods inventory under variable costing(直接原価計算による期末製品棚卸高)", type: "num", answer: 132000 },
+    { label: "Which method is required for external financial reporting under U.S. GAAP?(米国GAAPで外部報告に求められる方法)", type: "select", options: ["Absorption costing (ASC 330, Inventory)", "Variable costing (ASC 330, Inventory)", "Either method, if applied consistently", "Throughput costing (ASC 606)"], answer: "Absorption costing (ASC 330, Inventory)" },
+  ],
+  explain: `<p>当期の製品単位原価(全部原価)= 変動22 + 固定400,000 ÷ 50,000 = 8 → $30。</p>
+<p>直接原価計算:貢献利益 = 48,000 ×(60 − 22 − 4)= 1,632,000。営業利益 = 1,632,000 − 400,000 − 250,000 = $982,000(固定製造間接費は全額期間費用)。</p>
+<p>全部原価計算の売上原価(FIFO)= 期首4,000 ×(22 + 7)= 116,000 + 当期製造分44,000 × 30 = 1,320,000 → $1,436,000。</p>
+<p>営業利益 = 売上2,880,000 − 1,436,000 − 販管費(48,000 × 4 + 250,000 = 442,000)= $1,002,000。</p>
+<p>期末製品6,000個 × $8 = $48,000の固定製造間接費が繰り延べられる。調整:982,000 + 期末繰延48,000 − 期首から繰り越された28,000(4,000 × 7)= 1,002,000で一致する。</p>
+<p>直接原価計算の期末製品 = 6,000 × 22 = $132,000(全部原価では180,000)。</p>
+<p>外部報告(GAAP)では固定製造間接費を棚卸資産原価に含める全部原価計算が求められる(ASC 330)。直接原価計算は内部管理目的に限られる。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-BAR-46", section: "BAR", chapter: "BAR-01", title: "総合予算(製造・材料購入・現金予算と借入額)",
+  scenario: `<p>Fujii Products is preparing its second-quarter master budget. Each unit sells for $50 and requires 3 pounds of material costing $4 per pound.</p>
+<table><tr><th>Exhibit 1 — Budgeted unit sales</th><th>March (actual)</th><th>April</th><th>May</th><th>June</th><th>July</th></tr>
+<tr><td>Units</td><td>9,000</td><td>10,000</td><td>12,000</td><td>15,000</td><td>14,000</td></tr></table>
+<table><tr><th>Exhibit 2 — Policies</th></tr>
+<tr><td>Finished goods ending inventory = 20% of next month's unit sales (March 31 balance follows this policy).</td></tr>
+<tr><td>Raw materials ending inventory = 25% of next month's production needs (March 31 balance follows this policy).</td></tr>
+<tr><td>All sales are on credit: 30% collected in the month of sale, 65% the following month, 5% uncollectible.</td></tr>
+<tr><td>Material purchases: 40% paid in the month of purchase, 60% the following month.</td></tr></table>
+<table><tr><th>Exhibit 3 — Other May data</th><th>Amount</th></tr>
+<tr><td>Cash balance, May 1</td><td>$40,000</td></tr>
+<tr><td>Other operating expenses (including $30,000 depreciation), paid as incurred</td><td>$330,000</td></tr>
+<tr><td>Equipment purchase paid in cash</td><td>$150,000</td></tr>
+<tr><td>Minimum required ending cash balance; borrowing in multiples of $10,000 at the beginning of the month</td><td>$30,000</td></tr></table>
+<p class="ja">Fujii Products社は第2四半期の総合予算を作成中である。販売価格は1個$50、1個当たり材料3ポンド(1ポンド$4)を要する。資料1:販売数量は3月(実績)9,000個、4月10,000個、5月12,000個、6月15,000個、7月14,000個。資料2:製品の月末在庫は翌月販売量の20%、材料の月末在庫は翌月生産所要量の25%(3月末残高もこの方針どおり)。売上はすべて掛売りで、当月30%、翌月65%回収、5%は回収不能。材料購入代金は当月40%、翌月60%支払。資料3(5月):月初現金$40,000、その他営業費用$330,000(減価償却費$30,000を含み、発生時に支払)、設備購入$150,000(現金払い)、月末最低現金残高$30,000、借入は月初に$10,000単位。</p>`,
+  rows: [
+    { label: "Budgeted production in April (units)(4月の製造予算・個数)", type: "num", answer: 10400 },
+    { label: "Budgeted production in May (units)(5月の製造予算・個数)", type: "num", answer: 12600 },
+    { label: "Budgeted cost of material purchases in April(4月の材料購入予算額)", type: "num", answer: 131400 },
+    { label: "Budgeted cash collections in May(5月の現金回収額)", type: "num", answer: 505000 },
+    { label: "Budgeted cash payments for materials in May(5月の材料代金支払額)", type: "num", answer: 141960 },
+    { label: "Amount to be borrowed at the beginning of May(5月初の借入額)", type: "num", answer: 80000 },
+    { label: "Budgeted ending cash balance, May 31(5月末の現金残高)", type: "num", answer: 33040 },
+    { label: "Treatment of the $30,000 depreciation in the cash budget(現金予算における減価償却費$30,000の扱い)", type: "select", options: ["Excluded, because it is a noncash expense", "Included as a cash disbursement", "Added to cash receipts", "Included only if straight-line depreciation is used"], answer: "Excluded, because it is a noncash expense" },
+  ],
+  explain: `<p>製造量 = 当月販売 + 月末在庫 − 月初在庫。4月 = 10,000 + 2,400(5月12,000 × 20%)− 2,000(4月10,000 × 20%)= 10,400個。5月 = 12,000 + 3,000 − 2,400 = 12,600個。6月 = 15,000 + 2,800 − 3,000 = 14,800個。</p>
+<p>材料所要量:4月31,200、5月37,800、6月44,400ポンド。4月購入量 = 31,200 + 9,450(37,800 × 25%)− 7,800(31,200 × 25%)= 32,850ポンド × $4 = $131,400。5月購入量 = 37,800 + 11,100 − 9,450 = 39,450ポンド × $4 = $157,800。</p>
+<p>5月回収 = 5月売上600,000 × 30% + 4月売上500,000 × 65% = 180,000 + 325,000 = $505,000(回収不能分5%は現金化しない)。</p>
+<p>5月材料支払 = 157,800 × 40% + 131,400 × 60% = 63,120 + 78,840 = $141,960。</p>
+<p>現金収支:40,000 + 505,000 = 545,000。支出 = 141,960 + 300,000(330,000 − 減価償却30,000)+ 150,000 = 591,960。財務活動前の過不足 = −46,960。最低残高30,000の確保に76,960が必要 → $10,000単位で$80,000を借入。</p>
+<p>月末現金 = −46,960 + 80,000 = $33,040。</p>
+<p>減価償却費は現金支出を伴わない費用なので現金予算から除外する。</p>`,
+});
