@@ -222,3 +222,65 @@ CPA.tbs({
 <p>トラック:(90,000 − 6,000) ÷ 200,000 = 0.42/マイル × 30,000 = 12,600。</p>
 <p>第3年度合計 = 48,750 + 20,000 + 32,000 + 12,600 = 113,350。償却方法の変更は「会計原則の変更により生じた会計上の見積りの変更」として将来に向けて処理する(ASC 250)。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-FAR-55", section: "FAR", chapter: "FAR-03", title: "資産グループの減損損失の配分と売却目的保有資産の再測定",
+  scenario: `<p><b>Exhibit 1 — Asset group (held and used), December 31, Year 1:</b> Because of a significant decline in market demand, Okada Foods tested its Kobe plant asset group for recoverability. The group has no goodwill.</p>
+<table><tr><th>Asset</th><th>Carrying amount</th></tr>
+<tr><td>Building</td><td>$600,000</td></tr>
+<tr><td>Machinery</td><td>$300,000</td></tr>
+<tr><td>Equipment</td><td>$100,000</td></tr></table>
+<p>Sum of undiscounted future cash flows of the group: $850,000. Fair value of the group: $760,000. The fair value of the equipment alone is reliably determinable at $94,000; individual fair values of the building and machinery are not determinable.</p>
+<p><b>Exhibit 2 — Held for sale:</b> On December 31, Year 2, a separate warehouse (carrying amount $380,000) met all held-for-sale criteria. Its fair value was $350,000 and costs to sell were $15,000. On December 31, Year 3, the warehouse was still unsold; its fair value was $370,000 and costs to sell were $15,000.</p>
+<p class="ja">Exhibit 1:第1年度12月31日、Okada Foods社は需要の大幅な低下により神戸工場の資産グループ(のれんなし)の回収可能性テストを行った。帳簿価額は建物$600,000、機械$300,000、設備$100,000。割引前将来キャッシュフロー合計$850,000、グループの公正価値$760,000。設備単独の公正価値は$94,000と信頼性をもって測定できるが、建物と機械の個別公正価値は測定できない。Exhibit 2:第2年度12月31日、別の倉庫(帳簿価額$380,000)が売却目的保有の要件をすべて満たした。公正価値$350,000、売却費用$15,000。第3年度12月31日も未売却で、公正価値$370,000、売却費用$15,000。</p>`,
+  rows: [
+    { label: "Total impairment loss on the asset group, Year 1(資産グループの減損損失合計)", type: "num", answer: 240000 },
+    { label: "Impairment loss allocated to the equipment(設備への配分額)", type: "num", answer: 6000 },
+    { label: "Impairment loss allocated to the building(建物への配分額)", type: "num", answer: 156000 },
+    { label: "Carrying amount of the machinery after impairment(減損後の機械の帳簿価額)", type: "num", answer: 222000 },
+    { label: "Loss recognized on the warehouse, Year 2(第2年度の倉庫の損失)", type: "num", answer: 45000 },
+    { label: "Gain recognized on the warehouse, Year 3(第3年度の倉庫の利得)", type: "num", answer: 20000 },
+    { label: "If the plant's fair value recovers in Year 2, the Year 1 impairment loss(工場の公正価値が第2年度に回復した場合の第1年度減損損失)", type: "select", options: ["Is reversed up to the original carrying amount", "Is reversed only to the extent of later depreciation", "Is not reversed; the reduced carrying amount is the new cost basis", "Is reclassified to OCI"], answer: "Is not reversed; the reduced carrying amount is the new cost basis" },
+    { label: "Depreciation on the warehouse during Year 3(第3年度の倉庫の減価償却)", type: "select", options: ["Continue straight-line depreciation", "Depreciate down to fair value less costs to sell", "No depreciation while classified as held for sale", "Depreciate only if sale is expected beyond one year"], answer: "No depreciation while classified as held for sale" },
+  ],
+  explain: `<p>回収可能性テスト:帳簿価額合計1,000,000 > 割引前CF 850,000 → 減損あり。減損損失 = 1,000,000 − 公正価値760,000 = 240,000。</p>
+<p>帳簿価額比で按分:建物60% = 144,000、機械30% = 72,000、設備10% = 24,000。ただし個々の資産は公正価値(測定可能な場合)を下回って減額できない。設備は100,000 − 94,000 = 6,000までしか減額できず、超過18,000を建物と機械に帳簿価額比(600:300 = 2:1)で再配分:建物 +12,000、機械 +6,000。</p>
+<p>最終配分:建物156,000、機械78,000、設備6,000(合計240,000)。減損後帳簿価額:建物444,000、機械222,000、設備94,000(合計760,000)。</p>
+<p>売却目的保有:公正価値 − 売却費用 = 350,000 − 15,000 = 335,000。損失 = 380,000 − 335,000 = 45,000。</p>
+<p>第3年度:370,000 − 15,000 = 355,000。回復額20,000は過去に認識した損失45,000の範囲内なので利得として認識し、帳簿価額355,000とする。</p>
+<p>保有使用資産の減損損失は戻入れできない。売却目的保有に分類された資産は減価償却しない。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-FAR-56", section: "FAR", chapter: "FAR-03", title: "研究開発費・ソフトウェア原価の資本化と無形資産・のれんの減損",
+  scenario: `<p>Exhibit 1 lists costs incurred by Fujii Tech in Year 1 (calendar year). Fujii has not early adopted ASU 2025-06 and applies the project-stage model for internal-use software.</p>
+<table><tr><th>#</th><th>Cost</th><th>Amount</th></tr>
+<tr><td>1</td><td>Salaries of research staff searching for new product applications</td><td>$400,000</td></tr>
+<tr><td>2</td><td>Materials consumed in R&amp;D projects</td><td>$60,000</td></tr>
+<tr><td>3</td><td>Lab equipment bought January 1 with alternative future uses (5-year life, straight-line, no salvage)</td><td>$500,000</td></tr>
+<tr><td>4</td><td>Equipment bought for one R&amp;D project with no alternative future use</td><td>$80,000</td></tr>
+<tr><td>5</td><td>Software to be sold: costs before technological feasibility (established July 1)</td><td>$300,000</td></tr>
+<tr><td>6</td><td>Software to be sold: coding and testing after technological feasibility, before general release on October 1</td><td>$180,000</td></tr>
+<tr><td>7</td><td>Internal-use software: preliminary project stage (evaluating alternatives)</td><td>$50,000</td></tr>
+<tr><td>8</td><td>Internal-use software: application development stage (coding, installation, testing)</td><td>$220,000</td></tr>
+<tr><td>9</td><td>Internal-use software: training and data conversion</td><td>$40,000</td></tr></table>
+<p>Exhibit 2: Revenue from the software product in Year 1 was $120,000; total current and future revenue is estimated at $1,200,000 over an estimated economic life of 3 years.</p>
+<p>Exhibit 3 (December 31, Year 1 impairment tests): An indefinite-lived trademark has a carrying amount of $150,000 and fair value of $120,000. After any trademark impairment, Reporting Unit X has a carrying amount of $2,500,000 (including goodwill of $400,000) and a fair value of $2,280,000. Ignore income taxes.</p>
+<p class="ja">Exhibit 1はFujii Tech社(暦年決算)の第1年度の支出である(ASU 2025-06は早期適用せず、自社利用ソフトウェアは段階別モデルを適用)。1 研究員の給与$400,000、2 研究開発で消費した材料$60,000、3 1月1日購入の他の将来用途がある研究設備$500,000(5年・定額・残存なし)、4 特定の研究開発プロジェクト専用で他用途のない設備$80,000、5 販売用ソフトウェアの技術的実現可能性確立(7月1日)前の原価$300,000、6 確立後・一般販売開始(10月1日)前のコーディング・テスト$180,000、7 自社利用ソフトの予備的プロジェクト段階$50,000、8 アプリケーション開発段階$220,000、9 研修とデータ変換$40,000。Exhibit 2:当期のソフトウェア収益$120,000、当期と将来の収益見積総額$1,200,000、見積経済的耐用年数3年。Exhibit 3:耐用年数を確定できない商標の帳簿価額$150,000、公正価値$120,000。商標減損後の報告単位Xの帳簿価額$2,500,000(のれん$400,000を含む)、公正価値$2,280,000。税金は無視する。</p>`,
+  rows: [
+    { label: "Total research and development expense for Year 1(第1年度の研究開発費合計)", type: "num", answer: 940000 },
+    { label: "Software development costs capitalized (software to be sold)(販売用ソフトウェアの資本化額)", type: "num", answer: 180000 },
+    { label: "Amortization of capitalized software to be sold, Year 1(販売用ソフトウェアの第1年度償却額)", type: "num", answer: 18000 },
+    { label: "Internal-use software costs capitalized(自社利用ソフトウェアの資本化額)", type: "num", answer: 220000 },
+    { label: "Trademark impairment loss(商標の減損損失)", type: "num", answer: 30000 },
+    { label: "Goodwill impairment loss for Reporting Unit X(報告単位Xののれん減損損失)", type: "num", answer: 220000 },
+    { label: "Measurement basis of the goodwill impairment under ASU 2017-04(ASU 2017-04におけるのれん減損の測定)", type: "select", options: ["Carrying amount of goodwill minus implied fair value of goodwill", "Excess of reporting unit carrying amount over its fair value, limited to goodwill", "Excess of carrying amount over undiscounted cash flows", "Not measured; goodwill is amortized over 10 years by all entities"], answer: "Excess of reporting unit carrying amount over its fair value, limited to goodwill" },
+    { label: "Order of impairment testing(減損テストの順序)", type: "select", options: ["Goodwill first, then the trademark", "Trademark (and other assets) first, then goodwill", "Only goodwill is tested", "Order does not matter"], answer: "Trademark (and other assets) first, then goodwill" },
+  ],
+  explain: `<p>研究開発費 = 給与400,000 + 材料60,000 + 他用途のある設備の減価償却500,000 ÷ 5 = 100,000 + 他用途のない専用設備80,000(全額費用)+ 技術的実現可能性確立前のソフトウェア原価300,000 = 940,000。他用途のある設備自体は資本化し、償却費のみR&amp;D費用となる。</p>
+<p>販売用ソフトウェア:技術的実現可能性の確立後から一般販売開始までの180,000を資本化する。</p>
+<p>償却額は「収益比率法」と「定額法」のいずれか大きい方:収益比率 120,000 ÷ 1,200,000 = 10% → 18,000。定額法 180,000 ÷ 3 × 3/12(10〜12月)= 15,000。大きい方の18,000。</p>
+<p>自社利用ソフトウェア:アプリケーション開発段階の220,000のみ資本化。予備的段階50,000と研修・データ変換40,000は発生時の費用。</p>
+<p>商標(耐用年数を確定できない無形資産):帳簿価額150,000 − 公正価値120,000 = 30,000の減損。のれんより先に、他の資産の減損を判定してから報告単位のテストを行う。</p>
+<p>のれん(ASU 2017-04の1ステップ):2,500,000 − 2,280,000 = 220,000。のれん400,000を上限とするため220,000を認識する。暗示的公正価値(旧ステップ2)は廃止された。</p>`,
+});

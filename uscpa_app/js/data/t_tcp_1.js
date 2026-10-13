@@ -165,3 +165,26 @@ CPA.tbs({ id: "TBS-TCP-27", section: "TCP", chapter: "TCP-01", title: "キディ
 <p>残り 5,550 − 3,300 = 2,250 × 10% = <b>225</b>。合計 1,056 + 225 = <b>1,281</b>。</p>
 <p>Form 8814の選択は、子の所得が利息・配当・キャピタルゲイン分配のみで一定額未満の場合に限られる。Emiは給与所得があるため選択できず、自身でForm 8615を添付して申告する。</p>`,
 });
+
+CPA.tbs({ id: "TBS-TCP-28", section: "TCP", chapter: "TCP-01", title: "AOTCとLLCの選択・フェーズアウトと529分配の調整",
+  scenario: `<p>Hiro and Yuna file jointly; their 2026 modified AGI is <b>$170,000</b>. They claim both children as dependents. Assume the AOTC and the lifetime learning credit (LLC) each phase out ratably for joint filers between modified AGI of <b>$160,000</b> and <b>$180,000</b>.</p>
+<table><tr><th>Student</th><th>2026 facts</th></tr>
+<tr><td>Daughter Mei</td><td>Second-year undergraduate, enrolled full-time in a degree program; no felony drug conviction; AOTC claimed in one prior year. Tuition <b>$14,000</b>; required textbooks bought at the campus bookstore <b>$1,000</b>; on-campus room and board <b>$12,000</b> (equal to the school's allowance). A §529 plan distributed <b>$10,000</b> to pay her expenses.</td></tr>
+<tr><td>Son Ryo</td><td>Graduate (master's) student; AOTC was claimed for him in four prior years. Tuition <b>$9,000</b>, paid with the parents' own funds.</td></tr></table>
+<p>The parents allocate expenses so as to maximize credits while keeping the §529 distribution tax-free if possible.</p>
+<p class="ja">HiroとYunaは夫婦合算申告で、2026年の修正AGIは$170,000。子2人を被扶養者とする。AOTCと生涯学習控除(LLC)は、夫婦合算申告の場合、修正AGI $160,000〜$180,000の間で比例的に減額されるとする。娘Mei:学位課程の2年生でフルタイム在籍、薬物関連の重罪歴なし、AOTCは過去1年のみ適用。授業料$14,000、大学書店で購入した必修教科書$1,000、学内寮の寮費・食費$12,000(大学の基準額と同額)。§529プランから費用支払いのため$10,000を分配。息子Ryo:修士課程の大学院生で、過去4年にAOTCを適用済み。授業料$9,000は両親の自己資金で支払った。両親は控除を最大化しつつ、可能であれば529分配を非課税とするよう費用を配分する。</p>`,
+  rows: [
+    { label: "Mei: AOTC before the phase-out(Mei:フェーズアウト前のAOTC)", type: "num", answer: 2500 },
+    { label: "Mei: AOTC after the phase-out(Mei:フェーズアウト後のAOTC)", type: "num", answer: 1250 },
+    { label: "Refundable portion of Mei's AOTC(MeiのAOTCのうち還付対象部分)", type: "num", answer: 500 },
+    { label: "Ryo: credit allowed after the phase-out(Ryo:フェーズアウト後の控除額)", type: "num", answer: 900 },
+    { label: "Mei: adjusted qualified education expenses available for the 529 distribution(Mei:529分配に充当できる調整後適格教育費)", type: "num", answer: 23000 },
+    { label: "Taxable earnings included in income from the 529 distribution(529分配のうち所得に算入される運用益)", type: "num", answer: 0 },
+    { label: "Total education credits for 2026(2026年の教育控除合計)", type: "num", answer: 2150 },
+    { label: "Which credit applies to Ryo?(Ryoに適用される控除)", type: "select", options: ["AOTC, because he is enrolled at least half-time", "Lifetime learning credit, because the AOTC four-year limit has been used", "Neither, because graduate tuition is not a qualified expense", "Both credits may be claimed for him in the same year"], answer: "Lifetime learning credit, because the AOTC four-year limit has been used" },
+  ],
+  explain: `<p><b>Mei(AOTC)</b>:最初の$2,000の100% + 次の$2,000の25% = <b>2,500</b>(教科書は大学から購入しなくても対象。寮費・食費はAOTCの対象外)。フェーズアウト率 = (180,000 − 170,000) ÷ 20,000 = 50% → <b>1,250</b>。還付対象は40%:1,250 × 40% = <b>500</b>。</p>
+<p><b>Ryo(LLC)</b>:AOTCは4年まで。大学院の授業料はLLCの対象:9,000 × 20% = 1,800(上限は納税者当たり$10,000の20%=2,000)。50%減額で <b>900</b>。</p>
+<p><b>529</b>:529の適格費用は授業料・教科書・寮費食費(半時間以上在籍)で 14,000 + 1,000 + 12,000 = 27,000。AOTCに使った4,000を差し引くと <b>23,000</b>。分配10,000 ≤ 23,000 なので全額非課税、所得算入額は <b>0</b>(同じ費用を二重に使わないことが調整の要点)。</p>
+<p>控除合計 = 1,250 + 900 = <b>2,150</b>。</p>`,
+});
