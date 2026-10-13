@@ -58,3 +58,66 @@ CPA.tbs({
 <p>西部門合計 = 26,000 + 14,000 + 23,000 = 63,000(原価72,000、評価減9,000)。</p>
 <p>ASU 2015-11のLCNRVはLIFOと売価還元法以外(FIFO・平均法等)に適用され、LIFOと売価還元法は従来の低価法が残る。US GAAPでは年次の評価減は戻入れできず、切下げ後の金額が新たな取得原価となる(IFRSは戻入れ可)。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-FAR-49", section: "FAR", chapter: "FAR-03", title: "売価還元法(従来型の低価売価還元法とLIFO売価還元法)",
+  scenario: `<p>Ueda Department Store uses the retail inventory method. Selected Year 2 data for its apparel department follow. Prices were stable during Year 2, so no price index adjustment is needed for the LIFO retail computation, and the beginning inventory is the LIFO base layer.</p>
+<table><tr><th>Item</th><th>Cost</th><th>Retail</th></tr>
+<tr><td>Beginning inventory, Jan 1</td><td>$30,100</td><td>$50,000</td></tr>
+<tr><td>Purchases</td><td>$170,400</td><td>$260,000</td></tr>
+<tr><td>Freight-in</td><td>$3,900</td><td>—</td></tr>
+<tr><td>Purchase returns</td><td>$6,000</td><td>$10,000</td></tr>
+<tr><td>Net markups</td><td>—</td><td>$20,000</td></tr>
+<tr><td>Net markdowns</td><td>—</td><td>$15,000</td></tr>
+<tr><td>Gross sales</td><td>—</td><td>$245,000</td></tr>
+<tr><td>Sales returns</td><td>—</td><td>$7,000</td></tr>
+<tr><td>Employee discounts</td><td>—</td><td>$3,000</td></tr>
+<tr><td>Normal shrinkage</td><td>—</td><td>$2,000</td></tr></table>
+<p class="ja">Ueda百貨店は売価還元法を採用している。表は衣料部門の第2年度のデータ(原価・売価)である。第2年度の物価は安定しており、LIFO売価還元法で物価指数調整は不要、期首棚卸はLIFOの基準層である。</p>`,
+  rows: [
+    { label: "Cost-to-retail ratio — conventional (lower-of-cost-or-market) method(従来型売価還元法の原価率)", type: "num", answer: 0.62, tol: 0.001 },
+    { label: "Ending inventory at retail(期末棚卸高(売価))", type: "num", answer: 62000 },
+    { label: "Ending inventory at cost — conventional method(従来型による期末棚卸高(原価))", type: "num", answer: 38440 },
+    { label: "Cost of goods sold — conventional method(従来型による売上原価)", type: "num", answer: 159960 },
+    { label: "Cost-to-retail ratio for Year 2 layer — LIFO retail(LIFO売価還元法の当期層の原価率)", type: "num", answer: 0.66, tol: 0.001 },
+    { label: "Ending inventory at cost — LIFO retail method(LIFO売価還元法による期末棚卸高(原価))", type: "num", answer: 38020 },
+    { label: "Treatment of employee discounts and normal shrinkage(従業員割引と正常減耗の扱い)", type: "select", options: ["Added to goods available at retail", "Deducted from goods available at retail, like sales", "Excluded from the computation", "Deducted only in the cost column"], answer: "Deducted from goods available at retail, like sales" },
+    { label: "Reason the conventional method excludes net markdowns from the ratio(従来型が原価率の計算から値下げを除く理由)", type: "select", options: ["To approximate the average cost of inventory", "To approximate lower of cost or market", "To comply with the LIFO conformity rule", "Because markdowns are recorded only in the cost column"], answer: "To approximate lower of cost or market" },
+  ],
+  explain: `<p>従来型(低価):原価 = 30,100 + 170,400 + 3,900(運賃は原価のみ)− 6,000 = 198,400。売価(値下げ前)= 50,000 + 260,000 − 10,000 + 20,000 = 320,000。原価率 = 198,400 ÷ 320,000 = 0.62。</p>
+<p>値下げ後の販売可能売価 = 320,000 − 15,000 = 305,000。控除:純売上 245,000 − 7,000 = 238,000、従業員割引3,000、正常減耗2,000、合計243,000。期末売価 = 305,000 − 243,000 = 62,000。</p>
+<p>従来型の期末原価 = 62,000 × 0.62 = 38,440、売上原価 = 198,400 − 38,440 = 159,960。</p>
+<p>LIFO売価還元法:期首を除き、値上げ・値下げとも含めて当期の原価率を計算する。当期原価 = 170,400 + 3,900 − 6,000 = 168,300、当期売価 = 260,000 − 10,000 + 20,000 − 15,000 = 255,000、原価率 = 0.66。</p>
+<p>期末売価62,000のうち基準層50,000(原価30,100、率0.602)、増加層12,000 × 0.66 = 7,920。期末原価 = 30,100 + 7,920 = 38,020。</p>
+<p>従業員割引と正常減耗は売上と同様に売価から控除する(異常減耗は原価・売価の両方から除く)。値下げを分母から除くと原価率が低くなり、期末棚卸が低価法に近い金額となる。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-FAR-50", section: "FAR", chapter: "FAR-03", title: "売上総利益率法による火災損失の見積り",
+  scenario: `<p>On May 15, Year 3, a fire destroyed the main warehouse of Sato Wholesale Co. The accounting records were saved. Sato's goods are priced at a markup of 25% on cost. Information for January 1 – May 15, Year 3:</p>
+<table><tr><th>Item</th><th>Amount</th></tr>
+<tr><td>Inventory, January 1 (at cost)</td><td>$84,000</td></tr>
+<tr><td>Purchases (includes Exhibit 2 goods in transit)</td><td>$310,000</td></tr>
+<tr><td>Purchase returns</td><td>$6,000</td></tr>
+<tr><td>Freight-in</td><td>$12,000</td></tr>
+<tr><td>Sales</td><td>$480,000</td></tr>
+<tr><td>Sales returns and allowances</td><td>$20,000</td></tr></table>
+<p>Exhibit 2 (Adjuster's notes): (1) Goods costing $8,000 shipped FOB shipping point by a supplier on May 12 were in transit at the time of the fire and arrived May 20. (2) Sato's goods costing $4,000 were held by a consignee at the time of the fire. (3) Goods in the warehouse costing $3,000 were undamaged. (4) Damaged goods can be sold for a net realizable value of $2,500. (5) The insurer agreed to pay $12,000.</p>
+<p class="ja">第3年度5月15日、Sato Wholesale社の主倉庫が火災で焼失した(会計記録は無事)。商品は原価に25%を上乗せして販売している。1月1日〜5月15日のデータは表のとおり。Exhibit 2:(1)5月12日に仕入先がFOB出荷地点条件で出荷した原価$8,000の商品は火災時に輸送中で5月20日に到着した(仕入に計上済)。(2)原価$4,000の自社商品が受託者のもとにあった。(3)倉庫内の原価$3,000の商品は無傷。(4)損傷品は正味実現可能価額$2,500で売却できる。(5)保険会社は$12,000を支払う。</p>`,
+  rows: [
+    { label: "Gross profit rate on net sales(純売上高に対する売上総利益率)", type: "select", options: ["20%", "25%", "33.3%", "75%", "80%"], answer: "20%" },
+    { label: "Estimated cost of goods sold, January 1 – May 15(見積売上原価)", type: "num", answer: 368000 },
+    { label: "Estimated total inventory owned at May 15(5月15日に所有する見積棚卸高)", type: "num", answer: 32000 },
+    { label: "Estimated inventory in the warehouse at the time of the fire(火災時に倉庫内にあった見積棚卸高)", type: "num", answer: 20000 },
+    { label: "Inventory casualty loss before insurance(保険金控除前の棚卸資産の火災損失)", type: "num", answer: 14500 },
+    { label: "Net loss after insurance recovery(保険金控除後の純損失)", type: "num", answer: 2500 },
+    { label: "Income statement presentation of the net loss(純損失の損益計算書上の表示)", type: "select", options: ["Extraordinary item, net of tax", "Within income from continuing operations (separately disclosed if unusual or infrequent)", "Discontinued operations", "Direct charge to retained earnings"], answer: "Within income from continuing operations (separately disclosed if unusual or infrequent)" },
+    { label: "Acceptability of the gross profit method(売上総利益率法の容認範囲)", type: "select", options: ["Acceptable for annual financial statements", "Acceptable for estimates and interim reporting but not for annual financial statements", "Required for casualty losses in annual reports", "Prohibited for all purposes"], answer: "Acceptable for estimates and interim reporting but not for annual financial statements" },
+  ],
+  explain: `<p>原価に対する値入率25%を売価基準に換算:0.25 ÷ 1.25 = 20%。売上原価率は80%。</p>
+<p>純売上高 = 480,000 − 20,000 = 460,000、見積売上原価 = 460,000 × 80% = 368,000。</p>
+<p>販売可能商品原価 = 84,000 + 310,000 − 6,000 + 12,000 = 400,000。見積期末棚卸高 = 400,000 − 368,000 = 32,000(輸送中品と積送品を含む所有分)。</p>
+<p>倉庫内の棚卸高 = 32,000 − 8,000(FOB出荷地点で輸送中、所有するが倉庫外)− 4,000(受託者保管の積送品)= 20,000。</p>
+<p>火災損失(保険前)= 20,000 − 3,000(無傷)− 2,500(損傷品のNRV)= 14,500。純損失 = 14,500 − 12,000 = 2,500。</p>
+<p>ASU 2015-01で異常項目の区分は廃止され、継続事業の損益に含める(異常または稀な項目は別掲・注記)。売上総利益率法は見積り・期中報告用であり、年次財務諸表の棚卸評価としては認められない。</p>`,
+});
