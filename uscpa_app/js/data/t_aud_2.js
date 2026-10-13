@@ -58,3 +58,62 @@ CPA.tbs({
 <p>E:通常の報告経路が機能しない場合に備えた別の伝達経路(内部通報制度)は、組織内部への伝達である原則14(情報と伝達)である。外部(規制当局・顧客等)への伝達は原則15である。</p>
 <p>F:アクセス管理・変更管理などのIT全般統制の選択・整備は原則11(統制活動)である。</p>`,
 });
+
+CPA.tbs({
+  id: "TBS-AUD-42", section: "AUD", chapter: "AUD-03", title: "給与サイクルの統制の分類(予防的・発見的/手作業・自動化)",
+  scenario: `<p>Corwin Logistics processes a biweekly payroll for 1,200 hourly employees using an integrated HR/payroll system. The following controls were documented during your walkthrough.</p>
+<table><tr><th>#</th><th>Control description</th></tr>
+<tr><td>1</td><td>The timekeeping module rejects any entry exceeding 80 hours per employee per pay period unless a supervisor enters an override code.</td></tr>
+<tr><td>2</td><td>A new employee cannot be paid until the HR manager (who has no payroll duties) reviews the signed offer letter and approves the hire record; payroll then activates the employee.</td></tr>
+<tr><td>3</td><td>Each month, the payroll supervisor compares payroll register totals to the general ledger salary expense and accrued payroll accounts and investigates differences over $1,000.</td></tr>
+<tr><td>4</td><td>After each payroll run, the system automatically compares paid employees to the HR termination file and flags any payment to a terminated employee on an exception log.</td></tr>
+<tr><td>5</td><td>Twice a year, internal audit conducts a surprise payroll distribution, requiring each employee to show photo ID to receive a pay advice; unclaimed pay advices are investigated.</td></tr>
+<tr><td>6</td><td>Pay rate fields can be changed only by users with the HR compensation role; payroll clerks have read-only access to pay rates.</td></tr></table>
+<p class="ja">Corwin Logistics社は統合人事・給与システムで1,200人の時給従業員の隔週給与を処理している。ウォークスルーで次の統制を文書化した。1:勤怠モジュールは1給与期間に80時間を超える入力を、監督者のオーバーライド・コードがない限り受け付けない。2:人事部長(給与業務なし)が署名済み雇用通知書を確認し採用記録を承認するまで新規従業員に支払えず、承認後に給与担当が有効化する。3:毎月、給与担当責任者が給与台帳の合計を総勘定元帳の給与費用・未払給与と照合し、$1,000超の差異を調査する。4:給与計算の実行後、システムが支払対象者を人事の退職者ファイルと自動照合し、退職者への支払を例外ログに表示する。5:年2回、内部監査が抜き打ちで給与明細を配布し、本人確認書類の提示を求め、受取人不明の明細を調査する。6:給与単価欄は人事の報酬ロールのユーザーのみ変更でき、給与担当者は閲覧のみである。</p>`,
+  rows: [
+    { label: "Control 1(統制1)", type: "select", options: ["Preventive / Automated", "Preventive / Manual", "Detective / Automated", "Detective / Manual"], answer: "Preventive / Automated" },
+    { label: "Control 2(統制2)", type: "select", options: ["Preventive / Automated", "Preventive / Manual", "Detective / Automated", "Detective / Manual"], answer: "Preventive / Manual" },
+    { label: "Control 3(統制3)", type: "select", options: ["Preventive / Automated", "Preventive / Manual", "Detective / Automated", "Detective / Manual"], answer: "Detective / Manual" },
+    { label: "Control 4(統制4)", type: "select", options: ["Preventive / Automated", "Preventive / Manual", "Detective / Automated", "Detective / Manual"], answer: "Detective / Automated" },
+    { label: "Control 5(統制5)", type: "select", options: ["Preventive / Automated", "Preventive / Manual", "Detective / Automated", "Detective / Manual"], answer: "Detective / Manual" },
+    { label: "Control 6(統制6)", type: "select", options: ["Preventive / Automated", "Preventive / Manual", "Detective / Automated", "Detective / Manual"], answer: "Preventive / Automated" },
+    { label: "Control that most directly detects fictitious (ghost) employees already on the payroll(既に給与台帳に存在する架空従業員を最も直接的に発見する統制)", type: "select", options: ["Control 1", "Control 2", "Control 3", "Control 5", "Control 6"], answer: "Control 5" },
+  ],
+  explain: `<p>予防的統制は誤謬・不正の発生前に防ぎ、発見的統制は発生後に発見する。自動化統制はシステムが人手を介さず実行し、手作業統制は人が実行する。</p>
+<p>統制1:入力時点で80時間超を拒否するシステムのエディット・チェック → 予防的・自動化。</p>
+<p>統制2:人事部長による採用承認が支払の前提条件 → 予防的・手作業(承認)。</p>
+<p>統制3:事後の月次照合(給与台帳と総勘定元帳)と差異調査 → 発見的・手作業。</p>
+<p>統制4:支払後にシステムが自動照合し例外を表示 → 発見的・自動化(例外ログのフォローアップは別途手作業の統制となる)。</p>
+<p>統制5:抜き打ちの給与配布で本人確認できない明細を調査 → 発見的・手作業。</p>
+<p>統制6:ロールベースのアクセス制限で権限のない単価変更を防ぐ → 予防的・自動化。</p>
+<p>架空従業員の発見:統制2は新規登録時の予防、統制6は単価改ざんの防止であり、既に台帳に存在する架空従業員を直接発見できるのは、実在する本人に配布して受取人不明分を調査する統制5である。</p>`,
+});
+
+CPA.tbs({
+  id: "TBS-AUD-43", section: "AUD", chapter: "AUD-03", title: "補完統制を考慮した内部統制の不備の重大度の評価",
+  scenario: `<p>In the audit of <b>Halvorsen Manufacturing</b> (nonissuer) for the year ended December 31, Year 1, overall materiality is <b>$600,000</b>. The firm's methodology states: (a) a <b>material weakness</b> exists when there is a reasonable possibility that a misstatement equal to or greater than materiality will not be prevented, or detected and corrected, on a timely basis; (b) a deficiency whose potential misstatement (after considering effective compensating controls) is at least <b>10% of materiality</b> but below materiality is a <b>significant deficiency</b>; (c) below 10% of materiality, it is a <b>deficiency</b>, unless qualitative indicators of a material weakness exist.</p>
+<table><tr><th>#</th><th>Deficiency identified</th></tr>
+<tr><td>1</td><td>The shipping cutoff control failed during the year. Average daily shipments are <b>$150,000</b>, and the failure could affect shipments in the last <b>6</b> business days of the year. No compensating control exists.</td></tr>
+<tr><td>2</td><td>Checks over $10,000 require a second signature; the second signature was missing on 3 of 60 checks tested. Potential misstatement absent other controls is $400,000. However, the controller reviews all disbursements over $5,000 against supporting documents each month; this compensating control was tested, operates effectively, and would detect any misstatement exceeding <b>$20,000</b>.</td></tr>
+<tr><td>3</td><td>Reconciliations of three prepaid expense accounts with balances of <b>$80,000</b>, <b>$65,000</b>, and <b>$55,000</b> were not reviewed. No compensating control exists; the full balances could be misstated.</td></tr>
+<tr><td>4</td><td>The auditor discovered that the CFO submitted <b>$15,000</b> of fictitious travel expense reimbursements, which were approved by a subordinate.</td></tr>
+<tr><td>5</td><td>Fixed asset additions are not reviewed for proper classification; the maximum potential misstatement is <b>$45,000</b>.</td></tr></table>
+<p class="ja">Halvorsen Manufacturing社(非発行体)の1年目12月31日終了年度の監査で、全体の重要性は$600,000である。事務所の方法論:(a)重要性以上の虚偽表示が適時に防止・発見・是正されない合理的な可能性があれば重要な欠陥(material weakness)、(b)有効な補完統制を考慮した潜在的虚偽表示が重要性の10%以上で重要性未満なら重要な不備(significant deficiency)、(c)10%未満なら不備(重要な欠陥の質的兆候がない限り)。1:出荷の期間帰属の統制が機能していなかった。1日平均出荷額$150,000、期末前6営業日の出荷に影響し得る。補完統制なし。2:$10,000超の小切手には2名の署名が必要だが、60件中3件で2人目の署名がなかった。他の統制がなければ潜在的虚偽表示は$400,000。ただしコントローラーが毎月$5,000超の支払を証憑と照合しており、この補完統制は有効に運用され$20,000超の虚偽表示を発見できる。3:残高$80,000、$65,000、$55,000の3つの前払費用勘定の調整表がレビューされていない。補完統制はなく残高全額が虚偽表示となり得る。4:CFOが部下の承認を得て$15,000の架空出張旅費を請求していたことを監査人が発見した。5:固定資産の取得の分類がレビューされておらず、最大の潜在的虚偽表示は$45,000である。</p>`,
+  rows: [
+    { label: "Deficiency 1 — potential misstatement ($)(不備1の潜在的虚偽表示額)", type: "num", answer: 900000 },
+    { label: "Deficiency 1 — severity(不備1の重大度)", type: "select", options: ["Deficiency", "Significant deficiency", "Material weakness"], answer: "Material weakness" },
+    { label: "Deficiency 2 — severity(不備2の重大度)", type: "select", options: ["Deficiency", "Significant deficiency", "Material weakness"], answer: "Deficiency" },
+    { label: "Deficiency 3 — potential misstatement ($)(不備3の潜在的虚偽表示額)", type: "num", answer: 200000 },
+    { label: "Deficiency 3 — severity(不備3の重大度)", type: "select", options: ["Deficiency", "Significant deficiency", "Material weakness"], answer: "Significant deficiency" },
+    { label: "Deficiency 4 — severity(不備4の重大度)", type: "select", options: ["Deficiency", "Significant deficiency", "Material weakness"], answer: "Material weakness" },
+    { label: "Deficiency 5 — severity(不備5の重大度)", type: "select", options: ["Deficiency", "Significant deficiency", "Material weakness"], answer: "Deficiency" },
+    { label: "Deficiencies that AU-C 265 requires to be communicated in writing to those charged with governance(AU-C 265により統治責任者へ書面伝達が必要な不備)", type: "select", options: ["1 and 4 only", "1, 3, and 4 only", "1, 2, 3, and 4 only", "All five deficiencies"], answer: "1, 3, and 4 only" },
+  ],
+  explain: `<p>判定基準:重要性 $600,000、その10% = $60,000。</p>
+<p>不備1:150,000 × 6日 = 900,000。重要性 600,000 以上で補完統制もない → 重要な欠陥。</p>
+<p>不備2:補完統制がなければ 400,000(重要な不備の水準)だが、有効に運用されている補完統制(コントローラーの月次レビュー)により発見されずに残る虚偽表示は最大 20,000。20,000 < 60,000 → 不備にとどまる。補完統制は有効性が検証されている場合にのみ考慮できる点が重要である。</p>
+<p>不備3:80,000 + 65,000 + 55,000 = 200,000。60,000 以上 600,000 未満 → 重要な不備。</p>
+<p>不備4:金額は僅少でも、上級経営者による不正の発見は重要な欠陥の兆候(indicator)であり、トーン・アット・ザ・トップと統制環境への影響から重要な欠陥と判断する。</p>
+<p>不備5:45,000 < 60,000 で質的兆候もない → 不備。</p>
+<p>伝達:AU-C 265は重要な不備と重要な欠陥を経営者と統治責任者に書面で伝達することを求める。したがって1・3・4が対象である。2と5の不備は、経営者の注意に値すると判断したものを適切な階層の経営者に伝達すればよく(口頭も可)、統治責任者への書面伝達は求められない。</p>`,
+});

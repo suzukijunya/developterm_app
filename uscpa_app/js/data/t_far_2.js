@@ -203,10 +203,10 @@ CPA.tbs({
 <table><tr><th>Asset</th><th>Acquired</th><th>Cost</th><th>Salvage</th><th>Life</th><th>Method</th></tr>
 <tr><td>Machine</td><td>April 1, Year 1</td><td>$250,000</td><td>$25,000</td><td>5 years</td><td>Sum-of-the-years'-digits</td></tr>
 <tr><td>Equipment</td><td>July 1, Year 1</td><td>$160,000</td><td>$10,000</td><td>8 years</td><td>Double-declining balance</td></tr>
-<tr><td>Building</td><td>January 1, Year -7</td><td>$900,000</td><td>$60,000</td><td>40 years</td><td>Straight-line</td></tr>
+<tr><td>Building</td><td>January 1, Year -7 (10 full years before Year 3)</td><td>$900,000</td><td>$60,000</td><td>40 years</td><td>Straight-line</td></tr>
 <tr><td>Truck</td><td>January 1, Year 3</td><td>$90,000</td><td>$6,000</td><td>200,000 miles</td><td>Units of production</td></tr></table>
 <p>Exhibit 2 (Changes effective January 1, Year 3): (a) Equipment — management switched to straight-line to better reflect the pattern of use; the remaining life is 5 years and the salvage value is revised to $5,000. (b) Building — the total remaining life is revised to 20 years and salvage value to $50,000. (c) The truck was driven 30,000 miles in Year 3.</p>
-<p class="ja">Yamada社(暦年決算)は月割で減価償却する。機械:第1年度4月1日取得、原価$250,000、残存$25,000、5年、級数法。設備:第1年度7月1日取得、$160,000、残存$10,000、8年、200%定率法。建物:第-7年度1月1日取得、$900,000、残存$60,000、40年、定額法。トラック:第3年度1月1日取得、$90,000、残存$6,000、200,000マイル、生産高比例法。Exhibit 2(第3年度1月1日から):(a)設備を定額法に変更、残存耐用年数5年、残存価額$5,000。(b)建物の残存耐用年数を20年、残存価額を$50,000に見直し。(c)トラックの第3年度走行距離は30,000マイル。</p>`,
+<p class="ja">Yamada社(暦年決算)は月割で減価償却する。機械:第1年度4月1日取得、原価$250,000、残存$25,000、5年、級数法。設備:第1年度7月1日取得、$160,000、残存$10,000、8年、200%定率法。建物:第-7年度1月1日取得(第3年度期首までに10年経過)、$900,000、残存$60,000、40年、定額法。トラック:第3年度1月1日取得、$90,000、残存$6,000、200,000マイル、生産高比例法。Exhibit 2(第3年度1月1日から):(a)設備を定額法に変更、残存耐用年数5年、残存価額$5,000。(b)建物の残存耐用年数を20年、残存価額を$50,000に見直し。(c)トラックの第3年度走行距離は30,000マイル。</p>`,
   rows: [
     { label: "Machine depreciation, Year 1(機械の第1年度減価償却費)", type: "num", answer: 56250 },
     { label: "Machine depreciation, Year 2(機械の第2年度減価償却費)", type: "num", answer: 63750 },
