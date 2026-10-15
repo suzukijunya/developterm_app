@@ -3,7 +3,7 @@
 // 章(chapter)の形:
 //   { id, title, en, note: "講義ノートのHTML",
 //     mcq: [{ q: 英語の問題文, ja: 和訳, c: [選択肢A〜D], a: 正解のindex, ex: 日本語解説 }],
-//     cards: [[英語の用語, 日本語訳, 一言説明]] }
+//     cards: [[英語の用語, 日本語訳, 一言説明, 詳しい説明?, 日本でいうと?, 例?]] }
 // TBS は CPA.tbs() で登録する(js/data/tbs.js)。
 
 const CPA = (() => {
@@ -35,6 +35,7 @@ const CPA = (() => {
         en: c[0],
         ja: c[1],
         desc: c[2] || "",
+        xp: c[3] ? [c[3], c[4] || "", c[5] || ""] : null, // 4〜6番目:詳しい説明・日本でいうと・例(任意)
         chapter: ch.id,
         section: def.id,
       }));
@@ -54,7 +55,15 @@ const CPA = (() => {
       ch.mcq.push(q);
     });
     (add.cards || []).forEach((c) => {
-      ch.cards.push({ id: ch.id + "-k" + String(ch.cards.length + 1).padStart(2, "0"), en: c[0], ja: c[1], desc: c[2] || "", chapter: ch.id, section: ch.section });
+      ch.cards.push({
+        id: ch.id + "-k" + String(ch.cards.length + 1).padStart(2, "0"),
+        en: c[0],
+        ja: c[1],
+        desc: c[2] || "",
+        xp: c[3] ? [c[3], c[4] || "", c[5] || ""] : null,
+        chapter: ch.id,
+        section: ch.section,
+      });
     });
   }
 

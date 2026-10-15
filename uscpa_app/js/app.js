@@ -72,14 +72,21 @@ const App = (() => {
   }
 
   // ---- 用語の詳しい説明(日本でいうと何か) ----
+  // カードの「詳しく・日本では?」:説明ファイル(CPA_EXPLAIN)か、カード自体に持たせた説明(xp)を使う
+  function explainFor(cardId) {
+    if (typeof CPA_EXPLAIN !== "undefined" && CPA_EXPLAIN[cardId]) return CPA_EXPLAIN[cardId];
+    const c = CPA.allCards().find((x) => x.id === cardId);
+    return (c && c.xp) || null;
+  }
+
   function explainBtn(cardId) {
-    if (typeof CPA_EXPLAIN === "undefined" || !CPA_EXPLAIN[cardId]) return "";
+    if (!explainFor(cardId)) return "";
     return `<span class="xp-btn" role="button" tabindex="0" data-explain="${cardId}">詳しく・日本では?</span>`;
   }
 
   function showExplain(cardId) {
     const c = CPA.allCards().find((x) => x.id === cardId);
-    const x = c && CPA_EXPLAIN[cardId];
+    const x = c && explainFor(cardId);
     if (!x) return;
     const ch = CPA.getChapter(c.chapter);
     const d = document.createElement("div");
