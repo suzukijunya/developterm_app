@@ -50,8 +50,8 @@ const View3D = (() => {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     el.appendChild(renderer.domElement);
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x1b202b);
-    scene.fog = new THREE.Fog(0x1b202b, 7, 16);
+    scene.background = new THREE.Color(0x050607);
+    scene.fog = new THREE.Fog(0x050607, 6, 14);
     // 工房の照明が映り込むように、周りの景色(環境マップ)を作る
     try {
       const pmrem = new THREE.PMREMGenerator(renderer);
@@ -101,11 +101,11 @@ const View3D = (() => {
     c.height = H;
     const g = c.getContext("2d");
     const grad = g.createLinearGradient(0, 0, 0, H);
-    grad.addColorStop(0, "#c9d3e2");
-    grad.addColorStop(0.42, "#6f7889");
-    grad.addColorStop(0.5, "#3e434e");
-    grad.addColorStop(0.58, "#2a2d34");
-    grad.addColorStop(1, "#16181d");
+    grad.addColorStop(0, "#6b7482");
+    grad.addColorStop(0.42, "#2c323b");
+    grad.addColorStop(0.5, "#1a1d22");
+    grad.addColorStop(0.58, "#111317");
+    grad.addColorStop(1, "#08090b");
     g.fillStyle = grad;
     g.fillRect(0, 0, W, H);
     // 天井の細長いライト(塗装に白い線として映る)
@@ -114,8 +114,8 @@ const View3D = (() => {
     for (const [x, w] of [[120, 260], [620, 180], [1000, 300], [1500, 220]]) g.fillRect(x, 60, w, 34);
     for (const [x, w] of [[300, 160], [1250, 200]]) g.fillRect(x, 180, w, 22);
     // 窓(暖かい光)とソフトボックス
-    g.fillStyle = "rgba(255,226,190,0.9)";
-    g.fillRect(560, 300, 150, 110);
+    g.fillStyle = "rgba(255,150,40,0.9)";
+    g.fillRect(560, 430, 260, 18);
     g.fillStyle = "rgba(235,242,255,0.95)";
     g.fillRect(1660, 260, 160, 150);
     g.filter = "none";
@@ -151,16 +151,17 @@ const View3D = (() => {
   // 工房: 床・壁・有孔ボード・作業台・マット・作業スタンド
   function buildEnvironment() {
     const THREE = T();
+    // ハンガーの床: 黒っぽいコンクリートに、細い目地
     const floorTex = canvasTexture(512, (g, s) => {
-      g.fillStyle = "#505560";
+      g.fillStyle = "#1a1d21";
       g.fillRect(0, 0, s, s);
-      for (let i = 0; i < 4000; i++) {
-        g.fillStyle = `rgba(${Math.random() < 0.5 ? "255,255,255" : "0,0,0"},${Math.random() * 0.06})`;
+      for (let i = 0; i < 5000; i++) {
+        g.fillStyle = `rgba(${Math.random() < 0.5 ? "255,255,255" : "0,0,0"},${Math.random() * 0.05})`;
         g.fillRect(Math.random() * s, Math.random() * s, 2, 2);
       }
-      g.strokeStyle = "rgba(0,0,0,0.35)";
-      g.lineWidth = 3;
-      g.strokeRect(0, 0, s, s);
+      g.strokeStyle = "rgba(255,255,255,0.06)";
+      g.lineWidth = 2;
+      g.strokeRect(1, 1, s - 2, s - 2);
     });
     floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping;
     floorTex.repeat.set(6, 6);
@@ -169,6 +170,52 @@ const View3D = (() => {
     floor.receiveShadow = true;
     floor.name = "floor";
     envGroup.add(floor);
+    // 組み立て台: 黄色と黒の警告の縞で囲み、床の輪が光る
+    const hazard = canvasTexture(256, (g, s) => {
+      g.fillStyle = "#111";
+      g.fillRect(0, 0, s, s);
+      g.fillStyle = "#e0a400";
+      for (let x = -s; x < s * 2; x += 32) {
+        g.beginPath();
+        g.moveTo(x, 0);
+        g.lineTo(x + 16, 0);
+        g.lineTo(x + 16 + s, s);
+        g.lineTo(x + s, s);
+        g.fill();
+      }
+    });
+    hazard.wrapS = THREE.RepeatWrapping;
+    for (const [x, z, w, d, rx] of [[0.15, -0.95, 3.2, 0.08, 16], [0.15, 0.95, 3.2, 0.08, 16], [-1.45, 0, 0.08, 1.98, 1], [1.75, 0, 0.08, 1.98, 1]]) {
+      const t = hazard.clone();
+      t.needsUpdate = true;
+      t.repeat.set(rx, 1);
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: t, roughness: 0.7 }));
+      m.rotation.x = -Math.PI / 2;
+      m.position.set(x, 0.004, z);
+      m.receiveShadow = true;
+      envGroup.add(m);
+    }
+    const padRing = new THREE.Mesh(new THREE.RingGeometry(0.98, 1.02, 96), new THREE.MeshStandardMaterial({ color: 0x110800, emissive: 0xff8a14, emissiveIntensity: 1.4, side: THREE.DoubleSide }));
+    padRing.rotation.x = -Math.PI / 2;
+    padRing.position.set(0.15, 0.005, 0);
+    padRing.name = "padRing";
+    envGroup.add(padRing);
+    // 壁の照明(細長いライト)。塗装やリムにも映り込む
+    const lightMat = new THREE.MeshStandardMaterial({ color: 0x111111, emissive: 0xe8f1ff, emissiveIntensity: 1.6 });
+    for (const x of [-2.4, -0.8, 0.8, 2.4]) {
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.035, 0.03), lightMat);
+      bar.position.set(x, 2.75, -1.57);
+      envGroup.add(bar);
+    }
+    const amberMat = new THREE.MeshStandardMaterial({ color: 0x110800, emissive: 0xff8a14, emissiveIntensity: 1.2 });
+    for (const x of [-3.0, 3.0]) {
+      const col = new THREE.Mesh(new THREE.BoxGeometry(0.03, 2.4, 0.03), amberMat);
+      col.position.set(x, 1.3, -1.57);
+      envGroup.add(col);
+    }
+    const glow = new THREE.PointLight(0xff8a14, 0.6, 3.2);
+    glow.position.set(0.15, 0.15, 0.6);
+    envGroup.add(glow);
     // ゴムマット
     const matTex = canvasTexture(128, (g, s) => {
       g.fillStyle = "#1c1e22";
@@ -190,29 +237,58 @@ const View3D = (() => {
     rubber.receiveShadow = true;
     envGroup.add(rubber);
     // 有孔ボードの壁
-    const pegTex = canvasTexture(256, (g, s) => {
-      g.fillStyle = "#b8905f";
-      g.fillRect(0, 0, s, s);
-      for (let i = 0; i < 300; i++) {
-        g.fillStyle = `rgba(90,60,30,${Math.random() * 0.08})`;
-        g.fillRect(Math.random() * s, 0, 1 + Math.random() * 2, s);
-      }
-      g.fillStyle = "#5e4428";
-      for (let x = 8; x < s; x += 16) for (let y = 8; y < s; y += 16) {
+    // ハンガーの壁: 金属のパネル(継ぎ目・ボルト・番号の文字)。壁全体を1枚の絵で描く(繰り返さない)
+    const pegTex = canvasTexture(2048, (g, s, H) => {
+      g.fillStyle = "#1c2026";
+      g.fillRect(0, 0, s, H);
+      const cols = 10, rows = 4, pw = s / cols, ph = H / rows;
+      for (let i = 0; i < cols; i++)
+        for (let j = 0; j < rows; j++) {
+          const x = i * pw, y = j * ph;
+          const sh = 26 + Math.floor(Math.random() * 10);
+          g.fillStyle = `rgb(${sh},${sh + 3},${sh + 8})`;
+          g.fillRect(x + 3, y + 3, pw - 6, ph - 6);
+          for (let k = 0; k < 120; k++) {
+            g.fillStyle = `rgba(255,255,255,${Math.random() * 0.025})`;
+            g.fillRect(x + Math.random() * pw, y + Math.random() * ph, 1 + Math.random() * 30, 1);
+          }
+          g.fillStyle = "#0a0c0f";
+          for (const [bx, by] of [[10, 10], [pw - 10, 10], [10, ph - 10], [pw - 10, ph - 10]]) {
+            g.beginPath();
+            g.arc(x + bx, y + by, 3, 0, Math.PI * 2);
+            g.fill();
+          }
+        }
+      // 下の方の警告の帯と、番号
+      const by = H * 0.88;
+      g.fillStyle = "#151515";
+      g.fillRect(0, by, s, H * 0.06);
+      g.fillStyle = "#c78f00";
+      for (let x = 0; x < s; x += 40) {
         g.beginPath();
-        g.arc(x, y, 2.2, 0, Math.PI * 2);
+        g.moveTo(x, by);
+        g.lineTo(x + 20, by);
+        g.lineTo(x + 20 + H * 0.06, by + H * 0.06);
+        g.lineTo(x + H * 0.06, by + H * 0.06);
         g.fill();
       }
-    });
-    pegTex.wrapS = pegTex.wrapT = THREE.RepeatWrapping;
-    pegTex.repeat.set(10, 4);
-    const wall = new THREE.Mesh(new THREE.PlaneGeometry(10, 4, 20, 8), new THREE.MeshStandardMaterial({ map: pegTex, roughness: 0.95 }));
+      g.fillStyle = "rgba(230,235,241,0.55)";
+      g.font = `bold ${Math.round(ph * 0.22)}px sans-serif`;
+      g.fillText("BAY-03", pw * 1.2, ph * 0.55);
+      g.font = `${Math.round(ph * 0.09)}px sans-serif`;
+      g.fillText("FRAME ASSEMBLY / MAINTENANCE", pw * 1.2, ph * 0.72);
+      g.fillStyle = "rgba(255,154,46,0.7)";
+      g.font = `bold ${Math.round(ph * 0.14)}px sans-serif`;
+      g.fillText("RC-07", pw * 7.4, ph * 1.6);
+    }, 820);
+    pegTex.anisotropy = 8;
+    const wall = new THREE.Mesh(new THREE.PlaneGeometry(10, 4, 20, 8), new THREE.MeshStandardMaterial({ map: pegTex, roughness: 0.55, metalness: 0.6 }));
     wall.position.set(0, 2, -1.6);
     wall.receiveShadow = true;
     wall.name = "wall";
     envGroup.add(wall);
     // 横の壁(正面から見たときの背景)
-    const side = new THREE.Mesh(new THREE.PlaneGeometry(6, 4, 12, 8), new THREE.MeshStandardMaterial({ color: 0x3a4250, roughness: 0.95 }));
+    const side = new THREE.Mesh(new THREE.PlaneGeometry(6, 4, 12, 8), new THREE.MeshStandardMaterial({ color: 0x15181c, roughness: 0.6, metalness: 0.5 }));
     side.rotation.y = Math.PI / 2;
     side.position.set(-3.2, 2, 1.2);
     side.receiveShadow = true;
@@ -235,7 +311,7 @@ const View3D = (() => {
       }
     }
     // 作業台
-    const wood = new THREE.MeshStandardMaterial({ color: 0x8a6a45, roughness: 0.7 });
+    const wood = new THREE.MeshStandardMaterial({ color: 0x2a2e34, metalness: 0.7, roughness: 0.35 });
     const steel = new THREE.MeshStandardMaterial({ color: 0x2b2f36, metalness: 0.6, roughness: 0.45 });
     const bench = new THREE.Group();
     const top = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.05, 0.55), wood);
@@ -246,7 +322,7 @@ const View3D = (() => {
       leg.position.set(x, 0.44, z);
       bench.add(leg);
     }
-    const drawer = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.25, 0.5), new THREE.MeshStandardMaterial({ color: 0xb3261e, metalness: 0.3, roughness: 0.45 }));
+    const drawer = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.25, 0.5), new THREE.MeshStandardMaterial({ color: 0xc46a12, metalness: 0.4, roughness: 0.4 }));
     drawer.position.set(0, 0.7, 0);
     bench.add(drawer);
     bench.position.set(-2.1, 0, -1.2);
@@ -1545,11 +1621,131 @@ const View3D = (() => {
     );
   }
 
+  // ---------- 付けたときのエフェクト ----------
+  // レア度 lv(0〜4)が高いほど派手に: 衝撃波の輪・光の粒・部品の光・(lv3以上)光の柱
+  const fxList = [];
+  let fxGlow = null;
+  function equipFx(id, colorHex, lv = 0) {
+    const THREE = T();
+    const gid = id === "stem" && !groups.stem ? "handlebar" : id === "tubes" ? "tires" : id;
+    const g = groups[gid];
+    const color = new THREE.Color(colorHex);
+    const c = new THREE.Vector3(0.2, 0.6, 0);
+    let size = 0.6;
+    if (g) {
+      const b = new THREE.Box3().setFromObject(g);
+      if (!b.isEmpty()) b.getCenter(c), (size = Math.max(0.15, b.getSize(new THREE.Vector3()).length() * 0.5));
+    }
+    const add = (obj, life, update) => {
+      scene.add(obj);
+      fxList.push({ obj, t: 0, life, update });
+    };
+    const glowMat = (opacity) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    // 衝撃波の輪(カメラの方を向く)
+    for (let r = 0; r < 1 + (lv >= 3 ? 1 : 0); r++) {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(size, 0.004 + lv * 0.0015, 8, 96), glowMat(0.9));
+      ring.position.copy(c);
+      ring.lookAt(camera.position);
+      add(ring, 0.9 + r * 0.25, (o, t, k) => {
+        const e = Math.max(0, k - r * 0.2);
+        o.scale.setScalar(0.3 + e * (1.6 + lv * 0.3));
+        o.material.opacity = 0.9 * (1 - e);
+      });
+    }
+    // 光の粒
+    const n = 30 + lv * 45;
+    const pos = new Float32Array(n * 3), vel = [];
+    for (let i = 0; i < n; i++) {
+      pos.set([c.x, c.y, c.z], i * 3);
+      const v = new THREE.Vector3(Math.random() * 2 - 1, Math.random() * 2 - 0.6, Math.random() * 2 - 1).normalize().multiplyScalar((0.4 + Math.random() * 0.9) * (0.8 + lv * 0.25));
+      vel.push(v);
+    }
+    const pg = new THREE.BufferGeometry();
+    pg.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    const pts = new THREE.Points(pg, new THREE.PointsMaterial({ color, size: 0.014 + lv * 0.004, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false }));
+    add(pts, 1.2 + lv * 0.15, (o, t, k, dt) => {
+      const a = o.geometry.attributes.position;
+      for (let i = 0; i < n; i++) {
+        vel[i].y -= dt * 1.2;
+        vel[i].multiplyScalar(1 - dt * 1.5);
+        a.setXYZ(i, a.getX(i) + vel[i].x * dt, a.getY(i) + vel[i].y * dt, a.getZ(i) + vel[i].z * dt);
+      }
+      a.needsUpdate = true;
+      o.material.opacity = 1 - k * k;
+    });
+    // 光の柱(レアなパーツだけ)
+    if (lv >= 3) {
+      const tex = canvasTexture(64, (gc, sz) => {
+        const gr = gc.createLinearGradient(0, 0, 0, sz);
+        gr.addColorStop(0, "rgba(255,255,255,0)");
+        gr.addColorStop(0.7, "rgba(255,255,255,0.6)");
+        gr.addColorStop(1, "rgba(255,255,255,1)");
+        gc.fillStyle = gr;
+        gc.fillRect(0, 0, sz, sz);
+      });
+      const m = glowMat(0.0);
+      m.map = tex;
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.5, 3, 32, 1, true), m);
+      pillar.position.set(c.x, root.position.y - (state ? state.fit.bike.g.bbDrop - state.fit.bike.R : 0) + 1.5, 0);
+      add(pillar, 2.0, (o, t, k) => {
+        o.material.opacity = Math.sin(Math.min(1, k) * Math.PI) * (lv >= 4 ? 0.55 : 0.35);
+        o.rotation.y += 0.02;
+      });
+    }
+    // 部品そのものを光らせる
+    fxGlow = g ? { g, color, t: 0, life: 1.1 + lv * 0.2, lv } : null;
+    photo.dirty = true;
+  }
+
+  function updateFx(dt) {
+    for (let i = fxList.length - 1; i >= 0; i--) {
+      const f = fxList[i];
+      f.t += dt;
+      const k = Math.min(1, f.t / f.life);
+      f.update(f.obj, f.t, k, dt);
+      if (f.t >= f.life) {
+        scene.remove(f.obj);
+        f.obj.geometry.dispose();
+        f.obj.material.dispose();
+        fxList.splice(i, 1);
+      }
+    }
+    if (fxGlow) {
+      fxGlow.t += dt;
+      const k = fxGlow.t / fxGlow.life;
+      const e = k >= 1 ? 0 : (1 - k) * (0.6 + fxGlow.lv * 0.2) * (0.75 + 0.25 * Math.sin(fxGlow.t * 30));
+      fxGlow.g.traverse((o) => {
+        if (!o.isMesh || !o.material.emissive) return;
+        if (k >= 1) {
+          if (o.userData.baseEmissive) o.material.emissive.copy(o.userData.baseEmissive);
+          o.material.emissiveIntensity = o.userData.baseEmissiveI != null ? o.userData.baseEmissiveI : 1;
+        } else {
+          o.material.emissive.copy(fxGlow.color);
+          o.material.emissiveIntensity = e;
+        }
+      });
+      if (k >= 1) {
+        fxGlow = null;
+        if (highlightId) highlight(highlightId);
+      }
+    }
+    return fxList.length > 0 || !!fxGlow;
+  }
+
   // ---------- 写真モード(パストレーシング) ----------
   // 光の通り道を1画素ずつ何百回もたどって、映り込み・柔らかい影・まわりからの照り返しを計算する。
   // 動かしている間はふつうの表示、止めると少しずつ写真のようにきれいになる。
   const photo = { on: false, loading: null, pt: null, mat: null, quad: null, gen: null, dirty: true, still: 0, last: null, onStatus: null, error: "" };
   const PHOTO_MAX = 600; // ここまで重ねたら止める(電池を使いすぎないように)
+  // 画質の段階: tiles = 1回に描く範囲の分け方、scale = 解像度、bounces = 光の跳ね返りの回数、tex = 模様の細かさ
+  const PHOTO_LEVELS = [
+    { tiles: 2, scale: 1, bounces: 5, tex: 1024, glossy: 0.4 },
+    { tiles: 4, scale: 0.6, bounces: 3, tex: 512, glossy: 0.7 },
+    { tiles: 6, scale: 0.4, bounces: 2, tex: 256, glossy: 1 },
+  ];
+  try {
+    photo.level = Math.min(PHOTO_LEVELS.length - 1, +localStorage.getItem("cycling_photo_level") || 0);
+  } catch (e) {}
 
   function loadScript(src) {
     return new Promise((resolve, reject) => {
@@ -1613,6 +1809,21 @@ const View3D = (() => {
     cv.addEventListener("webglcontextlost", (e) => {
       e.preventDefault();
       cv.style.display = "none";
+      // 重すぎてGPUが止まったら、もっと軽い設定で自動でやり直す
+      const lv = (photo.level || 0) + 1;
+      try {
+        cv.remove();
+      } catch (err) {}
+      Object.assign(photo, { pt: null, mat: null, quad: null, gen: null, r2: null, checked: false });
+      if (lv <= PHOTO_LEVELS.length - 1) {
+        photo.level = lv;
+        try {
+          localStorage.setItem("cycling_photo_level", String(lv));
+        } catch (err) {}
+        photoStatus({ retry: lv });
+        if (photo.on) setTimeout(() => photo.on && setPhotoreal(true), 600);
+        return;
+      }
       photo.on = false;
       photo.broken = true;
       photo.error = "この端末のGPUでは写真モードが重すぎました(ふつうの表示に戻しました)";
@@ -1623,12 +1834,14 @@ const View3D = (() => {
     const pt = new P.PathTracingRenderer(r2);
     pt.camera = camera;
     pt.material = mat;
-    // スマホは1回に描く範囲を小さくして、GPUが止まらないようにする
+    // 画質の段階(重すぎて止まったら次の段階へ)。スマホは1回に描く範囲を小さくして、GPUが止まらないようにする
     const small = Math.min(window.innerWidth, window.innerHeight) < 600;
-    pt.tiles.set(small ? 3 : 2, small ? 3 : 2);
-    photo.scale = small ? 0.75 : 1;
-    mat.bounces = small ? 4 : 6;
-    mat.filterGlossyFactor = 0.4; // 細かいざらつきを抑える
+    const L = PHOTO_LEVELS[photo.level || 0];
+    pt.tiles.set(L.tiles + (small ? 1 : 0), L.tiles + (small ? 1 : 0));
+    photo.scale = L.scale * (small ? 0.8 : 1);
+    photo.texSize = L.tex;
+    mat.bounces = L.bounces;
+    mat.filterGlossyFactor = L.glossy; // 細かいざらつきを抑える
     mat.envMapInfo.updateFrom(hdrEnv());
     mat.environmentIntensity = 1.6;
     const quad = new THREE.FullScreenQuad(
@@ -1802,7 +2015,7 @@ const View3D = (() => {
       m.bvh.updateFrom(bvh);
       m.attributesArray.updateFrom(geo.attributes.normal, geo.attributes.tangent, geo.attributes.uv, geo.attributes.color);
       m.materialIndexAttribute.updateFrom(geo.attributes.materialIndex);
-      m.textures.setTextures(photo.r2, 1024, 1024, textures);
+      m.textures.setTextures(photo.r2, photo.texSize || 1024, photo.texSize || 1024, textures);
       m.materials.updateFrom(materials, textures);
       m.lights.updateFrom(ls);
     } finally {
@@ -1955,7 +2168,9 @@ const View3D = (() => {
       g.position.set(e[0] * k, e[1] * k, e[2] * k);
     }
     // 光らせた部位はゆっくり明滅
-    if (highlightId && !photo.on) {
+    const fxOn = updateFx(dt);
+    if (fxOn) moving = true;
+    if (highlightId && !photo.on && !fxGlow) {
       const pulse = 0.35 + 0.25 * Math.sin(now / 250);
       const g = groups[highlightId === "tubes" ? "tires" : highlightId];
       if (g) g.traverse((o) => o.isMesh && o.material.emissive && (o.material.emissiveIntensity = pulse));
@@ -1985,5 +2200,5 @@ const View3D = (() => {
     if (renderer) renderer.dispose();
   }
 
-  return { setPhotoreal, onClerk, waveClerk, create, setModel, setRider, setFlow, setPedaling, setExploded, highlight, clearHighlight, animateMount, setView, resize, dispose };
+  return { equipFx, setPhotoreal, onClerk, waveClerk, create, setModel, setRider, setFlow, setPedaling, setExploded, highlight, clearHighlight, animateMount, setView, resize, dispose };
 })();

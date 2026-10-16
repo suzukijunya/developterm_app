@@ -58,14 +58,19 @@
   const B = (k = G.active) => G.builds[k];
 
   function input(k, extraPos) {
-    const b = B(k);
+    return inputOf(B(k), extraPos);
+  }
+  function inputOf(b, extraPos) {
     const tire = (b.parts.tires && b.parts.tires.attrs && b.parts.tires.attrs.width) || 28;
     return { geo: b.geo, pos: Object.assign({}, b.pos, extraPos || {}), aero: Parts.aeroOf(b.parts), wheelRadius: 0.311 + tire / 1000 };
   }
 
   function calc(k = G.active) {
-    const b = B(k);
-    const fit = Fit.compute(input(k), G.body);
+    return calcBuild(B(k));
+  }
+  // 好きな構成(付けたらどうなるかの試算など)の計算
+  function calcBuild(b) {
+    const fit = Fit.compute(inputOf(b), G.body);
     const bikeKg = Parts.totalGrams(b.parts) / 1000;
     const rot = Parts.rotatingKg(b.parts);
     const perf = Fit.performance(fit.cda.total, G.body.weight + bikeKg, rot);
@@ -87,7 +92,7 @@
 
   // ---------- 画面の骨組み(3Dの入れ物は作り直さない) ----------
   el.innerHTML = `
-    <header class="topbar"><div class="topbar-inner g-top"><a href="index.html" class="g-back">←</a>RIDE <span>GARAGE</span></div></header>
+    <header class="topbar"><div class="topbar-inner g-top"><a href="index.html" class="g-back">←</a>RIDE <span>ASSEMBLY</span></div></header>
     <div class="g-stage" id="stage">
       ${has3D ? "" : `<p class="g-no3d">3D表示を読み込めませんでした。通信状況を確認してください。数値の計算はこのまま使えます。</p>`}
       <div class="g-builds" id="builds"></div>
@@ -117,6 +122,7 @@
         const decals = await loadDecals(B());
         View3D.setModel(Fit.compute(input(G.active), G.body), B(), G.body, decals);
         if (selected) View3D.highlight(selected, false);
+        playFx();
       } catch (e) {
         // 3Dが使えなくても数値は出す
       }
@@ -163,7 +169,8 @@
       <button class="g-tool ${pedaling ? "on" : ""}" data-tool="pedal">${pedaling ? "⏸" : "▶"} ペダル</button>
       <button class="g-tool ${flow ? "on" : ""}" data-tool="flow" ${mode === "ride" ? "" : "disabled"}>💨 流れ</button>
       <button class="g-tool" data-tool="view">👁 ${VIEWS[viewIdx].label}</button>
-      ${has3D ? `<button class="g-tool ${photoOn ? "on" : ""}" data-tool="photo">📸 写真</button>` : ""}`;
+      ${has3D ? `<button class="g-tool ${photoOn ? "on" : ""}" data-tool="photo">📸 写真</button>` : ""}
+      <button class="g-tool" data-tool="sound" aria-label="効果音">${Sfx.muted ? "🔇" : "🔊"}</button>`;
   }
 
   // 写真モード(光を何百回も計算して、写真のように描く)
@@ -186,22 +193,107 @@
       return;
     }
     const pct = Math.min(100, Math.round((st.samples / st.max) * 100));
-    el2.innerHTML = st.loading
+    el2.innerHTML = st.retry
+      ? `📸 GPUに重すぎたので、軽い設定(${st.retry + 1}/3)でやり直しています…`
+      : st.loading
       ? "📸 写真モードを準備しています…"
       : st.moving
         ? "📸 動かすのを止めると、写真のように描き始めます"
         : `📸 ${st.samples < st.max ? "光を計算中" : "完成"} <b>${pct}%</b><i style="width:${pct}%"></i>`;
   }
 
+  // ---------- アセンブル(性能のバー) ----------
+  const statsOf = (b) => Stats.compute(b, calcBuild(b));
+  // 生の値の差を、単位つきで(重さは g、ほかは表示の単位)
+  function rawDelta(k, d) {
+    if (k === "weight") return `${d > 0 ? "+" : "−"}${Math.abs(Math.round(d * 1000))}g`;
+    const dig = k === "aero" ? 3 : k === "climb" || k === "accel" ? 2 : k === "speed" ? 1 : 0;
+    const unit = k === "speed" ? "km/h" : k === "climb" ? "分" : k === "accel" ? "秒" : "";
+    return `${d > 0 ? "+" : "−"}${Math.abs(d).toFixed(dig)}${unit}`;
+  }
+
   function renderSummary() {
-    const a = calc(G.active);
-    const o = calc(other());
+    const a = statsOf(B());
+    const o = statsOf(B(other()));
     const name = other() === "next" ? "NEW" : "装着済み";
+    const dt = a.total - o.total;
+    const rows = Stats.ROWS.map((r) => {
+      const va = a.v[r.k], vo = o.v[r.k];
+      const db = va.bar - vo.bar; // +なら良くなった
+      const d = va.raw - vo.raw;
+      const lo = Math.min(va.bar, vo.bar), hi = Math.max(va.bar, vo.bar);
+      const show = Math.abs(db) >= 0.5;
+      return `<div class="ac-row">
+        <span class="ac-en">${r.en}</span><span class="ac-ja">${r.ja}</span>
+        <span class="ac-bar"><i style="width:${lo.toFixed(1)}%"></i>${show ? `<em class="${db > 0 ? "up" : "down"}" style="left:${lo.toFixed(1)}%;width:${(hi - lo).toFixed(1)}%"></em>` : ""}</span>
+        <span class="ac-val">${va.text}</span>
+        <span class="ac-d ${show ? (db > 0 ? "up" : "down") : ""}">${show ? (r.k === "comfort" || r.k === "durability" ? `${db > 0 ? "▲" : "▼"}${Math.abs(Math.round(db))}` : rawDelta(r.k, d)) : ""}</span>
+      </div>`;
+    }).join("");
     document.getElementById("summary").innerHTML = `
-      <div><span>バイク重量</span><strong>${kgTxt(a.bikeKg)}</strong>${delta(o.bikeKg, a.bikeKg, 2, "", true)}</div>
-      <div><span>空気抵抗 CdA</span><strong>${a.fit.cda.total.toFixed(3)}</strong>${delta(o.fit.cda.total, a.fit.cda.total, 3, "", true)}</div>
-      <div><span>200Wで平地</span><strong>${a.perf.speed200.toFixed(1)}<small>km/h</small></strong>${delta(o.perf.speed200, a.perf.speed200, 1, "", false)}</div>
-      <p class="g-vs">右の差は「${name}」と比べた値</p>`;
+      <div class="ac-head">
+        <div class="ac-rank rank-${a.rank}"><small>RANK</small><b>${a.rank}</b></div>
+        <div class="ac-total"><small>TOTAL SCORE</small><b>${a.total}</b>${dt ? `<em class="${dt > 0 ? "up" : "down"}">${dt > 0 ? "▲" : "▼"}${Math.abs(dt)}</em>` : ""}</div>
+        <div class="ac-cost"><small>PARTS VALUE</small><b>${a.value ? Catalog.yen(a.value) : "—"}</b></div>
+      </div>
+      <div class="ac-rows">${rows}</div>
+      <p class="g-vs">差は「${name}」と比べた値。緑は良くなった所、赤は悪くなった所</p>`;
+  }
+
+  // 付けたらどう変わるか(カタログ・店員さんの候補の横に出す)
+  function previewHtml(item) {
+    const before = statsOf(B());
+    const clone = JSON.parse(JSON.stringify(B()));
+    Catalog.apply(clone, item);
+    const after = statsOf(clone);
+    const dt = after.total - before.total;
+    const chips = Stats.ROWS.map((r) => ({ r, db: after.v[r.k].bar - before.v[r.k].bar }))
+      .filter((x) => Math.abs(x.db) >= 1)
+      .sort((a, b) => Math.abs(b.db) - Math.abs(a.db))
+      .slice(0, 3)
+      .map((x) => `<i class="${x.db > 0 ? "up" : "down"}">${x.r.ja}${x.db > 0 ? "▲" : "▼"}</i>`)
+      .join("");
+    const tier = Stats.tierOf(item.price, dt);
+    return `<span class="ac-prev"><b class="tier tier-${tier.id}">${tier.label}</b><span class="${dt >= 0 ? "up" : "down"}">TOTAL ${dt >= 0 ? "+" : "−"}${Math.abs(dt)}</span>${chips}</span>`;
+  }
+
+  // 付け替え: 前後の性能を比べて、レア度に応じたエフェクトを出す
+  // fn: 実際に付け替える処理。info: { slot, price, name }
+  function equip(info, fn) {
+    const k = G.active;
+    const before = statsOf(B(k));
+    fn();
+    const after = statsOf(B(G.active));
+    const gain = after.total - before.total; // 見ていた構成と、付けたあとの構成の差
+    const tier = Stats.tierOf(info.price || 0, gain);
+    const diffs = Stats.ROWS.map((r) => ({ r, db: after.v[r.k].bar - before.v[r.k].bar, d: after.v[r.k].raw - before.v[r.k].raw }))
+      .filter((x) => Math.abs(x.db) >= 0.5)
+      .sort((a, b) => Math.abs(b.db) - Math.abs(a.db))
+      .slice(0, 3);
+    fxQueue = { info, tier, gain, diffs };
+    if (!has3D) setTimeout(playFx);
+  }
+  let fxQueue = null;
+  function playFx() {
+    if (!fxQueue) return;
+    const { info, tier, gain, diffs } = fxQueue;
+    fxQueue = null;
+    const lv = Stats.TIERS.length - 1 - Stats.TIERS.indexOf(tier); // common=0 … legendary=4
+    if (has3D && info.slot) View3D.equipFx(info.slot, tier.color, lv);
+    Sfx.equip(lv);
+    let el2 = document.getElementById("ac-banner");
+    if (el2) el2.remove();
+    stage.insertAdjacentHTML(
+      "beforeend",
+      `<div class="ac-banner tier-${tier.id}" id="ac-banner" style="--tc:${tier.color}">
+        <small>${lv >= 2 ? "◆ " : ""}${tier.label}${lv >= 2 ? " ◆" : ""}</small>
+        <strong>${esc(info.name || "")}</strong>
+        <span>${gain ? `TOTAL ${gain > 0 ? "+" : "−"}${Math.abs(gain)}` : "ASSEMBLED"}${diffs.map((x) => ` ・ ${x.r.ja} ${x.r.k === "comfort" || x.r.k === "durability" ? (x.db > 0 ? "▲" : "▼") + Math.abs(Math.round(x.db)) : rawDelta(x.r.k, x.d)}`).join("")}</span>
+      </div>`
+    );
+    el2 = document.getElementById("ac-banner");
+    setTimeout(() => el2 && el2.classList.add("out"), 2600 + lv * 300);
+    setTimeout(() => el2 && el2.remove(), 3300 + lv * 300);
   }
 
   function renderTabs() {
@@ -1259,7 +1351,7 @@
         .map((it) => {
           const sv = Catalog.saving(b, it);
           const on = Catalog.installed(b, it);
-          return `<div class="g-cat-row"><div><strong>${esc(it.name)}</strong><small>${it.kind === "swap" ? `${it.g.toLocaleString()}g` : it.deltaG ? `−${it.deltaG}g` : ""}${sv > 0 && it.kind === "swap" ? `(−${sv}g)` : ""}・${esc(Catalog.priceText(it))}</small><small class="muted">${esc(it.note)}</small></div>
+          return `<div class="g-cat-row"><div>${on ? "" : previewHtml(it)}<strong>${esc(it.name)}</strong><small>${it.kind === "swap" ? `${it.g.toLocaleString()}g` : it.deltaG ? `−${it.deltaG}g` : ""}${sv > 0 && it.kind === "swap" ? `(−${sv}g)` : ""}・${esc(Catalog.priceText(it))}</small><small class="muted">${esc(it.note)}</small></div>
             ${on ? `<span class="g-tag">付いています</span>` : `<button class="btn sub" data-cat-put="${it.id}">付ける</button>`}</div>`;
         })
         .join("")}
@@ -1314,7 +1406,7 @@
       return `<div class="g-plan-row">
         <div class="g-plan-n">${idx}</div>
         <div class="g-plan-body">
-          <small>${esc(Parts.slotName(it.slot))}${x.pinned ? ` <em class="g-mine">あなたが選んだ候補</em>` : ""}</small><strong>${esc(it.name)}</strong>
+          <small>${esc(Parts.slotName(it.slot))}${x.pinned ? ` <em class="g-mine">あなたが選んだ候補</em>` : ""}</small>${G.active === "current" && !Catalog.installed(B(), it) ? previewHtml(it) : ""}<strong>${esc(it.name)}</strong>
           <div class="g-plan-meta"><b>${x.reason ? esc(x.reason) : "—"}</b><span>${esc(Catalog.priceText(it))}</span></div>
           ${
             x.alts && x.alts.length > 1
@@ -1531,8 +1623,12 @@
       const nx = JSON.parse(JSON.stringify(G.builds.current));
       nx.name = "店員さんのおすすめ";
       for (const x of plan.items) Catalog.apply(nx, x.item);
-      G.builds.next = nx;
-      G.active = "next";
+      const top = plan.items.slice().sort((a, b) => b.cost - a.cost)[0];
+      G.active = "current";
+      equip({ slot: top && top.item.slot, name: `フルアセンブル ${plan.items.length}点`, price: plan.items.reduce((a, x) => a + x.item.price, 0) }, () => {
+        G.builds.next = nx;
+        G.active = "next";
+      });
       changed();
       renderAll();
       return;
@@ -1540,10 +1636,12 @@
     if (t.dataset.clerkNext || t.dataset.clerkBought || t.dataset.catPut) {
       const it = Catalog.byId(t.dataset.clerkNext || t.dataset.clerkBought || t.dataset.catPut);
       if (!it) return;
-      if (t.dataset.catPut) Catalog.apply(B(), it);
-      else Catalog.apply(G.builds.next, it);
-      if (t.dataset.clerkBought) Catalog.apply(G.builds.current, it);
-      if (!t.dataset.catPut) G.active = t.dataset.clerkBought ? "current" : "next";
+      equip({ slot: it.slot, name: it.name, price: it.price }, () => {
+        if (t.dataset.catPut) Catalog.apply(B(), it);
+        else Catalog.apply(G.builds.next, it);
+        if (t.dataset.clerkBought) Catalog.apply(G.builds.current, it);
+        if (!t.dataset.catPut) G.active = t.dataset.clerkBought ? "current" : "next";
+      });
       selected = it.slot;
       changed();
       renderAll();
@@ -1566,8 +1664,10 @@
     if (t.dataset.libPut) {
       const it = libItem(t.dataset.libPut);
       if (!it) return;
-      Library.apply(G.builds[t.dataset.target], it);
-      G.active = t.dataset.target;
+      equip({ slot: it.slot, name: Library.displayName(it) }, () => {
+        Library.apply(G.builds[t.dataset.target], it);
+        G.active = t.dataset.target;
+      });
       selected = it.slot;
       changed();
       renderAll();
@@ -1653,6 +1753,7 @@
         viewIdx = (viewIdx + 1) % VIEWS.length;
         if (has3D) View3D.setView(VIEWS[viewIdx].id);
       }
+      if (k === "sound") Sfx.setMuted(!Sfx.muted);
       if (k === "photo" && has3D) {
         photoOn = !photoOn;
         // 写真モードは止まった姿を描く(ペダル・空気の流れは止める)
@@ -1791,7 +1892,7 @@
     if (t.dataset.libPick) {
       const it = libItem(t.value);
       if (!it) return;
-      Library.apply(B(), it);
+      equip({ slot: it.slot, name: Library.displayName(it) }, () => Library.apply(B(), it));
       changed();
       renderPanel();
       if (has3D) View3D.highlight(selected, false);
@@ -1802,8 +1903,10 @@
       if (i === "") return;
       const id = t.dataset.preset;
       const keep = B().parts[id] && B().parts[id].mounted;
-      B().parts[id] = JSON.parse(JSON.stringify(Parts.PRESETS[id][+i]));
-      if (keep === false) B().parts[id].mounted = false;
+      equip({ slot: id, name: Parts.PRESETS[id][+i].name }, () => {
+        B().parts[id] = JSON.parse(JSON.stringify(Parts.PRESETS[id][+i]));
+        if (keep === false) B().parts[id].mounted = false;
+      });
       changed();
       renderPanel();
       if (has3D && selected) View3D.highlight(selected, false);
