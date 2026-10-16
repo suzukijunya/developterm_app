@@ -43,7 +43,46 @@ const Measure = (() => {
       ],
       bones: [["rearAxle", "frontAxle"], ["shoulder", "elbow"], ["elbow", "wrist"], ["shoulder", "hip"], ["hip", "knee"], ["knee", "ankle"]],
     },
+    // 3Dに写真を貼るための位置合わせ(タップした点をそのまま返す)
+    frameAlign: {
+      title: "フレームの写真を3Dに貼る",
+      raw: true,
+      tips: [],
+      points: [
+        { k: "rearAxle", label: "後輪の軸(リアエンドの中心)" },
+        { k: "bb", label: "BBの中心(クランクの軸)" },
+        { k: "htTop", label: "ヘッドチューブの上端(前側)" },
+      ],
+      bones: [["rearAxle", "bb"], ["bb", "htTop"]],
+    },
+    wheelAlign: {
+      title: "ホイールの写真を3Dに貼る",
+      raw: true,
+      tips: [],
+      points: [
+        { k: "hub", label: "ハブの中心(軸)" },
+        { k: "rimEdge", label: "リムの外側の縁(タイヤとの境目)" },
+      ],
+      bones: [["hub", "rimEdge"]],
+    },
   };
+
+  // 3点の対応から、バイクの座標(x右・y上、m)→写真のピクセルへの変換(アフィン変換)を求める
+  // 戻り値: [a, b, c, d, e, f]  px = a*x + b*y + c, py = d*x + e*y + f
+  function affine3(src, dst) {
+    const [p, q, r] = src;
+    const det = p.x * (q.y - r.y) - p.y * (q.x - r.x) + (q.x * r.y - r.x * q.y);
+    if (Math.abs(det) < 1e-12) return null;
+    const solve = (u) => {
+      const a = (u[0] * (q.y - r.y) - p.y * (u[1] - u[2]) + (u[1] * r.y - u[2] * q.y)) / det;
+      const b = (p.x * (u[1] - u[2]) - u[0] * (q.x - r.x) + (q.x * u[2] - r.x * u[1])) / det;
+      const c = (p.x * (q.y * u[2] - r.y * u[1]) - p.y * (q.x * u[2] - r.x * u[1]) + u[0] * (q.x * r.y - r.x * q.y)) / det;
+      return [a, b, c];
+    };
+    const X = solve(dst.map((d) => d.x));
+    const Y = solve(dst.map((d) => d.y));
+    return [...X, ...Y];
+  }
 
   // ---------- 計算 ----------
   const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -122,6 +161,7 @@ const Measure = (() => {
     ui.root = root;
     root.addEventListener("click", onClick);
     root.querySelector("#ms-file").addEventListener("change", onFile);
+    if (opts.imageUrl) loadImage(opts.imageUrl, opts.points);
   }
 
   function close() {
@@ -136,9 +176,15 @@ const Measure = (() => {
     const f = e.target.files && e.target.files[0];
     if (!f) return;
     ui.url = URL.createObjectURL(f);
+    loadImage(ui.url);
+  }
+
+  // pts: やり直すときの前回の点
+  function loadImage(url, pts) {
     const img = new Image();
     img.onload = () => {
       ui.img = img;
+      if (pts) ui.pts = JSON.parse(JSON.stringify(pts));
       const body = ui.root.querySelector("#ms-body");
       body.innerHTML = `<canvas id="ms-canvas" class="ms-canvas"></canvas>`;
       ui.canvas = body.querySelector("canvas");
@@ -147,7 +193,7 @@ const Measure = (() => {
       bindCanvas(ui.canvas);
       draw();
     };
-    img.src = ui.url;
+    img.src = url;
   }
 
   // 写真を画面の幅(と高さ)に収める
@@ -242,6 +288,38 @@ const Measure = (() => {
       g.lineTo(ui.pts[b].x, ui.pts[b].y);
       g.stroke();
     }
+    // 位置合わせ: 3Dのフレームの線を写真に重ねて、合っているか確かめられるようにする
+    if (ui.mode === "frameAlign" && ui.opts.outline && ui.pts.rearAxle && ui.pts.bb && ui.pts.htTop) {
+      const A = ui.opts.anchors;
+      const m = affine3([A.rearAxle, A.bb, A.htTop], [ui.pts.rearAxle, ui.pts.bb, ui.pts.htTop]);
+      if (m) {
+        const tp = (q) => [m[0] * q.x + m[1] * q.y + m[2], m[3] * q.x + m[4] * q.y + m[5]];
+        g.strokeStyle = "rgba(255,204,0,0.9)";
+        g.lineWidth = 2 * u;
+        g.setLineDash([6 * u, 4 * u]);
+        for (const [a, b] of ui.opts.outline) {
+          g.beginPath();
+          g.moveTo(...tp(a));
+          g.lineTo(...tp(b));
+          g.stroke();
+        }
+        for (const c of ui.opts.circles || []) {
+          const [cx, cy] = tp(c);
+          const [ex] = tp({ x: c.x + c.r, y: c.y });
+          g.beginPath();
+          g.arc(cx, cy, Math.abs(ex - cx), 0, Math.PI * 2);
+          g.stroke();
+        }
+        g.setLineDash([]);
+      }
+    }
+    if (ui.mode === "wheelAlign" && ui.pts.hub && ui.pts.rimEdge) {
+      g.strokeStyle = "rgba(255,204,0,0.9)";
+      g.lineWidth = 2 * u;
+      g.beginPath();
+      g.arc(ui.pts.hub.x, ui.pts.hub.y, Math.hypot(ui.pts.rimEdge.x - ui.pts.hub.x, ui.pts.rimEdge.y - ui.pts.hub.y), 0, Math.PI * 2);
+      g.stroke();
+    }
     // 点と番号
     ui.M.points.forEach((pt, i) => {
       const q = ui.pts[pt.k];
@@ -304,14 +382,18 @@ const Measure = (() => {
       return draw();
     }
     if (k === "done") {
-      const res = ui.mode === "standing" ? standing(ui.pts, ui.opts.height || 1.72) : riding(ui.pts);
+      const res = ui.M.raw
+        ? { pts: JSON.parse(JSON.stringify(ui.pts)), w: ui.img.width, h: ui.img.height }
+        : ui.mode === "standing"
+        ? standing(ui.pts, ui.opts.height || 1.72)
+        : riding(ui.pts);
       const cb = ui.opts.onDone;
       close();
       if (cb) cb(res);
     }
   }
 
-  return { MODES, open, close, standing, riding };
+  return { MODES, open, close, standing, riding, affine3 };
 })();
 
 if (typeof module !== "undefined") module.exports = Measure;

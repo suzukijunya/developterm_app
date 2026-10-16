@@ -372,6 +372,7 @@ const View3D = (() => {
     m.position.copy(A).addScaledVector(dir, 0.5);
     m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
     if (flat !== 1) m.scale.set(1, 1, flat);
+    m.userData.axis = { a: { x: a.x, y: a.y }, b: { x: b.x, y: b.y } }; // 写真を貼るときに使う中心線
     return m;
   }
 
@@ -379,6 +380,7 @@ const View3D = (() => {
     const THREE = T();
     const m = new THREE.Mesh(new THREE.SphereGeometry(r, 20, 14), material);
     m.position.copy(V(center));
+    m.userData.center = { x: center.x, y: center.y };
     return m;
   }
 
@@ -1042,6 +1044,119 @@ const View3D = (() => {
     flowPoints.geometry.attributes.color.needsUpdate = true;
   }
 
+  // ---------- 写真のデザインを3Dに貼る(投影マッピング) ----------
+  // 横から撮った写真を、プロジェクターで映すように3Dの面に貼る。横から見ると写真とほぼ同じ見た目になる
+  const texLoaded = {};
+  function loadTex(url, cb) {
+    const THREE = T();
+    if (texLoaded[url]) return cb(texLoaded[url]);
+    new THREE.TextureLoader().load(url, (tex) => {
+      tex.encoding = THREE.sRGBEncoding;
+      tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      texLoaded[url] = tex;
+      cb(tex);
+    });
+  }
+
+  // mesh の頂点を、base(部位のグループやホイールの中心)から見た座標にして fn(x, y) → [u, v] を貼る
+  function projectUV(mesh, base, fn, shrink) {
+    const THREE = T();
+    const M = new THREE.Matrix4();
+    for (let o = mesh; o && o !== base; o = o.parent) {
+      o.updateMatrix();
+      M.premultiply(o.matrix);
+    }
+    const geo = mesh.geometry;
+    const pos = geo.attributes.position;
+    const uv = new Float32Array(pos.count * 2);
+    const v = new THREE.Vector3();
+    const ax = mesh.userData.axis;
+    const ce = mesh.userData.center;
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(M);
+      let x = v.x, y = v.y;
+      // パイプの縁は、写真ではパイプの外(壁など)が写りやすいので、中心線に少し寄せて取る
+      if (shrink && ax) {
+        const dx = ax.b.x - ax.a.x, dy = ax.b.y - ax.a.y;
+        const L2 = dx * dx + dy * dy || 1;
+        const t = Math.max(0, Math.min(1, ((x - ax.a.x) * dx + (y - ax.a.y) * dy) / L2));
+        const cx = ax.a.x + t * dx, cy = ax.a.y + t * dy;
+        x = cx + (x - cx) * shrink;
+        y = cy + (y - cy) * shrink;
+      } else if (shrink && ce) {
+        x = ce.x + (x - ce.x) * shrink;
+        y = ce.y + (y - ce.y) * shrink;
+      }
+      const [u, w] = fn(x, y);
+      uv[i * 2] = u;
+      uv[i * 2 + 1] = w;
+    }
+    geo.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+  }
+
+  function photoMaterial(tex, opts) {
+    const THREE = T();
+    const m = new THREE.MeshPhysicalMaterial(Object.assign({ map: tex, color: 0xffffff, roughness: 0.38, metalness: 0.05, clearcoat: 1, clearcoatRoughness: 0.08, envMapIntensity: 0.5 }, opts));
+    return m;
+  }
+
+  function applyDecals(decals) {
+    if (!decals) return;
+    const owner = bikeGroup;
+    const bk = state.fit.bike;
+    if (decals.frame && decals.frame.pts) {
+      const d = decals.frame;
+      // 写真の3点(後輪の軸・BB・ヘッドチューブの上端)と、3Dの同じ3点を合わせる
+      const m = Measure.affine3([bk.rearAxle, { x: 0, y: 0 }, bk.htTop], [d.pts.rearAxle, d.pts.bb, d.pts.htTop]);
+      if (m) {
+        const fn = (x, y) => [(m[0] * x + m[1] * y + m[2]) / d.w, 1 - (m[3] * x + m[4] * y + m[5]) / d.h];
+        loadTex(d.url, (tex) => {
+          if (bikeGroup !== owner) return; // 描き直されていたら何もしない
+          for (const id of ["frame", "fork"]) {
+            const g = groups[id];
+            if (!g) continue;
+            g.traverse((o) => {
+              if (!o.isMesh || o.isInstancedMesh) return;
+              projectUV(o, g, fn, 0.6);
+              o.material = photoMaterial(tex);
+              o.userData.baseEmissive = o.material.emissive.clone();
+              o.userData.baseEmissiveI = 1;
+            });
+          }
+          if (highlightId) highlight(highlightId);
+        });
+      }
+    }
+    if (decals.wheels && decals.wheels.pts) {
+      const d = decals.wheels;
+      const tw = ((state.build.parts.tires && state.build.parts.tires.attrs && state.build.parts.tires.attrs.width) || 28) / 1000;
+      const rimOuter = bk.R - tw * 0.92;
+      const k = Math.hypot(d.pts.rimEdge.x - d.pts.hub.x, d.pts.rimEdge.y - d.pts.hub.y) / rimOuter; // 1mが写真で何ピクセルか
+      const fn = (x, y) => [(d.pts.hub.x + x * k) / d.w, 1 - (d.pts.hub.y - y * k) / d.h];
+      loadTex(d.url, (tex) => {
+        if (bikeGroup !== owner) return;
+        for (const id of ["wheels", "tires"]) {
+          const g = groups[id];
+          if (!g) continue;
+          // ホイールごとの回る入れ物(中心が軸)を基準にする
+          g.children.forEach((spin) => {
+            if (!spin.userData.spin) return;
+            spin.traverse((o) => {
+              if (!o.isMesh || o.isInstancedMesh || o === spin) return;
+              const r = o.geometry.boundingSphere || (o.geometry.computeBoundingSphere(), o.geometry.boundingSphere);
+              if (r.radius < 0.1) return; // ハブ・バルブはそのまま
+              projectUV(o, spin, fn, 0);
+              o.material = photoMaterial(tex, id === "tires" ? { clearcoat: 0, roughness: 0.85 } : {});
+              o.userData.baseEmissive = o.material.emissive.clone();
+              o.userData.baseEmissiveI = 1;
+            });
+          });
+        }
+        if (highlightId) highlight(highlightId);
+      });
+    }
+  }
+
   // ---------- 分解ビューのずらし方 ----------
   const EXPLODE = {
     frame: [0, 0, 0],
@@ -1062,9 +1177,10 @@ const View3D = (() => {
 
   // ---------- 外部から呼ぶ操作 ----------
   // fit: Fit.compute の結果、build: パーツ構成、body: 体
-  function setModel(fit, build, body) {
+  function setModel(fit, build, body, decals) {
     state = { fit, build, body };
     buildBike(fit, build);
+    applyDecals(decals);
     buildRider();
     buildFlow();
     placeOnStand();

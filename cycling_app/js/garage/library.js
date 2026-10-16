@@ -158,6 +158,8 @@ const Library = (() => {
       else if (where === "geo") build.geo[key] = v;
     }
     build.parts[item.slot] = { libId: item.id, name: displayName(item), g: +item.g || 0, attrs, mounted: prev ? prev.mounted : true };
+    // 写真のデザインを3Dに貼る位置合わせ(写真とセットで持つ)
+    if (item.decal && item.photoId) build.parts[item.slot].decal = Object.assign({ photoId: item.photoId }, item.decal);
     if (item.slot === "frame" && item.color) build.color = item.color;
   }
 
@@ -218,7 +220,8 @@ const Library = (() => {
   }
 
   // 写真を長い辺 maxSize px の JPEG に縮小する
-  function resize(file, maxSize = 900) {
+  // 3Dに貼るとロゴの文字まで見えるよう、長い辺 1600px まで残す
+  function resize(file, maxSize = 1600) {
     return new Promise((resolve, reject) => {
       const img = new Image();
       const url = URL.createObjectURL(file);

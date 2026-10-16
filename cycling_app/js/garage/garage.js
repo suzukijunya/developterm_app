@@ -110,15 +110,33 @@
   function refresh3D() {
     if (!has3D || pending3D) return;
     pending3D = true;
-    requestAnimationFrame(() => {
+    requestAnimationFrame(async () => {
       pending3D = false;
       try {
-        View3D.setModel(Fit.compute(input(G.active), G.body), B(), G.body);
+        const decals = await loadDecals(B());
+        View3D.setModel(Fit.compute(input(G.active), G.body), B(), G.body, decals);
         if (selected) View3D.highlight(selected, false);
       } catch (e) {
         // 3Dが使えなくても数値は出す
       }
     });
+  }
+
+  // 付けているパーツのうち、写真を3Dに貼るもの(写真のURLを用意する)
+  async function loadDecals(build) {
+    const out = {};
+    for (const slot of ["frame", "wheels"]) {
+      const p = build.parts[slot];
+      if (!p || !p.decal || !p.decal.photoId || p.mounted === false) continue;
+      let url = photoUrls[p.decal.photoId];
+      if (!url) {
+        const blob = await Library.getPhoto(p.decal.photoId).catch(() => null);
+        if (!blob) continue;
+        url = photoUrls[p.decal.photoId] = URL.createObjectURL(blob);
+      }
+      out[slot] = Object.assign({ url }, p.decal);
+    }
+    return out;
   }
 
   function renderBuilds() {
@@ -310,6 +328,15 @@
           ${photoTag(f.photoId, "g-photo-img")}
           <label class="btn sub g-file">📷 写真を${f.photoId ? "変える" : "追加"}<input type="file" accept="image/*" id="lf-photo" hidden /></label>
         </div>
+        ${
+          f.photoId && (f.slot === "frame" || f.slot === "wheels")
+            ? `<div class="g-decal">
+                <button class="btn sub" id="lf-decal">🎨 写真のデザインを3Dに貼る${f.decal ? "(位置合わせをやり直す)" : ""}</button>
+                ${f.decal && f.decalNote ? `<p class="notice warn">${esc(f.decalNote)}</p>` : ""}
+                ${f.decal ? `<p class="small">✓ 貼り付け済み。保存すると3Dに反映されます <button class="link danger" id="lf-decal-off">貼るのをやめる</button></p>` : `<p class="muted small">${f.slot === "frame" ? "横から撮った写真で、後輪の軸・BB・ヘッドチューブの上端をタップします。ロゴや塗装がそのまま3Dのフレームに貼られます。" : "横から撮った写真で、ハブの中心とリムの外側の縁をタップします。リムとタイヤのロゴが3Dのホイールに貼られます。"}</p>`}
+              </div>`
+            : ""
+        }
         ${field("brand", "メーカー", "text", "例:SHIMANO")}
         ${field("model", "モデル名", "text", "例:WH-R8170-C50")}
         ${field("year", "年式", "text", "例:2024")}
@@ -333,6 +360,69 @@
       </section>`;
   }
 
+  // 写真のデザインを3Dに貼る: 写真の上で基準の点をタップする
+  async function startDecal() {
+    const f = libForm;
+    let url = photoUrls[f.photoId];
+    if (!url) {
+      const blob = await Library.getPhoto(f.photoId).catch(() => null);
+      if (!blob) return alert("写真を読み込めませんでした");
+      url = photoUrls[f.photoId] = URL.createObjectURL(blob);
+    }
+    if (f.slot === "frame") {
+      // 写真に重ねて見せる3Dのフレームの線(今のバイクのジオメトリで)
+      const bk = Fit.compute(Object.assign(input(G.active), { geo: Object.assign({}, B().geo, specGeo(f)) }), G.body, { coarse: true }).bike;
+      const o = { x: 0, y: 0 };
+      const outline = [
+        [bk.rearAxle, o], [o, bk.stTop], [bk.stTop, bk.rearAxle], [o, bk.htBot], [bk.htBot, bk.htTop], [bk.htTop, bk.stTop], [bk.htBot, bk.frontAxle],
+      ];
+      Measure.open("frameAlign", {
+        imageUrl: url,
+        points: f.decal && f.decal.pts,
+        anchors: { rearAxle: bk.rearAxle, bb: o, htTop: bk.htTop },
+        outline,
+        circles: [Object.assign({ r: bk.R }, bk.rearAxle), Object.assign({ r: bk.R }, bk.frontAxle)],
+        onDone: (res) => {
+          libForm.decal = { kind: "frame", pts: res.pts, w: res.w, h: res.h };
+          // 3Dのフレーム(と車輪)が写真からはみ出していないか
+          const m = Measure.affine3([bk.rearAxle, o, bk.htTop], [res.pts.rearAxle, res.pts.bb, res.pts.htTop]);
+          const pts = [bk.rearAxle, bk.frontAxle, bk.htTop, bk.stTop, o];
+          const out = m && pts.some((q) => {
+            const x = m[0] * q.x + m[1] * q.y + m[2], y = m[3] * q.x + m[4] * q.y + m[5];
+            return x < 0 || y < 0 || x > res.w || y > res.h;
+          });
+          libForm.decalNote = out ? "フレームの一部が写真からはみ出しています。はみ出した所は写真の端の色になります。フレーム全体が写った写真がおすすめです。" : "";
+          renderPanel();
+        },
+      });
+    } else {
+      Measure.open("wheelAlign", {
+        imageUrl: url,
+        points: f.decal && f.decal.pts,
+        onDone: (res) => {
+          libForm.decal = { kind: "wheel", pts: res.pts, w: res.w, h: res.h };
+          const r = Math.hypot(res.pts.rimEdge.x - res.pts.hub.x, res.pts.rimEdge.y - res.pts.hub.y) * 1.1; // タイヤの外側まで
+          const h = res.pts.hub;
+          libForm.decalNote =
+            h.x - r < 0 || h.y - r < 0 || h.x + r > res.w || h.y + r > res.h
+              ? "ホイールの一部が写真からはみ出しています。はみ出した所は写真の端の色になります。ホイール全体が写った写真がおすすめです。"
+              : "";
+          renderPanel();
+        },
+      });
+    }
+  }
+
+  // フォームに入っているジオメトリ(m)
+  function specGeo(f) {
+    const out = {};
+    for (const sp of Library.SPEC_FIELDS.frame) {
+      const v = f.specs && f.specs[sp.k];
+      if (sp.to && sp.to.startsWith("geo.") && v !== "" && v != null && !isNaN(+v)) out[sp.to.slice(4)] = +v * (sp.scale || 1);
+    }
+    return out;
+  }
+
   // フォームの内容をマイパーツに保存する。target があればそのバイクに付ける
   function saveLibForm(target) {
     const f = libForm;
@@ -349,6 +439,7 @@
       specs: f.specs,
       photoId: f.photoId || null,
       color: f.color || null,
+      decal: f.photoId && f.decal ? f.decal : null,
     };
     const i = G.library.findIndex((x) => x.id === item.id);
     if (i >= 0) G.library[i] = item;
@@ -993,6 +1084,11 @@
       libForm.note = r.found.length ? `読み取った項目: ${r.found.join(" / ")}。内容を確かめてから保存してください。` : "数値を読み取れませんでした。重量(g)や寸法(mm)が書かれた部分を貼り付けてください。";
       return renderPanel();
     }
+    if (t.id === "lf-decal") return startDecal();
+    if (t.id === "lf-decal-off") {
+      libForm.decal = null;
+      return renderPanel();
+    }
     if (t.id === "lf-save") return saveLibForm(t.dataset.target || null);
     if (t.id === "lf-save-only") return saveLibForm(null);
     if (t.id === "lf-cancel") {
@@ -1176,6 +1272,7 @@
         await Library.putPhoto(id, blob);
         if (libForm.photoId) Library.deletePhoto(libForm.photoId);
         libForm.photoId = id;
+        libForm.decal = null; // 写真が変わったら位置合わせもやり直し
         photoUrls[id] = URL.createObjectURL(blob);
         // フレームの写真なら、色を拾ってフレームの色にする
         if (libForm.slot === "frame") libForm.color = await Library.dominantColor(blob).catch(() => null);
