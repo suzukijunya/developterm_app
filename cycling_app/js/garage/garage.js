@@ -7,6 +7,8 @@
   let tab = "parts";
   let selected = null; // 編集中の部位
   let suggestion = null; // 自動調整の提案
+  let libForm = null; // マイパーツの入力フォーム(編集中の内容)
+  const photoUrls = {}; // 写真ID → 表示用URL
   let mode = "mechanic"; // mechanic(整備: スタンドに載せる) / ride(乗車: ライダーを乗せる)
   let exploded = false;
   let pedaling = true;
@@ -41,6 +43,7 @@
       g.builds.next = newBuild("NEW", body);
       g.builds.next.parts.wheels = JSON.parse(JSON.stringify(Parts.PRESETS.wheels[3]));
     }
+    if (!g.library) g.library = []; // マイパーツ(自分のパーツのデータベース)
     // 身長・体重は走行計算の設定と共通
     g.body.height = (prof.heightCm || g.body.height * 100) / 100;
     g.body.weight = prof.weightKg || g.body.weight;
@@ -170,7 +173,7 @@
         <div class="g-part ${selected === sl.id ? "sel" : ""} ${off ? "off" : ""}">
           <button class="g-part-main" data-slot="${sl.id}">
             <span class="g-part-icon">${sl.icon}</span>
-            <span class="g-part-text"><small>${sl.name}</small>${esc(p.name)}</span>
+            <span class="g-part-text"><small>${sl.name}</small>${p.libId ? "📘 " : ""}${esc(p.name)}</span>
             <span class="g-part-g">${off ? "取り外し中" : (+p.g || 0).toLocaleString() + " g"}</span>
           </button>
           <button class="g-mount" data-mount="${sl.id}">${off ? "取り付け" : "外す"}</button>
@@ -178,11 +181,207 @@
         ${selected === sl.id ? `<div class="g-editor">${editor(sl.id)}</div>` : ""}`;
     }).join("");
     return `
+      ${libForm ? libFormHtml() : ""}
       <section class="card">
         <h2>パーツ在庫 <span class="g-total">${kgTxt(Parts.totalGrams(b.parts) / 1000)}</span></h2>
-        <p class="muted small">部位をタップすると3Dで光り、パーツを選び直せます。重さは一般的な製品の目安なので、手元のパーツの実際の重さに書き換えてください。</p>
+        <p class="muted small">部位をタップすると3Dで光り、パーツを選び直せます。📘のついたパーツは、マイパーツ(公式データ)の数値を使っています。</p>
         ${rows}
+      </section>
+      ${libraryHtml()}`;
+  }
+
+  // ---------- マイパーツ(パーツのデータベース) ----------
+  const libItem = (id) => G.library.find((x) => x.id === id) || null;
+
+  function photoTag(photoId, cls = "g-thumb") {
+    if (!photoId) return `<span class="${cls} empty">📷</span>`;
+    return `<img class="${cls}" data-photo="${photoId}" ${photoUrls[photoId] ? `src="${photoUrls[photoId]}"` : ""} alt="" />`;
+  }
+
+  // 写真は非同期で読むので、描画のあとで差し込む
+  function loadPhotos() {
+    document.querySelectorAll("img[data-photo]").forEach(async (img) => {
+      const id = img.dataset.photo;
+      if (!photoUrls[id]) {
+        const blob = await Library.getPhoto(id).catch(() => null);
+        if (!blob) return;
+        photoUrls[id] = URL.createObjectURL(blob);
+      }
+      img.src = photoUrls[id];
+    });
+  }
+
+  function libraryHtml() {
+    const groups = Parts.SLOTS.map((sl) => ({ sl, items: G.library.filter((x) => x.slot === sl.id) })).filter((g) => g.items.length);
+    const used = (id, k) => G.builds[k].parts && Object.values(G.builds[k].parts).some((p) => p && p.libId === id);
+    return `
+      <section class="card">
+        <h2>マイパーツ <span class="g-total">${G.library.length}件</span></h2>
+        <p class="muted small">公式の重量・寸法・URL・写真を登録した、自分のパーツのデータベースです。付けると数値が3Dと計算にそのまま反映され、あとで直すと付けているバイクにも反映されます。</p>
+        <button class="btn sub" data-lib-new="">＋ パーツを登録する</button>
+        ${
+          groups.length
+            ? groups
+                .map(
+                  (g) => `
+          <p class="g-sub">${g.sl.icon} ${g.sl.name}</p>
+          ${g.items
+            .map(
+              (it) => `
+            <div class="g-lib">
+              ${photoTag(it.photoId)}
+              <div class="g-lib-text">
+                <strong>${esc(Library.displayName(it))}</strong>
+                <small>${(+it.g || 0).toLocaleString()}g${specSummary(it)}${used(it.id, "current") ? " ・装着済みに付いています" : ""}${used(it.id, "next") ? " ・NEWに付いています" : ""}</small>
+              </div>
+              <div class="g-lib-actions">
+                <button class="chip" data-lib-put="${it.id}" data-target="current">装着済みへ</button>
+                <button class="chip" data-lib-put="${it.id}" data-target="next">NEWへ</button>
+                <button class="link" data-lib-edit="${it.id}">編集</button>
+              </div>
+            </div>`
+            )
+            .join("")}`
+                )
+                .join("")
+            : `<p class="muted">まだありません。「パーツを登録する」か、パーツ在庫の部位から登録できます。</p>`
+        }
+        <div class="g-row">
+          <button class="btn sub" id="lib-export">書き出す(バックアップ)</button>
+          <label class="btn sub g-file">読み込む<input type="file" accept="application/json,.json" id="lib-import" hidden /></label>
+        </div>
+        <p class="muted small">マイパーツはこの端末の中に保存されます。機種変更のときは「書き出す」で保存したファイルを「読み込む」でもどせます(写真は含みません)。</p>
       </section>`;
+  }
+
+  function specSummary(it) {
+    const fields = Library.SPEC_FIELDS[it.slot] || [];
+    const parts = fields
+      .filter((f) => it.specs && it.specs[f.k] != null && it.specs[f.k] !== "" && f.type !== "select")
+      .slice(0, 3)
+      .map((f) => `${f.label} ${it.specs[f.k]}${f.unit || ""}`);
+    return parts.length ? " ・" + parts.join(" ・") : "";
+  }
+
+  function openLibForm(slot, id) {
+    const it = id ? libItem(id) : null;
+    libForm = it
+      ? JSON.parse(JSON.stringify(it))
+      : { id: null, slot: slot || selected || "wheels", brand: "", model: "", year: "", g: "", url: "", notes: "", specs: {}, photoId: null, paste: "", note: "" };
+    libForm.paste = "";
+    libForm.note = "";
+    renderPanel();
+    const f = document.getElementById("libform");
+    if (f) f.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function libFormHtml() {
+    const f = libForm;
+    const field = (k, label, type = "text", ph = "") =>
+      `<label class="g-field"><span>${label}</span><input type="${type}" data-lf="${k}" value="${esc(f[k] == null ? "" : f[k])}" placeholder="${ph}" ${type === "number" ? 'inputmode="decimal"' : ""} /></label>`;
+    const specs = (Library.SPEC_FIELDS[f.slot] || [])
+      .map((sp) => {
+        const v = f.specs[sp.k] == null ? "" : f.specs[sp.k];
+        if (sp.type === "select")
+          return `<label class="g-field"><span>${sp.label}</span><select data-lf-spec="${sp.k}">${sp.options
+            .map(([ov, t]) => `<option value="${ov}" ${String(ov) === String(v) ? "selected" : ""}>${t}</option>`)
+            .join("")}</select></label>`;
+        return `<label class="g-field"><span>${sp.label}${sp.to ? "" : "<small>記録用</small>"}</span><span class="g-in"><input type="${sp.type === "text" ? "text" : "number"}" inputmode="decimal" data-lf-spec="${sp.k}" value="${esc(v)}" /><em>${sp.unit || ""}</em></span></label>`;
+      })
+      .join("");
+    return `
+      <section class="card g-libform" id="libform">
+        <h2>${f.id ? "マイパーツを編集" : "マイパーツを登録"}</h2>
+        <label class="g-field"><span>部位</span><select data-lf="slot" ${f.id ? "disabled" : ""}>${Parts.SLOTS.map(
+          (sl) => `<option value="${sl.id}" ${sl.id === f.slot ? "selected" : ""}>${sl.icon} ${sl.name}</option>`
+        ).join("")}</select></label>
+        <div class="g-photo">
+          ${photoTag(f.photoId, "g-photo-img")}
+          <label class="btn sub g-file">📷 写真を${f.photoId ? "変える" : "追加"}<input type="file" accept="image/*" id="lf-photo" hidden /></label>
+        </div>
+        ${field("brand", "メーカー", "text", "例:SHIMANO")}
+        ${field("model", "モデル名", "text", "例:WH-R8170-C50")}
+        ${field("year", "年式", "text", "例:2024")}
+        <label class="g-field"><span>重量(公式)</span><span class="g-in"><input type="number" inputmode="decimal" data-lf="g" value="${esc(f.g)}" /><em>g</em></span></label>
+        ${field("url", "公式ページのURL", "url", "https://")}
+        <div class="g-paste">
+          <p class="g-sub">📋 公式ページの仕様を貼り付けて読み取る</p>
+          <textarea data-lf="paste" rows="4" placeholder="例:リムハイト 50mm / 重量 1,450g">${esc(f.paste)}</textarea>
+          <button class="chip" id="lf-parse">読み取る</button>
+          ${f.note ? `<p class="notice">${esc(f.note)}</p>` : ""}
+        </div>
+        ${specs ? `<p class="g-sub">寸法など(3Dと計算に反映)</p>${specs}` : ""}
+        <label class="g-field"><span>メモ</span><input type="text" data-lf="notes" value="${esc(f.notes)}" placeholder="例:実測 1,463g" /></label>
+        ${f.url ? `<p class="small"><a href="${esc(f.url)}" target="_blank" rel="noopener">公式ページを開く ↗</a></p>` : ""}
+        <button class="btn start" id="lf-save" data-target="${f.id ? "" : G.active}">${f.id ? "保存(付けているバイクにも反映)" : `保存して${G.active === "current" ? "装着済み" : "NEW"}に付ける`}</button>
+        <div class="g-row">
+          ${f.id ? "" : `<button class="btn sub" id="lf-save-only">登録だけする</button>`}
+          <button class="btn sub" id="lf-cancel">やめる</button>
+        </div>
+        ${f.id ? `<button class="link danger" id="lf-delete">このマイパーツを削除</button>` : ""}
+      </section>`;
+  }
+
+  // フォームの内容をマイパーツに保存する。target があればそのバイクに付ける
+  function saveLibForm(target) {
+    const f = libForm;
+    if (!f.brand.trim() && !f.model.trim()) return alert("メーカーかモデル名を入力してください");
+    const item = {
+      id: f.id || "lib" + Date.now().toString(36),
+      slot: f.slot,
+      brand: f.brand.trim(),
+      model: f.model.trim(),
+      year: String(f.year || "").trim(),
+      g: parseFloat(f.g) || 0,
+      url: f.url.trim(),
+      notes: f.notes.trim(),
+      specs: f.specs,
+      photoId: f.photoId || null,
+      color: f.color || null,
+    };
+    const i = G.library.findIndex((x) => x.id === item.id);
+    if (i >= 0) G.library[i] = item;
+    else G.library.push(item);
+    Library.syncAll(G, item);
+    if (target) Library.apply(G.builds[target], item);
+    libForm = null;
+    selected = item.slot;
+    changed();
+    renderAll();
+    if (has3D) View3D.highlight(selected, true);
+  }
+
+  function exportLibrary() {
+    const data = JSON.stringify({ app: "ride-calorie", version: 1, library: G.library }, null, 2);
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([data], { type: "application/json" }));
+    a.download = "my-parts.json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  async function importLibrary(file) {
+    try {
+      const data = JSON.parse(await file.text());
+      const list = Array.isArray(data.library) ? data.library : [];
+      let n = 0;
+      for (const it of list) {
+        if (!it || !it.id || !it.slot || !Parts.SLOTS.some((s) => s.id === it.slot)) continue;
+        // 写真はファイルに含まれないので、この端末にある同じマイパーツの写真は残す
+        const i = G.library.findIndex((x) => x.id === it.id);
+        it.photoId = i >= 0 ? G.library[i].photoId || null : null;
+        if (i >= 0) G.library[i] = it;
+        else G.library.push(it);
+        Library.syncAll(G, it);
+        n++;
+      }
+      changed();
+      renderPanel();
+      alert(`${n}件のマイパーツを読み込みました`);
+    } catch (e) {
+      alert("読み込めませんでした。書き出したファイルを選んでください");
+    }
   }
 
   // 数値入力。scale は保存値→表示値(m→mmなら1000)
@@ -204,7 +403,22 @@
     const p = b.parts[id] || { name: "", g: 0, attrs: {} };
     const a = p.attrs || {};
     const presets = Parts.PRESETS[id] || [];
+    const mine = G.library.filter((x) => x.slot === id);
+    const linked = p.libId ? libItem(p.libId) : null;
     let html = `
+      ${
+        linked
+          ? `<div class="g-linked">${photoTag(linked.photoId)}<div><small>📘 マイパーツの数値を使っています</small><strong>${esc(Library.displayName(linked))}</strong></div><button class="link" data-lib-edit="${linked.id}">編集</button></div>`
+          : ""
+      }
+      ${
+        mine.length
+          ? `<label class="g-field"><span>マイパーツから選ぶ</span><select data-lib-pick="${id}"><option value="">— 選ぶ —</option>${mine
+              .map((x) => `<option value="${x.id}" ${x.id === p.libId ? "selected" : ""}>${esc(Library.displayName(x))}(${(+x.g || 0).toLocaleString()}g)</option>`)
+              .join("")}</select></label>`
+          : ""
+      }
+      <button class="btn sub" data-lib-new="${id}">📘 公式データを入力してマイパーツに登録</button>
       <label class="g-field"><span>目安から選ぶ</span><select data-preset="${id}">
         <option value="">— 選ぶ —</option>
         ${presets.map((x, i) => `<option value="${i}">${esc(x.name)}(${x.g.toLocaleString()}g)</option>`).join("")}
@@ -465,6 +679,7 @@
     const panel = document.getElementById("panel");
     panel.innerHTML = tab === "parts" ? partsPanel() : tab === "fit" ? fitPanel() : tab === "aero" ? aeroPanel() : comparePanel();
     if (tab === "aero") drawSilhouette();
+    if (tab === "parts") loadPhotos();
   }
 
   // data-path("pos.stemLength" など)に値を書き込む
@@ -506,6 +721,45 @@
   el.addEventListener("click", (e) => {
     const t = e.target.closest("button");
     if (!t) return;
+    // ---- マイパーツ ----
+    if (t.hasAttribute("data-lib-new")) return openLibForm(t.dataset.libNew || selected || "wheels", null);
+    if (t.dataset.libEdit) return openLibForm(null, t.dataset.libEdit);
+    if (t.dataset.libPut) {
+      const it = libItem(t.dataset.libPut);
+      if (!it) return;
+      Library.apply(G.builds[t.dataset.target], it);
+      G.active = t.dataset.target;
+      selected = it.slot;
+      changed();
+      renderAll();
+      if (has3D) View3D.highlight(selected, true);
+      return;
+    }
+    if (t.id === "lf-parse") {
+      const r = Library.parse(libForm.slot, libForm.paste);
+      if (r.g) libForm.g = r.g;
+      Object.assign(libForm.specs, r.specs);
+      libForm.note = r.found.length ? `読み取った項目: ${r.found.join(" / ")}。内容を確かめてから保存してください。` : "数値を読み取れませんでした。重量(g)や寸法(mm)が書かれた部分を貼り付けてください。";
+      return renderPanel();
+    }
+    if (t.id === "lf-save") return saveLibForm(t.dataset.target || null);
+    if (t.id === "lf-save-only") return saveLibForm(null);
+    if (t.id === "lf-cancel") {
+      libForm = null;
+      return renderPanel();
+    }
+    if (t.id === "lf-delete") {
+      if (!confirm("このマイパーツを削除しますか?(付けているバイクのパーツは、数値をそのまま残します)")) return;
+      const id = libForm.id;
+      const it = libItem(id);
+      if (it && it.photoId) Library.deletePhoto(it.photoId);
+      G.library = G.library.filter((x) => x.id !== id);
+      Library.unlinkAll(G, id);
+      libForm = null;
+      changed(false);
+      return renderPanel();
+    }
+    if (t.id === "lib-export") return exportLibrary();
     if (t.dataset.build) {
       G.active = t.dataset.build;
       suggestion = null;
@@ -606,8 +860,51 @@
   });
 
   // 入力欄・選択欄の変更
-  el.addEventListener("change", (e) => {
+  // マイパーツの入力欄(描き直さずにフォームの内容だけ更新する)
+  el.addEventListener("input", (e) => {
     const t = e.target;
+    if (!libForm) return;
+    if (t.dataset.lf && t.dataset.lf !== "slot") libForm[t.dataset.lf] = t.value;
+    if (t.dataset.lfSpec) libForm.specs[t.dataset.lfSpec] = t.value;
+  });
+
+  el.addEventListener("change", async (e) => {
+    const t = e.target;
+    if (t.dataset.lf === "slot" && libForm) {
+      libForm.slot = t.value;
+      libForm.specs = {};
+      return renderPanel();
+    }
+    if (t.dataset.lfSpec && libForm) {
+      libForm.specs[t.dataset.lfSpec] = t.value;
+      return;
+    }
+    if (t.dataset.lf) return;
+    if (t.id === "lf-photo" && t.files && t.files[0] && libForm) {
+      try {
+        const blob = await Library.resize(t.files[0]);
+        const id = "ph" + Date.now().toString(36);
+        await Library.putPhoto(id, blob);
+        if (libForm.photoId) Library.deletePhoto(libForm.photoId);
+        libForm.photoId = id;
+        photoUrls[id] = URL.createObjectURL(blob);
+        // フレームの写真なら、色を拾ってフレームの色にする
+        if (libForm.slot === "frame") libForm.color = await Library.dominantColor(blob).catch(() => null);
+      } catch (err) {
+        alert("写真を保存できませんでした");
+      }
+      return renderPanel();
+    }
+    if (t.id === "lib-import" && t.files && t.files[0]) return importLibrary(t.files[0]);
+    if (t.dataset.libPick) {
+      const it = libItem(t.value);
+      if (!it) return;
+      Library.apply(B(), it);
+      changed();
+      renderPanel();
+      if (has3D) View3D.highlight(selected, false);
+      return;
+    }
     if (t.dataset.preset) {
       const i = t.value;
       if (i === "") return;
@@ -621,6 +918,9 @@
       return;
     }
     if (!t.dataset.path) return;
+    // マイパーツを付けた部位を手で書き換えたら、マイパーツとのつながりを外す(その部位だけの値になる)
+    const pm = t.dataset.path.match(/^parts\.(\w+)\./);
+    if (pm && B().parts[pm[1]] && B().parts[pm[1]].libId) delete B().parts[pm[1]].libId;
     setPath(t.dataset.path, t.value, parseFloat(t.dataset.scale || "1"));
     if (t.dataset.path.startsWith("body.") || t.dataset.path === "goal") suggestion = null;
     changed();
