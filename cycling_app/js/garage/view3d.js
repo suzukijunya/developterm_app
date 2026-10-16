@@ -704,14 +704,16 @@ const View3D = (() => {
     }
 
     // ステム・コラムスペーサー
-    const gs = group("stem");
+    // 一体型ハンドル(ステム込み)なら、ステム部分はハンドルと一緒に表示する
+    const integrated = at("handlebar").type === "integrated";
+    const gs = integrated ? gh : group("stem");
     const spacerMat = mat(0x2a2d33, { metalness: 0.5, roughness: 0.4 });
     const nSp = Math.max(1, Math.round(bk.p.spacers / 0.005));
     for (let i = 0; i < nSp && bk.p.spacers > 0.002; i++) {
       const a = add3(bk.htTop, mul3(bk.up, 0.008 + (bk.p.spacers / nSp) * i));
       gs.add(tube(a, add3(a, mul3(bk.up, bk.p.spacers / nSp - 0.0008)), 0.0185, spacerMat));
     }
-    const stemMat = paint(0x18191c, { metalness: 0.4 });
+    const stemMat = integrated ? barMat : paint(0x18191c, { metalness: 0.4 });
     gs.add(tube(add3(bk.steerer, mul3(bk.up, -0.02)), add3(bk.steerer, mul3(bk.up, 0.02)), 0.02, stemMat));
     gs.add(tube(bk.steerer, bk.barClamp, 0.016, stemMat, 1, 0.014));
     gs.add(box(add3(bk.barClamp, { x: 0.012 }), [0.016, 0.045, 0.05], stemMat));
@@ -1245,7 +1247,7 @@ const View3D = (() => {
   function highlight(id, focus) {
     highlightId = id;
     for (const [gid, g] of Object.entries(groups)) {
-      const on = gid === id || (id === "tubes" && gid === "tires");
+      const on = gid === id || (id === "tubes" && gid === "tires") || (id === "stem" && !groups.stem && gid === "handlebar");
       g.traverse((o) => {
         if (!o.isMesh || !o.material.emissive) return;
         if (on) o.material.emissive.setHex(0x1f6fe5);

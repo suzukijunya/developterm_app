@@ -184,19 +184,26 @@
   }
 
   // ---------- パーツ ----------
+  function barIntegrated(b) {
+    const h = b.parts.handlebar;
+    return !!(h && h.mounted !== false && h.attrs && h.attrs.type === "integrated");
+  }
+
   function partsPanel() {
     const b = B();
     const rows = Parts.SLOTS.map((sl) => {
       const p = b.parts[sl.id] || { name: "(なし)", g: 0 };
-      const off = p.mounted === false;
+      // 一体型ハンドルなら、ステムはハンドルに含まれる(単体では不要)
+      const inBar = sl.id === "stem" && barIntegrated(b);
+      const off = !inBar && p.mounted === false;
       return `
         <div class="g-part ${selected === sl.id ? "sel" : ""} ${off ? "off" : ""}">
           <button class="g-part-main" data-slot="${sl.id}">
             <span class="g-part-icon">${sl.icon}</span>
-            <span class="g-part-text"><small>${sl.name}</small>${p.libId ? "📘 " : ""}${esc(p.name)}</span>
-            <span class="g-part-g">${off ? "取り外し中" : (+p.g || 0).toLocaleString() + " g"}</span>
+            <span class="g-part-text"><small>${sl.name}</small>${inBar ? "一体型ハンドルに含む" : (p.libId ? "📘 " : "") + esc(p.name)}</span>
+            <span class="g-part-g">${inBar ? "0 g" : off ? "取り外し中" : (+p.g || 0).toLocaleString() + " g"}</span>
           </button>
-          <button class="g-mount" data-mount="${sl.id}">${off ? "取り付け" : "外す"}</button>
+          ${inBar ? "" : `<button class="g-mount" data-mount="${sl.id}">${off ? "取り付け" : "外す"}</button>`}
         </div>
         ${selected === sl.id ? `<div class="g-editor">${editor(sl.id)}</div>` : ""}`;
     }).join("");
@@ -636,6 +643,8 @@
     const presets = Parts.PRESETS[id] || [];
     const mine = G.library.filter((x) => x.slot === id);
     const linked = p.libId ? libItem(p.libId) : null;
+    if (id === "stem" && barIntegrated(b))
+      return `<p class="muted small">ハンドルが一体型(ステム込み)なので、ステムはハンドルの一部として3Dに表示し、重さもハンドルに含めています。ステムの長さ・角度は「フィッティング」で変えられます。単体のステムに替えるときは、ハンドルの形を「丸ハンドル」か「エアロ」にしてください。</p>`;
     let html = `
       ${
         linked

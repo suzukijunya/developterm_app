@@ -125,7 +125,9 @@ const Parts = (() => {
 
   // 取り付けているパーツの合計(g)
   function totalGrams(parts) {
-    return SLOTS.reduce((s, sl) => s + (parts[sl.id] && parts[sl.id].mounted !== false ? +parts[sl.id].g || 0 : 0), 0);
+    // 一体型ハンドルならステムの重さはハンドルに含まれる
+    const integrated = parts.handlebar && parts.handlebar.mounted !== false && parts.handlebar.attrs && parts.handlebar.attrs.type === "integrated";
+    return SLOTS.reduce((s, sl) => s + (sl.id === "stem" && integrated ? 0 : parts[sl.id] && parts[sl.id].mounted !== false ? +parts[sl.id].g || 0 : 0), 0);
   }
 
   // 回転するホイール外周の重さ(kg)。加速の計算に使う(リム・タイヤ・チューブ)
