@@ -79,7 +79,10 @@ const Fit = (() => {
     const foot = body.foot || 0.152 * H;
     // 周囲の長さ → 太さ(半径)。測っていなければ体重と身長から
     const rad = (circ, def) => (circ > 0 ? circ / (2 * Math.PI) : def * k);
-    const torsoR = body.chest > 0 ? (body.chest / (2 * Math.PI)) * 0.62 : 0.09 * k;
+    // BMI 22 を超えた分の脂肪は、手足より胴(特にお腹)につきやすい
+    const over = Math.max(0, bmi - 22);
+    const torsoR = body.chest > 0 ? (body.chest / (2 * Math.PI)) * 0.62 : 0.09 * k * (1 + over * 0.012);
+    const limb = 1 + over * 0.01;
     return {
       H,
       girth,
@@ -95,13 +98,15 @@ const Fit = (() => {
       hipHalf: 0.085 * (H / 1.72),
       neck: 0.1 * H,
       head: 0.115 * (H / 1.72), // ヘルメット込み
+      // お腹の出っ張り(m)。ウエストを測っていれば、胸囲との差から
+      belly: body.waist > 0 && body.chest > 0 ? Math.max(0, (body.waist - body.chest * 0.85) / (2 * Math.PI)) * 0.9 : over * 0.0075,
       // 各部の太さ(根元 → 先)
       r: {
-        thigh: [rad(body.thighCirc, 0.085), rad(body.thighCirc ? body.thighCirc * 0.68 : 0, 0.058)],
+        thigh: [rad(body.thighCirc, 0.085 * limb), rad(body.thighCirc ? body.thighCirc * 0.68 : 0, 0.058 * limb)],
         shank: [rad(body.calfCirc, 0.058), rad(body.calfCirc ? body.calfCirc * 0.6 : 0, 0.035)],
-        arm: [rad(body.armCirc, 0.047), rad(body.armCirc ? body.armCirc * 0.85 : 0, 0.04)],
+        arm: [rad(body.armCirc, 0.047 * limb), rad(body.armCirc ? body.armCirc * 0.85 : 0, 0.04 * limb)],
         forearm: [0.04 * k, 0.027 * k],
-        torso: [body.waist > 0 ? (body.waist / (2 * Math.PI)) * 0.62 : torsoR * 0.92, torsoR],
+        torso: [body.waist > 0 ? (body.waist / (2 * Math.PI)) * 0.62 : torsoR * (0.92 + over * 0.028), torsoR],
       },
     };
   }

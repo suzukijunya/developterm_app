@@ -202,6 +202,13 @@
     return !!(h && h.mounted !== false && h.attrs && h.attrs.type === "integrated");
   }
 
+  // 写真はあるのに、まだ3Dに貼る位置合わせをしていないマイパーツ
+  function needsDecal(p, slot) {
+    if (!p || !p.libId || !DECAL_SLOTS.includes(slot) || p.mounted === false) return false;
+    const it = G.library.find((x) => x.id === p.libId);
+    return !!(it && it.photoId && !it.decal);
+  }
+
   function partsPanel() {
     const b = B();
     const rows = Parts.SLOTS.map((sl) => {
@@ -216,6 +223,7 @@
             <span class="g-part-text"><small>${sl.name}</small>${inBar ? "一体型ハンドルに含む" : (p.libId ? "📘 " : "") + esc(p.name)}${!inBar && p.shop && p.shop.used ? `<em class="g-used">中古 ${Catalog.yen(p.shop.used[0])}〜${p.shop.used[1].toLocaleString()}</em>` : !inBar && p.shop ? `<em class="g-used">新品 ${Catalog.yen(p.shop.price)}</em>` : ""}</span>
             <span class="g-part-g">${inBar ? "0 g" : off ? "取り外し中" : (+p.g || 0).toLocaleString() + " g"}</span>
           </button>
+          ${needsDecal(p, sl.id) ? `<button class="g-mount g-decal-btn" data-decal-lib="${p.libId}">🎨 ロゴを貼る</button>` : ""}
           ${inBar ? "" : `<button class="g-mount" data-mount="${sl.id}">${off ? "取り付け" : "外す"}</button>`}
         </div>
         ${selected === sl.id ? `<div class="g-editor">${editor(sl.id)}</div>` : ""}`;
@@ -396,9 +404,19 @@
       const outline = [
         [bk.rearAxle, o], [o, bk.stTop], [bk.stTop, bk.rearAxle], [o, bk.htBot], [bk.htBot, bk.htTop], [bk.htTop, bk.stTop], [bk.htBot, bk.frontAxle],
       ];
+      // 位置合わせの点の見当: 写真いっぱいに、右向きのバイクが横から写っているとして置く
+      const guess = (w, h) => {
+        const left = bk.rearAxle.x - bk.R, right = bk.frontAxle.x + bk.R;
+        const top = Math.max(bk.htTop.y, bk.stTop.y) + 0.05, bottom = bk.rearAxle.y - bk.R;
+        const sc = Math.min((w * 0.9) / (right - left), (h * 0.9) / (top - bottom));
+        const ox = w / 2 - ((left + right) / 2) * sc, oy = h / 2 + ((top + bottom) / 2) * sc;
+        const P = (q) => ({ x: ox + q.x * sc, y: oy - q.y * sc });
+        return { rearAxle: P(bk.rearAxle), bb: P(o), htTop: P(bk.htTop) };
+      };
       Measure.open("frameAlign", {
         imageUrl: url,
-        points: f.decal && f.decal.pts,
+        points: (f.decal && f.decal.pts) || guess,
+        guessed: !f.decal,
         anchors: { rearAxle: bk.rearAxle, bb: o, htTop: bk.htTop },
         outline,
         circles: [Object.assign({ r: bk.R }, bk.rearAxle), Object.assign({ r: bk.R }, bk.frontAxle)],
@@ -412,24 +430,34 @@
             return x < 0 || y < 0 || x > res.w || y > res.h;
           });
           libForm.decalNote = out ? "フレームの一部が写真からはみ出しています。はみ出した所は写真の端の色になります。フレーム全体が写った写真がおすすめです。" : "";
-          renderPanel();
+          finishDecal();
         },
       });
     } else if (f.slot !== "wheels") {
       const kind = f.slot === "saddle" ? "saddle" : "bar";
       Measure.open(kind === "saddle" ? "saddleAlign" : "barAlign", {
         imageUrl: url,
-        points: f.decal && f.decal.pts,
+        points:
+          (f.decal && f.decal.pts) ||
+          ((w, h) => (kind === "saddle" ? { nose: { x: w / 2, y: h * 0.1 }, tail: { x: w / 2, y: h * 0.9 } } : { barL: { x: w * 0.22, y: h * 0.72 }, barR: { x: w * 0.78, y: h * 0.72 } })),
+        guessed: !f.decal,
         onDone: (res) => {
           libForm.decal = { kind, pts: res.pts, w: res.w, h: res.h };
           libForm.decalNote = "";
-          renderPanel();
+          finishDecal();
         },
       });
     } else {
       Measure.open("wheelAlign", {
         imageUrl: url,
-        points: f.decal && f.decal.pts,
+        points:
+          (f.decal && f.decal.pts) ||
+          ((w, h) =>
+            // 横長ならバイク全体の写真とみて後輪、正方形に近ければホイールだけの写真とみて真ん中
+            w > h * 1.3
+              ? { hub: { x: w * 0.21, y: h * 0.62 }, rimEdge: { x: w * 0.21, y: h * 0.62 - w * 0.165 } }
+              : { hub: { x: w / 2, y: h / 2 }, rimEdge: { x: w / 2, y: h / 2 - Math.min(w, h) * 0.38 } }),
+        guessed: !f.decal,
         onDone: (res) => {
           libForm.decal = { kind: "wheel", pts: res.pts, w: res.w, h: res.h };
           const r = Math.hypot(res.pts.rimEdge.x - res.pts.hub.x, res.pts.rimEdge.y - res.pts.hub.y) * 1.1; // タイヤの外側まで
@@ -438,10 +466,21 @@
             h.x - r < 0 || h.y - r < 0 || h.x + r > res.w || h.y + r > res.h
               ? "ホイールの一部が写真からはみ出しています。はみ出した所は写真の端の色になります。ホイール全体が写った写真がおすすめです。"
               : "";
-          renderPanel();
+          finishDecal();
         },
       });
     }
+  }
+
+  // 位置合わせが終わったら、そのまま保存して3Dに貼る(保存し忘れでロゴが出ないのを防ぐ)
+  function finishDecal() {
+    const f = libForm;
+    if (!f || !(String(f.brand || "").trim() || String(f.model || "").trim())) return renderPanel();
+    const note = f.decalNote;
+    // どのバイクにも付いていなければ、いま見ているバイクに付ける
+    const attached = f.id && Object.values(G.builds).some((b) => b.parts[f.slot] && b.parts[f.slot].libId === f.id);
+    saveLibForm(attached ? null : G.active);
+    if (note) alert(note);
   }
 
   // フォームに入っているジオメトリ(m)
@@ -1166,7 +1205,7 @@
     let el2 = document.getElementById("bubble");
     const today = new Date().toDateString();
     const c = clerkState();
-    if (tab === "clerk" || c.bubbleHidden === today) {
+    if (tab === "clerk" || mode === "ride" || c.bubbleHidden === today) {
       if (el2) el2.remove();
       return;
     }
@@ -1247,6 +1286,10 @@
   el.addEventListener("click", (e) => {
     const t = e.target.closest("button");
     if (!t) return;
+    if (t.dataset.decalLib) {
+      openLibForm(null, t.dataset.decalLib);
+      return startDecal();
+    }
     // ---- 店員さん ----
     if (t.dataset.hearBudget) {
       document.getElementById("hear-budget").value = t.dataset.hearBudget;
@@ -1510,7 +1553,7 @@
     if (t.id === "lf-photo" && t.files && t.files[0] && libForm) {
       try {
         const form = libForm;
-        const blob = await Library.resize(t.files[0]);
+        const blob = await Library.resize(t.files[0], 2400); // ロゴの文字まで見えるよう大きめに残す
         const id = "ph" + Date.now().toString(36);
         await Library.putPhoto(id, blob);
         if (libForm !== form) return; // 写真の準備中にフォームを閉じた
@@ -1522,8 +1565,12 @@
         if (libForm.slot === "frame") libForm.color = await Library.dominantColor(blob).catch(() => null);
       } catch (err) {
         alert("写真を保存できませんでした");
+        return renderPanel();
       }
-      return renderPanel();
+      renderPanel();
+      // ロゴ・塗装を3Dに貼れる部位なら、そのまま位置合わせへ
+      if (DECAL_SLOTS.includes(libForm.slot)) return startDecal();
+      return;
     }
     if (t.id === "lib-import" && t.files && t.files[0]) return importLibrary(t.files[0]);
     if (t.dataset.libPick) {
@@ -1578,6 +1625,7 @@
       View3D.setFlow(flow);
     }
     renderTools();
+    renderBubble();
   }
 
   // ほかの端末で変えたガレージが届いたら、読み直して描き直す(入力中は待つ)

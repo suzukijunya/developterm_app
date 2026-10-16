@@ -204,6 +204,8 @@ const Measure = (() => {
     const img = new Image();
     img.onload = () => {
       ui.img = img;
+      // 点の初期位置は、写真の大きさから決める関数でもよい(位置の見当をつけて置いておく)
+      if (typeof pts === "function") pts = pts(img.width, img.height);
       if (pts) ui.pts = JSON.parse(JSON.stringify(pts));
       const body = ui.root.querySelector("#ms-body");
       body.innerHTML = `<canvas id="ms-canvas" class="ms-canvas"></canvas>`;
@@ -268,7 +270,7 @@ const Measure = (() => {
       if (!down) return;
       if (!down.moved && Math.hypot(e.clientX - down.sx, e.clientY - down.sy) > 6) {
         down.moved = true;
-        if (down.near) ui.drag = down.near;
+        if (down.near) (ui.drag = down.near), (ui.moved = true);
       }
       if (!ui.drag) return;
       ui.pts[ui.drag] = toImage(e);
@@ -383,6 +385,8 @@ const Measure = (() => {
     const idx = n ? ui.M.points.indexOf(n) + 1 : ui.M.points.length;
     ui.root.querySelector("#ms-next").innerHTML = n
       ? `<b>${idx}/${ui.M.points.length}</b> ${n.label} をタップ`
+      : ui.opts.guessed && !ui.moved
+      ? `<b>点を自動で置きました</b> 黄色の線が写真のフレームに重なるよう、赤い点をドラッグして合わせてください`
       : `<b>すべて置きました</b> 点はドラッグで直せます`;
     ui.root.querySelector('[data-ms="done"]').disabled = !!n;
   }

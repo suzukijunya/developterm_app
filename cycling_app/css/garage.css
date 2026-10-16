@@ -1004,3 +1004,11 @@ body.ms-open {
   font-size: 0.85rem;
 }
 .g-maint-row > div { min-width: 0; flex: 1; }
+
+/* PCの広い画面では、3Dを大きく */
+@media (min-width: 900px) {
+  .g-stage {
+    height: 64vh;
+    max-height: 760px;
+  }
+}

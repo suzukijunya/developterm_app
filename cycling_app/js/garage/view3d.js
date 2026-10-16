@@ -40,7 +40,8 @@ const View3D = (() => {
     container = el;
     const THREE = T();
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    // PCの画面(倍率1)でも、少し大きく描いてから縮めて、細い線やロゴをなめらかにする
+    renderer.setPixelRatio(Math.min(2, Math.max(1.5, window.devicePixelRatio || 1)));
     renderer.outputEncoding = THREE.sRGBEncoding;
     // 写真のような明るさの出方と、床に落ちる影
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -64,7 +65,7 @@ const View3D = (() => {
     const key = new THREE.DirectionalLight(0xfff4e6, 1.15);
     key.position.set(1.4, 3.6, 2.4);
     key.castShadow = true;
-    key.shadow.mapSize.set(1024, 1024);
+    key.shadow.mapSize.set(2048, 2048);
     Object.assign(key.shadow.camera, { left: -1.6, right: 1.6, top: 1.6, bottom: -1.6, near: 0.5, far: 9 });
     key.shadow.bias = -0.0005;
     key.shadow.radius = 4;
@@ -72,6 +73,10 @@ const View3D = (() => {
     const fill = new THREE.DirectionalLight(0x9cc0ff, 0.4);
     fill.position.set(-3, 2, -1.5);
     scene.add(fill);
+    // 後ろからの光(輪郭が光って、ショールームのように立体的に見える)
+    const rim = new THREE.DirectionalLight(0xffffff, 0.55);
+    rim.position.set(-0.5, 2.2, -3.5);
+    scene.add(rim);
     root = new THREE.Group();
     scene.add(root);
     envGroup = new THREE.Group();
@@ -87,24 +92,32 @@ const View3D = (() => {
   }
 
   // 周りの景色: 天井の照明(明るい四角)と、壁・床の色のグラデーション
+  // 工房の照明の映り込み(塗装やリムに、天井のライトと窓の光が映る)
   function envTexture() {
     const THREE = T();
+    const W = 2048, H = 1024;
     const c = document.createElement("canvas");
-    c.width = 512;
-    c.height = 256;
+    c.width = W;
+    c.height = H;
     const g = c.getContext("2d");
-    const grad = g.createLinearGradient(0, 0, 0, 256);
-    grad.addColorStop(0, "#d9e2f0");
-    grad.addColorStop(0.45, "#7c8597");
-    grad.addColorStop(0.55, "#4a4f5c");
-    grad.addColorStop(1, "#22252c");
+    const grad = g.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, "#c9d3e2");
+    grad.addColorStop(0.42, "#6f7889");
+    grad.addColorStop(0.5, "#3e434e");
+    grad.addColorStop(0.58, "#2a2d34");
+    grad.addColorStop(1, "#16181d");
     g.fillStyle = grad;
-    g.fillRect(0, 0, 512, 256);
-    g.filter = "blur(6px)";
+    g.fillRect(0, 0, W, H);
+    // 天井の細長いライト(塗装に白い線として映る)
+    g.filter = "blur(3px)";
     g.fillStyle = "#ffffff";
-    for (const [x, w] of [[60, 90], [230, 60], [380, 100]]) g.fillRect(x, 18, w, 26);
-    g.fillStyle = "rgba(255,220,180,0.8)";
-    g.fillRect(150, 100, 40, 30);
+    for (const [x, w] of [[120, 260], [620, 180], [1000, 300], [1500, 220]]) g.fillRect(x, 60, w, 34);
+    for (const [x, w] of [[300, 160], [1250, 200]]) g.fillRect(x, 180, w, 22);
+    // 窓(暖かい光)とソフトボックス
+    g.fillStyle = "rgba(255,226,190,0.9)";
+    g.fillRect(560, 300, 150, 110);
+    g.fillStyle = "rgba(235,242,255,0.95)";
+    g.fillRect(1660, 260, 160, 150);
     g.filter = "none";
     const tex = new THREE.CanvasTexture(c);
     tex.mapping = THREE.EquirectangularReflectionMapping;
@@ -121,6 +134,15 @@ const View3D = (() => {
     renderer.domElement.style.height = "100%";
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    if (cam.auto !== false) cam.distGoal = fitDist();
+  }
+
+  // 画面の縦横比に合わせて、バイク(乗車中は人も)がちょうど収まる距離
+  function fitDist() {
+    const t = Math.tan(((camera ? camera.fov : 40) * Math.PI) / 360);
+    const aspect = camera ? camera.aspect : 1;
+    const w = anim.rider ? 2.3 : 1.95, h = anim.rider ? 2.15 : 1.4;
+    return Math.max(1.5, w / 2 / (t * aspect), h / 2 / t);
   }
 
   // 工房: 床・壁・有孔ボード・作業台・マット・作業スタンド
@@ -139,7 +161,7 @@ const View3D = (() => {
     });
     floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping;
     floorTex.repeat.set(6, 6);
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.75, metalness: 0.05, envMapIntensity: 0.4 }));
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.5, metalness: 0.05, envMapIntensity: 0.55 }));
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
     floor.name = "floor";
@@ -963,9 +985,16 @@ const View3D = (() => {
       riderParts.push({ body, e1, e2 });
     }
     // 胴の中身(左右2本のあいだを埋めて、胸と背中の形にする。表示だけで計算には使わない)
-    const chest = new THREE.Mesh(new THREE.CylinderGeometry(1, 0.82, 1, 24), jersey);
+    // 腰側の太さは体型で変わる(体重が多いと、胸より腰回りが太くなる)
+    const sgB = state.fit.seg;
+    const waistRatio = Math.max(0.78, Math.min(1.35, (sgB.r.torso[0] / sgB.r.torso[1]) * 0.9));
+    const chest = new THREE.Mesh(new THREE.CylinderGeometry(1, waistRatio, 1, 32), jersey);
     chest.name = "chest";
     riderGroup.add(chest);
+    // お腹(前傾すると下側に出る)
+    const belly = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 18), jersey);
+    belly.name = "belly";
+    riderGroup.add(belly);
     const shoulders = new THREE.Mesh(sph, jersey);
     shoulders.name = "shoulders";
     riderGroup.add(shoulders);
@@ -1027,6 +1056,17 @@ const View3D = (() => {
     chest.position.copy(H0).addScaledVector(td, 0.5);
     chest.quaternion.setFromUnitVectors(up, td.clone().normalize());
     chest.scale.set(sg.r.torso[1] * 1.05, tl * 0.92, sg.shoulderHalf + sg.r.torso[1] * 0.35);
+    const belly = riderGroup.getObjectByName("belly");
+    const bl = sg.belly || 0;
+    belly.visible = bl > 0.008;
+    if (belly.visible) {
+      const tn = td.clone().normalize();
+      // 胴の向きに直角で下を向く向き(横から見た面の中で)
+      const nrm = new THREE.Vector3(tn.y, -tn.x, 0).normalize();
+      belly.position.copy(H0).addScaledVector(td, 0.36).addScaledVector(nrm, sg.r.torso[0] * 0.35 + bl * 0.5);
+      belly.quaternion.setFromUnitVectors(up, tn);
+      belly.scale.set(sg.r.torso[0] * 0.75 + bl, tl * 0.3, sg.shoulderHalf * 0.8 + bl * 0.6);
+    }
     const shoulders = riderGroup.getObjectByName("shoulders");
     shoulders.position.copy(S0).addScaledVector(td.clone().normalize(), -0.02);
     shoulders.scale.set(sg.r.torso[1] * 1.0, sg.r.torso[1] * 0.85, sg.shoulderHalf + sg.r.arm[0] * 0.6);
@@ -1367,7 +1407,8 @@ const View3D = (() => {
     }
     // 乗車モードはライダーの頭まで入るように、少し上を中心にして引く
     cam.goal.set(anim.rider ? 0.1 : 0.15, root.position.y + (anim.rider ? 0.8 : 0.55), 0);
-    cam.distGoal = anim.rider ? 3.1 : 2.6;
+    cam.distGoal = fitDist();
+    cam.auto = true;
   }
 
   function setRider(on) {
@@ -1412,6 +1453,7 @@ const View3D = (() => {
         cam.goal.copy(c);
         const size = b.getSize(new THREE.Vector3()).length();
         cam.distGoal = Math.max(0.9, Math.min(2.6, size * 1.6 + 0.5));
+        cam.auto = false;
       }
     }
   }
@@ -1461,6 +1503,7 @@ const View3D = (() => {
         if (lastDist) cam.dist = Math.max(0.6, Math.min(5, cam.dist * (lastDist / d)));
         lastDist = d;
         cam.distGoal = cam.dist;
+        cam.auto = false;
       }
     });
     const end = (e) => {
@@ -1484,6 +1527,7 @@ const View3D = (() => {
         e.preventDefault();
         cam.dist = Math.max(0.6, Math.min(5, cam.dist * (1 + e.deltaY * 0.001)));
         cam.distGoal = cam.dist;
+        cam.auto = false;
       },
       { passive: false }
     );

@@ -123,13 +123,14 @@ const Sync = (() => {
     let photoGist = remote.photoGist || null;
     const ids = photoIds(Store.garage);
     let changed = false;
+    let downloaded = 0;
     // ダウンロード
     for (const id of ids) {
       if (!photos[id]) continue;
       if (await getPhoto(id)) continue;
       try {
         const res = await fetch(photos[id], { cache: "no-store" });
-        if (res.ok) await putPhoto(id, await fromDataUrl(await res.text()));
+        if (res.ok) await putPhoto(id, await fromDataUrl(await res.text())), downloaded++;
       } catch (e) {
         // 次の同期でやり直す
       }
@@ -168,7 +169,7 @@ const Sync = (() => {
       for (const id of gone) delete photos[id];
       changed = true;
     }
-    return { photos, photoGist, changed };
+    return { photos, photoGist, changed, downloaded };
   }
 
   // ---------- 同期 ----------
@@ -182,7 +183,8 @@ const Sync = (() => {
       const data = { v: 1, app, photos: ph.photos, photoGist: ph.photoGist, savedAt: Date.now(), device: deviceName() };
       await gh(`/gists/${cfg.gistId}`, { method: "PATCH", body: { files: { [FILE]: { content: JSON.stringify(data) } } } });
     }
-    if (ph.changed && changed.indexOf("garage") < 0) for (const fn of listeners) fn({ photos: true });
+    // 写真が届いたら(ガレージより後に届くので)、3Dに貼り直す
+    if (ph.downloaded) for (const fn of listeners) fn({ photos: true });
     cfg.lastAt = Date.now();
     saveCfg();
   }
