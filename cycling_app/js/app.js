@@ -1155,6 +1155,7 @@
         <p class="muted small">基礎代謝 約${Math.round(Physics.bmrPerDay(p))}kcal/日・空気抵抗係数(CdA) ${Physics.cdaFor(p).toFixed(3)}m²</p>
       </form>
       ${placesSection()}
+      ${typeof Sync !== "undefined" ? Sync.panelHtml() : ""}
       <section class="card">
         <h2>計算のしくみ</h2>
         <p class="muted">GPSの速度と標高の変化から、毎秒「転がり抵抗」「坂を登る力」「加速」「空気抵抗(風を含む)」に必要なパワーを計算します。脚の筋肉の効率を25%として、そのパワーを消費カロリーに換算し、基礎代謝分を足しています。</p>
@@ -1294,6 +1295,7 @@
       const el = document.getElementById(id);
       if (el) el.addEventListener("click", fn);
     };
+    if (typeof Sync !== "undefined") Sync.bindPanel(app, render);
     app.querySelectorAll("[data-view]").forEach((b) =>
       b.addEventListener("click", () => {
         view = b.dataset.view;
@@ -1494,7 +1496,7 @@
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2026.10.27";
+  const APP_VERSION = "2026.10.28";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });
@@ -1512,6 +1514,15 @@
     if (document.visibilityState === "visible") checkUpdate();
   });
   checkUpdate();
+
+  // ほかの端末で変えた内容が届いたら描き直す(走行中・入力中は描き直さない)
+  if (typeof Sync !== "undefined")
+    Sync.onUpdate((e) => {
+      if (!e.changed || ride) return;
+      const a = document.activeElement;
+      if (a && /INPUT|SELECT|TEXTAREA/.test(a.tagName)) return;
+      render();
+    });
 
   restoreActive();
   render();

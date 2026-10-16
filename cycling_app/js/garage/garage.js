@@ -101,6 +101,7 @@
   if (has3D) {
     try {
       View3D.create(stage);
+      View3D.onClerk(() => openClerk());
     } catch (e) {
       stage.insertAdjacentHTML("afterbegin", `<p class="g-no3d">この端末では3D表示を使えません。数値の計算はこのまま使えます。</p>`);
     }
@@ -122,10 +123,20 @@
     });
   }
 
+  // 写真のデザインを3Dに貼れる部位と、写真の撮り方
+  const DECAL_SLOTS = ["frame", "wheels", "saddle", "handlebar", "bartape"];
+  const DECAL_HELP = {
+    frame: "横から撮った写真で、後輪の軸・BB・ヘッドチューブの上端をタップします。ロゴや塗装がそのまま3Dのフレームに貼られます。",
+    wheels: "横から撮った写真で、ハブの中心とリムの外側の縁をタップします。リムとタイヤのロゴが3Dのホイールに貼られます。",
+    saddle: "真上から(先端を上にして)撮った写真で、サドルの先端と後ろの端をタップします。表面の柄やロゴが3Dのサドルに貼られます。",
+    handlebar: "正面から撮った写真で、左右のドロップの下の端をタップします。ロゴや柄が3Dのハンドル(一体型ならステムも)に貼られます。",
+    bartape: "バーテープを巻いたハンドルを正面から撮った写真で、左右のドロップの下の端をタップします。テープの色や柄が3Dに貼られます。",
+  };
+
   // 付けているパーツのうち、写真を3Dに貼るもの(写真のURLを用意する)
   async function loadDecals(build) {
     const out = {};
-    for (const slot of ["frame", "wheels"]) {
+    for (const slot of DECAL_SLOTS) {
       const p = build.parts[slot];
       if (!p || !p.decal || !p.decal.photoId || p.mounted === false) continue;
       let url = photoUrls[p.decal.photoId];
@@ -171,6 +182,7 @@
       ["fit", "🧍 フィッティング"],
       ["aero", "💨 空力"],
       ["compare", "📊 比較"],
+      ["clerk", "🧑‍🔧 店員さん"],
     ];
     document.getElementById("tabs").innerHTML = T.map(([id, label]) => `<button class="g-tab ${tab === id ? "on" : ""}" data-tab="${id}">${label}</button>`).join("");
   }
@@ -181,6 +193,7 @@
     renderSummary();
     renderTabs();
     renderPanel();
+    renderBubble();
   }
 
   // ---------- パーツ ----------
@@ -200,7 +213,7 @@
         <div class="g-part ${selected === sl.id ? "sel" : ""} ${off ? "off" : ""}">
           <button class="g-part-main" data-slot="${sl.id}">
             <span class="g-part-icon">${sl.icon}</span>
-            <span class="g-part-text"><small>${sl.name}</small>${inBar ? "一体型ハンドルに含む" : (p.libId ? "📘 " : "") + esc(p.name)}</span>
+            <span class="g-part-text"><small>${sl.name}</small>${inBar ? "一体型ハンドルに含む" : (p.libId ? "📘 " : "") + esc(p.name)}${!inBar && p.shop && p.shop.used ? `<em class="g-used">中古 ${Catalog.yen(p.shop.used[0])}〜${p.shop.used[1].toLocaleString()}</em>` : !inBar && p.shop ? `<em class="g-used">新品 ${Catalog.yen(p.shop.price)}</em>` : ""}</span>
             <span class="g-part-g">${inBar ? "0 g" : off ? "取り外し中" : (+p.g || 0).toLocaleString() + " g"}</span>
           </button>
           ${inBar ? "" : `<button class="g-mount" data-mount="${sl.id}">${off ? "取り付け" : "外す"}</button>`}
@@ -336,11 +349,11 @@
           <label class="btn sub g-file">📷 写真を${f.photoId ? "変える" : "追加"}<input type="file" accept="image/*" id="lf-photo" hidden /></label>
         </div>
         ${
-          f.photoId && (f.slot === "frame" || f.slot === "wheels")
+          f.photoId && DECAL_SLOTS.includes(f.slot)
             ? `<div class="g-decal">
                 <button class="btn sub" id="lf-decal">🎨 写真のデザインを3Dに貼る${f.decal ? "(位置合わせをやり直す)" : ""}</button>
                 ${f.decal && f.decalNote ? `<p class="notice warn">${esc(f.decalNote)}</p>` : ""}
-                ${f.decal ? `<p class="small">✓ 貼り付け済み。保存すると3Dに反映されます <button class="link danger" id="lf-decal-off">貼るのをやめる</button></p>` : `<p class="muted small">${f.slot === "frame" ? "横から撮った写真で、後輪の軸・BB・ヘッドチューブの上端をタップします。ロゴや塗装がそのまま3Dのフレームに貼られます。" : "横から撮った写真で、ハブの中心とリムの外側の縁をタップします。リムとタイヤのロゴが3Dのホイールに貼られます。"}</p>`}
+                ${f.decal ? `<p class="small">✓ 貼り付け済み。保存すると3Dに反映されます <button class="link danger" id="lf-decal-off">貼るのをやめる</button></p>` : `<p class="muted small">${DECAL_HELP[f.slot]}</p>`}
               </div>`
             : ""
         }
@@ -399,6 +412,17 @@
             return x < 0 || y < 0 || x > res.w || y > res.h;
           });
           libForm.decalNote = out ? "フレームの一部が写真からはみ出しています。はみ出した所は写真の端の色になります。フレーム全体が写った写真がおすすめです。" : "";
+          renderPanel();
+        },
+      });
+    } else if (f.slot !== "wheels") {
+      const kind = f.slot === "saddle" ? "saddle" : "bar";
+      Measure.open(kind === "saddle" ? "saddleAlign" : "barAlign", {
+        imageUrl: url,
+        points: f.decal && f.decal.pts,
+        onDone: (res) => {
+          libForm.decal = { kind, pts: res.pts, w: res.w, h: res.h };
+          libForm.decalNote = "";
           renderPanel();
         },
       });
@@ -663,6 +687,8 @@
           ? `<div class="g-comp"><small>内訳(${p.components.length}点)</small>${p.components.map((c) => `<div><span>${esc(c.name)}</span><b>${(+c.g).toLocaleString()}g</b></div>`).join("")}</div>`
           : ""
       }
+      ${p.shop ? `<p class="small g-shopinfo">🏷️ ${esc(Catalog.priceText(Catalog.byId(p.shop.id) || { price: p.shop.price, used: p.shop.used }))}(目安)</p>` : ""}
+      ${catalogHtml(id)}
       <button class="btn sub" data-lib-new="${id}">📘 公式データを入力してマイパーツに登録</button>
       <label class="g-field"><span>目安から選ぶ</span><select data-preset="${id}">
         <option value="">— 選ぶ —</option>
@@ -1026,11 +1052,160 @@
   }
 
   // ---------- パネルの描画と操作 ----------
+  // ---------- 店員さん ----------
+  // 部位ごとの具体的なモデル(重さ・中古相場)
+  function catalogHtml(id) {
+    const list = Catalog.forSlot(id);
+    if (!list.length) return "";
+    const b = B();
+    return `<details class="g-cat" ${G.active === "next" ? "open" : ""}><summary>🏷️ 具体的なモデルから選ぶ(重さ・中古相場つき)</summary>
+      ${list
+        .map((it) => {
+          const sv = Catalog.saving(b, it);
+          const on = Catalog.installed(b, it);
+          return `<div class="g-cat-row"><div><strong>${esc(it.name)}</strong><small>${it.kind === "swap" ? `${it.g.toLocaleString()}g` : it.deltaG ? `−${it.deltaG}g` : ""}${sv > 0 && it.kind === "swap" ? `(−${sv}g)` : ""}・${esc(Catalog.priceText(it))}</small><small class="muted">${esc(it.note)}</small></div>
+            ${on ? `<span class="g-tag">付いています</span>` : `<button class="btn sub" data-cat-put="${it.id}">付ける</button>`}</div>`;
+        })
+        .join("")}
+      <p class="muted small">重さは公称値などの目安、価格は2026年10月時点の目安です。中古は状態で大きく変わります。</p>
+    </details>`;
+  }
+
+  function clerkState() {
+    if (!G.clerk) G.clerk = { hearing: null, maint: {}, editing: true };
+    if (!G.clerk.maint) G.clerk.maint = {};
+    return G.clerk;
+  }
+
+  function clerkContext() {
+    const c = clerkState();
+    const cur = G.builds.current;
+    const k = calc("current");
+    const plan = c.hearing ? Clerk.plan(cur, c.hearing, G.body) : null;
+    return {
+      current: cur,
+      body: G.body,
+      rides: Store.rides,
+      maint: c.maint,
+      plan,
+      torso: k.fit.angles.torso,
+      integrated: barIntegrated(cur),
+      bikeKg: k.bikeKg,
+      nextKg: Parts.totalGrams(G.builds.next.parts) / 1000,
+    };
+  }
+
+  function clerkPanel() {
+    const c = clerkState();
+    const ctx = clerkContext();
+    const say = Clerk.comments(ctx).slice(0, 3);
+    const h = c.hearing || { budget: 30000, goals: G.body.backPain ? ["comfort", "light"] : ["light"], usedOk: true };
+    const hearingHtml = `
+      <section class="card g-hear">
+        <h2>🧑‍🔧 ご相談</h2>
+        <p class="small">いまのバイク(装着済み)を見て、予算の中で効くパーツから順番に選びます。${G.body.backPain ? "腰痛ありで登録されているので、腰が楽になるものを優先します。" : ""}</p>
+        <p class="g-sub">ご予算は?</p>
+        <div class="g-chips">${Clerk.BUDGETS.map((y) => `<button class="g-chip2 ${h.budget === y ? "on" : ""}" data-hear-budget="${y}">${y >= 10000 ? y / 10000 + "万円" : y + "円"}</button>`).join("")}
+          <label class="g-in g-budget"><input type="number" inputmode="numeric" id="hear-budget" value="${h.budget}" step="1000" min="1000" /><em>円</em></label></div>
+        <p class="g-sub">どうなりたいですか?(いくつでも)</p>
+        ${Clerk.GOALS.map((g) => `<label class="check"><input type="checkbox" data-hear-goal="${g.id}" ${h.goals.includes(g.id) ? "checked" : ""} /><span>${g.label}</span></label>`).join("")}
+        <label class="check"><input type="checkbox" id="hear-used" ${h.usedOk !== false ? "checked" : ""} /><span>中古でもいい<small>メルカリ・ヤフオク・中古店の相場で考えます</small></span></label>
+        <button class="btn start" data-clerk="plan">この内容で相談する</button>
+      </section>`;
+    const row = (x, idx) => {
+      const it = x.item;
+      const inNext = Catalog.installed(G.builds.next, it);
+      return `<div class="g-plan-row">
+        <div class="g-plan-n">${idx}</div>
+        <div class="g-plan-body">
+          <small>${esc(Parts.slotName(it.slot))}</small><strong>${esc(it.name)}</strong>
+          <div class="g-plan-meta"><b>${x.reason ? esc(x.reason) : "—"}</b><span>${esc(Catalog.priceText(it))}</span></div>
+          <p class="small muted">${esc(it.note)}</p>
+          ${it.needsShop ? `<p class="notice warn small">取り付けの前に、お店で合うか確かめてください</p>` : ""}
+          <div class="g-plan-btns">${inNext ? `<span class="g-tag">NEWに入っています</span>` : `<button class="btn sub" data-clerk-next="${it.id}">NEWに入れる</button>`}<button class="link" data-clerk-bought="${it.id}">買って付けた</button></div>
+        </div></div>`;
+    };
+    const plan = ctx.plan;
+    const planHtml = plan
+      ? `<section class="card g-plan">
+          <h2>📝 おすすめの順番 <span class="g-total">${Catalog.yen(plan.total)}</span></h2>
+          <p class="small">ご予算 ${Catalog.yen(plan.budget)}・${plan.usedOk ? "中古あり" : "新品のみ"}・${(c.hearing.goals || []).map((g) => (Clerk.GOALS.find((x) => x.id === g) || {}).label || g).join("、")}</p>
+          ${plan.items.length ? plan.items.map((x, i) => row(x, i + 1)).join("") : `<p class="muted">このご予算と目的で、今のバイクに効くパーツが見つかりませんでした。ご予算か目的を変えてみてください。</p>`}
+          ${plan.items.length ? `<p class="g-plan-sum">ぜんぶ替えると <strong>−${plan.saved.toLocaleString()}g</strong>(${ctx.bikeKg.toFixed(2)} → ${(ctx.bikeKg - plan.saved / 1000).toFixed(2)}kg)</p>
+            <button class="btn start" data-clerk="build">まとめてNEWに組む(3Dで見る)</button>` : ""}
+          ${plan.later.length ? `<p class="g-sub">ご予算が増えたら</p>${plan.later.map((x) => `<p class="small">・${esc(x.item.name)} ${x.reason ? `(${esc(x.reason)})` : ""} ${esc(Catalog.priceText(x.item))}</p>`).join("")}` : ""}
+          <p class="muted small">重さは公称値などの目安、価格は2026年10月時点の目安です。「買って付けた」を押すと装着済みに反映して、次の一手を考え直します。</p>
+          <button class="link" data-clerk="edit">相談し直す</button>
+        </section>`
+      : "";
+    const ms = Clerk.maintenance(Store.rides, c.maint);
+    const maintHtml = `
+      <section class="card g-maint">
+        <h2>🔧 メカニックの整備メモ <span class="g-total">${Math.round(Clerk.totalKm(Store.rides)).toLocaleString()}km</span></h2>
+        ${ms
+          .map(
+            (m) => `<div class="g-maint-row ${m.due ? "due" : ""}"><div><strong>${m.label}</strong><small>${m.never ? "まだ記録がありません" : m.km ? `前回から ${Math.round(m.sinceKm)}km / 目安 ${m.km.toLocaleString()}km` : `前回から ${Math.floor(m.sinceDays)}日 / 目安 ${m.days}日`}</small></div>
+              <button class="btn sub" data-maint="${m.id}">${m.due ? "やった" : "やった"}</button></div>`
+          )
+          .join("")}
+        <p class="muted small">距離は、このアプリで記録したライドの合計です。</p>
+      </section>`;
+    return `
+      <section class="card g-clerk">
+        <div class="g-clerk-head"><span class="g-clerk-face">🧑‍🔧</span><div><strong>メカニックの店員さん</strong><small>今日のひとこと</small></div></div>
+        ${say.map((t) => `<p class="g-say">${esc(t)}</p>`).join("")}
+      </section>
+      ${!c.hearing || c.editing ? hearingHtml : ""}
+      ${planHtml}
+      ${maintHtml}`;
+  }
+
+  // 3Dの上に出す吹き出し(今日のひとこと)
+  function renderBubble() {
+    if (!has3D) return;
+    let el2 = document.getElementById("bubble");
+    const today = new Date().toDateString();
+    const c = clerkState();
+    if (tab === "clerk" || c.bubbleHidden === today) {
+      if (el2) el2.remove();
+      return;
+    }
+    const text = Clerk.comments(clerkContext())[0];
+    if (!el2) {
+      stage.insertAdjacentHTML("beforeend", `<div class="g-bubble" id="bubble"></div>`);
+      el2 = document.getElementById("bubble");
+    }
+    el2.innerHTML = `<button class="g-bubble-main" data-tab="clerk"><span class="g-bubble-face">🧑‍🔧</span><span class="g-bubble-text">${esc(text)}</span></button><button class="g-bubble-x" id="bubble-x" aria-label="今日は閉じる">×</button>`;
+  }
+
+  function openClerk() {
+    tab = "clerk";
+    if (mode !== "mechanic") setMode("mechanic");
+    renderTabs();
+    renderTools();
+    renderPanel();
+    renderBubble();
+    if (has3D) View3D.waveClerk();
+    window.scrollTo({ top: document.getElementById("tabs").offsetTop - 60, behavior: "smooth" });
+  }
+
+  function readHearing() {
+    const c = clerkState();
+    const goals = [...document.querySelectorAll("[data-hear-goal]")].filter((x) => x.checked).map((x) => x.dataset.hearGoal);
+    const budget = Math.max(1000, +document.getElementById("hear-budget").value || 30000);
+    const usedOk = document.getElementById("hear-used").checked;
+    c.hearing = { budget, goals: goals.length ? goals : ["light"], usedOk };
+  }
+
   function renderPanel() {
     const panel = document.getElementById("panel");
-    panel.innerHTML = tab === "parts" ? partsPanel() : tab === "fit" ? fitPanel() : tab === "aero" ? aeroPanel() : comparePanel();
+    panel.innerHTML = tab === "parts" ? partsPanel() : tab === "fit" ? fitPanel() : tab === "aero" ? aeroPanel() : tab === "clerk" ? clerkPanel() : comparePanel();
     if (tab === "aero") drawSilhouette();
     if (tab === "parts") loadPhotos();
+    if (typeof Sync !== "undefined" && tab === "parts") {
+      panel.insertAdjacentHTML("beforeend", Sync.panelHtml());
+      Sync.bindPanel(panel, renderPanel);
+    }
   }
 
   // data-path("pos.stemLength" など)に値を書き込む
@@ -1072,6 +1247,61 @@
   el.addEventListener("click", (e) => {
     const t = e.target.closest("button");
     if (!t) return;
+    // ---- 店員さん ----
+    if (t.dataset.hearBudget) {
+      document.getElementById("hear-budget").value = t.dataset.hearBudget;
+      document.querySelectorAll("[data-hear-budget]").forEach((x) => x.classList.toggle("on", x === t));
+      return;
+    }
+    if (t.dataset.clerk === "plan") {
+      readHearing();
+      clerkState().editing = false;
+      changed(false);
+      renderPanel();
+      if (has3D) View3D.waveClerk();
+      return;
+    }
+    if (t.dataset.clerk === "edit") {
+      clerkState().editing = true;
+      return renderPanel();
+    }
+    if (t.dataset.clerk === "build") {
+      // いまのバイクをもとに、おすすめをぜんぶ付けたNEWを組む
+      const plan = clerkContext().plan;
+      if (!plan || !plan.items.length) return;
+      if (!confirm("いまのバイク(装着済み)をもとに、おすすめのパーツをぜんぶ付けたNEWを組みます。今のNEWの構成は置き換わります。よろしいですか?")) return;
+      const nx = JSON.parse(JSON.stringify(G.builds.current));
+      nx.name = "店員さんのおすすめ";
+      for (const x of plan.items) Catalog.apply(nx, x.item);
+      G.builds.next = nx;
+      G.active = "next";
+      changed();
+      renderAll();
+      return;
+    }
+    if (t.dataset.clerkNext || t.dataset.clerkBought || t.dataset.catPut) {
+      const it = Catalog.byId(t.dataset.clerkNext || t.dataset.clerkBought || t.dataset.catPut);
+      if (!it) return;
+      if (t.dataset.catPut) Catalog.apply(B(), it);
+      else Catalog.apply(G.builds.next, it);
+      if (t.dataset.clerkBought) Catalog.apply(G.builds.current, it);
+      if (!t.dataset.catPut) G.active = t.dataset.clerkBought ? "current" : "next";
+      selected = it.slot;
+      changed();
+      renderAll();
+      if (has3D) View3D.highlight(selected, true);
+      return;
+    }
+    if (t.dataset.maint) {
+      clerkState().maint[t.dataset.maint] = { km: Clerk.totalKm(Store.rides), at: Date.now() };
+      changed(false);
+      return renderPanel();
+    }
+    if (t.id === "bubble-x") {
+      clerkState().bubbleHidden = new Date().toDateString();
+      changed(false);
+      return renderBubble();
+    }
     // ---- マイパーツ ----
     if (t.hasAttribute("data-lib-new")) return openLibForm(t.dataset.libNew || selected || "wheels", null);
     if (t.dataset.libEdit) return openLibForm(null, t.dataset.libEdit);
@@ -1133,6 +1363,8 @@
       save();
       renderAll();
       refresh3D();
+    } else if (t.dataset.tab === "clerk") {
+      openClerk();
     } else if (t.dataset.tab) {
       tab = t.dataset.tab;
       // フィッティングと空力はライダーを乗せて見る
@@ -1141,6 +1373,7 @@
       renderTabs();
       renderTools();
       renderPanel();
+      renderBubble();
       window.scrollTo({ top: document.getElementById("tabs").offsetTop - 60, behavior: "smooth" });
     } else if (t.dataset.tool) {
       const k = t.dataset.tool;
@@ -1276,9 +1509,11 @@
     if (t.dataset.lf) return;
     if (t.id === "lf-photo" && t.files && t.files[0] && libForm) {
       try {
+        const form = libForm;
         const blob = await Library.resize(t.files[0]);
         const id = "ph" + Date.now().toString(36);
         await Library.putPhoto(id, blob);
+        if (libForm !== form) return; // 写真の準備中にフォームを閉じた
         if (libForm.photoId) Library.deletePhoto(libForm.photoId);
         libForm.photoId = id;
         libForm.decal = null; // 写真が変わったら位置合わせもやり直し
@@ -1325,7 +1560,7 @@
     const pm = t.dataset.path.match(/^parts\.(\w+)\./);
     if (pm && B().parts[pm[1]]) {
       delete B().parts[pm[1]].libId;
-      if (/\.(g|name)$/.test(t.dataset.path)) delete B().parts[pm[1]].components; // まとめたパーツの内訳も外す
+      if (/\.(g|name)$/.test(t.dataset.path)) delete B().parts[pm[1]].components, delete B().parts[pm[1]].shop; // まとめたパーツの内訳・カタログの値段も外す
     }
     setPath(t.dataset.path, t.value, parseFloat(t.dataset.scale || "1"));
     if (t.dataset.path.startsWith("body.") || t.dataset.path === "goal") suggestion = null;
@@ -1344,6 +1579,17 @@
     }
     renderTools();
   }
+
+  // ほかの端末で変えたガレージが届いたら、読み直して描き直す(入力中は待つ)
+  if (typeof Sync !== "undefined")
+    Sync.onUpdate((e) => {
+      if (!(e.changed && (e.changed.includes("garage") || e.changed.includes("profile"))) && !e.photos) return;
+      const a = document.activeElement;
+      if (a && /INPUT|SELECT|TEXTAREA/.test(a.tagName) && !e.photos) return;
+      if (e.changed && e.changed.includes("garage")) G = loadGarage();
+      renderAll();
+      refresh3D();
+    });
 
   renderAll();
   refresh3D();

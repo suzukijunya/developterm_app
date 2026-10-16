@@ -1194,3 +1194,9 @@ h2 {
 a.tab {
   text-decoration: none;
 }
+
+/* 端末どうしの同期 */
+.sync-card .sync-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.sync-card .sync-steps { padding-left: 1.3em; margin: 8px 0; line-height: 1.6; }
+.sync-card .sync-token { width: 100%; box-sizing: border-box; padding: 10px; margin: 6px 0 10px; border-radius: 8px; border: 1px solid var(--line, #ccc); font: inherit; background: var(--card, #fff); color: inherit; }
+.sync-card code { font-size: 0.9em; }

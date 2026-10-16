@@ -249,6 +249,106 @@ const View3D = (() => {
     stand.add(clampM);
     stand.traverse((o) => o.isMesh && (o.castShadow = true));
     envGroup.add(stand);
+    buildClerk();
+  }
+
+  // 店員さん(メカニック)。タップすると相談できる
+  let clerkGroup = null;
+  let clerkArm = null;
+  let clerkTap = null;
+  let clerkWave = 0;
+  function buildClerk() {
+    const THREE = T();
+    const g = new THREE.Group();
+    g.name = "clerk";
+    const skin = mat(0xf1c6a0, { roughness: 0.7 });
+    const pants = mat(0x2b2f38, { roughness: 0.85 });
+    const shirt = mat(0xb9c4d4, { roughness: 0.8 });
+    const apronTex = canvasTexture(256, (c, sz) => {
+      c.fillStyle = "#0a3d91";
+      c.fillRect(0, 0, sz, sz);
+      c.fillStyle = "#ffffff";
+      c.font = `bold ${sz * 0.13}px sans-serif`;
+      c.textAlign = "center";
+      c.fillText("MECHANIC", sz / 2, sz * 0.3);
+      c.font = `${sz * 0.22}px sans-serif`;
+      c.fillText("🔧", sz / 2, sz * 0.62);
+    });
+    const apron = new THREE.MeshStandardMaterial({ map: apronTex, roughness: 0.9 });
+    const cyl = (r1, r2, h, m, y, x = 0, z = 0) => {
+      const o = new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, 16), m);
+      o.position.set(x, y, z);
+      g.add(o);
+      return o;
+    };
+    for (const s of [-1, 1]) {
+      cyl(0.065, 0.055, 0.8, pants, 0.42, s * 0.09);
+      const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.06, 0.24), mat(0x15171c));
+      shoe.position.set(s * 0.09, 0.03, 0.04);
+      g.add(shoe);
+    }
+    cyl(0.16, 0.15, 0.18, pants, 0.86);
+    cyl(0.19, 0.16, 0.5, shirt, 1.18);
+    const shoulders = new THREE.Mesh(new THREE.SphereGeometry(0.19, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), shirt);
+    shoulders.position.y = 1.42;
+    shoulders.scale.y = 0.45;
+    g.add(shoulders);
+    const ap = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.62), apron);
+    ap.position.set(0, 1.04, 0.172);
+    g.add(ap);
+    cyl(0.05, 0.055, 0.1, skin, 1.5);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.11, 24, 18), skin);
+    head.position.y = 1.62;
+    head.scale.set(0.95, 1.05, 1);
+    g.add(head);
+    for (const s of [-1, 1]) {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.012, 8, 6), mat(0x111111));
+      eye.position.set(s * 0.038, 1.64, 0.1);
+      g.add(eye);
+    }
+    const capM = mat(0x0a3d91, { roughness: 0.6 });
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.118, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), capM);
+    cap.position.y = 1.66;
+    g.add(cap);
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.012, 20, 1, false, -Math.PI / 2, Math.PI), capM);
+    brim.position.set(0, 1.665, 0.08);
+    g.add(brim);
+    // 腕: 左は下ろしてレンチを持つ、右は手を振れるように肩を中心に回す
+    const armL = new THREE.Group();
+    armL.position.set(-0.21, 1.4, 0);
+    const ual = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.045, 0.56, 12), shirt);
+    ual.position.y = -0.28;
+    armL.add(ual);
+    const handL = new THREE.Mesh(new THREE.SphereGeometry(0.045, 12, 10), skin);
+    handL.position.y = -0.6;
+    armL.add(handL);
+    const wrench = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.24, 0.01), mat(0xc9ced6, { metalness: 0.9, roughness: 0.25 }));
+    wrench.position.set(0, -0.7, 0.03);
+    armL.add(wrench);
+    armL.rotation.z = -0.08;
+    g.add(armL);
+    clerkArm = new THREE.Group();
+    clerkArm.position.set(0.21, 1.4, 0);
+    const uar = ual.clone();
+    clerkArm.add(uar);
+    const handR = handL.clone();
+    clerkArm.add(handR);
+    clerkArm.rotation.z = 0.08;
+    g.add(clerkArm);
+    g.traverse((o) => o.isMesh && (o.castShadow = true));
+    // 前輪の向こう側に立って、少しバイクの方を向く(スマホの横長でない画面でも見える位置)
+    g.position.set(1.05, 0, -1.05);
+    g.rotation.y = -0.35;
+    envGroup.add(g);
+    clerkGroup = g;
+  }
+
+  // 店員さんをタップしたときに呼ぶ関数
+  function onClerk(fn) {
+    clerkTap = fn;
+  }
+  function waveClerk(sec = 2.5) {
+    clerkWave = sec;
   }
 
   function canvasTexture(size, draw, h) {
@@ -734,6 +834,7 @@ const View3D = (() => {
     const sGeo = new THREE.ExtrudeGeometry(sh, { depth: 0.018, bevelEnabled: true, bevelThickness: 0.008, bevelSize: 0.007, bevelSegments: 4, curveSegments: 16 });
     sGeo.rotateX(-Math.PI / 2);
     const saddle = new THREE.Mesh(sGeo, mat(COLORS.saddle, { roughness: 0.65 }));
+    saddle.userData.decal = true; // 写真を貼るのはサドルの本体だけ(レールは貼らない)
     saddle.position.set(bk.saddleTop.x - 0.015, bk.saddleTop.y - 0.026, 0);
     gsd.add(saddle);
     for (const s of [-1, 1]) gsd.add(tube({ x: bk.saddleTop.x - 0.09, y: bk.saddleTop.y - 0.03, z: s * 0.02 }, { x: bk.saddleTop.x + 0.08, y: bk.saddleTop.y - 0.03, z: s * 0.012 }, 0.0035, metal));
@@ -1089,7 +1190,7 @@ const View3D = (() => {
         x = ce.x + (x - ce.x) * shrink;
         y = ce.y + (y - ce.y) * shrink;
       }
-      const [u, w] = fn(x, y);
+      const [u, w] = fn(x, y, v.z);
       uv[i * 2] = u;
       uv[i * 2 + 1] = w;
     }
@@ -1128,6 +1229,54 @@ const View3D = (() => {
           if (highlightId) highlight(highlightId);
         });
       }
+    }
+    // 2点の対応(回転・拡大・移動)で、平面の座標 [h, v] → 写真のピクセルを求める。
+    // 複素数で 写真 = A + (B − A) / (b − a) × (p − a)。写真は下向きが+なので、向きは座標の取り方で合わせる
+    const similar = (a, b, A, B, d) => {
+      const mx = b[0] - a[0], my = b[1] - a[1];
+      const ix = B.x - A.x, iy = B.y - A.y;
+      const den = mx * mx + my * my || 1;
+      const kr = (ix * mx + iy * my) / den, ki = (iy * mx - ix * my) / den;
+      return (h, v) => {
+        const px = h - a[0], py = v - a[1];
+        return [(A.x + kr * px - ki * py) / d.w, 1 - (A.y + ki * px + kr * py) / d.h];
+      };
+    };
+    const paintGroups = (ids, url, fn, filter, opts) =>
+      loadTex(url, (tex) => {
+        if (bikeGroup !== owner) return;
+        for (const id of ids) {
+          const g = groups[id];
+          if (!g) continue;
+          g.traverse((o) => {
+            if (!o.isMesh || o.isInstancedMesh || (filter && !filter(o))) return;
+            projectUV(o, g, fn, 0);
+            o.material = photoMaterial(tex, opts);
+            o.userData.baseEmissive = o.material.emissive.clone();
+            o.userData.baseEmissiveI = 1;
+          });
+        }
+        if (highlightId) highlight(highlightId);
+      });
+    // サドル: 上から撮った写真の、先端と後ろの端の中心
+    if (decals.saddle && decals.saddle.pts && groups.saddle) {
+      const d = decals.saddle;
+      const x0 = bk.saddleTop.x - 0.015;
+      const tail = [x0 - 0.137, 0], nose = [x0 + 0.155, 0];
+      // 写真で先端が上なら、乗る人の右(z+)は写真の右
+      const f = similar(tail, nose, d.pts.tail, d.pts.nose, d);
+      paintGroups(["saddle"], d.url, (x, y, z) => f(x, z), (o) => o.userData.decal, { clearcoat: 0.3, roughness: 0.55 });
+    }
+    // ハンドル・バーテープ: 正面から撮った写真の、左右のドロップの下の端
+    for (const id of ["handlebar", "bartape"]) {
+      const d = decals[id];
+      if (!d || !d.pts || !groups[id]) continue;
+      const hw = bk.p.barWidth / 2 + 0.015;
+      const yEnd = bk.barClamp.y - bk.p.barDrop + 0.01;
+      // 正面から見ると、乗る人の右(z+)は写真の左、上(y+)は写真の上
+      const f = similar([hw, yEnd], [-hw, yEnd], d.pts.barL, d.pts.barR, d);
+      // ハンドルだけ貼るときは、ステム込み(一体型)の部分にも貼る
+      paintGroups([id], d.url, (x, y, z) => f(z, y), null, id === "bartape" ? { clearcoat: 0, roughness: 0.9 } : {});
     }
     if (decals.wheels && decals.wheels.pts) {
       const d = decals.wheels;
@@ -1292,9 +1441,11 @@ const View3D = (() => {
     const pts = new Map();
     let lastDist = 0;
     el.style.touchAction = "none";
+    let down = null;
     el.addEventListener("pointerdown", (e) => {
       el.setPointerCapture(e.pointerId);
       pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      down = pts.size === 1 ? { x: e.clientX, y: e.clientY } : null;
       cam.azGoal = cam.elGoal = undefined;
     });
     el.addEventListener("pointermove", (e) => {
@@ -1313,6 +1464,15 @@ const View3D = (() => {
       }
     });
     const end = (e) => {
+      // 動かさずに離したらタップ: 店員さんに当たったか調べる
+      if (e.type === "pointerup" && down && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 8 && clerkGroup && clerkTap) {
+        const THREE = T();
+        const r = renderer.domElement.getBoundingClientRect();
+        const ray = new THREE.Raycaster();
+        ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
+        if (ray.intersectObject(clerkGroup, true).length) clerkTap();
+      }
+      down = null;
       pts.delete(e.pointerId);
       if (pts.size < 2) lastDist = 0;
     };
@@ -1335,6 +1495,14 @@ const View3D = (() => {
     const now = performance.now();
     const dt = Math.min(0.05, (now - lastT) / 1000);
     lastT = now;
+    // 店員さん: ゆっくり揺れる・手を振る
+    if (clerkGroup) {
+      clerkGroup.position.y = Math.sin(now / 900) * 0.004;
+      if (clerkWave > 0) {
+        clerkWave -= dt;
+        clerkArm.rotation.z = 2.6 + Math.sin(now / 120) * 0.35;
+      } else clerkArm.rotation.z += (0.08 - clerkArm.rotation.z) * Math.min(1, dt * 6);
+    }
     if (!state) return renderer.render(scene, camera);
     const THREE = T();
     // ペダリング(約85rpm)
@@ -1395,5 +1563,5 @@ const View3D = (() => {
     if (renderer) renderer.dispose();
   }
 
-  return { create, setModel, setRider, setFlow, setPedaling, setExploded, highlight, clearHighlight, animateMount, setView, resize, dispose };
+  return { onClerk, waveClerk, create, setModel, setRider, setFlow, setPedaling, setExploded, highlight, clearHighlight, animateMount, setView, resize, dispose };
 })();

@@ -65,6 +65,26 @@ const Measure = (() => {
       ],
       bones: [["hub", "rimEdge"]],
     },
+    saddleAlign: {
+      title: "サドルの写真を3Dに貼る",
+      raw: true,
+      tips: [],
+      points: [
+        { k: "nose", label: "サドルの先端(いちばん前)" },
+        { k: "tail", label: "サドルの後ろの端(真ん中)" },
+      ],
+      bones: [["nose", "tail"]],
+    },
+    barAlign: {
+      title: "ハンドルの写真を3Dに貼る",
+      raw: true,
+      tips: [],
+      points: [
+        { k: "barL", label: "写真の左側のドロップの下の端" },
+        { k: "barR", label: "写真の右側のドロップの下の端" },
+      ],
+      bones: [["barL", "barR"]],
+    },
   };
 
   // 3点の対応から、バイクの座標(x右・y上、m)→写真のピクセルへの変換(アフィン変換)を求める
