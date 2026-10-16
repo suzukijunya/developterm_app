@@ -162,7 +162,35 @@
       <button class="g-tool ${exploded ? "on" : ""}" data-tool="explode">💥 分解</button>
       <button class="g-tool ${pedaling ? "on" : ""}" data-tool="pedal">${pedaling ? "⏸" : "▶"} ペダル</button>
       <button class="g-tool ${flow ? "on" : ""}" data-tool="flow" ${mode === "ride" ? "" : "disabled"}>💨 流れ</button>
-      <button class="g-tool" data-tool="view">👁 ${VIEWS[viewIdx].label}</button>`;
+      <button class="g-tool" data-tool="view">👁 ${VIEWS[viewIdx].label}</button>
+      ${has3D ? `<button class="g-tool ${photoOn ? "on" : ""}" data-tool="photo">📸 写真</button>` : ""}`;
+  }
+
+  // 写真モード(光を何百回も計算して、写真のように描く)
+  let photoOn = false;
+  function photoStatus(st) {
+    let el2 = document.getElementById("photo-st");
+    if (!st.on && !st.loading && !st.error) {
+      if (el2) el2.remove();
+      if (photoOn) (photoOn = false), renderTools();
+      return;
+    }
+    if (!el2) {
+      stage.insertAdjacentHTML("beforeend", `<div class="g-photo-st" id="photo-st"></div>`);
+      el2 = document.getElementById("photo-st");
+    }
+    if (st.error) {
+      el2.textContent = "⚠️ " + st.error;
+      photoOn = false;
+      renderTools();
+      return;
+    }
+    const pct = Math.min(100, Math.round((st.samples / st.max) * 100));
+    el2.innerHTML = st.loading
+      ? "📸 写真モードを準備しています…"
+      : st.moving
+        ? "📸 動かすのを止めると、写真のように描き始めます"
+        : `📸 ${st.samples < st.max ? "光を計算中" : "完成"} <b>${pct}%</b><i style="width:${pct}%"></i>`;
   }
 
   function renderSummary() {
@@ -356,6 +384,7 @@
           ${photoTag(f.photoId, "g-photo-img")}
           <label class="btn sub g-file">📷 写真を${f.photoId ? "変える" : "追加"}<input type="file" accept="image/*" id="lf-photo" hidden /></label>
         </div>
+        ${webPhotoHtml(f)}
         ${
           f.photoId && DECAL_SLOTS.includes(f.slot)
             ? `<div class="g-decal">
@@ -386,6 +415,111 @@
         </div>
         ${f.id ? `<button class="link danger" id="lf-delete">このマイパーツを削除</button>` : ""}
       </section>`;
+  }
+
+  // マイパーツのフォームに写真を入れる(ファイル・ネットの画像・貼り付けた画像)
+  async function setFormPhoto(file) {
+    if (!libForm) return;
+    try {
+      const form = libForm;
+      const blob = await Library.resize(file, 2400); // ロゴの文字まで見えるよう大きめに残す
+      const id = "ph" + Date.now().toString(36);
+      await Library.putPhoto(id, blob);
+      if (libForm !== form) return; // 写真の準備中にフォームを閉じた
+      if (libForm.photoId) Library.deletePhoto(libForm.photoId);
+      libForm.photoId = id;
+      libForm.decal = null; // 写真が変わったら位置合わせもやり直し
+      libForm.web = null;
+      photoUrls[id] = URL.createObjectURL(blob);
+      // フレームの写真なら、色を拾ってフレームの色にする
+      if (libForm.slot === "frame") libForm.color = await Library.dominantColor(blob).catch(() => null);
+    } catch (err) {
+      alert("写真を保存できませんでした");
+      return renderPanel();
+    }
+    renderPanel();
+    // ロゴ・塗装を3Dに貼れる部位なら、そのまま位置合わせへ
+    if (DECAL_SLOTS.includes(libForm.slot)) return startDecal();
+  }
+
+  // ---------- ネットから写真を探す ----------
+  const webQuery = (f) => [f.brand, f.model, f.year].map((x) => String(x || "").trim()).filter(Boolean).join(" ");
+
+  // Wikimedia Commons(自由に使える写真の集まり)から探す
+  async function searchWebPhotos() {
+    const f = libForm;
+    const q = webQuery(f);
+    if (!q) return alert("先にメーカーかモデル名を入力してください");
+    f.web = { status: "loading", q, items: [] };
+    renderPanel();
+    try {
+      const url =
+        "https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=6&gsrlimit=12" +
+        "&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=320&gsrsearch=" +
+        encodeURIComponent(q + " filetype:bitmap");
+      const data = await (await fetch(url)).json();
+      const pages = Object.values((data.query && data.query.pages) || {}).sort((a, b) => (a.index || 0) - (b.index || 0));
+      const strip = (h) => String(h || "").replace(/<[^>]*>/g, "").trim();
+      f.web.items = pages
+        .map((p) => p.imageinfo && p.imageinfo[0])
+        .filter((ii) => ii && ii.thumburl)
+        .map((ii) => ({
+          thumb: ii.thumburl,
+          url: ii.url,
+          page: ii.descriptionurl,
+          credit: [strip(ii.extmetadata && ii.extmetadata.Artist && ii.extmetadata.Artist.value), strip(ii.extmetadata && ii.extmetadata.LicenseShortName && ii.extmetadata.LicenseShortName.value)].filter(Boolean).join(" / "),
+        }));
+      f.web.status = f.web.items.length ? "ok" : "none";
+    } catch (e) {
+      f.web.status = "error";
+    }
+    if (libForm === f) renderPanel();
+  }
+
+  // 画像のURLから取り込む。そのまま読めなければ、画像の中継サービス(wsrv.nl)を通す
+  async function photoFromUrl(url) {
+    const tryFetch = async (u) => {
+      const res = await fetch(u, { mode: "cors" });
+      if (!res.ok) throw new Error(res.status);
+      const b = await res.blob();
+      if (!/^image\//.test(b.type)) throw new Error("not image");
+      return b;
+    };
+    let blob;
+    try {
+      blob = await tryFetch(url);
+    } catch (e) {
+      blob = await tryFetch("https://wsrv.nl/?output=jpg&w=2400&url=" + encodeURIComponent(url.replace(/^https?:\/\//, "")));
+    }
+    return setFormPhoto(blob);
+  }
+
+  function webPhotoHtml(f) {
+    const q = webQuery(f);
+    const g = "https://www.google.com/search?tbm=isch&q=" + encodeURIComponent(q || Parts.slotName(f.slot));
+    const w = f.web;
+    return `<div class="g-web">
+      <div class="g-web-btns">
+        <button class="btn sub" id="lf-web">🔎 ネットで写真を探す</button>
+        <button class="btn sub" id="lf-url">🌐 画像のURLから</button>
+        <button class="btn sub" id="lf-clip">📋 コピーした画像を貼る</button>
+      </div>
+      <p class="muted small">見つからないときは <a href="${g}" target="_blank" rel="noopener">Google画像検索</a> で、横から撮った写真を長押し(右クリック)→「画像をコピー」してから「📋 コピーした画像を貼る」を押してください。メーカーの商品ページの画像も同じように使えます(個人で見る用途に)。</p>
+      ${
+        w
+          ? w.status === "loading"
+            ? `<p class="small">「${esc(w.q)}」を探しています…</p>`
+            : w.status === "error"
+              ? `<p class="notice warn small">検索できませんでした。通信状況を確かめてください</p>`
+              : w.status === "none"
+                ? `<p class="small">「${esc(w.q)}」の自由に使える写真は見つかりませんでした。上の Google画像検索を使ってください</p>`
+                : `<p class="small">Wikimedia Commons の写真(自由に使えるもの)。タップで取り込みます</p>
+                   <div class="g-web-grid">${w.items
+                     .map((it, i) => `<button class="g-web-item" data-web-pick="${i}"><img src="${esc(it.thumb)}" alt="" loading="lazy" /><small>${esc(it.credit || "")}</small></button>`)
+                     .join("")}</div>`
+          : ""
+      }
+    </div>`;
   }
 
   // 写真のデザインを3Dに貼る: 写真の上で基準の点をタップする
@@ -1091,6 +1225,29 @@
   }
 
   // ---------- パネルの描画と操作 ----------
+  // 選んだ部位に実物の写真があれば、3Dの上に写真のカードを出す(どのモデルか一目でわかるように)
+  async function renderPartCard() {
+    if (!has3D) return;
+    let card = document.getElementById("partcard");
+    const p = selected && tab === "parts" ? B().parts[selected] : null;
+    const it = p && p.libId ? libItem(p.libId) : null;
+    if (!it || !it.photoId) {
+      if (card) card.remove();
+      return;
+    }
+    let url = photoUrls[it.photoId];
+    if (!url) {
+      const blob = await Library.getPhoto(it.photoId).catch(() => null);
+      if (!blob) return;
+      url = photoUrls[it.photoId] = URL.createObjectURL(blob);
+    }
+    if (!card) {
+      stage.insertAdjacentHTML("beforeend", `<div class="g-partcard" id="partcard"></div>`);
+      card = document.getElementById("partcard");
+    }
+    card.innerHTML = `<img src="${url}" alt="" /><span>${esc(Library.displayName(it))}</span>`;
+  }
+
   // ---------- 店員さん ----------
   // 部位ごとの具体的なモデル(重さ・中古相場)
   function catalogHtml(id) {
@@ -1157,11 +1314,18 @@
       return `<div class="g-plan-row">
         <div class="g-plan-n">${idx}</div>
         <div class="g-plan-body">
-          <small>${esc(Parts.slotName(it.slot))}</small><strong>${esc(it.name)}</strong>
+          <small>${esc(Parts.slotName(it.slot))}${x.pinned ? ` <em class="g-mine">あなたが選んだ候補</em>` : ""}</small><strong>${esc(it.name)}</strong>
           <div class="g-plan-meta"><b>${x.reason ? esc(x.reason) : "—"}</b><span>${esc(Catalog.priceText(it))}</span></div>
+          ${
+            x.alts && x.alts.length > 1
+              ? `<label class="g-field g-alt"><span>ほかの候補</span><select data-clerk-alt="${x.key}">${x.alts
+                  .map((a) => `<option value="${a.item.id}" ${a.item.id === it.id ? "selected" : ""}>${esc(a.item.name)}(${a.saving > 0 ? `−${a.saving}g・` : ""}${Catalog.yen(a.cost)})</option>`)
+                  .join("")}</select></label>`
+              : ""
+          }
           <p class="small muted">${esc(it.note)}</p>
           ${it.needsShop ? `<p class="notice warn small">取り付けの前に、お店で合うか確かめてください</p>` : ""}
-          <div class="g-plan-btns">${inNext ? `<span class="g-tag">NEWに入っています</span>` : `<button class="btn sub" data-clerk-next="${it.id}">NEWに入れる</button>`}<button class="link" data-clerk-bought="${it.id}">買って付けた</button></div>
+          <div class="g-plan-btns">${inNext ? `<span class="g-tag">NEWに入っています</span>` : `<button class="btn sub" data-clerk-next="${it.id}">NEWに入れる</button>`}<button class="link" data-clerk-bought="${it.id}">買って付けた</button><button class="link danger" data-clerk-skip="${x.key}">この部位は替えない</button></div>
         </div></div>`;
     };
     const plan = ctx.plan;
@@ -1172,7 +1336,19 @@
           ${plan.items.length ? plan.items.map((x, i) => row(x, i + 1)).join("") : `<p class="muted">このご予算と目的で、今のバイクに効くパーツが見つかりませんでした。ご予算か目的を変えてみてください。</p>`}
           ${plan.items.length ? `<p class="g-plan-sum">ぜんぶ替えると <strong>−${plan.saved.toLocaleString()}g</strong>(${ctx.bikeKg.toFixed(2)} → ${(ctx.bikeKg - plan.saved / 1000).toFixed(2)}kg)</p>
             <button class="btn start" data-clerk="build">まとめてNEWに組む(3Dで見る)</button>` : ""}
+          ${plan.over ? `<p class="notice warn small">選んだ候補で、ご予算を ${Catalog.yen(plan.over)} 超えています</p>` : ""}
           ${plan.later.length ? `<p class="g-sub">ご予算が増えたら</p>${plan.later.map((x) => `<p class="small">・${esc(x.item.name)} ${x.reason ? `(${esc(x.reason)})` : ""} ${esc(Catalog.priceText(x.item))}</p>`).join("")}` : ""}
+          ${
+            plan.others.length
+              ? `<details class="g-cat"><summary>➕ ほかの部位も選ぶ(${plan.others.length})</summary>${plan.others
+                  .map(
+                    (o) => `<div class="g-cat-row"><div><small>${esc(Parts.slotName(o.slot))}${o.skipped ? "(替えないにしています)" : ""}</small><strong>${esc(o.best.item.name)}</strong><small>${o.reason ? esc(o.reason) + "・" : ""}${esc(Catalog.priceText(o.best.item))}</small></div>
+                      <button class="btn sub" data-clerk-add="${o.key}" data-item="${o.best.item.id}">加える</button></div>`
+                  )
+                  .join("")}</details>`
+              : ""
+          }
+          ${c.hearing.choices && Object.keys(c.hearing.choices).length ? `<button class="link" data-clerk="auto">選んだ候補をやめて、おまかせに戻す</button>` : ""}
           <p class="muted small">重さは公称値などの目安、価格は2026年10月時点の目安です。「買って付けた」を押すと装着済みに反映して、次の一手を考え直します。</p>
           <button class="link" data-clerk="edit">相談し直す</button>
         </section>`
@@ -1233,7 +1409,7 @@
     const goals = [...document.querySelectorAll("[data-hear-goal]")].filter((x) => x.checked).map((x) => x.dataset.hearGoal);
     const budget = Math.max(1000, +document.getElementById("hear-budget").value || 30000);
     const usedOk = document.getElementById("hear-used").checked;
-    c.hearing = { budget, goals: goals.length ? goals : ["light"], usedOk };
+    c.hearing = { budget, goals: goals.length ? goals : ["light"], usedOk, choices: (c.hearing && c.hearing.choices) || undefined };
   }
 
   function renderPanel() {
@@ -1241,6 +1417,7 @@
     panel.innerHTML = tab === "parts" ? partsPanel() : tab === "fit" ? fitPanel() : tab === "aero" ? aeroPanel() : tab === "clerk" ? clerkPanel() : comparePanel();
     if (tab === "aero") drawSilhouette();
     if (tab === "parts") loadPhotos();
+    renderPartCard();
     if (typeof Sync !== "undefined" && tab === "parts") {
       panel.insertAdjacentHTML("beforeend", Sync.panelHtml());
       Sync.bindPanel(panel, renderPanel);
@@ -1286,6 +1463,31 @@
   el.addEventListener("click", (e) => {
     const t = e.target.closest("button");
     if (!t) return;
+    if (t.id === "lf-web") return searchWebPhotos();
+    if (t.dataset.webPick && libForm && libForm.web) {
+      const it = libForm.web.items[+t.dataset.webPick];
+      if (!it) return;
+      t.disabled = true;
+      return photoFromUrl(it.url).catch(() => alert("この写真を取り込めませんでした"));
+    }
+    if (t.id === "lf-url") {
+      const u = prompt("画像のURL(https://…で始まるもの)を貼り付けてください");
+      if (!u || !/^https?:\/\//.test(u.trim())) return;
+      return photoFromUrl(u.trim()).catch(() => alert("この画像を取り込めませんでした。画像を長押しして「画像をコピー」し、「📋 コピーした画像を貼る」を試してください"));
+    }
+    if (t.id === "lf-clip") {
+      if (!navigator.clipboard || !navigator.clipboard.read) return alert("この端末では、ここから貼り付けられません。入力欄を長押しして「ペースト」してください");
+      return navigator.clipboard
+        .read()
+        .then(async (items) => {
+          for (const it of items) {
+            const type = it.types.find((x) => /^image\//.test(x));
+            if (type) return setFormPhoto(await it.getType(type));
+          }
+          alert("コピーした画像が見つかりませんでした。画像を長押し(右クリック)して「画像をコピー」してください");
+        })
+        .catch(() => alert("貼り付けを許可してください(またはパソコンなら Ctrl+V で貼り付けられます)"));
+    }
     if (t.dataset.decalLib) {
       openLibForm(null, t.dataset.decalLib);
       return startDecal();
@@ -1303,6 +1505,19 @@
       renderPanel();
       if (has3D) View3D.waveClerk();
       return;
+    }
+    if (t.dataset.clerkSkip || t.dataset.clerkAdd) {
+      const h = clerkState().hearing;
+      h.choices = h.choices || {};
+      if (t.dataset.clerkSkip) h.choices[t.dataset.clerkSkip] = "none";
+      else h.choices[t.dataset.clerkAdd] = t.dataset.item;
+      changed(false);
+      return renderPanel();
+    }
+    if (t.dataset.clerk === "auto") {
+      delete clerkState().hearing.choices;
+      changed(false);
+      return renderPanel();
     }
     if (t.dataset.clerk === "edit") {
       clerkState().editing = true;
@@ -1438,6 +1653,12 @@
         viewIdx = (viewIdx + 1) % VIEWS.length;
         if (has3D) View3D.setView(VIEWS[viewIdx].id);
       }
+      if (k === "photo" && has3D) {
+        photoOn = !photoOn;
+        // 写真モードは止まった姿を描く(ペダル・空気の流れは止める)
+        if (photoOn && pedaling) (pedaling = false), View3D.setPedaling(false);
+        View3D.setPhotoreal(photoOn, photoStatus);
+      }
       renderTools();
     } else if (t.dataset.slot) {
       selected = selected === t.dataset.slot ? null : t.dataset.slot;
@@ -1517,6 +1738,15 @@
 
   // 入力欄・選択欄の変更
   // マイパーツの入力欄(描き直さずにフォームの内容だけ更新する)
+  // マイパーツの入力中に画像を貼り付けたら(Ctrl+V など)、その写真にする
+  document.addEventListener("paste", (e) => {
+    if (!libForm || !e.clipboardData) return;
+    const item = [...e.clipboardData.items].find((x) => /^image\//.test(x.type));
+    if (!item) return;
+    e.preventDefault();
+    setFormPhoto(item.getAsFile());
+  });
+
   el.addEventListener("input", (e) => {
     const t = e.target;
     if (t.dataset.imp && importRev) {
@@ -1550,29 +1780,14 @@
       return;
     }
     if (t.dataset.lf) return;
-    if (t.id === "lf-photo" && t.files && t.files[0] && libForm) {
-      try {
-        const form = libForm;
-        const blob = await Library.resize(t.files[0], 2400); // ロゴの文字まで見えるよう大きめに残す
-        const id = "ph" + Date.now().toString(36);
-        await Library.putPhoto(id, blob);
-        if (libForm !== form) return; // 写真の準備中にフォームを閉じた
-        if (libForm.photoId) Library.deletePhoto(libForm.photoId);
-        libForm.photoId = id;
-        libForm.decal = null; // 写真が変わったら位置合わせもやり直し
-        photoUrls[id] = URL.createObjectURL(blob);
-        // フレームの写真なら、色を拾ってフレームの色にする
-        if (libForm.slot === "frame") libForm.color = await Library.dominantColor(blob).catch(() => null);
-      } catch (err) {
-        alert("写真を保存できませんでした");
-        return renderPanel();
-      }
-      renderPanel();
-      // ロゴ・塗装を3Dに貼れる部位なら、そのまま位置合わせへ
-      if (DECAL_SLOTS.includes(libForm.slot)) return startDecal();
-      return;
-    }
+    if (t.id === "lf-photo" && t.files && t.files[0] && libForm) return setFormPhoto(t.files[0]);
     if (t.id === "lib-import" && t.files && t.files[0]) return importLibrary(t.files[0]);
+    if (t.dataset.clerkAlt) {
+      const h = clerkState().hearing;
+      h.choices = Object.assign(h.choices || {}, { [t.dataset.clerkAlt]: t.value });
+      changed(false);
+      return renderPanel();
+    }
     if (t.dataset.libPick) {
       const it = libItem(t.value);
       if (!it) return;

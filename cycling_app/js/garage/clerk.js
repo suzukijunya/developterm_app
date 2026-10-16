@@ -63,28 +63,46 @@ const Clerk = (() => {
     return "";
   }
 
-  // 予算の中で、効き目÷値段のよい順に、部位ごとに1つずつ選ぶ
+  // 部位ごとのまとまり(クランクなど一部だけ替えるものは、それぞれ別)
+  const keyOf = (item) => item.slot + (item.kind === "delta" ? ":" + item.id : "");
+
+  // 予算の中で、効き目÷値段のよい順に、部位ごとに1つずつ選ぶ。
+  // h.choices = { 部位: カタログのid(これにする) / "none"(この部位は替えない) } で、選んだものを固定して残りを選び直す
   function plan(build, h, body) {
     const usedOk = h.usedOk !== false;
     const budget = h.budget || 30000;
+    const choices = h.choices || {};
+    const mk = (item) => {
+      const v = value(item, build, h, body);
+      const c = Catalog.cost(item, usedOk);
+      return { item, value: v, cost: c, eff: v / Math.max(1, c / 10000), saving: Catalog.saving(build, item), key: keyOf(item) };
+    };
     const cands = [];
+    const all = {}; // 部位ごとの候補(付いていないもの全部。効き目の順)
     for (const item of Catalog.ITEMS) {
       if (blocked(item, build)) continue;
-      const v = value(item, build, h, body);
-      if (v <= 0.3) continue;
-      const c = Catalog.cost(item, usedOk);
-      cands.push({ item, value: v, cost: c, eff: v / Math.max(1, c / 10000), saving: Catalog.saving(build, item) });
+      const c = mk(item);
+      (all[c.key] = all[c.key] || []).push(c);
+      if (c.value > 0.3) cands.push(c);
     }
+    for (const k of Object.keys(all)) all[k].sort((a, b) => b.value - a.value || a.cost - b.cost);
+    // 自分で選んだもの(固定)
+    const pinned = [];
+    for (const [k, id] of Object.entries(choices)) {
+      if (id === "none") continue;
+      const c = (all[k] || []).find((x) => x.item.id === id);
+      if (c) pinned.push(Object.assign(c, { pinned: true }));
+    }
+    const fixed = new Set(Object.keys(choices));
     // 部位ごとに一番よいもの(ホイールなどは、予算に合う中で効き目が大きいもの)
     const best = {};
     for (const c of cands.sort((a, b) => b.value - a.value)) {
-      if (c.cost > budget) continue;
-      const key = c.item.slot + (c.item.kind === "delta" ? ":" + c.item.id : "");
-      if (!best[key] || c.eff > best[key].eff * 1.4) best[key] = c;
+      if (c.cost > budget || fixed.has(c.key)) continue;
+      if (!best[c.key] || c.eff > best[c.key].eff * 1.4) best[c.key] = c;
     }
     const list = Object.values(best).sort((a, b) => b.eff - a.eff);
-    const picked = [];
-    let left = budget;
+    const picked = pinned.slice();
+    let left = budget - pinned.reduce((a, c) => a + c.cost, 0);
     for (const c of list) {
       if (c.cost <= left) {
         picked.push(c);
@@ -93,10 +111,18 @@ const Clerk = (() => {
     }
     // 予算が余らないもの(次に買うとよいもの)
     const later = list.filter((c) => !picked.includes(c)).slice(0, 3);
+    // 替えないことにした部位・おすすめに入らなかった部位(あとから加えられる)
+    const inPlan = new Set(picked.map((c) => c.key));
+    const others = Object.keys(all)
+      .filter((k) => !inPlan.has(k))
+      .map((k) => ({ key: k, slot: all[k][0].item.slot, skipped: choices[k] === "none", best: all[k][0] }));
+    const total = picked.reduce((a, c) => a + c.cost, 0);
     return {
-      items: picked.map((c) => Object.assign(c, { reason: reason(c, body) })),
+      items: picked.map((c) => Object.assign(c, { reason: reason(c, body), alts: all[c.key] || [c] })),
       later: later.map((c) => Object.assign(c, { reason: reason(c, body) })),
-      total: budget - left,
+      others: others.map((o) => Object.assign(o, { reason: reason(o.best, body) })),
+      total,
+      over: Math.max(0, total - budget),
       saved: picked.reduce((a, c) => a + c.saving, 0),
       budget,
       usedOk,
@@ -176,7 +202,7 @@ const Clerk = (() => {
     return out.sort((a, b) => b.pri - a.pri || ((a.text.length + day) % 3) - ((b.text.length + day) % 3)).map((x) => x.text);
   }
 
-  return { GOALS, BUDGETS, MAINT, plan, maintenance, comments, blocked, totalKm };
+  return { GOALS, BUDGETS, MAINT, keyOf, plan, maintenance, comments, blocked, totalKm };
 })();
 
 if (typeof module !== "undefined") module.exports = Clerk;

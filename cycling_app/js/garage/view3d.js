@@ -119,11 +119,13 @@ const View3D = (() => {
     g.fillStyle = "rgba(235,242,255,0.95)";
     g.fillRect(1660, 260, 160, 150);
     g.filter = "none";
+    envCanvas = c;
     const tex = new THREE.CanvasTexture(c);
     tex.mapping = THREE.EquirectangularReflectionMapping;
     tex.encoding = THREE.sRGBEncoding;
     return tex;
   }
+  let envCanvas = null;
 
   function resize() {
     if (!renderer || !container) return;
@@ -134,6 +136,7 @@ const View3D = (() => {
     renderer.domElement.style.height = "100%";
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    sizePhoto();
     if (cam.auto !== false) cam.distGoal = fitDist();
   }
 
@@ -161,7 +164,7 @@ const View3D = (() => {
     });
     floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping;
     floorTex.repeat.set(6, 6);
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.5, metalness: 0.05, envMapIntensity: 0.55 }));
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(16, 16, 32, 32), new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.5, metalness: 0.05, envMapIntensity: 0.55 }));
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
     floor.name = "floor";
@@ -203,13 +206,13 @@ const View3D = (() => {
     });
     pegTex.wrapS = pegTex.wrapT = THREE.RepeatWrapping;
     pegTex.repeat.set(10, 4);
-    const wall = new THREE.Mesh(new THREE.PlaneGeometry(10, 4), new THREE.MeshStandardMaterial({ map: pegTex, roughness: 0.95 }));
+    const wall = new THREE.Mesh(new THREE.PlaneGeometry(10, 4, 20, 8), new THREE.MeshStandardMaterial({ map: pegTex, roughness: 0.95 }));
     wall.position.set(0, 2, -1.6);
     wall.receiveShadow = true;
     wall.name = "wall";
     envGroup.add(wall);
     // 横の壁(正面から見たときの背景)
-    const side = new THREE.Mesh(new THREE.PlaneGeometry(6, 4), new THREE.MeshStandardMaterial({ color: 0x3a4250, roughness: 0.95 }));
+    const side = new THREE.Mesh(new THREE.PlaneGeometry(6, 4, 12, 8), new THREE.MeshStandardMaterial({ color: 0x3a4250, roughness: 0.95 }));
     side.rotation.y = Math.PI / 2;
     side.position.set(-3.2, 2, 1.2);
     side.receiveShadow = true;
@@ -254,11 +257,11 @@ const View3D = (() => {
     stand.name = "stand";
     const sMat = new THREE.MeshStandardMaterial({ color: 0x2b2f36, metalness: 0.7, roughness: 0.35 });
     const accent = new THREE.MeshStandardMaterial({ color: 0x1f6fe5, metalness: 0.3, roughness: 0.35 });
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1, 16), sMat);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1, 16, 24), sMat);
     pole.name = "pole";
     stand.add(pole);
     for (let i = 0; i < 3; i++) {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.6, 10), sMat);
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.6, 10, 12), sMat);
       leg.name = "leg";
       leg.userData.ang = (i / 3) * Math.PI * 2;
       stand.add(leg);
@@ -298,7 +301,7 @@ const View3D = (() => {
     });
     const apron = new THREE.MeshStandardMaterial({ map: apronTex, roughness: 0.9 });
     const cyl = (r1, r2, h, m, y, x = 0, z = 0) => {
-      const o = new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, 16), m);
+      const o = new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, 16, Math.max(1, Math.ceil(h / 0.05))), m);
       o.position.set(x, y, z);
       g.add(o);
       return o;
@@ -338,7 +341,7 @@ const View3D = (() => {
     // 腕: 左は下ろしてレンチを持つ、右は手を振れるように肩を中心に回す
     const armL = new THREE.Group();
     armL.position.set(-0.21, 1.4, 0);
-    const ual = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.045, 0.56, 12), shirt);
+    const ual = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.045, 0.56, 12, 12), shirt);
     ual.position.y = -0.28;
     armL.add(ual);
     const handL = new THREE.Mesh(new THREE.SphereGeometry(0.045, 12, 10), skin);
@@ -490,10 +493,13 @@ const View3D = (() => {
     const A = V(a), B = V(b);
     const dir = new THREE.Vector3().subVectors(B, A);
     const L = dir.length();
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(rb == null ? ra : rb, ra, L, 24), material);
+    // 長いパイプは長さ方向にも区切る(細長い三角形は、写真モードの光の計算をとても遅く・不正確にする)
+    const geo = new THREE.CylinderGeometry(rb == null ? ra : rb, ra, L, 24, Math.min(80, Math.max(1, Math.ceil(L / (((2 * Math.PI * Math.max(ra, rb || ra)) / 24) * 1.5)))));
+    // 平たいパイプは形そのものを潰す(物の拡大率を縦横で変えると、写真モードの光の計算が崩れる)
+    if (flat !== 1) geo.scale(1, 1, flat), (geo.userData.flat = flat);
+    const m = new THREE.Mesh(geo, material);
     m.position.copy(A).addScaledVector(dir, 0.5);
     m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
-    if (flat !== 1) m.scale.set(1, 1, flat);
     m.userData.axis = { a: { x: a.x, y: a.y }, b: { x: b.x, y: b.y } }; // 写真を貼るときに使う中心線
     return m;
   }
@@ -613,7 +619,7 @@ const View3D = (() => {
     } else {
       // スポーク(細い棒をまとめて描く)。左右交互・接線組み
       const n = rimMm >= 40 ? 20 : 24;
-      const spokeGeo = new THREE.CylinderGeometry(0.0011, 0.0011, 1, 5);
+      const spokeGeo = new THREE.CylinderGeometry(0.0011, 0.0011, 1, 5, 10);
       const inst = new THREE.InstancedMesh(spokeGeo, mat(0x9aa3ad, { metalness: 0.9, roughness: 0.25 }), n);
       const m4 = new THREE.Matrix4();
       const up = new THREE.Vector3(0, 1, 0);
@@ -978,7 +984,7 @@ const View3D = (() => {
       const m = matFor(c.part);
       // 先細りの円柱(根元の太さ1に対して先の太さ r2/r)
       const ratio = c.r > 0 ? (c.r2 == null ? 1 : c.r2 / c.r) : 1;
-      const body = new THREE.Mesh(new THREE.CylinderGeometry(ratio, 1, 1, 20), m);
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(ratio, 1, 1, 20, 10), m);
       const e1 = new THREE.Mesh(sph, m);
       const e2 = new THREE.Mesh(sph, c.part === "thigh" ? skin : m); // 膝は素肌
       riderGroup.add(body, e1, e2);
@@ -988,7 +994,7 @@ const View3D = (() => {
     // 腰側の太さは体型で変わる(体重が多いと、胸より腰回りが太くなる)
     const sgB = state.fit.seg;
     const waistRatio = Math.max(0.78, Math.min(1.35, (sgB.r.torso[0] / sgB.r.torso[1]) * 0.9));
-    const chest = new THREE.Mesh(new THREE.CylinderGeometry(1, waistRatio, 1, 32), jersey);
+    const chest = new THREE.Mesh(new THREE.CylinderGeometry(1, waistRatio, 1, 32, 10), jersey);
     chest.name = "chest";
     riderGroup.add(chest);
     // お腹(前傾すると下側に出る)
@@ -1198,12 +1204,14 @@ const View3D = (() => {
       tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
       texLoaded[url] = tex;
       cb(tex);
+      photo.dirty = true;
     });
   }
 
   // mesh の頂点を、base(部位のグループやホイールの中心)から見た座標にして fn(x, y) → [u, v] を貼る
   function projectUV(mesh, base, fn, shrink) {
     const THREE = T();
+    mesh.userData.projected = true; // 写真の貼り方を計算した形(写真モードで作り直さない)
     const M = new THREE.Matrix4();
     for (let o = mesh; o && o !== base; o = o.parent) {
       o.updateMatrix();
@@ -1376,6 +1384,7 @@ const View3D = (() => {
     buildFlow();
     placeOnStand();
     if (highlightId) highlight(highlightId);
+    photo.dirty = true;
   }
 
   // 整備モードはスタンドに持ち上げる。乗車モードは床に置く
@@ -1413,6 +1422,7 @@ const View3D = (() => {
 
   function setRider(on) {
     anim.rider = on;
+    photo.dirty = true;
     if (riderGroup) riderGroup.visible = on;
     if (flowPoints) flowPoints.visible = anim.flow && on;
     placeOnStand();
@@ -1420,6 +1430,7 @@ const View3D = (() => {
 
   function setFlow(on) {
     anim.flow = on;
+    photo.dirty = true;
     if (flowPoints) flowPoints.visible = on && anim.rider;
   }
 
@@ -1436,6 +1447,7 @@ const View3D = (() => {
   // 部位を光らせて、カメラをそこへ寄せる
   function highlight(id, focus) {
     highlightId = id;
+    photo.dirty = true;
     for (const [gid, g] of Object.entries(groups)) {
       const on = gid === id || (id === "tubes" && gid === "tires") || (id === "stem" && !groups.stem && gid === "handlebar");
       g.traverse((o) => {
@@ -1533,6 +1545,365 @@ const View3D = (() => {
     );
   }
 
+  // ---------- 写真モード(パストレーシング) ----------
+  // 光の通り道を1画素ずつ何百回もたどって、映り込み・柔らかい影・まわりからの照り返しを計算する。
+  // 動かしている間はふつうの表示、止めると少しずつ写真のようにきれいになる。
+  const photo = { on: false, loading: null, pt: null, mat: null, quad: null, gen: null, dirty: true, still: 0, last: null, onStatus: null, error: "" };
+  const PHOTO_MAX = 600; // ここまで重ねたら止める(電池を使いすぎないように)
+
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const el = document.createElement("script");
+      el.src = src;
+      el.onload = resolve;
+      el.onerror = () => reject(new Error("load " + src));
+      document.head.appendChild(el);
+    });
+  }
+
+  // 工房の景色を、明るさの幅がある(照明がとても明るい)データにする
+  function hdrEnv() {
+    const THREE = T();
+    const W = 1024, H = 512;
+    const c = document.createElement("canvas");
+    c.width = W;
+    c.height = H;
+    const g = c.getContext("2d");
+    g.drawImage(envCanvas, 0, 0, W, H);
+    const src = g.getImageData(0, 0, W, H).data;
+    const f = new Float32Array(W * H * 4);
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const i = (y * W + x) * 4, o = ((H - 1 - y) * W + x) * 4; // 上下を合わせる
+        const r = src[i] / 255, gg = src[i + 1] / 255, b = src[i + 2] / 255;
+        const lum = 0.2126 * r + 0.7152 * gg + 0.0722 * b;
+        const boost = lum > 0.9 ? 14 : lum > 0.75 ? 3 : 1; // ライト・窓はとても明るい
+        f[o] = Math.pow(r, 2.2) * boost;
+        f[o + 1] = Math.pow(gg, 2.2) * boost;
+        f[o + 2] = Math.pow(b, 2.2) * boost;
+        f[o + 3] = 1;
+      }
+    }
+    const tex = new THREE.DataTexture(f, W, H, THREE.RGBAFormat, THREE.FloatType);
+    tex.mapping = THREE.EquirectangularReflectionMapping;
+    tex.minFilter = tex.magFilter = THREE.LinearFilter;
+    tex.needsUpdate = true;
+    return tex;
+  }
+
+  async function initPhoto() {
+    const THREE = T();
+    const v = (document.querySelector('script[src*="view3d.js"]') || {}).src || "";
+    const q = (v.match(/\?v=[^&]+/) || [""])[0];
+    await loadScript("js/vendor/three-extras.js" + q);
+    await loadScript("js/vendor/three-mesh-bvh-0.5.24.js" + q);
+    await loadScript("js/vendor/three-gpu-pathtracer-0.0.16.js" + q);
+    const P = window.ThreePathTracer;
+    // 写真モード専用の描画先(重すぎてGPUが止まっても、ふつうの3D表示は止まらないように分ける)
+    const r2 = new THREE.WebGLRenderer({ antialias: false });
+    if (!r2.capabilities.isWebGL2) throw new Error("webgl2");
+    r2.outputEncoding = renderer.outputEncoding;
+    r2.toneMapping = renderer.toneMapping;
+    r2.toneMappingExposure = renderer.toneMappingExposure;
+    r2.setPixelRatio(1);
+    const cv = r2.domElement;
+    cv.className = "g-photo-canvas";
+    Object.assign(cv.style, { position: "absolute", left: "0", top: "0", width: "100%", height: "100%", pointerEvents: "none", zIndex: "1", display: "none" });
+    container.appendChild(cv);
+    cv.addEventListener("webglcontextlost", (e) => {
+      e.preventDefault();
+      cv.style.display = "none";
+      photo.on = false;
+      photo.broken = true;
+      photo.error = "この端末のGPUでは写真モードが重すぎました(ふつうの表示に戻しました)";
+      photoStatus();
+    });
+    photo.r2 = r2;
+    const mat = new P.PhysicalPathTracingMaterial();
+    const pt = new P.PathTracingRenderer(r2);
+    pt.camera = camera;
+    pt.material = mat;
+    // スマホは1回に描く範囲を小さくして、GPUが止まらないようにする
+    const small = Math.min(window.innerWidth, window.innerHeight) < 600;
+    pt.tiles.set(small ? 3 : 2, small ? 3 : 2);
+    photo.scale = small ? 0.75 : 1;
+    mat.bounces = small ? 4 : 6;
+    mat.filterGlossyFactor = 0.4; // 細かいざらつきを抑える
+    mat.envMapInfo.updateFrom(hdrEnv());
+    mat.environmentIntensity = 1.6;
+    const quad = new THREE.FullScreenQuad(
+      P.DenoiseMaterial
+        ? new P.DenoiseMaterial({ map: pt.target.texture, blending: THREE.CustomBlending, premultipliedAlpha: r2.getContextAttributes().premultipliedAlpha })
+        : new THREE.MeshBasicMaterial({ map: pt.target.texture })
+    );
+    if (quad.material.sigma != null) Object.assign(quad.material, { sigma: 2.5, threshold: 0.05, kSigma: 1.0 });
+    Object.assign(photo, { pt, mat, quad, gen: new P.PathTracingSceneGenerator() });
+    sizePhoto();
+  }
+
+  function sizePhoto() {
+    if (!photo.pt) return;
+    const v = renderer.getDrawingBufferSize(new (T().Vector2)());
+    const w = Math.round(v.x * (photo.scale || 1)), h = Math.round(v.y * (photo.scale || 1));
+    photo.r2.setSize(w, h, false);
+    photo.pt.setSize(w, h);
+  }
+
+  // 面積がほぼ0の三角形(球の極・円すいの先など)を取り除く。光の計算で当たり判定が乱れるため
+  function dropDegenerate(g) {
+    const THREE = T();
+    const P = g.attributes.position.array, N = g.attributes.normal.array, U = g.attributes.uv.array;
+    const n = P.length / 9;
+    const keep = [];
+    for (let t = 0; t < n; t++) {
+      const i = t * 9;
+      const ax = P[i + 3] - P[i], ay = P[i + 4] - P[i + 1], az = P[i + 5] - P[i + 2];
+      const bx = P[i + 6] - P[i], by = P[i + 7] - P[i + 1], bz = P[i + 8] - P[i + 2];
+      const cx = ay * bz - az * by, cy = az * bx - ax * bz, cz = ax * by - ay * bx;
+      if (cx * cx + cy * cy + cz * cz > 1e-16) keep.push(t);
+    }
+    if (keep.length === n || g.groups.length) return g;
+    const p2 = new Float32Array(keep.length * 9), n2 = new Float32Array(keep.length * 9), u2 = new Float32Array(keep.length * 6);
+    keep.forEach((t, k) => {
+      p2.set(P.subarray(t * 9, t * 9 + 9), k * 9);
+      n2.set(N.subarray(t * 9, t * 9 + 9), k * 9);
+      u2.set(U.subarray(t * 6, t * 6 + 6), k * 6);
+    });
+    const out = new THREE.BufferGeometry();
+    out.setAttribute("position", new THREE.BufferAttribute(p2, 3));
+    out.setAttribute("normal", new THREE.BufferAttribute(n2, 3));
+    out.setAttribute("uv", new THREE.BufferAttribute(u2, 2));
+    g.dispose();
+    return out;
+  }
+
+  // 細長い三角形(長いパイプの側面など)が多いと、写真モードの当たり判定が途中で打ち切られ、黒い影やすじが出る。
+  // 形の作り方(パラメータ)がわかる形は、細かく区切って作り直す(すき間ができないように、割るのではなく作り直す)
+  // scaleLen: インスタンスなどで縦に伸ばしている倍率
+  function densify(geo, scaleLen = 1, scaleRad = 1) {
+    const THREE = T();
+    const p = geo.parameters;
+    if (!p) return null;
+    const seg = (len, cell, cap) => Math.min(cap, Math.max(1, Math.ceil(len / Math.max(cell, 1e-4))));
+    let g = null;
+    if (geo.type === "CylinderGeometry") {
+      const r = Math.max(p.radiusTop, p.radiusBottom);
+      const cell = ((2 * Math.PI * r * scaleRad) / p.radialSegments) * 1.5;
+      const hs = seg(p.height * scaleLen, cell, 120);
+      if (hs <= p.heightSegments) return null;
+      g = new THREE.CylinderGeometry(p.radiusTop, p.radiusBottom, p.height, p.radialSegments, hs, p.openEnded, p.thetaStart, p.thetaLength);
+    } else if (geo.type === "BoxGeometry") {
+      const m = Math.min(p.width, p.height, p.depth) * 1.5;
+      const ws = seg(p.width, m, 40), hs = seg(p.height, m, 40), ds = seg(p.depth, m, 40);
+      if (ws <= p.widthSegments && hs <= p.heightSegments && ds <= p.depthSegments) return null;
+      g = new THREE.BoxGeometry(p.width, p.height, p.depth, ws, hs, ds);
+    } else if (geo.type === "TorusGeometry") {
+      const cell = ((2 * Math.PI * p.tube) / p.radialSegments) * 1.5;
+      const ts = seg(p.arc * p.radius, cell, 720);
+      if (ts <= p.tubularSegments) return null;
+      g = new THREE.TorusGeometry(p.radius, p.tube, p.radialSegments, ts, p.arc);
+    } else if (geo.type === "LatheGeometry") {
+      // 断面の線を細かく区切り直し、回す方向もそれに合わせて区切る(ボトル・リムなど)
+      let maxR = 0;
+      for (const q of p.points) maxR = Math.max(maxR, q.x);
+      const around = (p.phiLength * maxR) / Math.max(p.segments, 24);
+      const step = Math.max(0.002, around);
+      const pts = [];
+      for (let i = 0; i < p.points.length; i++) {
+        const a = p.points[i];
+        if (i === 0) {
+          pts.push(a.clone());
+          continue;
+        }
+        const b = p.points[i - 1];
+        const n = Math.max(1, Math.ceil(a.distanceTo(b) / (step * 1.5)));
+        for (let k = 1; k <= n; k++) pts.push(new THREE.Vector2().lerpVectors(b, a, k / n));
+      }
+      const ss = Math.max(p.segments, Math.min(720, Math.ceil((p.phiLength * maxR) / step)));
+      if (pts.length <= p.points.length && ss <= p.segments) return null;
+      g = new THREE.LatheGeometry(pts, ss, p.phiStart, p.phiLength);
+    } else if (geo.type === "TubeGeometry") {
+      const cell = ((2 * Math.PI * p.radius) / p.radialSegments) * 1.5;
+      const ts = seg(p.path.getLength(), cell, 1500);
+      if (ts <= p.tubularSegments) return null;
+      g = new THREE.TubeGeometry(p.path, ts, p.radius, p.radialSegments, p.closed);
+    } else if (geo.type === "PlaneGeometry") {
+      const m = Math.min(p.width / p.widthSegments, p.height / p.heightSegments);
+      const ws = seg(p.width, m, 64), hs = seg(p.height, m, 64);
+      if (ws <= p.widthSegments && hs <= p.heightSegments) return null;
+      g = new THREE.PlaneGeometry(p.width, p.height, ws, hs);
+    }
+    if (!g) return null;
+    if (geo.userData.flat) g.scale(1, 1, geo.userData.flat);
+    // 写真を貼った形(uvを計算し直したもの)は作り直すと貼り方が変わるので、作り直さない
+    return g;
+  }
+
+  // 場面を光の計算用に組み直す(パーツや写真が変わったとき)。
+  // 見えている形をすべて「置き場所・向き・拡大を形そのものに焼き込んだ」複製にしてから渡す
+  // (縦横で拡大率が違う物や、同じ形をたくさん並べた物も、そのまま正しく計算できるように)
+  function rebuildPhoto() {
+    const THREE = T();
+    scene.updateMatrixWorld(true);
+    const temp = new THREE.Group();
+    const made = [];
+    const lights = [];
+    const hg = highlightId && groups[highlightId === "tubes" ? "tires" : highlightId];
+    const lit = new Set();
+    if (hg) hg.traverse((o) => o.isMesh && lit.add(o));
+    const mi = new THREE.Matrix4(), mw = new THREE.Matrix4();
+    // 形の縦(y)方向の伸び(スポークのように、長さ1の形を引き伸ばして使っているとき)
+    const scaleLen = (o, matrix) => new THREE.Vector3().setFromMatrixColumn(matrix, 1).length();
+    const bake = (o, matrix) => {
+      // 細長い三角形を減らすため、作り直せる形は細かく作り直す(写真を貼った形はそのまま)
+      const sx = new THREE.Vector3().setFromMatrixColumn(matrix, 0).length();
+      const dense = o.userData.projected ? null : densify(o.geometry, scaleLen(o, matrix), sx);
+      const src = dense || o.geometry;
+      // 頂点の番号つき・なしが混ざると、まとめるときに別の物どうしがつながってしまうので、すべて番号なしにそろえる
+      let g = src.index ? src.toNonIndexed() : src.clone();
+      if (dense) dense.dispose();
+      for (const k of Object.keys(g.attributes)) if (!["position", "normal", "uv"].includes(k)) g.deleteAttribute(k);
+      if (!g.attributes.normal) g.computeVertexNormals();
+      if (!g.attributes.uv) g.setAttribute("uv", new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
+      if (!Array.isArray(o.material)) g.clearGroups(); // 円柱のふたなどの面グループ(ない材質を見に行かないように)
+      g.applyMatrix4(matrix);
+      g = dropDegenerate(g);
+      made.push(g);
+      let m = o.material;
+      // 光らせている部位は、写真モードでは光らせない
+      if (lit.has(o) && m.emissive) {
+        m = m.clone();
+        if (o.userData.baseEmissive) m.emissive.copy(o.userData.baseEmissive);
+        m.emissiveIntensity = o.userData.baseEmissiveI != null ? o.userData.baseEmissiveI : 1;
+      }
+      temp.add(new THREE.Mesh(g, m));
+    };
+    scene.traverseVisible((o) => {
+      if (o.isInstancedMesh) {
+        for (let i = 0; i < o.count; i++) {
+          o.getMatrixAt(i, mi);
+          bake(o, mw.multiplyMatrices(o.matrixWorld, mi));
+        }
+      } else if (o.isMesh) bake(o, o.matrixWorld);
+      else if ((o.isDirectionalLight || o.isSpotLight || o.isPointLight)) lights.push(o);
+    });
+    // 撮影スタジオのような大きなソフトボックス(写真モードの計算だけで使う光)
+    for (const [x, y, z, w, h, i] of [[0.3, 2.6, 0.9, 2.4, 1.2, 9], [-1.6, 1.6, 1.6, 1.2, 1.4, 4], [1.8, 1.4, 1.4, 0.9, 1.2, 3]]) {
+      const l = new THREE.RectAreaLight(0xfff6ec, i, w, h);
+      l.position.set(x, y, z);
+      l.lookAt(0.2, 0.5, 0);
+      temp.add(l);
+    }
+    temp.updateMatrixWorld(true);
+    try {
+      const { bvh, textures, materials, lights: ls } = photo.gen.generate([temp, ...lights]);
+      const geo = bvh.geometry;
+      const m = photo.mat;
+      m.bvh.updateFrom(bvh);
+      m.attributesArray.updateFrom(geo.attributes.normal, geo.attributes.tangent, geo.attributes.uv, geo.attributes.color);
+      m.materialIndexAttribute.updateFrom(geo.attributes.materialIndex);
+      m.textures.setTextures(photo.r2, 1024, 1024, textures);
+      m.materials.updateFrom(materials, textures);
+      m.lights.updateFrom(ls);
+    } finally {
+      for (const g of made) g.dispose();
+    }
+    photo.pt.reset();
+    photo.checked = false;
+  }
+
+
+  function photoStatus(extra) {
+    if (photo.onStatus) photo.onStatus(Object.assign({ on: photo.on, samples: photo.pt ? Math.floor(photo.pt.samples) : 0, max: PHOTO_MAX, loading: !!photo.loading, error: photo.error }, extra || {}));
+  }
+
+  // 写真モードを入れる・切る。onStatus({ on, samples, loading, error, moving })
+  function setPhotoreal(on, onStatus) {
+    photo.on = on;
+    if (onStatus) photo.onStatus = onStatus;
+    photo.error = "";
+    if (on && photo.broken) {
+      photo.on = false;
+      photo.error = "この端末のGPUでは写真モードを使えませんでした";
+      return photoStatus();
+    }
+    if (on && !photo.pt && !photo.loading) {
+      photo.loading = initPhoto()
+        .catch((e) => {
+          photo.on = false;
+          photo.error = /webgl2/.test(e.message) ? "この端末では写真モードを使えません(WebGL2が必要です)" : "写真モードを読み込めませんでした";
+        })
+        .finally(() => {
+          photo.loading = null;
+          photo.dirty = true;
+          photoStatus();
+        });
+    }
+    if (on) {
+      anim.pedaling = false;
+      photo.dirty = true;
+    }
+    photoStatus();
+  }
+
+  // 写真モードで描く。動いている間は false を返す(ふつうに描く)
+  function renderPhoto(moving) {
+    const cv = photo.r2 && photo.r2.domElement;
+    if (!photo.on || !photo.pt) {
+      if (cv) cv.style.display = "none";
+      return false;
+    }
+    if (moving) {
+      cv.style.display = "none";
+      photo.still = 0;
+      photo.pt.reset();
+      if (photo.reported !== -1) (photo.reported = -1), photoStatus({ moving: true });
+      return false;
+    }
+    photo.still++;
+    if (photo.still < 4) {
+      cv.style.display = "none";
+      return false; // 止まってから少し待つ
+    }
+    if (photo.dirty) {
+      photo.dirty = false;
+      try {
+        rebuildPhoto();
+      } catch (e) {
+        console.warn("photo rebuild", e);
+        photo.on = false;
+        photo.error = "写真モードで描けませんでした";
+        photoStatus();
+        return false;
+      }
+    }
+    if (photo.pt.samples < PHOTO_MAX) {
+      camera.updateMatrixWorld();
+      photo.pt.update();
+      // 最初の数回で、ちゃんと描けているか確かめる(描けない端末では、ふつうの表示に戻す)
+      if (!photo.checked && photo.pt.samples >= 2) {
+        photo.checked = true;
+        const px = new Float32Array(4);
+        const t = photo.pt.target;
+        photo.r2.readRenderTargetPixels(t, t.width >> 1, t.height >> 1, 1, 1, px);
+        if (!(px[3] > 0)) {
+          photo.on = false;
+          photo.broken = true;
+          cv.style.display = "none";
+          photo.error = "この端末のGPUでは写真モードを使えませんでした";
+          photoStatus();
+          return false;
+        }
+      }
+    }
+    photo.quad.material.map = photo.pt.target.texture;
+    photo.quad.render(photo.r2);
+    cv.style.display = "block";
+    const n = Math.floor(photo.pt.samples);
+    if (n !== photo.reported && (n < 8 || n % 4 === 0 || n >= PHOTO_MAX)) (photo.reported = n), photoStatus();
+    return true;
+  }
+
   // ---------- 毎フレーム ----------
   function loop() {
     raf = requestAnimationFrame(loop);
@@ -1540,7 +1911,7 @@ const View3D = (() => {
     const dt = Math.min(0.05, (now - lastT) / 1000);
     lastT = now;
     // 店員さん: ゆっくり揺れる・手を振る
-    if (clerkGroup) {
+    if (clerkGroup && !photo.on) {
       clerkGroup.position.y = Math.sin(now / 900) * 0.004;
       if (clerkWave > 0) {
         clerkWave -= dt;
@@ -1549,6 +1920,9 @@ const View3D = (() => {
     }
     if (!state) return renderer.render(scene, camera);
     const THREE = T();
+    // 部品が動いている間は、止まってから光の計算用に組み直す
+    let moving = (anim.flow && anim.rider) || anim.pedaling || clerkWave > 0 || Object.keys(mountAnim).length > 0 || Math.abs(anim.explodeTarget - anim.exploded) > 0.002;
+    if (moving) photo.dirty = true;
     // ペダリング(約85rpm)
     if (anim.pedaling) {
       anim.crank = (anim.crank + dt * 510) % 360;
@@ -1581,7 +1955,7 @@ const View3D = (() => {
       g.position.set(e[0] * k, e[1] * k, e[2] * k);
     }
     // 光らせた部位はゆっくり明滅
-    if (highlightId) {
+    if (highlightId && !photo.on) {
       const pulse = 0.35 + 0.25 * Math.sin(now / 250);
       const g = groups[highlightId === "tubes" ? "tires" : highlightId];
       if (g) g.traverse((o) => o.isMesh && o.material.emissive && (o.material.emissiveIntensity = pulse));
@@ -1598,6 +1972,10 @@ const View3D = (() => {
       cam.target.z + cam.dist * Math.cos(cam.az) * Math.cos(cam.el)
     );
     camera.lookAt(cam.target);
+    // カメラが動いたか
+    const key = [camera.position.x, camera.position.y, camera.position.z, cam.target.x, cam.target.y, cam.target.z].map((x) => x.toFixed(4)).join(",");
+    if (key !== photo.last) (photo.last = key), (moving = true);
+    if (renderPhoto(moving)) return;
     renderer.render(scene, camera);
   }
 
@@ -1607,5 +1985,5 @@ const View3D = (() => {
     if (renderer) renderer.dispose();
   }
 
-  return { onClerk, waveClerk, create, setModel, setRider, setFlow, setPedaling, setExploded, highlight, clearHighlight, animateMount, setView, resize, dispose };
+  return { setPhotoreal, onClerk, waveClerk, create, setModel, setRider, setFlow, setPedaling, setExploded, highlight, clearHighlight, animateMount, setView, resize, dispose };
 })();
