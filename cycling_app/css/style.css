@@ -1190,3 +1190,7 @@ h2 {
 .live.nav-on .hero-label {
   font-size: 0.8rem;
 }
+
+a.tab {
+  text-decoration: none;
+}

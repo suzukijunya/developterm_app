@@ -28,6 +28,7 @@ const Store = (() => {
       places: [], // 目的地(最大10件) { id, name, label(住所など), lat, lon, uses(選んだ回数), trips: [到着したライドから学習した値(新しい順)] }
       lastPos: null, // 最後にわかった現在地 { lat, lon }(天気の表示用。端末の中だけに保存)
       active: null, // 記録中のライド(再読み込みしても続きから記録するため)
+      garage: null, // ガレージ(パーツ構成・フィッティング)。garage.html で作る
     };
   }
 
@@ -77,6 +78,13 @@ const Store = (() => {
     },
     get lastPos() {
       return state.lastPos;
+    },
+    get garage() {
+      return state.garage;
+    },
+    setGarage(g) {
+      state.garage = g;
+      save();
     },
     setLastPos(pos) {
       state.lastPos = { lat: pos.lat, lon: pos.lon };

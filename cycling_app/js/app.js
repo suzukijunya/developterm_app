@@ -783,6 +783,7 @@
       <nav class="tabs">
         ${tab("ride", "🚴", ride ? "走行中" : "走る")}
         ${tab("history", "📋", "記録")}
+        <a class="tab" href="garage.html"><span>🔧</span>ガレージ</a>
         ${tab("settings", "⚙️", "設定")}
       </nav>`;
     bind();
@@ -858,7 +859,7 @@
       ${destPicker()}
       <button class="btn start" id="start">ライドを開始</button>
       <p class="muted center">
-        ${Store.profile.weightKg}kg + バイク${Store.profile.bikeKg}kg + 荷物${Store.profile.cargoKg}kg・${Physics.POSTURES[Store.profile.posture].label}で計算
+        ${Store.profile.weightKg}kg + バイク${Store.profile.bikeKg}kg + 荷物${Store.profile.cargoKg}kg・${Store.profile.useGarage && Store.profile.cdaCustom ? `ガレージの空気抵抗(CdA ${Store.profile.cdaCustom})` : Physics.POSTURES[Store.profile.posture].label}で計算
         <br /><button class="link" data-view="settings">体格・バイク・目的地を変更</button>
       </p>
       <div class="status center"><span id="wake" class="pill"></span></div>
@@ -1128,6 +1129,12 @@
         ${numField("cargoKg", "荷物の重さ", "kg", p.cargoKg, 0, 30, 0.1, "通勤リュックなど")}
         <label class="field"><span>乗車姿勢</span><select name="posture">${options(Physics.POSTURES, p.posture)}</select></label>
         <label class="field"><span>路面・タイヤ</span><select name="surface">${options(Physics.SURFACES, p.surface)}</select></label>
+        ${
+          p.cdaCustom
+            ? `<label class="check"><input type="checkbox" name="useGarage" ${p.useGarage ? "checked" : ""} />
+                <span>ガレージで計算した空気抵抗を使う(CdA ${p.cdaCustom})<small>オンのときは「乗車姿勢」の代わりに、ガレージのパーツ構成とポジションから計算した値を使います</small></span></label>`
+            : `<p class="muted small">🔧 ガレージでパーツとポジションを入力すると、より正確な重さと空気抵抗を使えます</p>`
+        }
 
         <h2>天気と画面</h2>
         <label class="check"><input type="checkbox" name="wind" ${pr.wind ? "checked" : ""} />
@@ -1471,6 +1478,7 @@
       cargoKg: num("cargoKg"),
       posture: f.get("posture"),
       surface: f.get("surface"),
+      useGarage: f.get("useGarage") === "on",
     });
     Store.setPrefs({ wind: f.get("wind") === "on", wake: f.get("wake"), nav: f.get("nav") === "on", voice: f.get("voice") === "on" });
     updateWake();
@@ -1486,7 +1494,7 @@
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2026.10.20";
+  const APP_VERSION = "2026.10.22";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });
