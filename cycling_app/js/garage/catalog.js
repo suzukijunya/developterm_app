@@ -110,13 +110,7 @@ const Catalog = (() => {
       price: 9000, used: [4000, 6000],
       score: { commute: 3 }, note: "歩きやすいSPDの靴でも、普通の靴でも乗れる。通勤向け",
     },
-    // ---------- フォーク ----------
-    {
-      id: "f-carbon", slot: "fork", kind: "swap", name: "フルカーボンフォーク 1-1/8 キャリパー用 (例: Columbus Futura Caliper)", g: 380,
-      price: 35000, used: [5000, 15000],
-      score: { light: 3, comfort: 1 }, needsShop: true,
-      note: "鉄・アルミのフォークから替えると大きく軽くなる。ただしクロスバイク用より短いことが多く(前が数cm下がる)、ブレーキの台座の形も変わるので、必ずお店で確認",
-    },
+    // フォークはフレームとセット(同じモデル)で替えるので、単体ではおすすめしない
     // ---------- グループセット(一部だけ替える) ----------
     {
       id: "g-fc5700", slot: "groupset", kind: "delta", name: "クランク SHIMANO 105 FC-5700 + BB SM-BBR60", deltaG: 150, short: "105クランク(FC-5700)",

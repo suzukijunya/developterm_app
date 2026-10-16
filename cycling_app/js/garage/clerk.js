@@ -46,8 +46,6 @@ const Clerk = (() => {
     else v += save / 400;
     // 腰が痛いのに細いタイヤにするのは勧めない
     if (item.slot === "tires" && body && body.backPain && item.attrs && item.attrs.width < 28) v -= 2;
-    // カーボンフォークはクロスバイク用より短く、前が下がる(腰には逆効果になりやすい)
-    if (item.slot === "fork" && body && body.backPain) v -= 1.5;
     // 今より重くなるのに、ほかの効き目もないもの
     if (item.kind === "swap" && save <= 0 && v < 2) v = 0;
     return v;
@@ -58,7 +56,6 @@ const Clerk = (() => {
     const p = build.parts[item.slot];
     if (Catalog.installed(build, item)) return "付いています";
     if (item.slot === "tubes" && build.parts.tires && /チューブレス|tubeless/i.test(build.parts.tires.name || "")) return "チューブレスなので不要";
-    if (item.slot === "fork" && p && p.mounted !== false && (+p.g || 0) <= 450) return "もうカーボンフォーク";
     if (item.kind === "swap" && p && p.mounted !== false && (+p.g || 0) <= item.g && !(item.score && (item.score.comfort || item.score.commute))) return "今のほうが軽い";
     return "";
   }

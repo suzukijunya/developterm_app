@@ -142,7 +142,7 @@
   // 付けているパーツのうち、写真を3Dに貼るもの(写真のURLを用意する)
   async function loadDecals(build) {
     const out = {};
-    for (const slot of DECAL_SLOTS) {
+    for (const slot of Parts.SLOTS.map((x) => x.id)) {
       const p = build.parts[slot];
       if (!p || !p.decal || !p.decal.photoId || p.mounted === false) continue;
       let url = photoUrls[p.decal.photoId];
@@ -193,7 +193,9 @@
       return;
     }
     const pct = Math.min(100, Math.round((st.samples / st.max) * 100));
-    el2.innerHTML = st.retry
+    el2.innerHTML = st.hq
+      ? "📸 この端末のGPUでは光の計算が重すぎたので、高画質モード(止めると細かく描き直す)にしました"
+      : st.retry
       ? `📸 GPUに重すぎたので、軽い設定(${st.retry + 1}/3)でやり直しています…`
       : st.loading
       ? "📸 写真モードを準備しています…"
@@ -349,6 +351,7 @@
         ${selected === sl.id ? `<div class="g-editor">${editor(sl.id)}</div>` : ""}`;
     }).join("");
     return `
+      ${quickHtml()}
       ${libForm ? libFormHtml() : ""}
       ${importRev ? importHtml() : ""}
       <section class="card">
@@ -357,6 +360,155 @@
         ${rows}
       </section>
       ${libraryHtml()}`;
+  }
+
+  // ---------- 写真でパーツ登録(読み取り → 確認 → 組み込み) ----------
+  const quick = { entries: [], target: "current", aiOpen: false, busy: 0 };
+
+  function quickHtml() {
+    const rows = quick.entries
+      .map((e, i) => {
+        if (e.status === "reading")
+          return `<div class="q-row">${e.url ? `<img class="q-thumb" src="${e.url}" alt="" />` : `<span class="q-thumb"></span>`}<div class="q-body"><strong>読み取り中…</strong><small>${e.msg || ""}</small><i class="q-bar" style="width:${Math.round((e.progress || 0.1) * 100)}%"></i></div></div>`;
+        const r = e.res;
+        const conf = Math.round((r.confidence || 0) * 100);
+        return `<div class="q-row ${e.include ? "" : "off"}">
+          <div class="q-thumb" style="background-image:url('${e.url}');background-size:${(100 / Math.max(0.05, e.crop[2] - e.crop[0])).toFixed(1)}% ${(100 / Math.max(0.05, e.crop[3] - e.crop[1])).toFixed(1)}%;background-position:${((e.crop[0] / Math.max(0.0001, 1 - (e.crop[2] - e.crop[0]))) * 100).toFixed(1)}% ${((e.crop[1] / Math.max(0.0001, 1 - (e.crop[3] - e.crop[1]))) * 100).toFixed(1)}%"></div>
+          <div class="q-body">
+            <div class="q-line"><select data-q="slot" data-i="${i}">${Parts.SLOTS.map((sl) => `<option value="${sl.id}" ${sl.id === r.slot ? "selected" : ""}>${sl.icon} ${sl.name}</option>`).join("")}</select>
+              <label class="q-inc"><input type="checkbox" data-q="include" data-i="${i}" ${e.include ? "checked" : ""} />組み込む</label></div>
+            <div class="q-line"><input type="text" data-q="brand" data-i="${i}" value="${esc(r.brand || "")}" placeholder="メーカー" /><input type="text" data-q="model" data-i="${i}" value="${esc(r.model || "")}" placeholder="モデル" /></div>
+            <div class="q-line"><span class="g-in"><input type="number" inputmode="decimal" data-q="weight_g" data-i="${i}" value="${r.weight_g || ""}" placeholder="重さ" /><em>g</em></span>
+              <small class="q-conf ${conf >= 70 ? "up" : conf >= 40 ? "" : "down"}">確かさ ${conf}%</small></div>
+            <small class="muted">${esc(r.note || "")}${/^https?:/.test(r.weight_source || "") ? ` <a href="${esc(r.weight_source)}" target="_blank" rel="noopener">重さの出典</a>` : r.weight_source ? `(重さ: ${esc(r.weight_source)})` : ""}${Object.keys(r.specs || {}).length ? `<br>仕様: ${esc(Object.entries(r.specs).map(([k, v]) => k + "=" + v).join(", "))}` : ""}</small>
+          </div></div>`;
+      })
+      .join("");
+    const ready = quick.entries.filter((e) => e.status === "ok" && e.include).length;
+    return `
+      <section class="card q-card">
+        <h2>📷 写真でパーツ登録</h2>
+        <p class="small">パーツの写真(自転車全体の写真でもOK)を選ぶだけで、部位・メーカー・モデル・重さを読み取り、3Dのバイクに写真ごと組み込みます。</p>
+        <label class="btn start g-file">📷 写真を選ぶ(何枚でも)<input type="file" accept="image/*" multiple id="quick-files" hidden /></label>
+        <p class="small">${
+          AI.ready
+            ? `🤖 AIで読み取り(${AI.maskedKey})。重さはメーカーの公表値をネットで確かめます。`
+            : `🆓 無料の読み取り: 写真の文字(ロゴ・型番)とアプリのカタログから読みます。AIを使うと、刻印が読めない写真でもモデルと正確な重さがわかります。`
+        } <button class="link" data-quick="ai">AIの設定</button></p>
+        ${
+          quick.aiOpen
+            ? `<div class="q-ai">
+                <p class="small">Anthropic の API キーを入れると、Claude が写真を見てパーツを判定し、ネット検索でメーカーの公表値(重さ・仕様)を確かめます。料金は自分のアカウントに、1枚あたり約10〜30円かかります。キーは<a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">こちら</a>で作れます(この端末の中だけに保存し、同期はしません)。</p>
+                <input type="password" id="ai-key" placeholder="sk-ant-…" autocomplete="off" />
+                <div class="g-plan-btns"><button class="btn sub" data-quick="ai-save">保存</button>${AI.ready ? `<button class="link danger" data-quick="ai-off">キーを消す</button>` : ""}</div>
+              </div>`
+            : ""
+        }
+        ${rows ? `<div class="q-list">${rows}</div>` : ""}
+        ${
+          ready
+            ? `<div class="q-foot"><label class="g-field"><span>組み込む先</span><select id="quick-target"><option value="current" ${quick.target === "current" ? "selected" : ""}>装着済み(いまのバイク)</option><option value="next" ${quick.target === "next" ? "selected" : ""}>NEW</option></select></label>
+               <button class="btn start" data-quick="commit">⚙️ ${ready}点を登録して組み込む</button>
+               <button class="link" data-quick="clear">やめる</button></div>`
+            : quick.entries.length && !quick.busy
+              ? `<button class="link" data-quick="clear">やめる</button>`
+              : ""
+        }
+      </section>`;
+  }
+
+  async function quickAdd(files) {
+    for (const file of files) {
+      const entry = { status: "reading", progress: 0.05, msg: "写真を準備しています" };
+      quick.entries.push(entry);
+      quick.busy++;
+      renderPanel();
+      try {
+        const blob = await Library.resize(file, 2400);
+        const photoId = "ph" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+        await Library.putPhoto(photoId, blob);
+        const url = (photoUrls[photoId] = URL.createObjectURL(blob));
+        Object.assign(entry, { url, photoId, msg: AI.ready ? "AIがパーツを見ています(ネットで重さを確かめるので、少しかかります)" : "写真の文字を読んでいます" });
+        renderPanel();
+        const crop = await QuickAdd.detectCrop(blob);
+        let items, aiNote = "";
+        if (AI.ready) {
+          try {
+            items = await AI.identify(blob);
+          } catch (e) {
+            aiNote = e.status === 401 ? "AIのキーが正しくありません。" : "AIで読み取れなかったので、無料の読み取りにしました。";
+          }
+        }
+        if (!items || !items.length)
+          items = await QuickAdd.ruleIdentify(blob, (p) => {
+            entry.progress = 0.2 + p * 0.8;
+            renderPanel();
+          });
+        // 1枚の写真から複数のパーツ(自転車全体の写真)なら、それぞれの範囲を使う
+        const whole = items.length > 1;
+        const idx = quick.entries.indexOf(entry);
+        const made = items.map((r) => ({
+          status: "ok",
+          include: true,
+          photoId,
+          url,
+          w: crop.w,
+          h: crop.h,
+          crop: r.bbox || (crop.plain ? crop.crop : [0, 0, 1, 1]),
+          whole: whole && !r.bbox,
+          res: Object.assign(r, { note: aiNote + (r.note || "") }),
+          blob,
+        }));
+        quick.entries.splice(idx, 1, ...made);
+      } catch (e) {
+        Object.assign(entry, { status: "ok", include: false, crop: [0, 0, 1, 1], res: { slot: "accessories", brand: "", model: "", weight_g: 0, note: "この写真は読み取れませんでした", specs: {}, confidence: 0 } });
+      }
+      quick.busy--;
+      renderPanel();
+    }
+  }
+
+  async function quickCommit() {
+    const list = quick.entries.filter((e) => e.status === "ok" && e.include);
+    if (!list.length) return;
+    const target = quick.target;
+    const items = [];
+    for (const e of list) {
+      const r = e.res;
+      const known = new Set((Library.SPEC_FIELDS[r.slot] || []).map((f) => f.k));
+      const specs = {};
+      for (const [k, v] of Object.entries(r.specs || {})) if (known.has(k)) specs[k] = v;
+      let color = /^#[0-9a-f]{6}$/i.test(r.color || "") ? r.color : null;
+      if (!color && r.slot === "frame" && e.blob) color = await Library.dominantColor(e.blob).catch(() => null);
+      items.push({
+        id: "lib" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+        slot: r.slot,
+        brand: String(r.brand || "").trim(),
+        model: String(r.model || "").trim() || Parts.slotName(r.slot),
+        year: String(r.year || "").trim(),
+        g: +r.weight_g || 0,
+        url: /^https?:/.test(r.weight_source || "") ? r.weight_source : "",
+        notes: r.note || "",
+        specs,
+        photoId: e.photoId,
+        color,
+        decal: QuickAdd.decalFor(r.slot, e.crop, r.view, r.facing, e.w, e.h, e.whole),
+        price: +r.price_jpy || 0,
+      });
+    }
+    const price = Math.max(0, ...items.map((x) => x.price));
+    G.active = target;
+    equip({ slot: items[0].slot, name: items.length > 1 ? `${items.length}点を組み込みました` : Library.displayName(items[0]), price }, () => {
+      for (const it of items) {
+        G.library.push(it);
+        Library.apply(G.builds[target], it);
+        if (it.price) G.builds[target].parts[it.slot].shop = { price: it.price, used: null };
+      }
+    });
+    quick.entries = [];
+    selected = items[0].slot;
+    changed();
+    renderAll();
   }
 
   // ---------- マイパーツ(パーツのデータベース) ----------
@@ -1340,6 +1492,39 @@
     card.innerHTML = `<img src="${url}" alt="" /><span>${esc(Library.displayName(it))}</span>`;
   }
 
+  // ---------- おすすめパーツの写真 ----------
+  // AIがあれば製品写真を探して出す(一度見つけたら覚えておく)。なければ画像検索へのリンク
+  function prodImg(it) {
+    const c = AI.cachedImage(it.id);
+    if (c && c.url) return `<a class="g-prod" href="${esc(c.page || c.url)}" target="_blank" rel="noopener"><img src="${esc(c.url)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('empty');this.remove()" /></a>`;
+    if (AI.ready && !(c && !c.url)) return `<span class="g-prod empty" data-find-img="${it.id}">📷<small>探しています</small></span>`;
+    return `<a class="g-prod empty" href="https://www.google.com/search?tbm=isch&q=${encodeURIComponent(it.name)}" target="_blank" rel="noopener">🔎<small>写真を見る</small></a>`;
+  }
+
+  // 画面に出ている「探しています」の写真を、ひとつずつ探す
+  let finding = false;
+  async function fillProdImgs() {
+    if (finding || !AI.ready) return;
+    finding = true;
+    try {
+      for (;;) {
+        const el2 = document.querySelector("[data-find-img]");
+        if (!el2) break;
+        const it = Catalog.byId(el2.dataset.findImg);
+        el2.removeAttribute("data-find-img");
+        if (!it) continue;
+        try {
+          await AI.findImage(it.id, it.name);
+        } catch (e) {
+          break; // キーの間違い・通信できないときは、続けて探さない
+        }
+        document.querySelectorAll(`[data-prod="${it.id}"]`).forEach((x) => (x.innerHTML = prodImg(it)));
+      }
+    } finally {
+      finding = false;
+    }
+  }
+
   // ---------- 店員さん ----------
   // 部位ごとの具体的なモデル(重さ・中古相場)
   function catalogHtml(id) {
@@ -1351,7 +1536,7 @@
         .map((it) => {
           const sv = Catalog.saving(b, it);
           const on = Catalog.installed(b, it);
-          return `<div class="g-cat-row"><div>${on ? "" : previewHtml(it)}<strong>${esc(it.name)}</strong><small>${it.kind === "swap" ? `${it.g.toLocaleString()}g` : it.deltaG ? `−${it.deltaG}g` : ""}${sv > 0 && it.kind === "swap" ? `(−${sv}g)` : ""}・${esc(Catalog.priceText(it))}</small><small class="muted">${esc(it.note)}</small></div>
+          return `<div class="g-cat-row"><span data-prod="${it.id}">${prodImg(it)}</span><div class="g-cat-txt">${on ? "" : previewHtml(it)}<strong>${esc(it.name)}</strong><small>${it.kind === "swap" ? `${it.g.toLocaleString()}g` : it.deltaG ? `−${it.deltaG}g` : ""}${sv > 0 && it.kind === "swap" ? `(−${sv}g)` : ""}・${esc(Catalog.priceText(it))}</small><small class="muted">${esc(it.note)}</small></div>
             ${on ? `<span class="g-tag">付いています</span>` : `<button class="btn sub" data-cat-put="${it.id}">付ける</button>`}</div>`;
         })
         .join("")}
@@ -1405,6 +1590,7 @@
       const inNext = Catalog.installed(G.builds.next, it);
       return `<div class="g-plan-row">
         <div class="g-plan-n">${idx}</div>
+        <span data-prod="${it.id}" class="g-plan-img">${prodImg(it)}</span>
         <div class="g-plan-body">
           <small>${esc(Parts.slotName(it.slot))}${x.pinned ? ` <em class="g-mine">あなたが選んだ候補</em>` : ""}</small>${G.active === "current" && !Catalog.installed(B(), it) ? previewHtml(it) : ""}<strong>${esc(it.name)}</strong>
           <div class="g-plan-meta"><b>${x.reason ? esc(x.reason) : "—"}</b><span>${esc(Catalog.priceText(it))}</span></div>
@@ -1510,6 +1696,7 @@
     if (tab === "aero") drawSilhouette();
     if (tab === "parts") loadPhotos();
     renderPartCard();
+    fillProdImgs();
     if (typeof Sync !== "undefined" && tab === "parts") {
       panel.insertAdjacentHTML("beforeend", Sync.panelHtml());
       Sync.bindPanel(panel, renderPanel);
@@ -1583,6 +1770,27 @@
     if (t.dataset.decalLib) {
       openLibForm(null, t.dataset.decalLib);
       return startDecal();
+    }
+    // ---- 写真でパーツ登録 ----
+    if (t.dataset.quick === "ai") {
+      quick.aiOpen = !quick.aiOpen;
+      return renderPanel();
+    }
+    if (t.dataset.quick === "ai-save") {
+      const k = (document.getElementById("ai-key") || {}).value || "";
+      if (!/^sk-ant-/.test(k.trim())) return alert("sk-ant- で始まるキーを貼り付けてください");
+      AI.setKey(k);
+      quick.aiOpen = false;
+      return renderPanel();
+    }
+    if (t.dataset.quick === "ai-off") {
+      AI.setKey("");
+      return renderPanel();
+    }
+    if (t.dataset.quick === "commit") return quickCommit();
+    if (t.dataset.quick === "clear") {
+      quick.entries = [];
+      return renderPanel();
     }
     // ---- 店員さん ----
     if (t.dataset.hearBudget) {
@@ -1882,6 +2090,17 @@
     }
     if (t.dataset.lf) return;
     if (t.id === "lf-photo" && t.files && t.files[0] && libForm) return setFormPhoto(t.files[0]);
+    if (t.id === "quick-files" && t.files && t.files.length) return quickAdd([...t.files]);
+    if (t.id === "quick-target") return void (quick.target = t.value);
+    if (t.dataset.q) {
+      const e = quick.entries[+t.dataset.i];
+      if (!e) return;
+      if (t.dataset.q === "include") e.include = t.checked;
+      else if (t.dataset.q === "weight_g") e.res.weight_g = parseFloat(t.value) || 0;
+      else e.res[t.dataset.q] = t.value;
+      if (t.dataset.q === "slot" || t.dataset.q === "include") renderPanel();
+      return;
+    }
     if (t.id === "lib-import" && t.files && t.files[0]) return importLibrary(t.files[0]);
     if (t.dataset.clerkAlt) {
       const h = clerkState().hearing;

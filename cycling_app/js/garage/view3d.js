@@ -66,6 +66,7 @@ const View3D = (() => {
     key.position.set(1.4, 3.6, 2.4);
     key.castShadow = true;
     key.shadow.mapSize.set(2048, 2048);
+    keyLight = key;
     Object.assign(key.shadow.camera, { left: -1.6, right: 1.6, top: 1.6, bottom: -1.6, near: 0.5, far: 9 });
     key.shadow.bias = -0.0005;
     key.shadow.radius = 4;
@@ -126,6 +127,7 @@ const View3D = (() => {
     return tex;
   }
   let envCanvas = null;
+  let keyLight = null;
 
   function resize() {
     if (!renderer || !container) return;
@@ -1327,8 +1329,152 @@ const View3D = (() => {
     return m;
   }
 
+  // 写真の背景(パーツ以外の所)を、近くのパーツの色で埋める。
+  // 細いパイプなど、3Dと写真の位置が少しずれても、背景の白ではなく塗装の色になるように
+  const cleanCache = {};
+  function cleanedTexture(url, crop, cb) {
+    const k = url + "|" + (crop || []).join(",");
+    if (cleanCache[k]) return cb(cleanCache[k]);
+    const img = new Image();
+    img.onload = () => {
+      const THREE = T();
+      const s0 = Math.min(1, 1024 / Math.max(img.width, img.height));
+      const W = Math.max(1, Math.round(img.width * s0)), H = Math.max(1, Math.round(img.height * s0));
+      const c = document.createElement("canvas");
+      c.width = W;
+      c.height = H;
+      const g = c.getContext("2d");
+      g.drawImage(img, 0, 0, W, H);
+      const im = g.getImageData(0, 0, W, H);
+      const d = im.data;
+      // 背景の色: パーツの範囲の外周の色の平均(範囲が写真全体なら、写真の縁)
+      const [x0, y0, x1, y1] = (crop || [0, 0, 1, 1]).map((v, i) => Math.round(v * (i % 2 ? H : W)));
+      // (平均ではなく真ん中の値: 縁にタイヤなどが少しかかっていても、背景の色になる)
+      const rs = [], gs = [], bs = [];
+      const pick = (x, y) => {
+        x = Math.max(0, Math.min(W - 1, x));
+        y = Math.max(0, Math.min(H - 1, y));
+        const i = (y * W + x) * 4;
+        rs.push(d[i]), gs.push(d[i + 1]), bs.push(d[i + 2]);
+      };
+      for (let x = x0; x < x1; x += 3) pick(x, y0), pick(x, y1 - 1);
+      for (let y = y0; y < y1; y += 3) pick(x0, y), pick(x1 - 1, y);
+      const med = (a) => a.sort((p, q) => p - q)[a.length >> 1] || 0;
+      const br = med(rs), bgc = med(gs), bb = med(bs);
+      // パーツの所(背景と色が違う所)の重み
+      const L = [];
+      let w = W, h = H;
+      let cur = { w, h, r: new Float32Array(w * h), g: new Float32Array(w * h), b: new Float32Array(w * h), m: new Float32Array(w * h) };
+      for (let i = 0; i < w * h; i++) {
+        const r = d[i * 4], gg = d[i * 4 + 1], b2 = d[i * 4 + 2];
+        const diff = Math.abs(r - br) + Math.abs(gg - bgc) + Math.abs(b2 - bb);
+        const m = diff > 60 ? 1 : diff > 35 ? (diff - 35) / 25 : 0;
+        cur.r[i] = r * m, cur.g[i] = gg * m, cur.b[i] = b2 * m, cur.m[i] = m;
+      }
+      L.push(cur);
+      // 縮めながら色を平均(重みつき)
+      while (cur.w > 1 || cur.h > 1) {
+        const nw = Math.max(1, cur.w >> 1), nh = Math.max(1, cur.h >> 1);
+        const nx = { w: nw, h: nh, r: new Float32Array(nw * nh), g: new Float32Array(nw * nh), b: new Float32Array(nw * nh), m: new Float32Array(nw * nh) };
+        for (let y = 0; y < cur.h; y++)
+          for (let x = 0; x < cur.w; x++) {
+            const j = Math.min(nh - 1, y >> 1) * nw + Math.min(nw - 1, x >> 1), i = y * cur.w + x;
+            nx.r[j] += cur.r[i], nx.g[j] += cur.g[i], nx.b[j] += cur.b[i], nx.m[j] += cur.m[i];
+          }
+        L.push(nx);
+        cur = nx;
+      }
+      // 粗い段から細かい段へ: 重みが足りない所を、粗い段の平均の色で埋める
+      for (let l = L.length - 2; l >= 0; l--) {
+        const a = L[l], p2 = L[l + 1];
+        for (let y = 0; y < a.h; y++)
+          for (let x = 0; x < a.w; x++) {
+            const i = y * a.w + x, j = Math.min(p2.h - 1, y >> 1) * p2.w + Math.min(p2.w - 1, x >> 1);
+            const pm = p2.m[j] || 1e-6;
+            const m = a.m[i];
+            if (m >= 1) {
+              // パーツの色がわかっている所: その平均
+              a.r[i] /= m, a.g[i] /= m, a.b[i] /= m;
+            } else {
+              // 一部だけ・まったくわからない所: 粗い段の色で埋める
+              a.r[i] += (1 - m) * (p2.r[j] / pm);
+              a.g[i] += (1 - m) * (p2.g[j] / pm);
+              a.b[i] += (1 - m) * (p2.b[j] / pm);
+            }
+            a.m[i] = 1;
+          }
+      }
+      const top = L[0];
+      for (let i = 0; i < W * H; i++) (d[i * 4] = top.r[i]), (d[i * 4 + 1] = top.g[i]), (d[i * 4 + 2] = top.b[i]);
+      g.putImageData(im, 0, 0);
+      const tex = new THREE.CanvasTexture(c);
+      tex.encoding = THREE.sRGBEncoding;
+      tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      cleanCache[k] = tex;
+      cb(tex);
+      photo.dirty = true;
+    };
+    img.src = url;
+  }
+
+  // 写真を、部位の形の範囲にそのまま投影する(どの部位でも使える貼り方)。
+  // d.crop: 写真の中でパーツが写っている範囲 [左, 上, 右, 下](0〜1)、d.view: 写真の向き(side/top/front)、
+  // d.flip: 横からの写真でパーツの前が左向き、d.ref: "bike" なら自転車全体の写真(フレームの部分に貼る)
+  function applyAutoDecal(slot, d) {
+    const THREE = T();
+    const owner = bikeGroup;
+    const ids = slot === "frame" ? ["frame", "fork"] : slot === "tubes" ? [] : [slot === "stem" && !groups.stem ? "handlebar" : slot];
+    const targets = [];
+    for (const id of ids) {
+      const g = groups[id];
+      if (!g || !g.visible) continue;
+      g.traverse((o) => {
+        if (!o.isMesh || o.isInstancedMesh || o.userData.projected) return;
+        if (slot === "groupset") {
+          // コンポの写真はクランクまわり(BBの近く・右側)に貼る
+          const c = new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3());
+          const bb = new THREE.Vector3(0, 0, 0).applyMatrix4(bikeGroup.matrixWorld);
+          if (c.distanceTo(bb) > 0.2 || c.z < -0.01) return;
+        }
+        targets.push(o);
+      });
+    }
+    if (!targets.length) return;
+    // 写真に合わせる3Dの範囲
+    const box = new THREE.Box3();
+    if (d.ref === "bike") box.setFromObject(bikeGroup);
+    else for (const o of targets) box.expandByObject(o);
+    const plane = (x, y, z) => (d.view === "top" ? [z, x] : d.view === "front" ? [-z, y] : [x, y]);
+    const [h0, v0] = plane(box.min.x, box.min.y, box.min.z), [h1, v1] = plane(box.max.x, box.max.y, box.max.z);
+    const hMin = Math.min(h0, h1), hMax = Math.max(h0, h1), vMin = Math.min(v0, v1), vMax = Math.max(v0, v1);
+    // 写っている範囲の縁は背景の色が混ざりやすいので、少し内側を使う
+    const [ax0, ay0, ax1, ay1] = d.crop || [0, 0, 1, 1];
+    const ix = (ax1 - ax0) * 0.06, iy = (ay1 - ay0) * 0.1;
+    const cx0 = ax0 + ix, cx1 = ax1 - ix, cy0 = ay0 + iy, cy1 = ay1 - iy;
+    const fn = (x, y, z) => {
+      const [h, v] = plane(x, y, z);
+      let u = (h - hMin) / (hMax - hMin || 1);
+      if (d.flip) u = 1 - u;
+      const t = (v - vMin) / (vMax - vMin || 1);
+      return [cx0 + u * (cx1 - cx0), 1 - (cy0 + (1 - t) * (cy1 - cy0))];
+    };
+    cleanedTexture(d.url, d.crop, (tex) => {
+      if (bikeGroup !== owner) return;
+      scene.updateMatrixWorld(true);
+      for (const o of targets) {
+        projectUV(o, null, fn, 0);
+        const old = o.material;
+        o.material = photoMaterial(tex, { metalness: old.metalness != null ? Math.min(0.5, old.metalness) : 0.1, roughness: old.roughness != null ? Math.max(0.3, old.roughness) : 0.4, clearcoat: slot === "frame" ? 1 : 0.4 });
+        o.userData.baseEmissive = o.material.emissive.clone();
+        o.userData.baseEmissiveI = 1;
+      }
+      if (highlightId) highlight(highlightId);
+    });
+  }
+
   function applyDecals(decals) {
     if (!decals) return;
+    for (const [slot, d] of Object.entries(decals)) if (d && d.kind === "auto") applyAutoDecal(slot, d);
     const owner = bikeGroup;
     const bk = state.fit.bike;
     if (decals.frame && decals.frame.pts) {
@@ -1408,7 +1554,7 @@ const View3D = (() => {
       const rimOuter = bk.R - tw * 0.92;
       const k = Math.hypot(d.pts.rimEdge.x - d.pts.hub.x, d.pts.rimEdge.y - d.pts.hub.y) / rimOuter; // 1mが写真で何ピクセルか
       const fn = (x, y) => [(d.pts.hub.x + x * k) / d.w, 1 - (d.pts.hub.y - y * k) / d.h];
-      loadTex(d.url, (tex) => {
+      (d.clean ? (cb) => cleanedTexture(d.url, null, cb) : (cb) => loadTex(d.url, cb))((tex) => {
         if (bikeGroup !== owner) return;
         for (const id of ["wheels", "tires"]) {
           const g = groups[id];
@@ -1824,10 +1970,8 @@ const View3D = (() => {
         if (photo.on) setTimeout(() => photo.on && setPhotoreal(true), 600);
         return;
       }
-      photo.on = false;
       photo.broken = true;
-      photo.error = "この端末のGPUでは写真モードが重すぎました(ふつうの表示に戻しました)";
-      photoStatus();
+      startHQ();
     });
     photo.r2 = r2;
     const mat = new P.PhysicalPathTracingMaterial();
@@ -2027,7 +2171,7 @@ const View3D = (() => {
 
 
   function photoStatus(extra) {
-    if (photo.onStatus) photo.onStatus(Object.assign({ on: photo.on, samples: photo.pt ? Math.floor(photo.pt.samples) : 0, max: PHOTO_MAX, loading: !!photo.loading, error: photo.error }, extra || {}));
+    if (photo.onStatus) photo.onStatus(Object.assign({ on: photo.on, hq: !!photo.hq, samples: photo.pt ? Math.floor(photo.pt.samples) : 0, max: PHOTO_MAX, loading: !!photo.loading, error: photo.error }, extra || {}));
   }
 
   // 写真モードを入れる・切る。onStatus({ on, samples, loading, error, moving })
@@ -2035,11 +2179,8 @@ const View3D = (() => {
     photo.on = on;
     if (onStatus) photo.onStatus = onStatus;
     photo.error = "";
-    if (on && photo.broken) {
-      photo.on = false;
-      photo.error = "この端末のGPUでは写真モードを使えませんでした";
-      return photoStatus();
-    }
+    if (on && photo.broken) return startHQ();
+    if (!on) setHQ(false);
     if (on && !photo.pt && !photo.loading) {
       photo.loading = initPhoto()
         .catch((e) => {
@@ -2059,8 +2200,34 @@ const View3D = (() => {
     photoStatus();
   }
 
+  // 光の計算(パストレーシング)が重すぎる端末では、ふつうの描き方を高画質にする:
+  // 止まっている間は2〜3倍の解像度で描いて縮め、影も細かくする
+  const baseRatio = () => Math.min(2, Math.max(1.5, window.devicePixelRatio || 1));
+  function setHQ(on) {
+    photo.hq = on;
+    if (keyLight) {
+      const size = on ? 4096 : 2048;
+      if (keyLight.shadow.mapSize.x !== size) {
+        keyLight.shadow.mapSize.set(size, size);
+        keyLight.shadow.radius = on ? 6 : 4;
+        if (keyLight.shadow.map) keyLight.shadow.map.dispose(), (keyLight.shadow.map = null);
+      }
+    }
+    if (!on && renderer && renderer.getPixelRatio() !== baseRatio()) renderer.setPixelRatio(baseRatio()), resize();
+  }
+  function startHQ() {
+    photo.on = true;
+    setHQ(true);
+    photoStatus({ hq: true });
+  }
+
   // 写真モードで描く。動いている間は false を返す(ふつうに描く)
   function renderPhoto(moving) {
+    if (photo.on && photo.hq) {
+      const want = moving ? baseRatio() : Math.min(3, baseRatio() * 1.6);
+      if (renderer.getPixelRatio() !== want) renderer.setPixelRatio(want), resize();
+      return false;
+    }
     const cv = photo.r2 && photo.r2.domElement;
     if (!photo.on || !photo.pt) {
       if (cv) cv.style.display = "none";
@@ -2100,11 +2267,9 @@ const View3D = (() => {
         const t = photo.pt.target;
         photo.r2.readRenderTargetPixels(t, t.width >> 1, t.height >> 1, 1, 1, px);
         if (!(px[3] > 0)) {
-          photo.on = false;
           photo.broken = true;
           cv.style.display = "none";
-          photo.error = "この端末のGPUでは写真モードを使えませんでした";
-          photoStatus();
+          startHQ();
           return false;
         }
       }

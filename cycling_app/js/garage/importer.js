@@ -112,7 +112,8 @@ const Importer = (() => {
   }
 
   // 写真の表を文字にする。onProgress(0〜1) で進み具合を返す
-  async function ocr(file, onProgress) {
+  // psm: 読み方。"6" = 表(行ごと)、"11" = 写真の中に散らばった文字(ロゴ・刻印)
+  async function ocr(file, onProgress, psm = "6") {
     await loadOcr();
     const worker = await Tesseract.createWorker(["jpn", "eng"], 1, {
       logger: (m) => {
@@ -121,7 +122,7 @@ const Importer = (() => {
     });
     try {
       // 表は行ごとに読むのがよい
-      await worker.setParameters({ tessedit_pageseg_mode: "6", preserve_interword_spaces: "1" });
+      await worker.setParameters({ tessedit_pageseg_mode: psm, preserve_interword_spaces: "1" });
       const res = await worker.recognize(file);
       return res.data.text;
     } finally {
