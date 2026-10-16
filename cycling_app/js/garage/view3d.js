@@ -18,17 +18,21 @@ const View3D = (() => {
   let lastT = 0;
 
   const COLORS = {
-    tire: 0x1b1b1f,
+    tire: 0x17181b,
     rim: 0x2a2d34,
-    metal: 0x9aa3ad,
-    dark: 0x24262b,
-    saddle: 0x15161a,
-    tape: 0x111214,
+    metal: 0xb7bec6,
+    dark: 0x1f2125,
+    saddle: 0x121316,
+    tape: 0x101113,
     jersey: 0x0a3d91,
-    shorts: 0x14161c,
-    skin: 0xe3b48f,
+    jersey2: 0xf2f4f8,
+    shorts: 0x0e0f12,
+    skin: 0xe0ac86,
+    sock: 0xf5f5f5,
     shoe: 0xf2f2f2,
-    helmet: 0xffffff,
+    sole: 0x1a1a1a,
+    helmet: 0xf7f7f7,
+    lens: 0x16202e,
   };
 
   // ---------- 初期化 ----------
@@ -38,18 +42,36 @@ const View3D = (() => {
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     renderer.outputEncoding = THREE.sRGBEncoding;
+    // 写真のような明るさの出方と、床に落ちる影
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 0.92;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     el.appendChild(renderer.domElement);
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x1d2330);
-    scene.fog = new THREE.Fog(0x1d2330, 6, 14);
+    scene.background = new THREE.Color(0x1b202b);
+    scene.fog = new THREE.Fog(0x1b202b, 7, 16);
+    // 工房の照明が映り込むように、周りの景色(環境マップ)を作る
+    try {
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      scene.environment = pmrem.fromEquirectangular(envTexture()).texture;
+      pmrem.dispose();
+    } catch (e) {
+      // 環境マップが使えない端末では、照明だけで描く
+    }
     camera = new THREE.PerspectiveCamera(40, 1, 0.05, 50);
-    scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x3a3226, 0.75));
-    const key = new THREE.DirectionalLight(0xffffff, 0.9);
-    key.position.set(2, 4, 3);
+    scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x3a3226, 0.35));
+    const key = new THREE.DirectionalLight(0xfff4e6, 1.15);
+    key.position.set(1.4, 3.6, 2.4);
+    key.castShadow = true;
+    key.shadow.mapSize.set(1024, 1024);
+    Object.assign(key.shadow.camera, { left: -1.6, right: 1.6, top: 1.6, bottom: -1.6, near: 0.5, far: 9 });
+    key.shadow.bias = -0.0005;
+    key.shadow.radius = 4;
     scene.add(key);
-    const rim = new THREE.DirectionalLight(0x7fb0ff, 0.45);
-    rim.position.set(-3, 2, -2);
-    scene.add(rim);
+    const fill = new THREE.DirectionalLight(0x9cc0ff, 0.4);
+    fill.position.set(-3, 2, -1.5);
+    scene.add(fill);
     root = new THREE.Group();
     scene.add(root);
     envGroup = new THREE.Group();
@@ -64,6 +86,32 @@ const View3D = (() => {
     loop();
   }
 
+  // 周りの景色: 天井の照明(明るい四角)と、壁・床の色のグラデーション
+  function envTexture() {
+    const THREE = T();
+    const c = document.createElement("canvas");
+    c.width = 512;
+    c.height = 256;
+    const g = c.getContext("2d");
+    const grad = g.createLinearGradient(0, 0, 0, 256);
+    grad.addColorStop(0, "#d9e2f0");
+    grad.addColorStop(0.45, "#7c8597");
+    grad.addColorStop(0.55, "#4a4f5c");
+    grad.addColorStop(1, "#22252c");
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 512, 256);
+    g.filter = "blur(6px)";
+    g.fillStyle = "#ffffff";
+    for (const [x, w] of [[60, 90], [230, 60], [380, 100]]) g.fillRect(x, 18, w, 26);
+    g.fillStyle = "rgba(255,220,180,0.8)";
+    g.fillRect(150, 100, 40, 30);
+    g.filter = "none";
+    const tex = new THREE.CanvasTexture(c);
+    tex.mapping = THREE.EquirectangularReflectionMapping;
+    tex.encoding = THREE.sRGBEncoding;
+    return tex;
+  }
+
   function resize() {
     if (!renderer || !container) return;
     const w = container.clientWidth || 360;
@@ -75,57 +123,120 @@ const View3D = (() => {
     camera.updateProjectionMatrix();
   }
 
-  // 工房: 床・壁・有孔ボード・作業スタンド
+  // 工房: 床・壁・有孔ボード・作業台・マット・作業スタンド
   function buildEnvironment() {
     const THREE = T();
-    const floorTex = canvasTexture(256, (g, s) => {
-      g.fillStyle = "#4a4e57";
+    const floorTex = canvasTexture(512, (g, s) => {
+      g.fillStyle = "#505560";
       g.fillRect(0, 0, s, s);
-      for (let i = 0; i < 900; i++) {
-        g.fillStyle = `rgba(255,255,255,${Math.random() * 0.05})`;
+      for (let i = 0; i < 4000; i++) {
+        g.fillStyle = `rgba(${Math.random() < 0.5 ? "255,255,255" : "0,0,0"},${Math.random() * 0.06})`;
         g.fillRect(Math.random() * s, Math.random() * s, 2, 2);
       }
-      g.strokeStyle = "rgba(0,0,0,0.25)";
-      g.lineWidth = 2;
+      g.strokeStyle = "rgba(0,0,0,0.35)";
+      g.lineWidth = 3;
       g.strokeRect(0, 0, s, s);
     });
     floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping;
-    floorTex.repeat.set(8, 8);
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.9 }));
+    floorTex.repeat.set(6, 6);
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.75, metalness: 0.05, envMapIntensity: 0.4 }));
     floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
     floor.name = "floor";
     envGroup.add(floor);
-    // 有孔ボードの壁
-    const pegTex = canvasTexture(128, (g, s) => {
-      g.fillStyle = "#b48a5a";
+    // ゴムマット
+    const matTex = canvasTexture(128, (g, s) => {
+      g.fillStyle = "#1c1e22";
       g.fillRect(0, 0, s, s);
-      g.fillStyle = "#6b4e2e";
-      for (let x = 8; x < s; x += 16) for (let y = 8; y < s; y += 16) g.fillRect(x - 2, y - 2, 4, 4);
+      g.strokeStyle = "#26292e";
+      g.lineWidth = 3;
+      for (let x = 0; x < s; x += 16) {
+        g.beginPath();
+        g.moveTo(x, 0);
+        g.lineTo(x + 16, s);
+        g.stroke();
+      }
+    });
+    matTex.wrapS = matTex.wrapT = THREE.RepeatWrapping;
+    matTex.repeat.set(6, 3);
+    const rubber = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.1), new THREE.MeshStandardMaterial({ map: matTex, roughness: 0.95 }));
+    rubber.rotation.x = -Math.PI / 2;
+    rubber.position.set(0.15, 0.003, 0);
+    rubber.receiveShadow = true;
+    envGroup.add(rubber);
+    // 有孔ボードの壁
+    const pegTex = canvasTexture(256, (g, s) => {
+      g.fillStyle = "#b8905f";
+      g.fillRect(0, 0, s, s);
+      for (let i = 0; i < 300; i++) {
+        g.fillStyle = `rgba(90,60,30,${Math.random() * 0.08})`;
+        g.fillRect(Math.random() * s, 0, 1 + Math.random() * 2, s);
+      }
+      g.fillStyle = "#5e4428";
+      for (let x = 8; x < s; x += 16) for (let y = 8; y < s; y += 16) {
+        g.beginPath();
+        g.arc(x, y, 2.2, 0, Math.PI * 2);
+        g.fill();
+      }
     });
     pegTex.wrapS = pegTex.wrapT = THREE.RepeatWrapping;
     pegTex.repeat.set(10, 4);
-    const wall = new THREE.Mesh(new THREE.PlaneGeometry(10, 4), new THREE.MeshStandardMaterial({ map: pegTex, roughness: 1 }));
+    const wall = new THREE.Mesh(new THREE.PlaneGeometry(10, 4), new THREE.MeshStandardMaterial({ map: pegTex, roughness: 0.95 }));
     wall.position.set(0, 2, -1.6);
+    wall.receiveShadow = true;
     wall.name = "wall";
     envGroup.add(wall);
-    // 壁の工具(シルエット)
-    const toolMat = new THREE.MeshStandardMaterial({ color: 0x30343c, metalness: 0.6, roughness: 0.4 });
-    for (let i = 0; i < 7; i++) {
-      const t = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.25 + (i % 3) * 0.08, 0.02), toolMat);
-      t.position.set(-1.2 + i * 0.22, 1.7, -1.58);
-      t.rotation.z = (i % 2 ? 1 : -1) * 0.15;
+    // 横の壁(正面から見たときの背景)
+    const side = new THREE.Mesh(new THREE.PlaneGeometry(6, 4), new THREE.MeshStandardMaterial({ color: 0x3a4250, roughness: 0.95 }));
+    side.rotation.y = Math.PI / 2;
+    side.position.set(-3.2, 2, 1.2);
+    side.receiveShadow = true;
+    envGroup.add(side);
+    // 壁の工具(レンチ・ドライバー)
+    const toolMat = new THREE.MeshStandardMaterial({ color: 0xc9cfd6, metalness: 0.9, roughness: 0.3 });
+    const gripMat = new THREE.MeshStandardMaterial({ color: 0x1f6fe5, roughness: 0.6 });
+    for (let i = 0; i < 8; i++) {
+      const L = 0.18 + (i % 4) * 0.05;
+      const t = new THREE.Mesh(new THREE.BoxGeometry(0.018, L, 0.008), toolMat);
+      t.position.set(-1.25 + i * 0.2, 1.65, -1.585);
       envGroup.add(t);
+      const head = new THREE.Mesh(new THREE.TorusGeometry(0.022, 0.007, 8, 16), toolMat);
+      head.position.set(t.position.x, 1.65 + L / 2 + 0.015, -1.585);
+      envGroup.add(head);
+      if (i % 2) {
+        const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.09, 12), gripMat);
+        grip.position.set(t.position.x + 0.1, 1.4, -1.58);
+        envGroup.add(grip);
+      }
     }
+    // 作業台
+    const wood = new THREE.MeshStandardMaterial({ color: 0x8a6a45, roughness: 0.7 });
+    const steel = new THREE.MeshStandardMaterial({ color: 0x2b2f36, metalness: 0.6, roughness: 0.45 });
+    const bench = new THREE.Group();
+    const top = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.05, 0.55), wood);
+    top.position.y = 0.9;
+    bench.add(top);
+    for (const x of [-0.56, 0.56]) for (const z of [-0.24, 0.24]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.88, 0.04), steel);
+      leg.position.set(x, 0.44, z);
+      bench.add(leg);
+    }
+    const drawer = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.25, 0.5), new THREE.MeshStandardMaterial({ color: 0xb3261e, metalness: 0.3, roughness: 0.45 }));
+    drawer.position.set(0, 0.7, 0);
+    bench.add(drawer);
+    bench.position.set(-2.1, 0, -1.2);
+    bench.traverse((o) => o.isMesh && ((o.castShadow = true), (o.receiveShadow = true)));
+    envGroup.add(bench);
     // 作業スタンド(整備モードのときだけ見せる)
     const stand = new THREE.Group();
     stand.name = "stand";
-    const sMat = new THREE.MeshStandardMaterial({ color: 0x2b2f36, metalness: 0.5, roughness: 0.5 });
-    const accent = new THREE.MeshStandardMaterial({ color: 0x1f6fe5, metalness: 0.3, roughness: 0.4 });
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1, 12), sMat);
+    const sMat = new THREE.MeshStandardMaterial({ color: 0x2b2f36, metalness: 0.7, roughness: 0.35 });
+    const accent = new THREE.MeshStandardMaterial({ color: 0x1f6fe5, metalness: 0.3, roughness: 0.35 });
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1, 16), sMat);
     pole.name = "pole";
     stand.add(pole);
     for (let i = 0; i < 3; i++) {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.6, 8), sMat);
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.6, 10), sMat);
       leg.name = "leg";
       leg.userData.ang = (i / 3) * Math.PI * 2;
       stand.add(leg);
@@ -136,35 +247,138 @@ const View3D = (() => {
     const clampM = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.08), accent);
     clampM.name = "clamp";
     stand.add(clampM);
+    stand.traverse((o) => o.isMesh && (o.castShadow = true));
     envGroup.add(stand);
   }
 
-  function canvasTexture(size, draw) {
+  function canvasTexture(size, draw, h) {
     const THREE = T();
     const c = document.createElement("canvas");
-    c.width = c.height = size;
-    draw(c.getContext("2d"), size);
+    c.width = size;
+    c.height = h || size;
+    draw(c.getContext("2d"), size, h || size);
     const tex = new THREE.CanvasTexture(c);
     tex.encoding = THREE.sRGBEncoding;
     return tex;
   }
 
-  // ---------- 形を作る小道具 ----------
+  // ---------- 質感 ----------
   function mat(color, opts = {}) {
     const THREE = T();
     return new THREE.MeshStandardMaterial(Object.assign({ color, roughness: 0.45, metalness: 0.2 }, opts));
   }
 
-  // a から b への円柱(rx, rz で断面を楕円にできる)
-  function tube(a, b, r, material, flat = 1) {
+  // クリア塗装(フレームの塗装やカーボンのツヤ)
+  function paint(color, opts = {}) {
+    const THREE = T();
+    return new THREE.MeshPhysicalMaterial(Object.assign({ color, roughness: 0.38, metalness: 0.05, clearcoat: 1, clearcoatRoughness: 0.08, envMapIntensity: 0.55 }, opts));
+  }
+
+  let texCache = {};
+  // カーボンの綾織り模様
+  function carbonTex() {
+    if (texCache.carbon) return texCache.carbon;
+    const THREE = T();
+    const t = canvasTexture(64, (g, s) => {
+      g.fillStyle = "#16171a";
+      g.fillRect(0, 0, s, s);
+      const n = 8;
+      const w = s / n;
+      for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+        const on = (i + j) % 4 < 2;
+        const gr = g.createLinearGradient(i * w, j * w, i * w + w, j * w + w);
+        gr.addColorStop(0, on ? "#2c2e33" : "#1b1c20");
+        gr.addColorStop(1, on ? "#3a3d43" : "#232428");
+        g.fillStyle = gr;
+        g.fillRect(i * w + 0.5, j * w + 0.5, w - 1, w - 1);
+      }
+    });
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(24, 2);
+    texCache.carbon = t;
+    return t;
+  }
+
+  // タイヤのトレッド(細かい模様)
+  function treadTex() {
+    if (texCache.tread) return texCache.tread;
+    const THREE = T();
+    const t = canvasTexture(256, (g, s, h) => {
+      g.fillStyle = "#1a1b1e";
+      g.fillRect(0, 0, s, h);
+      g.strokeStyle = "#232428";
+      g.lineWidth = 1.5;
+      for (let x = 0; x < s; x += 4) {
+        g.beginPath();
+        g.moveTo(x, 10);
+        g.lineTo(x + 3, h - 10);
+        g.stroke();
+      }
+      g.fillStyle = "#2b2c30";
+      g.fillRect(0, 0, s, 8);
+      g.fillRect(0, h - 8, s, 8);
+    }, 32);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(30, 1);
+    texCache.tread = t;
+    return t;
+  }
+
+  // バーテープの巻き模様
+  function tapeTex() {
+    if (texCache.tape) return texCache.tape;
+    const THREE = T();
+    const t = canvasTexture(64, (g, s) => {
+      g.fillStyle = "#121315";
+      g.fillRect(0, 0, s, s);
+      g.strokeStyle = "#202226";
+      g.lineWidth = 6;
+      for (let x = -s; x < 2 * s; x += 14) {
+        g.beginPath();
+        g.moveTo(x, 0);
+        g.lineTo(x + s, s);
+        g.stroke();
+      }
+    });
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(30, 1);
+    texCache.tape = t;
+    return t;
+  }
+
+  // ヘルメットの通気口の模様
+  function helmetTex() {
+    if (texCache.helmet) return texCache.helmet;
+    const t = canvasTexture(128, (g, s) => {
+      g.fillStyle = "#f7f7f7";
+      g.fillRect(0, 0, s, s);
+      g.fillStyle = "#24272d";
+      for (let i = 0; i < 7; i++) g.fillRect(8 + i * 17, 20, 8, 70);
+      g.fillStyle = "#1f6fe5";
+      g.fillRect(0, 96, s, 8);
+    });
+    texCache.helmet = t;
+    return t;
+  }
+
+  // ---------- 形を作る小道具 ----------
+  // a から b への円柱。ra は a 側、rb は b 側の太さ(先細りにできる)。flat で断面を楕円に
+  function tube(a, b, ra, material, flat = 1, rb) {
     const THREE = T();
     const A = V(a), B = V(b);
     const dir = new THREE.Vector3().subVectors(B, A);
     const L = dir.length();
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, L, 16), material);
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(rb == null ? ra : rb, ra, L, 24), material);
     m.position.copy(A).addScaledVector(dir, 0.5);
     m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
     if (flat !== 1) m.scale.set(1, 1, flat);
+    return m;
+  }
+
+  function ball(center, r, material) {
+    const THREE = T();
+    const m = new THREE.Mesh(new THREE.SphereGeometry(r, 20, 14), material);
+    m.position.copy(V(center));
     return m;
   }
 
@@ -173,6 +387,32 @@ const View3D = (() => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(size[0], size[1], size[2]), material);
     m.position.copy(V(center));
     return m;
+  }
+
+  // 歯車の形(チェーンリング・スプロケット)。z方向に厚み depth
+  function gear(rOuter, teeth, depth, material, holeR) {
+    const THREE = T();
+    const sh = new THREE.Shape();
+    const rRoot = rOuter - 0.004;
+    for (let i = 0; i < teeth; i++) {
+      const a0 = (i / teeth) * Math.PI * 2;
+      const a1 = ((i + 0.3) / teeth) * Math.PI * 2;
+      const a2 = ((i + 0.7) / teeth) * Math.PI * 2;
+      const p = (r, a) => [Math.cos(a) * r, Math.sin(a) * r];
+      if (i === 0) sh.moveTo(...p(rRoot, a0));
+      else sh.lineTo(...p(rRoot, a0));
+      sh.lineTo(...p(rOuter, a1));
+      sh.lineTo(...p(rOuter, a2));
+    }
+    sh.closePath();
+    if (holeR) {
+      const hole = new THREE.Path();
+      hole.absarc(0, 0, holeR, 0, Math.PI * 2, true);
+      sh.holes.push(hole);
+    }
+    const geo = new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: false, curveSegments: 4 });
+    geo.translate(0, 0, -depth / 2);
+    return new THREE.Mesh(geo, material);
   }
 
   function group(id) {
@@ -189,49 +429,84 @@ const View3D = (() => {
   function wheel(center, R, tireW, rimMm, disc, gw, gt) {
     const THREE = T();
     const tw = tireW / 1000;
-    const rimOuter = R - tw * 0.9;
-    const rimInner = rimOuter - Math.max(0.018, rimMm / 1000);
-    // タイヤ(タイヤの部位)
-    const tire = new THREE.Mesh(new THREE.TorusGeometry(R - tw / 2, tw / 2, 12, 64), mat(COLORS.tire, { roughness: 0.9 }));
-    tire.position.copy(V(center));
-    gt.add(tire);
-    // リム(ホイールの部位): 断面が四角いドーナツ
-    const pts = [
-      new THREE.Vector2(rimInner, -0.011),
-      new THREE.Vector2(rimOuter, -0.012),
-      new THREE.Vector2(rimOuter, 0.012),
-      new THREE.Vector2(rimInner, 0.011),
-      new THREE.Vector2(rimInner, -0.011),
-    ];
-    const rim = new THREE.Mesh(new THREE.LatheGeometry(pts, 64), mat(rimMm >= 30 ? 0x111317 : COLORS.rim, { metalness: 0.5, roughness: 0.35 }));
+    const rimOuter = R - tw * 0.92;
+    const depth = Math.max(0.018, rimMm / 1000);
+    const rimInner = rimOuter - depth;
+    // タイヤ(タイヤの部位): トレッドの模様つき。回る
+    const tireSpin = new THREE.Group();
+    tireSpin.position.copy(V(center));
+    tireSpin.userData.spin = true;
+    const tireMat = new THREE.MeshStandardMaterial({ map: treadTex(), color: 0xffffff, roughness: 0.88, metalness: 0 });
+    tireSpin.add(new THREE.Mesh(new THREE.TorusGeometry(R - tw / 2, tw / 2, 16, 120), tireMat));
+    gt.add(tireSpin);
+    // リム・ハブ・スポーク(ホイールの部位): まとめて回す
+    const spin = new THREE.Group();
+    spin.position.copy(V(center));
+    spin.userData.spin = true;
+    const carbon = rimMm >= 30;
+    const rimMat = carbon
+      ? new THREE.MeshPhysicalMaterial({ map: carbonTex(), color: 0xffffff, roughness: 0.35, metalness: 0.1, clearcoat: 1, clearcoatRoughness: 0.08 })
+      : mat(0x1d1f23, { metalness: 0.7, roughness: 0.3 });
+    const hw = 0.0115; // リムの幅の半分
+    const prof = [
+      [rimInner + 0.003, 0],
+      [rimInner + depth * 0.25, -hw * 0.85],
+      [rimOuter - 0.004, -hw],
+      [rimOuter, -hw * 0.9],
+      [rimOuter, hw * 0.9],
+      [rimOuter - 0.004, hw],
+      [rimInner + depth * 0.25, hw * 0.85],
+      [rimInner + 0.003, 0],
+    ].map(([r, z]) => new THREE.Vector2(r, z));
+    const rim = new THREE.Mesh(new THREE.LatheGeometry(prof, 96), rimMat);
     rim.rotation.x = Math.PI / 2;
-    rim.position.copy(V(center));
-    gw.add(rim);
-    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.1, 16), mat(COLORS.metal, { metalness: 0.8 }));
+    spin.add(rim);
+    // ハブ(胴とフランジ)
+    const hubMat = mat(0x2a2c31, { metalness: 0.8, roughness: 0.3 });
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.1, 20), hubMat);
     hub.rotation.x = Math.PI / 2;
-    hub.position.copy(V(center));
-    gw.add(hub);
-    if (disc) {
-      const d = new THREE.Mesh(new THREE.CylinderGeometry(rimInner, rimInner, 0.02, 48), mat(0x15171b, { metalness: 0.4 }));
-      d.rotation.x = Math.PI / 2;
-      d.position.copy(V(center));
-      gw.add(d);
-    } else {
-      const spokes = new THREE.Group();
-      const n = rimMm >= 40 ? 20 : 24;
-      const geom = new THREE.BufferGeometry();
-      const arr = [];
-      for (let i = 0; i < n; i++) {
-        const a = (i / n) * Math.PI * 2;
-        const side = i % 2 ? 0.035 : -0.035;
-        arr.push(0, 0, side, Math.cos(a) * rimInner, Math.sin(a) * rimInner, 0);
-      }
-      geom.setAttribute("position", new THREE.Float32BufferAttribute(arr, 3));
-      spokes.add(new THREE.LineSegments(geom, new THREE.LineBasicMaterial({ color: 0xb8c0c8 })));
-      spokes.position.copy(V(center));
-      spokes.userData.spin = true;
-      gw.add(spokes);
+    spin.add(hub);
+    for (const z of [-0.03, 0.03]) {
+      const fl = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.004, 24), hubMat);
+      fl.rotation.x = Math.PI / 2;
+      fl.position.z = z;
+      spin.add(fl);
     }
+    // バルブ
+    const valve = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.03, 8), mat(0xcfd5db, { metalness: 0.9 }));
+    valve.position.set(0, rimInner - 0.008, 0);
+    spin.add(valve);
+    if (disc) {
+      const dp = [
+        [0.02, 0.014],
+        [rimInner + 0.01, 0.011],
+        [rimInner + 0.01, -0.011],
+        [0.02, -0.014],
+      ].map(([r, z]) => new THREE.Vector2(r, z));
+      const d = new THREE.Mesh(new THREE.LatheGeometry(dp, 64), rimMat);
+      d.rotation.x = Math.PI / 2;
+      spin.add(d);
+    } else {
+      // スポーク(細い棒をまとめて描く)。左右交互・接線組み
+      const n = rimMm >= 40 ? 20 : 24;
+      const spokeGeo = new THREE.CylinderGeometry(0.0011, 0.0011, 1, 5);
+      const inst = new THREE.InstancedMesh(spokeGeo, mat(0x9aa3ad, { metalness: 0.9, roughness: 0.25 }), n);
+      const m4 = new THREE.Matrix4();
+      const up = new THREE.Vector3(0, 1, 0);
+      for (let i = 0; i < n; i++) {
+        const side = i % 2 ? 0.03 : -0.03;
+        const aH = (i / n) * Math.PI * 2;
+        const aR = aH + (i % 4 < 2 ? 1 : -1) * 0.35; // 接線組み
+        const A = new THREE.Vector3(Math.cos(aH) * 0.024, Math.sin(aH) * 0.024, side);
+        const B = new THREE.Vector3(Math.cos(aR) * (rimInner + 0.004), Math.sin(aR) * (rimInner + 0.004), 0);
+        const dir = new THREE.Vector3().subVectors(B, A);
+        const q = new THREE.Quaternion().setFromUnitVectors(up, dir.clone().normalize());
+        m4.compose(A.clone().addScaledVector(dir, 0.5), q, new THREE.Vector3(1, dir.length(), 1));
+        inst.setMatrixAt(i, m4);
+      }
+      spin.add(inst);
+    }
+    gw.add(spin);
   }
 
   // ドロップハンドルの片側の形
@@ -260,31 +535,46 @@ const View3D = (() => {
     const parts = build.parts;
     const at = (id) => (parts[id] && parts[id].attrs) || {};
     const color = build.color || "#0a3d91";
-    const frameMat = mat(new THREE.Color(color), { metalness: 0.35, roughness: 0.3 });
+    const frameMat = paint(new THREE.Color(color));
     const aero = at("frame").aero === "aero";
-    const tr = aero ? 0.024 : 0.019;
+    const k = aero ? 1.2 : 1; // エアロフレームは太め
     const flat = aero ? 0.55 : 1;
-
-    // フレーム
-    const gf = group("frame");
     const bb = { x: 0, y: 0, z: 0 };
-    gf.add(tube(bk.ttFront, bk.stTop, tr * 0.85, frameMat, flat));
-    gf.add(tube(bk.dtFront, bb, tr * 1.2, frameMat, flat));
-    gf.add(tube(bb, bk.stTop, tr, frameMat, flat));
-    gf.add(tube(bk.htTop, bk.htBot, tr * 1.25, frameMat));
-    const stTopBack = { x: bk.stTop.x * 0.92, y: bk.stTop.y * 0.92 };
-    for (const s of [-1, 1]) {
-      gf.add(tube({ x: stTopBack.x, y: stTopBack.y, z: s * 0.012 }, { x: bk.rearAxle.x, y: bk.rearAxle.y, z: s * 0.065 }, 0.009, frameMat));
-      gf.add(tube({ x: 0, y: 0, z: s * 0.03 }, { x: bk.rearAxle.x, y: bk.rearAxle.y, z: s * 0.065 }, 0.011, frameMat));
-    }
-    gf.add(tube({ x: 0, y: 0, z: -0.04 }, { x: 0, y: 0, z: 0.04 }, 0.022, frameMat));
+    const blackM = mat(COLORS.dark, { metalness: 0.5, roughness: 0.35 });
+    const metal = mat(COLORS.metal, { metalness: 0.95, roughness: 0.22 });
 
-    // フォーク
+    // フレーム: 先細りのパイプと、つなぎ目の丸み
+    const gf = group("frame");
+    const ttBack = lerp3(bb, bk.stTop, 0.97);
+    gf.add(tube(bk.ttFront, ttBack, 0.017 * k, frameMat, flat, 0.015 * k));
+    gf.add(tube(bk.dtFront, bb, 0.022 * k, frameMat, flat, 0.026 * k));
+    gf.add(tube(bb, bk.stTop, 0.02 * k, frameMat, flat, 0.016 * k));
+    gf.add(tube(bk.htBot, bk.htTop, 0.026 * k, frameMat, 1, 0.021 * k));
+    for (const p of [bk.ttFront, bk.dtFront]) gf.add(ball(p, 0.021 * k, frameMat));
+    gf.add(ball(ttBack, 0.017 * k, frameMat));
+    const stJoin = lerp3(bb, bk.stTop, 0.9);
+    for (const s of [-1, 1]) {
+      const drop = { x: bk.rearAxle.x, y: bk.rearAxle.y, z: s * 0.065 };
+      gf.add(tube({ x: stJoin.x, y: stJoin.y, z: s * 0.014 }, drop, 0.0095 * k, frameMat, 1, 0.007));
+      gf.add(tube({ x: 0, y: 0, z: s * 0.032 }, drop, 0.013 * k, frameMat, 1, 0.008));
+      gf.add(box(add3(drop, { x: 0.004, y: 0.004 }), [0.03, 0.03, 0.006], blackM));
+    }
+    const shell = new THREE.Mesh(new THREE.CylinderGeometry(0.023, 0.023, 0.072, 24), frameMat);
+    shell.rotation.x = Math.PI / 2;
+    gf.add(shell);
+    // ヘッドセットの上のふた・シートクランプ
+    gf.add(tube(bk.htTop, add3(bk.htTop, mul3(bk.up, 0.008)), 0.022, blackM));
+    gf.add(tube(lerp3(bb, bk.stTop, 0.985), add3(bk.stTop, mul3(bk.seatDir, 0.012)), 0.019, blackM));
+
+    // フォーク: 根元が太く、先が細い
     const gk = group("fork");
     const forkMat = frameMat.clone();
-    gk.add(tube(bk.htTop, add3(bk.htTop, mul3(bk.up, 0.01)), 0.016, mat(COLORS.dark)));
-    for (const s of [-1, 1]) gk.add(tube({ x: bk.crown.x, y: bk.crown.y, z: s * 0.03 }, { x: bk.frontAxle.x, y: bk.frontAxle.y, z: s * 0.05 }, aero ? 0.014 : 0.012, forkMat, aero ? 0.6 : 1));
-    gk.add(tube({ x: bk.crown.x, y: bk.crown.y, z: -0.035 }, { x: bk.crown.x, y: bk.crown.y, z: 0.035 }, 0.016, forkMat));
+    const crownC = add3(bk.crown, mul3(bk.up, -0.01));
+    gk.add(box(crownC, [0.05, 0.035, 0.085], forkMat));
+    for (const s of [-1, 1]) {
+      gk.add(tube({ x: crownC.x, y: crownC.y, z: s * 0.036 }, { x: bk.frontAxle.x, y: bk.frontAxle.y, z: s * 0.05 }, (aero ? 0.016 : 0.014) * 1, forkMat, aero ? 0.6 : 0.8, 0.008));
+      gk.add(box({ x: bk.frontAxle.x, y: bk.frontAxle.y + 0.004, z: s * 0.05 }, [0.022, 0.026, 0.006], blackM));
+    }
 
     // ホイールとタイヤ
     const gw = group("wheels");
@@ -294,69 +584,174 @@ const View3D = (() => {
     const tireW = at("tires").width || 28;
     wheel(bk.frontAxle, bk.R, tireW, w.rimFront || 25, false, gw, gt);
     wheel(bk.rearAxle, bk.R, tireW, w.rimRear || 25, !!w.discRear, gw, gt);
+    // クイックリリースのレバー
+    for (const ax of [bk.frontAxle, bk.rearAxle]) gw.add(box({ x: ax.x - 0.02, y: ax.y, z: -0.06 }, [0.06, 0.008, 0.006], metal));
 
-    // コンポ: クランク・チェーンリング・スプロケット・変速機・ブレーキ・チェーン・シフター
+    // コンポ: チェーンリング・クランク・スプロケット・チェーン・変速機・ブレーキ・シフター
     const gg = group("groupset");
-    const metal = mat(COLORS.metal, { metalness: 0.85, roughness: 0.25 });
-    const darkM = mat(COLORS.dark, { metalness: 0.6, roughness: 0.35 });
-    const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.006, 40), darkM);
-    ring.rotation.x = Math.PI / 2;
-    ring.position.set(0, 0, 0.055);
+    const ringR = 0.1;
+    const ring = gear(ringR, 50, 0.004, mat(0x2b2d32, { metalness: 0.8, roughness: 0.3 }), 0.07);
+    ring.position.set(0, 0, 0.052);
     gg.add(ring);
+    // スパイダー(チェーンリングを支える腕)
+    const spider = new THREE.Group();
+    spider.userData.crank = true;
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+      const arm = box({ x: Math.cos(a) * 0.04, y: Math.sin(a) * 0.04, z: 0.058 }, [0.08, 0.014, 0.006], blackM);
+      arm.rotation.z = a;
+      spider.add(arm);
+    }
+    gg.add(spider);
+    // クランク(先細りの腕)
     const crank = new THREE.Group();
     crank.name = "crank";
     crank.userData.crank = true;
-    const armR = box({ x: 0, y: bk.p.crank / 2, z: 0.07 }, [0.02, bk.p.crank, 0.012], darkM);
-    const armL = box({ x: 0, y: -bk.p.crank / 2, z: -0.07 }, [0.02, bk.p.crank, 0.012], darkM);
+    const armShape = new THREE.Shape();
+    const cl = bk.p.crank;
+    armShape.moveTo(-0.018, 0);
+    armShape.lineTo(-0.012, cl);
+    armShape.absarc(0, cl, 0.012, Math.PI, 0, true);
+    armShape.lineTo(0.018, 0);
+    armShape.absarc(0, 0, 0.018, 0, Math.PI, true);
+    const armGeo = new THREE.ExtrudeGeometry(armShape, { depth: 0.012, bevelEnabled: true, bevelThickness: 0.002, bevelSize: 0.002, bevelSegments: 2 });
+    const armR = new THREE.Mesh(armGeo, paint(0x1b1c20, { metalness: 0.4 }));
+    armR.position.z = 0.068;
+    const armL = new THREE.Mesh(armGeo, paint(0x1b1c20, { metalness: 0.4 }));
+    armL.rotation.z = Math.PI;
+    armL.position.z = -0.08;
     crank.add(armR, armL);
     gg.add(crank);
-    const cassette = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.035, 24), metal);
-    cassette.rotation.x = Math.PI / 2;
-    cassette.position.set(bk.rearAxle.x, bk.rearAxle.y, 0.035);
-    gg.add(cassette);
-    gg.add(box({ x: bk.rearAxle.x + 0.01, y: bk.rearAxle.y - 0.07, z: 0.06 }, [0.04, 0.08, 0.02], darkM));
-    gg.add(box({ x: 0.0, y: 0.11, z: 0.045 }, [0.05, 0.02, 0.02], darkM));
-    // チェーン(上下2本の線で表す)
-    const chainMat = mat(0x6f767f, { metalness: 0.9 });
-    gg.add(tube({ x: 0, y: 0.1, z: 0.05 }, { x: bk.rearAxle.x, y: bk.rearAxle.y + 0.05, z: 0.04 }, 0.004, chainMat));
-    gg.add(tube({ x: 0, y: -0.1, z: 0.05 }, { x: bk.rearAxle.x + 0.01, y: bk.rearAxle.y - 0.11, z: 0.05 }, 0.004, chainMat));
-    // ブレーキ
-    gg.add(box(add3(bk.crown, { x: 0.02, y: -0.01 }), [0.04, 0.05, 0.05], darkM));
-    gg.add(box({ x: bk.stTop.x * 0.75 - 0.03, y: bk.stTop.y * 0.75 - 0.05 }, [0.04, 0.05, 0.05], darkM));
-    // シフター(ブラケット)
+    // スプロケット(11〜28T)
+    const cogs = [11, 12, 13, 14, 15, 17, 19, 21, 24, 28];
+    cogs.forEach((t, i) => {
+      const cog = gear(0.0042 * t + 0.002, t, 0.0018, metal, 0.008);
+      cog.position.set(bk.rearAxle.x, bk.rearAxle.y, 0.052 - i * 0.0039);
+      cog.userData.spin = true;
+      gg.add(cog);
+    });
+    // リアディレイラー(プーリー2つとケージ)
+    const rx = bk.rearAxle.x, ry = bk.rearAxle.y;
+    const pU = { x: rx + 0.005, y: ry - 0.065, z: 0.05 };
+    const pL = { x: rx + 0.02, y: ry - 0.135, z: 0.05 };
+    gg.add(box({ x: rx - 0.012, y: ry - 0.03, z: 0.068 }, [0.03, 0.05, 0.02], blackM));
+    const cage = tube(pU, pL, 0.012, blackM, 0.35);
+    cage.position.z = 0.058;
+    gg.add(cage);
+    for (const pp of [pU, pL]) {
+      const pul = gear(0.016, 11, 0.004, mat(0x3a3d43, { metalness: 0.6 }), 0.004);
+      pul.position.copy(V(pp));
+      pul.userData.spin = true;
+      gg.add(pul);
+    }
+    // チェーン: チェーンリング → 上を通ってスプロケット → プーリー2つ → 下を通ってチェーンリング
+    const cogR = 0.0042 * 15 + 0.002;
+    const pts = [];
+    const z = 0.05;
+    for (let a = 90; a >= -90; a -= 15) pts.push(new THREE.Vector3(Math.cos((a * Math.PI) / 180) * ringR, Math.sin((a * Math.PI) / 180) * ringR, z)); // チェーンリングの前側
+    pts.push(new THREE.Vector3(pL.x + 0.016, pL.y - 0.012, z));
+    pts.push(new THREE.Vector3(pL.x - 0.006, pL.y - 0.016, z));
+    pts.push(new THREE.Vector3(pU.x + 0.016, pU.y, z));
+    pts.push(new THREE.Vector3(pU.x - 0.014, pU.y + 0.006, z));
+    for (let a = -100; a >= -270; a -= 20) pts.push(new THREE.Vector3(rx + Math.cos((a * Math.PI) / 180) * cogR, ry + Math.sin((a * Math.PI) / 180) * cogR, z)); // スプロケットの後ろ側
+    pts.push(new THREE.Vector3(-0.03, ringR, z));
+    const chain = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true, "catmullrom", 0.2), 220, 0.0035, 6, true), mat(0x8a9099, { metalness: 0.9, roughness: 0.35 }));
+    gg.add(chain);
+    // ブレーキ(キャリパー)
+    const caliper = (c, flipX) => {
+      const g = new THREE.Group();
+      const arch = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.006, 8, 20, Math.PI), blackM);
+      arch.rotation.y = Math.PI / 2;
+      g.add(arch);
+      for (const s of [-1, 1]) g.add(box({ x: 0, y: -0.03, z: s * 0.03 }, [0.03, 0.012, 0.008], mat(0x111111)));
+      g.position.copy(V(c));
+      g.rotation.z = flipX ? -0.3 : 0.3;
+      return g;
+    };
+    gg.add(caliper(add3(bk.crown, { x: 0.025, y: -0.02 }), false));
+    gg.add(caliper({ x: bk.stTop.x * 0.78 - 0.035, y: bk.stTop.y * 0.78 - 0.04 }, true));
+    // シフター(ブラケットとレバー)
     const hoods = bk.grips.hoods;
-    for (const s of [-1, 1]) gg.add(box({ x: hoods.pt.x - 0.01, y: hoods.pt.y - 0.01, z: s * hoods.z }, [0.07, 0.035, 0.03], darkM));
+    for (const s of [-1, 1]) {
+      const hood = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 12), mat(0x18191c, { roughness: 0.7 }));
+      hood.scale.set(0.045, 0.02, 0.016);
+      hood.position.set(hoods.pt.x - 0.01, hoods.pt.y, s * hoods.z);
+      hood.rotation.z = 0.35;
+      gg.add(hood);
+      const lever = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(hoods.pt.x + 0.03, hoods.pt.y + 0.01, s * hoods.z),
+        new THREE.Vector3(hoods.pt.x + 0.045, hoods.pt.y - 0.05, s * hoods.z),
+        new THREE.Vector3(hoods.pt.x + 0.03, hoods.pt.y - 0.1, s * (hoods.z + 0.005)),
+      ]);
+      gg.add(new THREE.Mesh(new THREE.TubeGeometry(lever, 16, 0.006, 8, false), metal));
+    }
 
     // ハンドル・バーテープ
     const gh = group("handlebar");
     const gbt = group("bartape");
-    const barMat = mat(at("handlebar").type === "round" ? 0x2c2f36 : 0x111214, { metalness: 0.4 });
+    const barCarbon = at("handlebar").type !== "round";
+    const barMat = barCarbon ? paint(0xffffff, { map: carbonTex(), roughness: 0.4 }) : mat(0x2c2f36, { metalness: 0.6, roughness: 0.3 });
+    const tapeMat = new THREE.MeshStandardMaterial({ map: tapeTex(), color: 0xffffff, roughness: 0.95 });
     for (const s of [-1, 1]) {
       const path = barPath(bk.barClamp, bk.p.barReach, bk.p.barDrop, bk.p.barWidth / 2, s);
-      gh.add(new THREE.Mesh(new THREE.TubeGeometry(path, 40, at("handlebar").type === "aero" ? 0.013 : 0.012, 10, false), barMat));
-      gbt.add(new THREE.Mesh(new THREE.TubeGeometry(path, 40, 0.0145, 10, false), mat(COLORS.tape, { roughness: 0.95 })));
+      const r = at("handlebar").type === "aero" ? 0.013 : 0.012;
+      const bar = new THREE.Mesh(new THREE.TubeGeometry(path, 60, r, 14, false), barMat);
+      if (at("handlebar").type === "aero") bar.scale.set(1, 0.85, 1);
+      gh.add(bar);
+      gbt.add(new THREE.Mesh(new THREE.TubeGeometry(path, 60, 0.0148, 14, false), tapeMat));
     }
 
-    // ステム・スペーサー
+    // ステム・コラムスペーサー
     const gs = group("stem");
-    gs.add(tube(bk.htTop, add3(bk.htTop, mul3(bk.up, bk.p.spacers + 0.001)), 0.017, mat(0x30343b)));
-    gs.add(tube(bk.steerer, bk.barClamp, 0.017, mat(0x202227, { metalness: 0.5 })));
+    const spacerMat = mat(0x2a2d33, { metalness: 0.5, roughness: 0.4 });
+    const nSp = Math.max(1, Math.round(bk.p.spacers / 0.005));
+    for (let i = 0; i < nSp && bk.p.spacers > 0.002; i++) {
+      const a = add3(bk.htTop, mul3(bk.up, 0.008 + (bk.p.spacers / nSp) * i));
+      gs.add(tube(a, add3(a, mul3(bk.up, bk.p.spacers / nSp - 0.0008)), 0.0185, spacerMat));
+    }
+    const stemMat = paint(0x18191c, { metalness: 0.4 });
+    gs.add(tube(add3(bk.steerer, mul3(bk.up, -0.02)), add3(bk.steerer, mul3(bk.up, 0.02)), 0.02, stemMat));
+    gs.add(tube(bk.steerer, bk.barClamp, 0.016, stemMat, 1, 0.014));
+    gs.add(box(add3(bk.barClamp, { x: 0.012 }), [0.016, 0.045, 0.05], stemMat));
 
     // シートポスト・サドル
     const gp = group("seatpost");
-    gp.add(tube(bk.stTop, bk.clamp, 0.0135, mat(0x1c1e22, { metalness: 0.4 })));
+    gp.add(tube(bk.stTop, bk.clamp, 0.0136, paint(0x1c1e22, { metalness: 0.3 })));
+    gp.add(box(add3(bk.clamp, { y: 0.012 }), [0.05, 0.02, 0.03], blackM));
     const gsd = group("saddle");
-    const sd = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 12), mat(COLORS.saddle, { roughness: 0.8 }));
-    sd.scale.set(0.135, 0.022, 0.065);
-    sd.position.set(bk.saddleTop.x - 0.02, bk.saddleTop.y - 0.012, 0);
-    gsd.add(sd);
+    const sh = new THREE.Shape();
+    // 上から見たサドルの形(後ろが広く、前が細い)
+    sh.moveTo(-0.13, 0);
+    sh.bezierCurveTo(-0.13, 0.07, -0.08, 0.072, -0.03, 0.05);
+    sh.bezierCurveTo(0.03, 0.025, 0.1, 0.02, 0.14, 0.012);
+    sh.bezierCurveTo(0.152, 0.006, 0.152, -0.006, 0.14, -0.012);
+    sh.bezierCurveTo(0.1, -0.02, 0.03, -0.025, -0.03, -0.05);
+    sh.bezierCurveTo(-0.08, -0.072, -0.13, -0.07, -0.13, 0);
+    const sGeo = new THREE.ExtrudeGeometry(sh, { depth: 0.018, bevelEnabled: true, bevelThickness: 0.008, bevelSize: 0.007, bevelSegments: 4, curveSegments: 16 });
+    sGeo.rotateX(-Math.PI / 2);
+    const saddle = new THREE.Mesh(sGeo, mat(COLORS.saddle, { roughness: 0.65 }));
+    saddle.position.set(bk.saddleTop.x - 0.015, bk.saddleTop.y - 0.026, 0);
+    gsd.add(saddle);
+    for (const s of [-1, 1]) gsd.add(tube({ x: bk.saddleTop.x - 0.09, y: bk.saddleTop.y - 0.03, z: s * 0.02 }, { x: bk.saddleTop.x + 0.08, y: bk.saddleTop.y - 0.03, z: s * 0.012 }, 0.0035, metal));
 
-    // ペダル
+    // ペダル(クランクに合わせて回る)
     const gpd = group("pedals");
     for (const s of [-1, 1]) {
-      const pm = box({ x: 0, y: 0, z: s * 0.1 }, [0.09, 0.015, 0.07], darkM);
-      pm.userData.pedal = s;
-      gpd.add(pm);
+      const pg = new THREE.Group();
+      pg.userData.pedal = s;
+      const ps = new THREE.Shape();
+      ps.moveTo(-0.045, -0.01);
+      ps.lineTo(0.045, -0.006);
+      ps.lineTo(0.045, 0.006);
+      ps.lineTo(-0.045, 0.01);
+      ps.closePath();
+      const body = new THREE.Mesh(new THREE.ExtrudeGeometry(ps, { depth: 0.07, bevelEnabled: true, bevelThickness: 0.003, bevelSize: 0.003, bevelSegments: 2 }), paint(0x15161a));
+      // ペダルの中心は z = ±0.1(毎フレームの位置合わせと同じ)。軸はクランクの先(±0.075)から
+      body.position.z = s > 0 ? -0.012 : -0.058;
+      pg.add(body);
+      pg.add(tube({ x: 0, y: 0, z: -s * 0.025 }, { x: 0, y: 0, z: -s * 0.008 }, 0.005, metal));
+      pg.position.set(0, 0, s * 0.1);
+      gpd.add(pg);
     }
 
     // ボトルケージ・その他
@@ -364,20 +759,29 @@ const View3D = (() => {
     const bottles = at("cages").bottles != null ? at("cages").bottles : 1;
     const dtMid = lerp3(bk.dtFront, bb, 0.5);
     const stMid = lerp3(bb, bk.stTop, 0.45);
-    const bottleMat = mat(0xeeeeee, { roughness: 0.6 });
-    if (bottles >= 1) gc.add(bottleMesh(dtMid, bk.dtFront, bottleMat));
-    if (bottles >= 2) gc.add(bottleMesh(stMid, bk.stTop, bottleMat, -1));
+    if (bottles >= 1) gc.add(bottleMesh(dtMid, bk.dtFront, 1));
+    if (bottles >= 2) gc.add(bottleMesh(stMid, bk.stTop, -1));
     const ga = group("accessories");
     if ((at("accessories").extras || 0) > 0) {
-      ga.add(box(add3(bk.barClamp, { x: 0.05, y: 0.02 }), [0.06, 0.012, 0.045], mat(0x0b0c0f)));
-      const light = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.06, 12), mat(0xffffff, { emissive: 0xfff2c0, emissiveIntensity: 0.6 }));
+      // サイコン(アウトフロントマウント)
+      ga.add(tube(bk.barClamp, add3(bk.barClamp, { x: 0.06 }), 0.005, blackM));
+      ga.add(box(add3(bk.barClamp, { x: 0.075, y: 0.01 }), [0.07, 0.016, 0.05], mat(0x0b0c0f, { roughness: 0.3 })));
+      ga.add(box(add3(bk.barClamp, { x: 0.075, y: 0.0185 }), [0.055, 0.002, 0.04], mat(0x334455, { emissive: 0x223344, emissiveIntensity: 0.6, roughness: 0.1 })));
+      // 前後のライト
+      const light = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.06, 16), mat(0x222222, { metalness: 0.6 }));
       light.rotation.z = Math.PI / 2;
-      light.position.set(bk.barClamp.x + 0.02, bk.barClamp.y - 0.03, 0.08);
+      light.position.set(bk.barClamp.x + 0.02, bk.barClamp.y - 0.03, 0.09);
       ga.add(light);
-      ga.add(box({ x: bk.saddleTop.x - 0.1, y: bk.saddleTop.y - 0.12, z: 0 }, [0.03, 0.05, 0.02], mat(0xff2a2a, { emissive: 0xff0000, emissiveIntensity: 0.5 })));
-      if ((at("accessories").extras || 0) >= 3) ga.add(box({ x: bk.saddleTop.x - 0.06, y: bk.saddleTop.y - 0.07, z: 0 }, [0.1, 0.06, 0.06], mat(0x222222)));
+      const lens = new THREE.Mesh(new THREE.CircleGeometry(0.012, 16), mat(0xffffff, { emissive: 0xfff2c0, emissiveIntensity: 1.2 }));
+      lens.rotation.y = Math.PI / 2;
+      lens.position.set(bk.barClamp.x + 0.051, bk.barClamp.y - 0.03, 0.09);
+      ga.add(lens);
+      ga.add(box(lerp3(bk.stTop, bk.clamp, 0.4), [0.02, 0.05, 0.03], mat(0xff2a2a, { emissive: 0xff0000, emissiveIntensity: 0.8 })));
+      if ((at("accessories").extras || 0) >= 3) ga.add(box({ x: bk.saddleTop.x - 0.06, y: bk.saddleTop.y - 0.07, z: 0 }, [0.1, 0.06, 0.06], mat(0x222222, { roughness: 0.8 })));
     }
 
+    // 影を落とす・受ける
+    bikeGroup.traverse((o) => o.isMesh && ((o.castShadow = true), (o.receiveShadow = true)));
     // 外しているパーツは隠す
     for (const id of Object.keys(groups)) {
       groups[id].visible = !(parts[id] && parts[id].mounted === false);
@@ -386,6 +790,7 @@ const View3D = (() => {
         if (o.isMesh) {
           o.material = o.material.clone();
           o.userData.baseEmissive = o.material.emissive ? o.material.emissive.clone() : null;
+          o.userData.baseEmissiveI = o.material.emissiveIntensity;
         }
       });
     }
@@ -395,51 +800,96 @@ const View3D = (() => {
     }
   }
 
-  function bottleMesh(center, toward, material, side = 1) {
+  // ボトル(キャップとくびれつき)
+  function bottleMesh(center, toward, side = 1) {
     const THREE = T();
     const g = new THREE.Group();
     const dir = new THREE.Vector3(toward.x - center.x, toward.y - center.y, 0).normalize();
-    const b = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.2, 16), material);
-    b.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-    const n = new THREE.Vector3(-dir.y, dir.x, 0).multiplyScalar(0.045 * side);
-    b.position.set(center.x + n.x, center.y + n.y, 0);
-    g.add(b);
+    const prof = [
+      [0, -0.1],
+      [0.034, -0.1],
+      [0.036, -0.06],
+      [0.032, -0.02],
+      [0.036, 0.03],
+      [0.035, 0.075],
+      [0.024, 0.095],
+      [0.012, 0.1],
+      [0, 0.1],
+    ].map(([r, y]) => new THREE.Vector2(r, y));
+    const b = new THREE.Mesh(new THREE.LatheGeometry(prof, 24), new THREE.MeshPhysicalMaterial({ color: 0xf2f4f7, roughness: 0.5, transmission: 0, clearcoat: 0.3 }));
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.014, 0.022, 16), mat(0x1f6fe5));
+    cap.position.y = 0.11;
+    const holder = new THREE.Group();
+    holder.add(b, cap);
+    holder.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+    const n = new THREE.Vector3(-dir.y, dir.x, 0).multiplyScalar(0.046 * side);
+    holder.position.set(center.x + n.x, center.y + n.y, 0);
+    g.add(holder);
     return g;
   }
 
-  const add3 = (a, b) => ({ x: a.x + b.x, y: a.y + b.y, z: (a.z || 0) + (b.z || 0) });
+  const add3 = (a, b) => ({ x: a.x + (b.x || 0), y: a.y + (b.y || 0), z: (a.z || 0) + (b.z || 0) });
   const mul3 = (a, k) => ({ x: a.x * k, y: a.y * k, z: (a.z || 0) * k });
   const lerp3 = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: (a.z || 0) + ((b.z || 0) - (a.z || 0)) * t });
 
   // ---------- ライダー ----------
+  // 服装: ジャージ(胴・上腕)、ビブショーツ(太もも)、素肌(前腕・すね)、ソックス・シューズ・グローブ
   function buildRider() {
     const THREE = T();
     if (riderGroup) root.remove(riderGroup);
     riderGroup = new THREE.Group();
     root.add(riderGroup);
     riderParts = [];
-    const cyl = new THREE.CylinderGeometry(1, 1, 1, 14);
-    const sph = new THREE.SphereGeometry(1, 16, 12);
-    const matFor = (part) =>
-      part === "torso" || part === "arm" ? mat(COLORS.jersey) : part === "thigh" ? mat(COLORS.shorts) : part === "foot" ? mat(COLORS.shoe) : mat(COLORS.skin, { roughness: 0.7 });
+    const sph = new THREE.SphereGeometry(1, 20, 14);
+    const jersey = new THREE.MeshPhysicalMaterial({ color: COLORS.jersey, roughness: 0.7, sheen: 0.25, sheenColor: new THREE.Color(0x3d6fd0), sheenRoughness: 0.6, envMapIntensity: 0.4 });
+    const shorts = new THREE.MeshPhysicalMaterial({ color: COLORS.shorts, roughness: 0.45, sheen: 0.4, sheenColor: new THREE.Color(0x444a55) });
+    const skin = new THREE.MeshPhysicalMaterial({ color: COLORS.skin, roughness: 0.6, sheen: 0.2, sheenColor: new THREE.Color(0xffd0b0), envMapIntensity: 0.4 });
+    const shoe = paint(COLORS.shoe, { roughness: 0.35 });
+    const matFor = (part) => (part === "torso" || part === "arm" ? jersey : part === "thigh" ? shorts : part === "foot" ? shoe : skin);
     for (let i = 0; i < state.fit.caps.length; i++) {
       const c = state.fit.caps[i];
       const m = matFor(c.part);
-      const body = new THREE.Mesh(cyl, m);
+      // 先細りの円柱(根元の太さ1に対して先の太さ r2/r)
+      const ratio = c.r > 0 ? (c.r2 == null ? 1 : c.r2 / c.r) : 1;
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(ratio, 1, 1, 20), m);
       const e1 = new THREE.Mesh(sph, m);
-      const e2 = new THREE.Mesh(sph, m);
+      const e2 = new THREE.Mesh(sph, c.part === "thigh" ? skin : m); // 膝は素肌
       riderGroup.add(body, e1, e2);
       riderParts.push({ body, e1, e2 });
     }
-    // ヘルメット
-    const helmet = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), mat(COLORS.helmet, { roughness: 0.4 }));
+    // 胴の中身(左右2本のあいだを埋めて、胸と背中の形にする。表示だけで計算には使わない)
+    const chest = new THREE.Mesh(new THREE.CylinderGeometry(1, 0.82, 1, 24), jersey);
+    chest.name = "chest";
+    riderGroup.add(chest);
+    const shoulders = new THREE.Mesh(sph, jersey);
+    shoulders.name = "shoulders";
+    riderGroup.add(shoulders);
+    // ソックス(足首)・シューズの底・グローブ
+    const sockMat = mat(COLORS.sock, { roughness: 0.9 });
+    const extras = new THREE.Group();
+    extras.name = "extras";
+    for (let i = 0; i < 2; i++) {
+      const sock = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 16), sockMat);
+      sock.name = "sock";
+      extras.add(sock);
+      const glove = new THREE.Mesh(sph, mat(0x111214, { roughness: 0.8 }));
+      glove.name = "glove";
+      extras.add(glove);
+    }
+    riderGroup.add(extras);
+    // ヘルメット(通気口の模様)とサングラス
+    const helmet = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 16, 0, Math.PI * 2, 0, Math.PI / 1.85), paint(0xffffff, { map: helmetTex(), roughness: 0.3 }));
     helmet.name = "helmet";
     riderGroup.add(helmet);
+    const glasses = new THREE.Mesh(new THREE.TorusGeometry(1, 0.12, 8, 24, Math.PI * 0.9), new THREE.MeshPhysicalMaterial({ color: COLORS.lens, metalness: 0.6, roughness: 0.05, clearcoat: 1 }));
+    glasses.name = "glasses";
+    riderGroup.add(glasses);
+    riderGroup.traverse((o) => o.isMesh && (o.castShadow = true));
     riderGroup.visible = anim.rider;
     updateRider();
   }
 
-  // 今のクランク角度でライダーの姿勢を計算し直して、各カプセルを動かす
+  // 今のクランク角度でライダーの姿勢を計算し直して、各部を動かす
   function updateRider() {
     if (!riderGroup || !state) return;
     const THREE = T();
@@ -461,13 +911,46 @@ const View3D = (() => {
       p.e1.position.copy(A);
       p.e2.position.copy(B);
       p.e1.scale.setScalar(c.r);
-      p.e2.scale.setScalar(c.r);
+      p.e2.scale.setScalar(c.r2 == null ? c.r : c.r2);
     });
-    const helmet = riderGroup.getObjectByName("helmet");
+    // 胴: 腰から肩へ、肩幅に合わせた楕円の断面(胸の厚み × 肩幅)
+    const sg = state.fit.seg;
+    const chest = riderGroup.getObjectByName("chest");
+    const H0 = V(pose.hipMid), S0 = V(pose.shoulderMid);
+    const td = new THREE.Vector3().subVectors(S0, H0);
+    const tl = td.length();
+    chest.position.copy(H0).addScaledVector(td, 0.5);
+    chest.quaternion.setFromUnitVectors(up, td.clone().normalize());
+    chest.scale.set(sg.r.torso[1] * 1.05, tl * 0.92, sg.shoulderHalf + sg.r.torso[1] * 0.35);
+    const shoulders = riderGroup.getObjectByName("shoulders");
+    shoulders.position.copy(S0).addScaledVector(td.clone().normalize(), -0.02);
+    shoulders.scale.set(sg.r.torso[1] * 1.0, sg.r.torso[1] * 0.85, sg.shoulderHalf + sg.r.arm[0] * 0.6);
+    // ソックスは足首、グローブは手
+    const extras = riderGroup.getObjectByName("extras");
+    const socks = extras.children.filter((o) => o.name === "sock");
+    const gloves = extras.children.filter((o) => o.name === "glove");
+    ["R", "L"].forEach((side, i) => {
+      const l = pose.legs[side];
+      const A = V(l.ankle);
+      const K = V(l.knee);
+      const d = new THREE.Vector3().subVectors(K, A).normalize();
+      socks[i].position.copy(A).addScaledVector(d, 0.045);
+      socks[i].quaternion.setFromUnitVectors(up, d);
+      const r = (state.fit.seg.r.shank[1] || 0.035) * 1.08;
+      socks[i].scale.set(r, 0.09, r);
+      gloves[i].position.copy(V(pose.arms[side].hand));
+      gloves[i].scale.set(0.045, 0.03, 0.035);
+    });
     const head = caps.find((c) => c.part === "head");
-    helmet.position.copy(V(head.a));
-    helmet.scale.setScalar(head.r * 1.08);
-    helmet.rotation.z = ((pose.torsoAngle - 20) * Math.PI) / 180 * 0.5;
+    const helmet = riderGroup.getObjectByName("helmet");
+    const tilt = ((pose.torsoAngle - 20) * Math.PI) / 180 * 0.5;
+    helmet.position.copy(V(head.a)).add(new THREE.Vector3(-0.005, 0.012, 0));
+    helmet.scale.set(head.r * 1.25, head.r * 1.05, head.r * 1.08);
+    helmet.rotation.set(0, 0, tilt - 0.15);
+    const glasses = riderGroup.getObjectByName("glasses");
+    glasses.position.copy(V(head.a)).add(new THREE.Vector3(head.r * 0.35, -head.r * 0.2, 0));
+    glasses.scale.setScalar(head.r * 0.82);
+    glasses.rotation.set(Math.PI / 2, 0, Math.PI / 2 + Math.PI * 0.05);
   }
 
   // ---------- 空気の流れ(イメージ) ----------
@@ -651,7 +1134,7 @@ const View3D = (() => {
         if (!o.isMesh || !o.material.emissive) return;
         if (on) o.material.emissive.setHex(0x1f6fe5);
         else if (o.userData.baseEmissive) o.material.emissive.copy(o.userData.baseEmissive);
-        o.material.emissiveIntensity = on ? 0.5 : o.material.emissiveIntensity;
+        o.material.emissiveIntensity = on ? 0.5 : o.userData.baseEmissiveI != null ? o.userData.baseEmissiveI : 1;
       });
     }
     if (focus && groups[id]) {
