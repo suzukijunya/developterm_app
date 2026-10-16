@@ -51,6 +51,18 @@ const Fit = (() => {
     foot: 0, // 足のサイズ
     flex: "normal", // 前屈: stiff / normal / soft
     backPain: false,
+    // 写真で測った各部の長さ(m)。0 は身長などから自動で計算
+    thighLen: 0, // 股関節〜膝
+    shankLen: 0, // 膝〜くるぶし
+    upperArmLen: 0, // 肩〜肘
+    forearmLen: 0, // 肘〜手首
+    torsoLen: 0, // 股関節〜肩
+    // 太さ(周囲の長さ、m)。0 は体重から自動で計算
+    thighCirc: 0, // 太もも周り
+    calfCirc: 0, // ふくらはぎ周り
+    chest: 0, // 胸囲
+    waist: 0, // ウエスト
+    armCirc: 0, // 二の腕周り
   };
 
   // 身長などから各部の長さを決める(人体の一般的な比率)
@@ -63,22 +75,34 @@ const Fit = (() => {
     // 体重から太さを決める(BMI 22 を基準)
     const bmi = (body.weight || 22 * H * H) / (H * H);
     const girth = Math.sqrt(bmi / 22);
+    const k = girth * (H / 1.72);
     const foot = body.foot || 0.152 * H;
+    // 周囲の長さ → 太さ(半径)。測っていなければ体重と身長から
+    const rad = (circ, def) => (circ > 0 ? circ / (2 * Math.PI) : def * k);
+    const torsoR = body.chest > 0 ? (body.chest / (2 * Math.PI)) * 0.62 : 0.09 * k;
     return {
       H,
       girth,
-      thigh: 0.245 * H * legScale,
-      shank: 0.246 * H * legScale,
+      thigh: body.thighLen || 0.245 * H * legScale,
+      shank: body.shankLen || 0.246 * H * legScale,
       ballToAnkle: Math.hypot(0.5 * foot, 0.04 * H),
       footBase: Math.atan2(0.04 * H, 0.5 * foot),
       foot,
-      torso: body.sitting ? Math.max(0.22 * H, body.sitting - 0.24 * H) : 0.29 * H,
-      upperArm: 0.186 * H * armScale,
-      forearm: 0.146 * H * armScale + 0.04 * H, // 手首からグリップの中心まで含める
+      torso: body.torsoLen || (body.sitting ? Math.max(0.22 * H, body.sitting - 0.24 * H) : 0.29 * H),
+      upperArm: body.upperArmLen || 0.186 * H * armScale,
+      forearm: (body.forearmLen || 0.146 * H * armScale) + 0.04 * H, // 手首からグリップの中心まで含める
       shoulderHalf: (body.shoulder || 0.23 * H) / 2 - 0.025,
       hipHalf: 0.085 * (H / 1.72),
       neck: 0.1 * H,
       head: 0.115 * (H / 1.72), // ヘルメット込み
+      // 各部の太さ(根元 → 先)
+      r: {
+        thigh: [rad(body.thighCirc, 0.085), rad(body.thighCirc ? body.thighCirc * 0.68 : 0, 0.058)],
+        shank: [rad(body.calfCirc, 0.058), rad(body.calfCirc ? body.calfCirc * 0.6 : 0, 0.035)],
+        arm: [rad(body.armCirc, 0.047), rad(body.armCirc ? body.armCirc * 0.85 : 0, 0.04)],
+        forearm: [0.04 * k, 0.027 * k],
+        torso: [body.waist > 0 ? (body.waist / (2 * Math.PI)) * 0.62 : torsoR * 0.92, torsoR],
+      },
     };
   }
 
@@ -190,22 +214,24 @@ const Fit = (() => {
   function capsules(r, s) {
     const k = s.girth * (s.H / 1.72);
     const c = [];
-    const seg = (a, b, rad, part) => c.push({ a, b, r: rad * k, part });
+    // r: 根元の太さ、r2: 先の太さ(太ももは膝に向かって細くなる、など)
+    const seg = (a, b, rad, part, rad2) => c.push({ a, b, r: rad, r2: rad2 == null ? rad : rad2, part });
+    const R = s.r;
     for (const side of ["R", "L"]) {
       const l = r.legs[side];
-      seg(l.hip, l.knee, 0.07, "thigh");
-      seg(l.knee, l.ankle, 0.05, "shank");
-      seg(l.ankle, l.toe, 0.04, "foot");
+      seg(l.hip, l.knee, R.thigh[0], "thigh", R.thigh[1]);
+      seg(l.knee, l.ankle, R.shank[0], "shank", R.shank[1]);
+      seg(l.ankle, l.toe, 0.04 * k, "foot", 0.032 * k);
       const a = r.arms[side];
-      seg(a.shoulder, a.elbow, 0.045, "arm");
-      seg(a.elbow, a.hand, 0.037, "forearm");
+      seg(a.shoulder, a.elbow, R.arm[0], "arm", R.arm[1]);
+      seg(a.elbow, a.hand, R.forearm[0], "forearm", R.forearm[1]);
     }
-    // 胴は左右2本で幅を出す
+    // 胴は左右2本で幅を出す(腰 → 胸)
     for (const sgn of [1, -1]) {
-      seg(withZ(r.hipMid, sgn * s.hipHalf * 0.9), withZ(r.shoulderMid, sgn * (s.shoulderHalf - 0.05)), 0.09, "torso");
+      seg(withZ(r.hipMid, sgn * s.hipHalf * 0.9), withZ(r.shoulderMid, sgn * (s.shoulderHalf - 0.05)), R.torso[0], "torso", R.torso[1]);
     }
-    seg(r.shoulderMid, r.head, 0.055, "neck");
-    c.push({ a: r.head, b: r.head, r: s.head, part: "head" });
+    seg(r.shoulderMid, r.head, 0.055 * k, "neck", 0.05 * k);
+    c.push({ a: r.head, b: r.head, r: s.head, r2: s.head, part: "head" });
     return c;
   }
 
@@ -214,10 +240,11 @@ const Fit = (() => {
   function frontalArea(caps, cell = 0.008) {
     let minZ = Infinity, maxZ = -Infinity, minY = Infinity, maxY = -Infinity;
     for (const c of caps) {
-      minZ = Math.min(minZ, c.a.z - c.r, c.b.z - c.r);
-      maxZ = Math.max(maxZ, c.a.z + c.r, c.b.z + c.r);
-      minY = Math.min(minY, c.a.y - c.r, c.b.y - c.r);
-      maxY = Math.max(maxY, c.a.y + c.r, c.b.y + c.r);
+      const m = Math.max(c.r, c.r2 == null ? c.r : c.r2);
+      minZ = Math.min(minZ, c.a.z - m, c.b.z - m);
+      maxZ = Math.max(maxZ, c.a.z + m, c.b.z + m);
+      minY = Math.min(minY, c.a.y - m, c.b.y - m);
+      maxY = Math.max(maxY, c.a.y + m, c.b.y + m);
     }
     const nz = Math.ceil((maxZ - minZ) / cell);
     const ny = Math.ceil((maxY - minY) / cell);
@@ -227,11 +254,11 @@ const Fit = (() => {
       const az = c.a.z, ay = c.a.y, bz = c.b.z, by = c.b.y;
       const dz = bz - az, dy = by - ay;
       const l2 = dz * dz + dy * dy;
-      const z0 = Math.max(0, Math.floor((Math.min(az, bz) - c.r - minZ) / cell));
-      const z1 = Math.min(nz - 1, Math.ceil((Math.max(az, bz) + c.r - minZ) / cell));
-      const y0 = Math.max(0, Math.floor((Math.min(ay, by) - c.r - minY) / cell));
-      const y1 = Math.min(ny - 1, Math.ceil((Math.max(ay, by) + c.r - minY) / cell));
-      const r2 = c.r * c.r;
+      const cr2 = c.r2 == null ? c.r : c.r2;
+      const z0 = Math.max(0, Math.floor((Math.min(az, bz) - Math.max(c.r, cr2) - minZ) / cell));
+      const z1 = Math.min(nz - 1, Math.ceil((Math.max(az, bz) + Math.max(c.r, cr2) - minZ) / cell));
+      const y0 = Math.max(0, Math.floor((Math.min(ay, by) - Math.max(c.r, cr2) - minY) / cell));
+      const y1 = Math.min(ny - 1, Math.ceil((Math.max(ay, by) + Math.max(c.r, cr2) - minY) / cell));
       for (let j = y0; j <= y1; j++) {
         const py = minY + (j + 0.5) * cell;
         for (let i = z0; i <= z1; i++) {
@@ -239,7 +266,8 @@ const Fit = (() => {
           let t = l2 ? ((pz - az) * dz + (py - ay) * dy) / l2 : 0;
           t = t < 0 ? 0 : t > 1 ? 1 : t;
           const ez = az + t * dz - pz, ey = ay + t * dy - py;
-          if (ez * ez + ey * ey <= r2) mask[j * nz + i] = 1;
+          const rt = c.r + (cr2 - c.r) * t; // その位置での太さ
+          if (ez * ez + ey * ey <= rt * rt) mask[j * nz + i] = 1;
         }
       }
     }
@@ -251,7 +279,7 @@ const Fit = (() => {
   // ---------- 空気抵抗(CdA) ----------
   // 体の抗力係数(前面投影面積に掛ける)。上体を倒すほど少し小さくなる。
   // ブラケットを持った一般的な姿勢で、バイク込みの CdA が 0.32 前後になるよう合わせた値
-  const riderCd = (torsoDeg) => 0.46 + 0.003 * Math.max(15, Math.min(75, torsoDeg));
+  const riderCd = (torsoDeg) => 0.48 + 0.0032 * Math.max(15, Math.min(75, torsoDeg));
 
   // 機材ごとの空気抵抗(CdA, m²)の目安。部位ごとの内訳を返す
   function bikeCdaParts(aero) {
@@ -313,6 +341,22 @@ const Fit = (() => {
         reachGap: pose.reachGap, // +ならハンドルが遠すぎて届かない
       },
       cda: { rider: riderCda, bike: bikePart, total: riderCda + bikePart, area: fa.area },
+    };
+  }
+
+  // 指定したクランク角度での関節の角度(写真で測った値と比べるため)
+  function anglesAt(build, body, crankDeg) {
+    const s = segments(Object.assign({}, DEFAULT_BODY, body));
+    const bk = bike(build.geo, build.pos, { radius: build.wheelRadius });
+    const r = rider(bk, s, crankDeg);
+    const l = r.legs.R;
+    const a = r.arms.R;
+    return {
+      knee: angleAt(l.hip, l.knee, l.ankle),
+      hip: angleAt(r.shoulderMid, withZ(r.hipMid, 0), withZ(l.knee, 0)),
+      torso: r.torsoAngle,
+      shoulder: angleAt(withZ(r.hipMid, a.shoulder.z), a.shoulder, a.elbow),
+      elbow: 180 - angleAt(a.shoulder, a.elbow, a.hand),
     };
   }
 
@@ -445,7 +489,7 @@ const Fit = (() => {
     };
   }
 
-  return { DEFAULT_GEO, DEFAULT_POS, DEFAULT_BODY, segments, bike, rider, capsules, frontalArea, bikeCda, bikeCdaParts, compute, targets, judge, penalty, optimize, performance, angleAt, riderCd };
+  return { DEFAULT_GEO, DEFAULT_POS, DEFAULT_BODY, segments, bike, rider, capsules, frontalArea, bikeCda, bikeCdaParts, compute, anglesAt, targets, judge, penalty, optimize, performance, angleAt, riderCd };
 })();
 
 if (typeof module !== "undefined") module.exports = Fit;

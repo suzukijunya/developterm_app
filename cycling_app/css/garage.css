@@ -657,3 +657,232 @@
   color: var(--muted);
   font-weight: 500;
 }
+
+/* 写真で測る(全画面) */
+body.ms-open {
+  overflow: hidden;
+}
+
+.ms {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #0b0f18;
+  color: #e6edf8;
+  display: flex;
+  flex-direction: column;
+  padding-top: env(safe-area-inset-top);
+}
+
+.ms-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  font-style: italic;
+}
+
+.ms-x {
+  border: 0;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.ms-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.ms-intro {
+  padding: 16px;
+  max-width: 520px;
+}
+
+.ms-intro ul {
+  padding-left: 1.2em;
+  line-height: 1.7;
+  font-size: 0.92rem;
+}
+
+.ms-pick {
+  display: block;
+  text-align: center;
+  cursor: pointer;
+}
+
+.ms-canvas {
+  display: block;
+  touch-action: none;
+}
+
+.ms-bar {
+  padding: 10px 16px calc(12px + env(safe-area-inset-bottom));
+  background: #121a2b;
+}
+
+.ms-next {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  min-height: 2.8em; /* 2行ぶん確保して、文字数が変わっても写真が動かないようにする */
+}
+
+.ms-next b {
+  color: #5b9bff;
+  margin-right: 6px;
+}
+
+.ms-btns {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.ms-btns .chip {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.ms-done {
+  flex: 1;
+  margin: 0;
+  padding: 12px;
+}
+
+.ms-done:disabled {
+  opacity: 0.4;
+}
+
+.g-more {
+  margin-top: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+
+.g-more summary {
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+  color: var(--brand);
+}
+
+.g-ms-ride {
+  margin-top: 10px;
+}
+
+.g-ms-ride .g-field {
+  flex: 1;
+}
+
+/* パーツ表の読み込み */
+.g-imp {
+  max-height: 60vh;
+  overflow-y: auto;
+  margin: 0 -4px;
+}
+
+.g-imp-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--line);
+}
+
+.g-imp-row.off {
+  opacity: 0.45;
+}
+
+.g-imp-row > input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  margin-top: 8px;
+  accent-color: var(--brand);
+  flex-shrink: 0;
+}
+
+.g-imp-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.g-imp-main > input[type="text"] {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 8px;
+  font-size: 16px;
+  background: var(--card);
+  color: var(--text);
+}
+
+.g-imp-sub {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  align-items: center;
+}
+
+.g-imp-sub select {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px;
+  font-size: 15px;
+  background: var(--card);
+}
+
+.g-imp-sub .g-in input {
+  width: 76px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px;
+  font-size: 16px;
+  text-align: right;
+  background: var(--card);
+}
+
+.g-imp-main small {
+  display: block;
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.g-imp-sum {
+  margin: 10px 0;
+  font-size: 0.9rem;
+}
+
+.g-comp {
+  background: var(--card);
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin: 8px 0;
+  font-size: 0.82rem;
+}
+
+.g-comp small {
+  display: block;
+  margin: 0 0 4px;
+  color: var(--brand);
+  font-weight: 700;
+}
+
+.g-comp div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0;
+}

@@ -8,6 +8,8 @@
   let selected = null; // 編集中の部位
   let suggestion = null; // 自動調整の提案
   let libForm = null; // マイパーツの入力フォーム(編集中の内容)
+  let importRev = null; // 読み込んだパーツ表の確認中の内容 { rows, totals, status }
+  let pasteOpen = false;
   const photoUrls = {}; // 写真ID → 表示用URL
   let mode = "mechanic"; // mechanic(整備: スタンドに載せる) / ride(乗車: ライダーを乗せる)
   let exploded = false;
@@ -182,6 +184,7 @@
     }).join("");
     return `
       ${libForm ? libFormHtml() : ""}
+      ${importRev ? importHtml() : ""}
       <section class="card">
         <h2>パーツ在庫 <span class="g-total">${kgTxt(Parts.totalGrams(b.parts) / 1000)}</span></h2>
         <p class="muted small">部位をタップすると3Dで光り、パーツを選び直せます。📘のついたパーツは、マイパーツ(公式データ)の数値を使っています。</p>
@@ -246,11 +249,19 @@
                 .join("")
             : `<p class="muted">まだありません。「パーツを登録する」か、パーツ在庫の部位から登録できます。</p>`
         }
+        <p class="g-sub">📥 パーツ表から読み込む</p>
+        <p class="muted small">表の写真(JPG・PNG)、CSV、またはバックアップのファイルを読み込めます。表計算ソフトのセルをコピーして貼り付けるのがいちばん正確です。</p>
         <div class="g-row">
-          <button class="btn sub" id="lib-export">書き出す(バックアップ)</button>
-          <label class="btn sub g-file">読み込む<input type="file" accept="application/json,.json" id="lib-import" hidden /></label>
+          <label class="btn sub g-file">ファイル・写真を選ぶ<input type="file" accept="application/json,.json,.csv,.tsv,.txt,text/plain,text/csv,image/jpeg,image/png,.jpg,.jpeg,.png" id="lib-import" hidden /></label>
+          <button class="btn sub" id="paste-toggle">表を貼り付ける</button>
         </div>
-        <p class="muted small">マイパーツはこの端末の中に保存されます。機種変更のときは「書き出す」で保存したファイルを「読み込む」でもどせます(写真は含みません)。</p>
+        ${
+          pasteOpen
+            ? `<div class="g-paste"><textarea id="paste-table" rows="6" placeholder="パーツ名・重さ(g)・備考 の列をそのまま貼り付け"></textarea><button class="chip" id="paste-read">読み取る</button></div>`
+            : ""
+        }
+        <button class="btn sub" id="lib-export">書き出す(バックアップ)</button>
+        <p class="muted small">マイパーツはこの端末の中に保存されます。機種変更のときは「書き出す」で保存したファイルを読み込めばもどせます(写真は含みません)。</p>
       </section>`;
   }
 
@@ -361,7 +372,136 @@
     a.remove();
   }
 
+  // 読み込んだパーツ表の確認画面
+  function importHtml() {
+    const r = importRev;
+    if (r.status) return `<section class="card g-libform"><h2>パーツ表を読み込み中</h2><p>${esc(r.status)}</p></section>`;
+    const sum = r.rows.filter((x) => x.include).reduce((a, x) => a + (+x.g || 0), 0);
+    const total = r.totals.length ? r.totals.reduce((a, t) => (t.g > a.g ? t : a)) : null;
+    const slots = Parts.SLOTS.map((sl) => [sl.id, sl.name]);
+    const covered = new Set(r.rows.filter((x) => x.include).map((x) => x.slot));
+    return `
+      <section class="card g-libform" id="import-rev">
+        <h2>読み込んだパーツ <span class="g-total">${r.rows.length}件</span></h2>
+        <p class="muted small">部位は名前から推定しています。違っていたら直してください。チェックを外した行は登録しません。</p>
+        <div class="g-imp">
+          ${r.rows
+            .map(
+              (x, i) => `
+            <div class="g-imp-row ${x.include ? "" : "off"}">
+              <input type="checkbox" data-imp="include" data-i="${i}" ${x.include ? "checked" : ""} />
+              <div class="g-imp-main">
+                <input type="text" data-imp="name" data-i="${i}" value="${esc(x.name)}" />
+                <div class="g-imp-sub">
+                  <select data-imp="slot" data-i="${i}">${slots.map(([v, t]) => `<option value="${v}" ${v === x.slot ? "selected" : ""}>${t}</option>`).join("")}</select>
+                  <span class="g-in"><input type="number" inputmode="decimal" data-imp="g" data-i="${i}" value="${x.g}" /><em>g</em></span>
+                </div>
+                ${x.note ? `<small>${esc(x.note)}</small>` : ""}
+              </div>
+            </div>`
+            )
+            .join("")}
+        </div>
+        <p class="g-imp-sum">合計 <b>${sum.toLocaleString()}g</b>${
+          total ? `(表の「${esc(total.name)}」${total.g.toLocaleString()}g ${Math.abs(total.g - sum) < 2 ? "と一致 ✓" : `と${(sum - total.g).toLocaleString()}g違います`})` : ""
+        }</p>
+        <label class="check"><input type="checkbox" id="imp-unmount" ${covered.size >= 8 ? "checked" : ""} /><span>表にない部位は外す<small>表がバイク全体のパーツなら、表にない部位(目安のパーツ)を重さに入れないようにします</small></span></label>
+        <button class="btn start" id="imp-apply" data-target="current">マイパーツに登録して装着済みに反映</button>
+        <div class="g-row">
+          <button class="btn sub" id="imp-apply-next" data-target="next">NEWに反映</button>
+          <button class="btn sub" id="imp-only">登録だけする</button>
+          <button class="btn sub" id="imp-cancel">やめる</button>
+        </div>
+      </section>`;
+  }
+
+  function startImportText(text) {
+    const r = Importer.parse(text);
+    if (!r.rows.length) {
+      importRev = null;
+      renderPanel();
+      return alert("パーツ名と重さ(数字)の並んだ行が見つかりませんでした");
+    }
+    importRev = r;
+    pasteOpen = false;
+    renderPanel();
+    const el2 = document.getElementById("import-rev");
+    if (el2) el2.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  async function startImportImage(file) {
+    importRev = { rows: [], totals: [], status: "写真の文字を読み取っています…(初回は文字認識のデータを読み込むので、少し時間がかかります)" };
+    renderPanel();
+    try {
+      const text = await Importer.ocr(file, (p) => {
+        importRev.status = `写真の文字を読み取っています… ${Math.round(p * 100)}%`;
+        const card = document.querySelector(".g-libform p");
+        if (card) card.textContent = importRev.status;
+      });
+      startImportText(text);
+    } catch (e) {
+      importRev = null;
+      renderPanel();
+      alert("写真の文字を読み取れませんでした。通信状況を確認するか、表をコピーして「表を貼り付ける」から読み込んでください");
+    }
+  }
+
+  // 確認した行をマイパーツに登録し、target のバイクに反映する
+  function applyImport(target, unmountMissing) {
+    const rows = importRev.rows.filter((x) => x.include && x.name.trim());
+    const items = rows.map((x, i) => ({
+      id: "lib" + Date.now().toString(36) + i,
+      slot: x.slot,
+      brand: "",
+      model: x.name.trim(),
+      year: "",
+      g: +x.g || 0,
+      url: "",
+      notes: x.note || "",
+      specs: Importer.attrsFrom(x.slot, x.name + " " + (x.note || "")),
+      photoId: null,
+    }));
+    G.library.push(...items);
+    if (target) {
+      const b = G.builds[target];
+      const bySlot = {};
+      for (const it of items) (bySlot[it.slot] = bySlot[it.slot] || []).push(it);
+      for (const [slot, list] of Object.entries(bySlot)) {
+        if (list.length === 1) Library.apply(b, list[0]);
+        else {
+          // 同じ部位が複数あれば(クランク+BB+…など)、まとめて1つのパーツにする
+          const prev = b.parts[slot] || {};
+          const attrs = Object.assign({}, prev.attrs || {});
+          for (const it of list) Object.assign(attrs, it.specs);
+          b.parts[slot] = {
+            name: list.length > 2 ? `${list[0].model}ほか${list.length - 1}点` : list.map((x) => x.model).join("+"),
+            g: list.reduce((a, x) => a + x.g, 0),
+            attrs,
+            components: list.map((x) => ({ libId: x.id, name: x.model, g: x.g })),
+            mounted: true,
+          };
+        }
+      }
+      // 一体型ハンドルならステムは0g
+      const bar = b.parts.handlebar;
+      if (bar && bar.attrs && bar.attrs.type === "integrated" && !bySlot.stem) b.parts.stem = { name: "(一体型ハンドルに含む)", g: 0, mounted: true };
+      if (unmountMissing) {
+        for (const sl of Parts.SLOTS) {
+          if (!bySlot[sl.id] && b.parts[sl.id] && !(sl.id === "stem" && bar && bar.attrs && bar.attrs.type === "integrated")) b.parts[sl.id].mounted = false;
+        }
+      }
+      G.active = target;
+    }
+    importRev = null;
+    changed();
+    renderAll();
+    alert(`${items.length}件のパーツをマイパーツに登録しました${target ? `(${target === "current" ? "装着済み" : "NEW"}に反映)` : ""}`);
+  }
+
   async function importLibrary(file) {
+    const name = (file.name || "").toLowerCase();
+    if (/^image\//.test(file.type) || /\.(jpe?g|png)$/.test(name)) return startImportImage(file);
+    if (!/\.json$/.test(name) && file.type !== "application/json") return startImportText(await file.text());
     try {
       const data = JSON.parse(await file.text());
       const list = Array.isArray(data.library) ? data.library : [];
@@ -416,6 +556,11 @@
           ? `<label class="g-field"><span>マイパーツから選ぶ</span><select data-lib-pick="${id}"><option value="">— 選ぶ —</option>${mine
               .map((x) => `<option value="${x.id}" ${x.id === p.libId ? "selected" : ""}>${esc(Library.displayName(x))}(${(+x.g || 0).toLocaleString()}g)</option>`)
               .join("")}</select></label>`
+          : ""
+      }
+      ${
+        p.components && p.components.length
+          ? `<div class="g-comp"><small>内訳(${p.components.length}点)</small>${p.components.map((c) => `<div><span>${esc(c.name)}</span><b>${(+c.g).toLocaleString()}g</b></div>`).join("")}</div>`
           : ""
       }
       <button class="btn sub" data-lib-new="${id}">📘 公式データを入力してマイパーツに登録</button>
@@ -482,6 +627,7 @@
     const cm = (k, label, val) => num(`body.${k}`, label, val || 0, "cm", 0.5, 100);
     const sug = suggestion;
     return `
+      ${measureCard()}
       <section class="card">
         <h2>体の寸法</h2>
         <p class="muted small">空欄(0)は身長から一般的な比率で計算します。測れる所だけ入れればOKです。</p>
@@ -494,6 +640,20 @@
         ${cm("foot", "足のサイズ", body.foot)}
         ${sel("body.flex", "前屈", body.flex, [["stiff", "床に手が届かない"], ["normal", "指先が床に届く"], ["soft", "手のひらが床につく"]])}
         ${sel("body.backPain", "腰痛", body.backPain ? "1" : "", [["", "なし"], ["1", "あり"]])}
+        <details class="g-more" ${body.thighLen || body.thighCirc ? "open" : ""}>
+          <summary>各部の長さと太さ(写真で測った値・メジャーで測った値)</summary>
+          <p class="muted small">長さは「立った写真で測る」で自動で入ります。太さはメジャーで測った周囲の長さを入れると、3Dの体の形と空気抵抗の計算が正確になります。</p>
+          ${cm("thighLen", "太もも(股関節〜膝)", body.thighLen)}
+          ${cm("shankLen", "すね(膝〜くるぶし)", body.shankLen)}
+          ${cm("torsoLen", "胴(股関節〜肩)", body.torsoLen)}
+          ${cm("upperArmLen", "上腕(肩〜肘)", body.upperArmLen)}
+          ${cm("forearmLen", "前腕(肘〜手首)", body.forearmLen)}
+          ${cm("thighCirc", "太もも周り(いちばん太い所)", body.thighCirc)}
+          ${cm("calfCirc", "ふくらはぎ周り", body.calfCirc)}
+          ${cm("chest", "胸囲", body.chest)}
+          ${cm("waist", "ウエスト", body.waist)}
+          ${cm("armCirc", "二の腕周り", body.armCirc)}
+        </details>
       </section>
       <section class="card">
         <h2>ポジション(${B() === G.builds.current ? "装着済み" : "NEW"})</h2>
@@ -534,6 +694,97 @@
             : ""
         }
       </section>`;
+  }
+
+  // ---------- 写真で測る ----------
+  const CRANKS = [
+    [180, "一番下(6時)"],
+    [90, "前(3時)"],
+    [0, "一番上(12時)"],
+    [270, "後ろ(9時)"],
+  ];
+
+  function measureCard() {
+    const m = G.measure || {};
+    const st = m.standing;
+    const rd = m.riding;
+    let standingHtml = "";
+    if (st) {
+      const rows = [
+        ["inseam", "股下"],
+        ["thighLen", "太もも"],
+        ["shankLen", "すね"],
+        ["torsoLen", "胴"],
+        ["upperArmLen", "上腕"],
+        ["forearmLen", "前腕"],
+      ];
+      standingHtml = `
+        <p class="g-sub">立った写真の結果(${new Date(st.at).toLocaleDateString("ja-JP")})</p>
+        <table class="g-table"><tr>${rows.map(([, l]) => `<th>${l}</th>`).join("")}</tr><tr>${rows
+          .map(([k]) => `<td>${(st.values[k] * 100).toFixed(1)}cm</td>`)
+          .join("")}</tr></table>
+        <button class="btn sub" id="ms-apply">${st.applied ? "✓ 体の寸法に反映済み(もう一度反映する)" : "この長さを体の寸法に反映する"}</button>`;
+    }
+    let ridingHtml = "";
+    if (rd) {
+      const model = Fit.anglesAt(input(G.active), G.body, rd.crank);
+      const tg = Fit.targets(G.body, G.goal);
+      const rows = [
+        ["knee", "膝", rd.crank === 180 ? tg.kneeExt : null],
+        ["hip", "股関節", null],
+        ["torso", "上体(水平から)", tg.torso],
+        ["shoulder", "肩(胴と腕)", tg.shoulder],
+        ["elbow", "肘の曲げ", null],
+      ];
+      const notes = [];
+      const dk = rd.angles.knee - model.knee;
+      if (Math.abs(dk) >= 4) notes.push(`膝の角度が、アプリの計算より${Math.abs(dk).toFixed(0)}°${dk > 0 ? "伸びて" : "曲がって"}います。サドル高の入力値か、体の寸法(股下・太もも・すね)を確かめてください。`);
+      const dt = rd.angles.torso - model.torso;
+      if (Math.abs(dt) >= 5) notes.push(`上体が、アプリの計算より${Math.abs(dt).toFixed(0)}°${dt > 0 ? "起きて" : "倒れて"}います。ハンドル周りの寸法か、肘の曲げ(写真では${rd.angles.elbow.toFixed(0)}°)を確かめてください。`);
+      if (Math.abs(rd.angles.tilt) > 3) notes.push(`写真が${Math.abs(rd.angles.tilt).toFixed(0)}°傾いていましたが、前後の車軸を基準に補正しています。`);
+      ridingHtml = `
+        <p class="g-sub">乗った写真の結果(ペダル: ${CRANKS.find((c) => c[0] === rd.crank)[1]})</p>
+        <table class="g-angles">
+          <tr><th>項目</th><th>写真</th><th>アプリの計算</th><th>目安</th></tr>
+          ${rows
+            .map(([k, label, t]) => {
+              const v = rd.angles[k];
+              const j = t ? Fit.judge(v, t) : "";
+              const range = t ? (t.ok[1] >= 180 ? `${t.ok[0]}°以上` : `${t.ok[0]}〜${t.ok[1]}°`) : "—";
+              return `<tr class="${j}"><td>${t ? "<i></i>" : ""}${label}</td><td>${v.toFixed(0)}°</td><td>${model[k].toFixed(0)}°</td><td>${range}</td></tr>`;
+            })
+            .join("")}
+        </table>
+        ${notes.map((n) => `<p class="notice">${n}</p>`).join("")}
+        ${rd.angles.elbow != null ? `<button class="btn sub" id="ms-elbow">写真の肘の曲げ(${rd.angles.elbow.toFixed(0)}°)をポジションに使う</button>` : ""}`;
+    }
+    return `
+      <section class="card">
+        <h2>📸 写真で測る</h2>
+        <p class="muted small">写真の上で関節をタップすると、体の長さや、乗っているときの実際の角度を測れます。専門店の2Dフィッティングと同じ考え方です。</p>
+        <button class="btn sub" id="ms-standing">🧍 立った写真で体の寸法を測る</button>
+        ${standingHtml}
+        <div class="g-row g-ms-ride">
+          ${sel("measureCrank", "写真のペダルの位置", (rd && rd.crank) != null ? rd.crank : 180, CRANKS)}
+        </div>
+        <button class="btn sub" id="ms-riding">🚴 乗った写真で角度を測る</button>
+        ${ridingHtml}
+      </section>`;
+  }
+
+  function startMeasure(mode) {
+    const crankSel = document.querySelector('[data-path="measureCrank"]');
+    const crank = crankSel ? +crankSel.value : 180;
+    Measure.open(mode, {
+      height: G.body.height,
+      onDone: (res) => {
+        G.measure = G.measure || {};
+        if (mode === "standing") G.measure.standing = { at: Date.now(), values: res, applied: false };
+        else G.measure.riding = { at: Date.now(), crank, angles: res };
+        save();
+        renderPanel();
+      },
+    });
   }
 
   function runOptimize() {
@@ -760,6 +1011,17 @@
       return renderPanel();
     }
     if (t.id === "lib-export") return exportLibrary();
+    if (t.id === "paste-toggle") {
+      pasteOpen = !pasteOpen;
+      return renderPanel();
+    }
+    if (t.id === "paste-read") return startImportText(document.getElementById("paste-table").value);
+    if (t.id === "imp-apply" || t.id === "imp-apply-next") return applyImport(t.dataset.target, document.getElementById("imp-unmount").checked);
+    if (t.id === "imp-only") return applyImport(null, false);
+    if (t.id === "imp-cancel") {
+      importRev = null;
+      return renderPanel();
+    }
     if (t.dataset.build) {
       G.active = t.dataset.build;
       suggestion = null;
@@ -825,6 +1087,19 @@
       B().pos.hands = t.dataset.hands;
       changed();
       renderPanel();
+    } else if (t.id === "ms-standing" || t.id === "ms-riding") {
+      startMeasure(t.id === "ms-standing" ? "standing" : "riding");
+    } else if (t.id === "ms-apply") {
+      const v = G.measure.standing.values;
+      for (const k of ["inseam", "thighLen", "shankLen", "torsoLen", "upperArmLen", "forearmLen", "arm"]) G.body[k] = Math.round(v[k] * 1000) / 1000;
+      G.measure.standing.applied = true;
+      suggestion = null;
+      changed();
+      renderPanel();
+    } else if (t.id === "ms-elbow") {
+      B().pos.elbow = Math.max(0, Math.round(G.measure.riding.angles.elbow));
+      changed();
+      renderPanel();
     } else if (t.id === "optimize") {
       runOptimize();
       renderPanel();
@@ -863,6 +1138,12 @@
   // マイパーツの入力欄(描き直さずにフォームの内容だけ更新する)
   el.addEventListener("input", (e) => {
     const t = e.target;
+    if (t.dataset.imp && importRev) {
+      const row = importRev.rows[+t.dataset.i];
+      if (t.dataset.imp === "name") row.name = t.value;
+      if (t.dataset.imp === "g") row.g = parseFloat(t.value) || 0;
+      return;
+    }
     if (!libForm) return;
     if (t.dataset.lf && t.dataset.lf !== "slot") libForm[t.dataset.lf] = t.value;
     if (t.dataset.lfSpec) libForm.specs[t.dataset.lfSpec] = t.value;
@@ -870,6 +1151,14 @@
 
   el.addEventListener("change", async (e) => {
     const t = e.target;
+    if (t.dataset.imp && importRev) {
+      const row = importRev.rows[+t.dataset.i];
+      if (t.dataset.imp === "include") row.include = t.checked;
+      if (t.dataset.imp === "slot") row.slot = t.value;
+      if (t.dataset.imp === "g") row.g = parseFloat(t.value) || 0;
+      return renderPanel();
+    }
+    if (t.id === "imp-unmount") return;
     if (t.dataset.lf === "slot" && libForm) {
       libForm.slot = t.value;
       libForm.specs = {};
@@ -918,9 +1207,20 @@
       return;
     }
     if (!t.dataset.path) return;
+    if (t.dataset.path === "measureCrank") {
+      if (G.measure && G.measure.riding) {
+        G.measure.riding.crank = +t.value;
+        save();
+        renderPanel();
+      }
+      return;
+    }
     // マイパーツを付けた部位を手で書き換えたら、マイパーツとのつながりを外す(その部位だけの値になる)
     const pm = t.dataset.path.match(/^parts\.(\w+)\./);
-    if (pm && B().parts[pm[1]] && B().parts[pm[1]].libId) delete B().parts[pm[1]].libId;
+    if (pm && B().parts[pm[1]]) {
+      delete B().parts[pm[1]].libId;
+      if (/\.(g|name)$/.test(t.dataset.path)) delete B().parts[pm[1]].components; // まとめたパーツの内訳も外す
+    }
     setPath(t.dataset.path, t.value, parseFloat(t.dataset.scale || "1"));
     if (t.dataset.path.startsWith("body.") || t.dataset.path === "goal") suggestion = null;
     changed();
