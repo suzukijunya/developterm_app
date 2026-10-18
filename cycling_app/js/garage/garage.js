@@ -346,15 +346,8 @@
     const o = G.builds[k === "current" ? "next" : "current"].parts[slotId] || {};
     const diff = k === "next" && (o.name !== p.name || o.g !== p.g || (o.mounted === false) !== (p.mounted === false));
     const dg = (off ? 0 : +p.g || 0) - (o.mounted === false ? 0 : +o.g || 0);
-    // 写真: マイパーツの写真か、見つけてあるおすすめの写真(マスの中にボタンは置けないので、画像だけ)
-    const ci = p.shop && p.shop.id ? AI.cachedImage(p.shop.id) : null;
-    const thumb = it && it.photoId
-      ? photoTag(it.photoId, "mx-thumb")
-      : ci && ci.url
-        ? `<img class="mx-thumb" src="${esc(ci.url)}" alt="" loading="lazy" referrerpolicy="no-referrer" />`
-        : ""; // 写真がなければ何も置かない(部位のアイコンは左の列にある)
-    return `<button class="mx-cell ${thumb ? "" : "nothumb"} ${(cell ? cell.slot === slotId && cell.k === k : selected === slotId && G.active === k) ? "sel" : ""} ${off ? "off" : ""} ${diff ? "diff" : ""}" data-cell="${slotId}" data-k="${k}">
-      ${thumb}
+    // マスには写真もアイコンも置かない(部位は左の列でわかる。写真はマスを開いた画面で見る)
+    return `<button class="mx-cell nothumb ${(cell ? cell.slot === slotId && cell.k === k : selected === slotId && G.active === k) ? "sel" : ""} ${off ? "off" : ""} ${diff ? "diff" : ""}" data-cell="${slotId}" data-k="${k}">
       <span class="mx-name">${inBar ? "一体型ハンドルに含む" : off ? "外しています" : esc(p.name)}</span>
       <span class="mx-g">${inBar ? "0 g" : off ? "—" : (+p.g || 0).toLocaleString() + " g"}${diff && dg ? `<em class="${dg < 0 ? "up" : "down"}">${dg < 0 ? "−" : "+"}${Math.abs(dg)}g</em>` : ""}</span>
     </button>`;
