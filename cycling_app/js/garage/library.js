@@ -163,10 +163,60 @@ const Library = (() => {
     if (item.slot === "frame" && item.color) build.color = item.color;
   }
 
-  // マイパーツを直したら、それを付けているバイクにも反映する
+  // 1つの部位に複数のパーツを付けられる部位(前後のホイール、コンポの部品、小物など)
+  const MULTI = ["wheels", "tires", "tubes", "groupset", "cages", "accessories"];
+
+  // 内訳から、名前と合計の重さを作り直す
+  function fromComponents(prev, comps) {
+    const p = Object.assign({}, prev);
+    delete p.libId;
+    delete p.shop;
+    p.components = comps;
+    p.name = comps.map((c) => c.name).join(" + ");
+    p.g = comps.reduce((a, c) => a + (+c.g || 0), 0);
+    p.mounted = true;
+    return p;
+  }
+
+  // いまのパーツはそのままに、マイパーツを追加で付ける(例: 前輪に後輪を足す)
+  function addComponent(build, item) {
+    const prev = build.parts[item.slot];
+    if (!prev || prev.mounted === false) return apply(build, item);
+    const comps = prev.components ? prev.components.slice() : [{ libId: prev.libId || null, name: prev.name, g: +prev.g || 0 }];
+    if (comps.some((c) => c.libId === item.id)) return;
+    comps.push({ libId: item.id, name: displayName(item), g: +item.g || 0 });
+    const p = fromComponents(prev, comps);
+    // 写真の貼り方がまだなければ、追加したパーツのものを使う
+    if (!p.decal && item.decal && item.photoId) p.decal = Object.assign({ photoId: item.photoId }, item.decal);
+    build.parts[item.slot] = p;
+  }
+
+  // 内訳の i 番目を外す。1つだけ残ったら、そのパーツ単体に戻す
+  function removeComponent(build, slot, i, library) {
+    const prev = build.parts[slot];
+    if (!prev || !prev.components) return;
+    const comps = prev.components.filter((_, k) => k !== i);
+    if (!comps.length) return;
+    if (comps.length === 1) {
+      const it = comps[0].libId && library.find((x) => x.id === comps[0].libId);
+      if (it) return apply(build, it);
+      build.parts[slot] = Object.assign(fromComponents(prev, comps), { components: undefined });
+      delete build.parts[slot].components;
+      return;
+    }
+    build.parts[slot] = fromComponents(prev, comps);
+  }
+
+  // マイパーツを直したら、それを付けているバイクにも反映する(内訳に入っているものも)
   function syncAll(garage, item) {
     for (const b of Object.values(garage.builds)) {
-      if (b.parts[item.slot] && b.parts[item.slot].libId === item.id) apply(b, item);
+      const p = b.parts[item.slot];
+      if (!p) continue;
+      if (p.libId === item.id) apply(b, item);
+      else if (p.components && p.components.some((c) => c.libId === item.id)) {
+        const comps = p.components.map((c) => (c.libId === item.id ? { libId: item.id, name: displayName(item), g: +item.g || 0 } : c));
+        b.parts[item.slot] = Object.assign(fromComponents(p, comps), { attrs: p.attrs, decal: p.decal });
+      }
     }
   }
 
@@ -265,7 +315,7 @@ const Library = (() => {
     return `#${hex(r)}${hex(gg)}${hex(b)}`;
   }
 
-  return { SPEC_FIELDS, displayName, parse, apply, syncAll, unlinkAll, putPhoto, getPhoto, deletePhoto, resize, dominantColor };
+  return { SPEC_FIELDS, displayName, parse, apply, syncAll, addComponent, removeComponent, MULTI, unlinkAll, putPhoto, getPhoto, deletePhoto, resize, dominantColor };
 })();
 
 if (typeof module !== "undefined") module.exports = Library;

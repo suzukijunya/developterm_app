@@ -377,23 +377,29 @@
     const inBar = slot === "stem" && barIntegrated(b);
     const off = !inBar && p.mounted === false;
     const it = p.libId ? libItem(p.libId) : null;
-    const others = G.library.filter((x) => x.slot === slot && x.id !== p.libId);
+    const inComps = new Set((p.components || []).map((c) => c.libId).filter(Boolean));
+    const others = G.library.filter((x) => x.slot === slot && x.id !== p.libId && !inComps.has(x.id));
+    const multi = Library.MULTI.includes(slot) && !off;
+    const comps = p.components && p.components.length > 1 ? p.components : null;
     return `
       <div class="mx-sheet" id="mxsheet">
         <div class="mx-panel">
           <div class="mx-top"><strong>${sl.icon} ${sl.name} <small>・ ${k === "current" ? "装着済み" : "NEW"}</small></strong><button class="mx-x" data-cell-close aria-label="閉じる">×</button></div>
           <div class="mx-now">
             ${it && it.photoId ? photoTag(it.photoId, "mx-thumb big") : `<span class="mx-thumb big empty">${sl.icon}</span>`}
-            <div><small>いま付いているパーツ</small><strong>${inBar ? "一体型ハンドルに含む" : esc(p.name)}</strong><small>${inBar ? "0 g" : (+p.g || 0).toLocaleString() + " g"}${off ? " ・ 外しています" : ""}</small>
+            <div><small>いま付いているパーツ${comps ? `(${comps.length}点・合計)` : ""}</small><strong>${inBar ? "一体型ハンドルに含む" : comps ? "" : esc(p.name)}</strong>
+              ${comps ? `<div class="mx-comps">${comps.map((c, i) => `<div><span>${esc(c.name)}</span><b>${(+c.g || 0).toLocaleString()}g</b><button class="mx-x small" data-comp-del="${i}" aria-label="外す">×</button></div>`).join("")}</div>` : ""}
+              <small>${inBar ? "0 g" : (+p.g || 0).toLocaleString() + " g"}${off ? " ・ 外しています" : ""}</small>
               <div class="g-plan-btns">${inBar ? "" : `<button class="btn sub" data-mount="${slot}">${off ? "取り付ける" : "外す"}</button>`}${it ? `<button class="link" data-lib-edit="${it.id}">マイパーツを編集</button>` : ""}</div></div>
           </div>
-          <p class="g-sub">マイパーツから付け替える</p>
+          <p class="g-sub">マイパーツから付け替える${multi ? "・追加する" : ""}</p>
+          ${multi ? `<p class="muted small">${slot === "wheels" ? "前輪と後輪を別々に登録したときは、片方を付けてから、もう片方を「＋追加」すると両方の重さを合わせて数えます。" : "「＋追加」で、いまのパーツに足して付けられます(重さは合計)。"}</p>` : ""}
           ${
             others.length
               ? others
                   .map(
                     (x) => `<div class="g-lib">${photoTag(x.photoId)}<div class="g-lib-text"><strong>${esc(Library.displayName(x))}</strong><small>${(+x.g || 0).toLocaleString()}g${specSummary(x)}</small></div>
-                      <div class="g-lib-actions"><button class="btn sub" data-lib-put="${x.id}" data-target="${k}">付ける</button><button class="link" data-lib-edit="${x.id}">編集</button></div></div>`
+                      <div class="g-lib-actions">${multi ? `<button class="btn sub" data-lib-add="${x.id}" data-target="${k}">＋追加</button>` : ""}<button class="btn sub" data-lib-put="${x.id}" data-target="${k}">${multi ? "入れ替え" : "付ける"}</button><button class="link" data-lib-edit="${x.id}">編集</button></div></div>`
                   )
                   .join("")
               : `<p class="muted small">この部位のマイパーツはほかにありません。</p>`
@@ -1950,6 +1956,24 @@
     // ---- マイパーツ ----
     if (t.hasAttribute("data-lib-new")) return openLibForm(t.dataset.libNew || selected || "wheels", null);
     if (t.dataset.libEdit) return openLibForm(null, t.dataset.libEdit);
+    if (t.dataset.libAdd) {
+      const it = libItem(t.dataset.libAdd);
+      if (!it) return;
+      equip({ slot: it.slot, name: "＋ " + Library.displayName(it) }, () => {
+        Library.addComponent(G.builds[t.dataset.target], it);
+        G.active = t.dataset.target;
+      });
+      selected = it.slot;
+      changed();
+      renderAll();
+      if (has3D) View3D.highlight(selected, true);
+      return;
+    }
+    if (t.dataset.compDel != null && cell) {
+      Library.removeComponent(G.builds[cell.k], cell.slot, +t.dataset.compDel, G.library);
+      changed();
+      return renderAll();
+    }
     if (t.dataset.libPut) {
       const it = libItem(t.dataset.libPut);
       if (!it) return;

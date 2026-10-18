@@ -1217,3 +1217,8 @@ body.ms-open {
 .g-data summary::-webkit-details-marker { display: none; }
 .g-data summary h2 { margin: 0; }
 .mx-cell.nothumb { grid-template-columns: 1fr; }
+.mx-comps { display: grid; gap: 2px; margin: 4px 0; }
+.mx-comps div { display: flex; gap: 8px; align-items: center; font-size: 0.85rem; }
+.mx-comps span { flex: 1; min-width: 0; }
+.mx-comps b { font-variant-numeric: tabular-nums; }
+.mx-x.small { font-size: 1.1rem; padding: 0 4px; }
