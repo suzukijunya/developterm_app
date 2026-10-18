@@ -352,8 +352,8 @@
       ? photoTag(it.photoId, "mx-thumb")
       : ci && ci.url
         ? `<img class="mx-thumb" src="${esc(ci.url)}" alt="" loading="lazy" referrerpolicy="no-referrer" />`
-        : `<span class="mx-thumb empty">${(Parts.SLOTS.find((x) => x.id === slotId) || {}).icon || ""}</span>`;
-    return `<button class="mx-cell ${(cell ? cell.slot === slotId && cell.k === k : selected === slotId && G.active === k) ? "sel" : ""} ${off ? "off" : ""} ${diff ? "diff" : ""}" data-cell="${slotId}" data-k="${k}">
+        : ""; // 写真がなければ何も置かない(部位のアイコンは左の列にある)
+    return `<button class="mx-cell ${thumb ? "" : "nothumb"} ${(cell ? cell.slot === slotId && cell.k === k : selected === slotId && G.active === k) ? "sel" : ""} ${off ? "off" : ""} ${diff ? "diff" : ""}" data-cell="${slotId}" data-k="${k}">
       ${thumb}
       <span class="mx-name">${inBar ? "一体型ハンドルに含む" : off ? "外しています" : esc(p.name)}</span>
       <span class="mx-g">${inBar ? "0 g" : off ? "—" : (+p.g || 0).toLocaleString() + " g"}${diff && dg ? `<em class="${dg < 0 ? "up" : "down"}">${dg < 0 ? "−" : "+"}${Math.abs(dg)}g</em>` : ""}</span>

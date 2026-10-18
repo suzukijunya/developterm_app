@@ -1216,3 +1216,4 @@ body.ms-open {
 .g-data summary { cursor: pointer; list-style: none; }
 .g-data summary::-webkit-details-marker { display: none; }
 .g-data summary h2 { margin: 0; }
+.mx-cell.nothumb { grid-template-columns: 1fr; }
