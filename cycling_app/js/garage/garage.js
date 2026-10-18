@@ -262,6 +262,7 @@
   // 付け替え: 前後の性能を比べて、レア度に応じたエフェクトを出す
   // fn: 実際に付け替える処理。info: { slot, price, name }
   function equip(info, fn) {
+    cell = null; // 付け替えたら、表に戻ってエフェクトを見せる
     const k = G.active;
     const before = statsOf(B(k));
     fn();
@@ -331,6 +332,98 @@
     return !!(it && it.photoId && !it.decal);
   }
 
+  // ---------- 組み合わせ表(縦: 部位、横: 装着済み / NEW) ----------
+  let cell = null; // 開いているマス { slot, k }
+  let dataOpen = false; // 読み込み・バックアップの欄を開いているか
+  let sheetEdit = false;
+
+  function cellHtml(slotId, k) {
+    const b = G.builds[k];
+    const p = b.parts[slotId] || { name: "(なし)", g: 0 };
+    const inBar = slotId === "stem" && barIntegrated(b);
+    const off = !inBar && p.mounted === false;
+    const it = p.libId ? libItem(p.libId) : null;
+    const o = G.builds[k === "current" ? "next" : "current"].parts[slotId] || {};
+    const diff = k === "next" && (o.name !== p.name || o.g !== p.g || (o.mounted === false) !== (p.mounted === false));
+    const dg = (off ? 0 : +p.g || 0) - (o.mounted === false ? 0 : +o.g || 0);
+    // 写真: マイパーツの写真か、見つけてあるおすすめの写真(マスの中にボタンは置けないので、画像だけ)
+    const ci = p.shop && p.shop.id ? AI.cachedImage(p.shop.id) : null;
+    const thumb = it && it.photoId
+      ? photoTag(it.photoId, "mx-thumb")
+      : ci && ci.url
+        ? `<img class="mx-thumb" src="${esc(ci.url)}" alt="" loading="lazy" referrerpolicy="no-referrer" />`
+        : `<span class="mx-thumb empty">${(Parts.SLOTS.find((x) => x.id === slotId) || {}).icon || ""}</span>`;
+    return `<button class="mx-cell ${(cell ? cell.slot === slotId && cell.k === k : selected === slotId && G.active === k) ? "sel" : ""} ${off ? "off" : ""} ${diff ? "diff" : ""}" data-cell="${slotId}" data-k="${k}">
+      ${thumb}
+      <span class="mx-name">${inBar ? "一体型ハンドルに含む" : off ? "外しています" : esc(p.name)}</span>
+      <span class="mx-g">${inBar ? "0 g" : off ? "—" : (+p.g || 0).toLocaleString() + " g"}${diff && dg ? `<em class="${dg < 0 ? "up" : "down"}">${dg < 0 ? "−" : "+"}${Math.abs(dg)}g</em>` : ""}</span>
+    </button>`;
+  }
+
+  function matrixHtml() {
+    const kg = (k) => kgTxt(Parts.totalGrams(G.builds[k].parts) / 1000);
+    return `
+      <section class="card g-mx">
+        <h2>アセンブル表</h2>
+        <p class="muted small">マスをタップすると、その部位を付け替えられます(付けていないマイパーツやおすすめから選べます)。</p>
+        <div class="mx-grid">
+          <span class="mx-corner"></span>
+          <span class="mx-col ${G.active === "current" ? "on" : ""}">装着済み<small>${kg("current")}</small></span>
+          <span class="mx-col ${G.active === "next" ? "on" : ""}">NEW<small>${kg("next")}</small></span>
+          ${Parts.SLOTS.map((sl) => `<span class="mx-slot">${sl.icon}<small>${sl.name}</small></span>${cellHtml(sl.id, "current")}${cellHtml(sl.id, "next")}`).join("")}
+        </div>
+      </section>`;
+  }
+
+  // マスを開いたときの下からの画面: いま付いているパーツ・付け替えの候補・細かい数値
+  function sheetHtml() {
+    const { slot, k } = cell;
+    const sl = Parts.SLOTS.find((x) => x.id === slot);
+    const b = G.builds[k];
+    const p = b.parts[slot] || { name: "(なし)", g: 0 };
+    const inBar = slot === "stem" && barIntegrated(b);
+    const off = !inBar && p.mounted === false;
+    const it = p.libId ? libItem(p.libId) : null;
+    const others = G.library.filter((x) => x.slot === slot && x.id !== p.libId);
+    return `
+      <div class="mx-sheet" id="mxsheet">
+        <div class="mx-panel">
+          <div class="mx-top"><strong>${sl.icon} ${sl.name} <small>・ ${k === "current" ? "装着済み" : "NEW"}</small></strong><button class="mx-x" data-cell-close aria-label="閉じる">×</button></div>
+          <div class="mx-now">
+            ${it && it.photoId ? photoTag(it.photoId, "mx-thumb big") : `<span class="mx-thumb big empty">${sl.icon}</span>`}
+            <div><small>いま付いているパーツ</small><strong>${inBar ? "一体型ハンドルに含む" : esc(p.name)}</strong><small>${inBar ? "0 g" : (+p.g || 0).toLocaleString() + " g"}${off ? " ・ 外しています" : ""}</small>
+              <div class="g-plan-btns">${inBar ? "" : `<button class="btn sub" data-mount="${slot}">${off ? "取り付ける" : "外す"}</button>`}${it ? `<button class="link" data-lib-edit="${it.id}">マイパーツを編集</button>` : ""}</div></div>
+          </div>
+          <p class="g-sub">マイパーツから付け替える</p>
+          ${
+            others.length
+              ? others
+                  .map(
+                    (x) => `<div class="g-lib">${photoTag(x.photoId)}<div class="g-lib-text"><strong>${esc(Library.displayName(x))}</strong><small>${(+x.g || 0).toLocaleString()}g${specSummary(x)}</small></div>
+                      <div class="g-lib-actions"><button class="btn sub" data-lib-put="${x.id}" data-target="${k}">付ける</button><button class="link" data-lib-edit="${x.id}">編集</button></div></div>`
+                  )
+                  .join("")
+              : `<p class="muted small">この部位のマイパーツはほかにありません。</p>`
+          }
+          <div class="g-plan-btns"><label class="btn sub g-file">📷 写真で登録<input type="file" accept="image/*" multiple id="quick-files-slot" data-hint="${slot}" hidden /></label><button class="btn sub" data-lib-new="${slot}">＋ 手で登録</button></div>
+          <details class="g-cat" ${sheetEdit ? "open" : ""} id="mx-edit"><summary>✏️ おすすめのモデル・目安・数値を細かく</summary>${inBar ? "" : editor(slot)}</details>
+        </div>
+      </div>`;
+  }
+
+  function openCell(slot, k) {
+    cell = { slot, k };
+    selected = slot;
+    sheetEdit = false;
+    const switched = G.active !== k;
+    G.active = k;
+    if (switched) {
+      changed();
+      renderAll();
+    } else renderPanel();
+    if (has3D) View3D.highlight(slot, true);
+  }
+
   function partsPanel() {
     const b = B();
     const rows = Parts.SLOTS.map((sl) => {
@@ -350,15 +443,13 @@
         </div>
         ${selected === sl.id ? `<div class="g-editor">${editor(sl.id)}</div>` : ""}`;
     }).join("");
+    void rows;
     return `
       ${quickHtml()}
       ${libForm ? libFormHtml() : ""}
       ${importRev ? importHtml() : ""}
-      <section class="card">
-        <h2>パーツ在庫 <span class="g-total">${kgTxt(Parts.totalGrams(b.parts) / 1000)}</span></h2>
-        <p class="muted small">部位をタップすると3Dで光り、パーツを選び直せます。📘のついたパーツは、マイパーツ(公式データ)の数値を使っています。</p>
-        ${rows}
-      </section>
+      ${matrixHtml()}
+      ${cell ? sheetHtml() : ""}
       ${libraryHtml()}`;
   }
 
@@ -392,14 +483,18 @@
         <label class="btn start g-file">📷 写真を選ぶ(何枚でも)<input type="file" accept="image/*" multiple id="quick-files" hidden /></label>
         <p class="small">${
           AI.ready
-            ? `🤖 AIで読み取り(${AI.maskedKey})。重さはメーカーの公表値をネットで確かめます。`
+            ? `🤖 AIで読み取り(${esc(AI.MODELS[AI.opts.model].label)}・${AI.opts.search ? "ネットで重さを確認・" + AI.MODELS[AI.opts.model].costSearch : AI.MODELS[AI.opts.model].cost}/枚)。`
             : `🆓 無料の読み取り: 写真の文字(ロゴ・型番)とアプリのカタログから読みます。AIを使うと、刻印が読めない写真でもモデルと正確な重さがわかります。`
-        } <button class="link" data-quick="ai">AIの設定</button></p>
+        } <button class="link" data-quick="ai">AIの設定</button> ・ <button class="link" data-lib-new="">写真なしで手で登録</button></p>
         ${
           quick.aiOpen
             ? `<div class="q-ai">
-                <p class="small">Anthropic の API キーを入れると、Claude が写真を見てパーツを判定し、ネット検索でメーカーの公表値(重さ・仕様)を確かめます。料金は自分のアカウントに、1枚あたり約10〜30円かかります。キーは<a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">こちら</a>で作れます(この端末の中だけに保存し、同期はしません)。</p>
-                <input type="password" id="ai-key" placeholder="sk-ant-…" autocomplete="off" />
+                <p class="small">Anthropic の API キーを入れると、Claude が写真を見てパーツを判定します。料金は自分のアカウントにかかります(下は1枚あたりの目安)。キーは<a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">こちら</a>で作れます(この端末の中だけに保存し、同期はしません)。</p>
+                <input type="password" id="ai-key" placeholder="${AI.ready ? esc(AI.maskedKey) + "(保存済み)" : "sk-ant-…"}" autocomplete="off" />
+                ${Object.entries(AI.MODELS)
+                  .map(([id, m]) => `<label class="check"><input type="radio" name="ai-model" data-ai-model="${id}" ${AI.opts.model === id ? "checked" : ""} /><span>${esc(m.label)}<small>読み取り ${m.cost} ・ ネットで確認 ${m.costSearch}</small></span></label>`)
+                  .join("")}
+                <label class="check"><input type="checkbox" id="ai-search" ${AI.opts.search ? "checked" : ""} /><span>重さ・仕様をネットでメーカーの公表値と確かめる<small>正確になりますが、検索1回ごとに約1.5円+α高くなります。オフでも、AIが覚えている公表値を入れます</small></span></label>
                 <div class="g-plan-btns"><button class="btn sub" data-quick="ai-save">保存</button>${AI.ready ? `<button class="link danger" data-quick="ai-off">キーを消す</button>` : ""}</div>
               </div>`
             : ""
@@ -417,7 +512,7 @@
       </section>`;
   }
 
-  async function quickAdd(files) {
+  async function quickAdd(files, hintSlot) {
     for (const file of files) {
       const entry = { status: "reading", progress: 0.05, msg: "写真を準備しています" };
       quick.entries.push(entry);
@@ -434,16 +529,20 @@
         let items, aiNote = "";
         if (AI.ready) {
           try {
-            items = await AI.identify(blob);
+            items = await AI.identify(blob, hintSlot ? `この写真は「${Parts.slotName(hintSlot)}」(slot=${hintSlot})のパーツです` : "");
           } catch (e) {
             aiNote = e.status === 401 ? "AIのキーが正しくありません。" : "AIで読み取れなかったので、無料の読み取りにしました。";
           }
         }
         if (!items || !items.length)
-          items = await QuickAdd.ruleIdentify(blob, (p) => {
-            entry.progress = 0.2 + p * 0.8;
-            renderPanel();
-          });
+          items = await QuickAdd.ruleIdentify(
+            blob,
+            (p) => {
+              entry.progress = 0.2 + p * 0.8;
+              renderPanel();
+            },
+            hintSlot
+          );
         // 1枚の写真から複数のパーツ(自転車全体の写真)なら、それぞれの範囲を使う
         const whole = items.length > 1;
         const idx = quick.entries.indexOf(entry);
@@ -532,41 +631,11 @@
     });
   }
 
+  // パーツ表の読み込み・バックアップ(マイパーツの一覧は、組み合わせ表のマスを開くと出る)
   function libraryHtml() {
-    const groups = Parts.SLOTS.map((sl) => ({ sl, items: G.library.filter((x) => x.slot === sl.id) })).filter((g) => g.items.length);
-    const used = (id, k) => G.builds[k].parts && Object.values(G.builds[k].parts).some((p) => p && p.libId === id);
     return `
-      <section class="card">
-        <h2>マイパーツ <span class="g-total">${G.library.length}件</span></h2>
-        <p class="muted small">公式の重量・寸法・URL・写真を登録した、自分のパーツのデータベースです。付けると数値が3Dと計算にそのまま反映され、あとで直すと付けているバイクにも反映されます。</p>
-        <button class="btn sub" data-lib-new="">＋ パーツを登録する</button>
-        ${
-          groups.length
-            ? groups
-                .map(
-                  (g) => `
-          <p class="g-sub">${g.sl.icon} ${g.sl.name}</p>
-          ${g.items
-            .map(
-              (it) => `
-            <div class="g-lib">
-              ${photoTag(it.photoId)}
-              <div class="g-lib-text">
-                <strong>${esc(Library.displayName(it))}</strong>
-                <small>${(+it.g || 0).toLocaleString()}g${specSummary(it)}${used(it.id, "current") ? " ・装着済みに付いています" : ""}${used(it.id, "next") ? " ・NEWに付いています" : ""}</small>
-              </div>
-              <div class="g-lib-actions">
-                <button class="chip" data-lib-put="${it.id}" data-target="current">装着済みへ</button>
-                <button class="chip" data-lib-put="${it.id}" data-target="next">NEWへ</button>
-                <button class="link" data-lib-edit="${it.id}">編集</button>
-              </div>
-            </div>`
-            )
-            .join("")}`
-                )
-                .join("")
-            : `<p class="muted">まだありません。「パーツを登録する」か、パーツ在庫の部位から登録できます。</p>`
-        }
+      <details class="card g-data" id="g-data" ${dataOpen || pasteOpen ? "open" : ""}>
+        <summary><h2>マイパーツの読み込み・バックアップ <span class="g-total">${G.library.length}件</span></h2></summary>
         <p class="g-sub">📥 パーツ表から読み込む</p>
         <p class="muted small">表の写真(JPG・PNG)、CSV、またはバックアップのファイルを読み込めます。表計算ソフトのセルをコピーして貼り付けるのがいちばん正確です。</p>
         <div class="g-row">
@@ -580,7 +649,7 @@
         }
         <button class="btn sub" id="lib-export">書き出す(バックアップ)</button>
         <p class="muted small">マイパーツはこの端末の中に保存されます。機種変更のときは「書き出す」で保存したファイルを読み込めばもどせます(写真は含みません)。</p>
-      </section>`;
+      </details>`;
   }
 
   function specSummary(it) {
@@ -593,6 +662,7 @@
   }
 
   function openLibForm(slot, id) {
+    cell = null;
     const it = id ? libItem(id) : null;
     libForm = it
       ? JSON.parse(JSON.stringify(it))
@@ -1497,7 +1567,7 @@
   function prodImg(it) {
     const c = AI.cachedImage(it.id);
     if (c && c.url) return `<a class="g-prod" href="${esc(c.page || c.url)}" target="_blank" rel="noopener"><img src="${esc(c.url)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('empty');this.remove()" /></a>`;
-    if (AI.ready && !(c && !c.url)) return `<span class="g-prod empty" data-find-img="${it.id}">📷<small>探しています</small></span>`;
+    if (AI.ready && !(c && !c.url)) return `<button class="g-prod empty" data-find-one="${it.id}">📷<small>AIで写真を探す</small></button>`;
     return `<a class="g-prod empty" href="https://www.google.com/search?tbm=isch&q=${encodeURIComponent(it.name)}" target="_blank" rel="noopener">🔎<small>写真を見る</small></a>`;
   }
 
@@ -1531,7 +1601,7 @@
     const list = Catalog.forSlot(id);
     if (!list.length) return "";
     const b = B();
-    return `<details class="g-cat" ${G.active === "next" ? "open" : ""}><summary>🏷️ 具体的なモデルから選ぶ(重さ・中古相場つき)</summary>
+    return `<details class="g-cat" ${G.active === "next" || cell ? "open" : ""}><summary>🏷️ 具体的なモデルから選ぶ(重さ・中古相場つき)</summary>
       ${list
         .map((it) => {
           const sv = Catalog.saving(b, it);
@@ -1742,6 +1812,15 @@
   el.addEventListener("click", (e) => {
     const t = e.target.closest("button");
     if (!t) return;
+    if (t.dataset.findOne) {
+      const it = Catalog.byId(t.dataset.findOne);
+      if (!it) return;
+      t.innerHTML = "⏳<small>探しています</small>";
+      t.disabled = true;
+      return AI.findImage(it.id, it.name)
+        .catch(() => null)
+        .then(() => document.querySelectorAll(`[data-prod="${it.id}"]`).forEach((x) => (x.innerHTML = prodImg(it))));
+    }
     if (t.id === "lf-web") return searchWebPhotos();
     if (t.dataset.webPick && libForm && libForm.web) {
       const it = libForm.web.items[+t.dataset.webPick];
@@ -1771,15 +1850,24 @@
       openLibForm(null, t.dataset.decalLib);
       return startDecal();
     }
+    // ---- 組み合わせ表 ----
+    if (t.dataset.cell) return openCell(t.dataset.cell, t.dataset.k);
+    if (t.hasAttribute("data-cell-close")) {
+      cell = null;
+      return renderPanel();
+    }
     // ---- 写真でパーツ登録 ----
     if (t.dataset.quick === "ai") {
       quick.aiOpen = !quick.aiOpen;
       return renderPanel();
     }
     if (t.dataset.quick === "ai-save") {
-      const k = (document.getElementById("ai-key") || {}).value || "";
-      if (!/^sk-ant-/.test(k.trim())) return alert("sk-ant- で始まるキーを貼り付けてください");
-      AI.setKey(k);
+      const k = ((document.getElementById("ai-key") || {}).value || "").trim();
+      if (k && !/^sk-ant-/.test(k)) return alert("sk-ant- で始まるキーを貼り付けてください");
+      if (!k && !AI.ready) return alert("APIキーを貼り付けてください");
+      if (k) AI.setKey(k);
+      const m = document.querySelector("[data-ai-model]:checked");
+      AI.setOpts({ model: m ? m.dataset.aiModel : AI.opts.model, search: !!(document.getElementById("ai-search") || {}).checked });
       quick.aiOpen = false;
       return renderPanel();
     }
@@ -2056,6 +2144,16 @@
     setFormPhoto(item.getAsFile());
   });
 
+  // 下からの画面の「細かく」を開いたままにする
+  el.addEventListener(
+    "toggle",
+    (e) => {
+      if (e.target.id === "mx-edit") sheetEdit = e.target.open;
+      if (e.target.id === "g-data") dataOpen = e.target.open;
+    },
+    true
+  );
+
   el.addEventListener("input", (e) => {
     const t = e.target;
     if (t.dataset.imp && importRev) {
@@ -2091,6 +2189,12 @@
     if (t.dataset.lf) return;
     if (t.id === "lf-photo" && t.files && t.files[0] && libForm) return setFormPhoto(t.files[0]);
     if (t.id === "quick-files" && t.files && t.files.length) return quickAdd([...t.files]);
+    if (t.id === "quick-files-slot" && t.files && t.files.length) {
+      quick.target = cell ? cell.k : quick.target;
+      cell = null;
+      window.scrollTo({ top: document.getElementById("tabs").offsetTop - 60, behavior: "smooth" });
+      return quickAdd([...t.files], t.dataset.hint);
+    }
     if (t.id === "quick-target") return void (quick.target = t.value);
     if (t.dataset.q) {
       const e = quick.entries[+t.dataset.i];

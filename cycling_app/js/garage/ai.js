@@ -4,13 +4,29 @@
 
 const AI = (() => {
   const KEY = "cycling_ai_key";
-  const MODEL = "claude-opus-5-5";
+  const OPTS = "cycling_ai_opts";
+  // 使うモデルと、1回あたりの目安(1ドル150円で計算。写真は長い辺1024pxに縮めて送る)
+  const MODELS = {
+    haiku: { id: "claude-haiku-5-5", label: "Haiku 5.5(いちばん安い)", cost: "約0.2円", costSearch: "約2〜4円", search: "web_search_20250305", fallback: false },
+    sonnet: { id: "claude-sonnet-5-5", label: "Sonnet 5.5(バランス)", cost: "約3円", costSearch: "約8〜12円", search: "web_search_20260209", fallback: true },
+    opus: { id: "claude-opus-5-5", label: "Opus 5.5(いちばん賢い)", cost: "約5円", costSearch: "約15〜25円", search: "web_search_20260209", fallback: true },
+  };
   const SDK = "../vendor/anthropic-sdk-0.130.0.mjs"; // 公式SDKをブラウザ用に1ファイルにまとめたもの
 
   let key = "";
+  let opts = { model: "haiku", search: false };
   try {
     key = localStorage.getItem(KEY) || "";
+    opts = Object.assign(opts, JSON.parse(localStorage.getItem(OPTS)) || {});
   } catch (e) {}
+  if (!MODELS[opts.model]) opts.model = "haiku";
+
+  function setOpts(o) {
+    Object.assign(opts, o);
+    try {
+      localStorage.setItem(OPTS, JSON.stringify(opts));
+    } catch (e) {}
+  }
 
   let sdkP = null;
   async function client() {
@@ -36,8 +52,8 @@ const AI = (() => {
       r.readAsDataURL(blob);
     });
 
-  // 写真の読み取りは長い辺1568pxまでで十分(大きいと時間とお金がかかる)
-  async function shrink(blob, max = 1568) {
+  // 写真の読み取りは長い辺1024pxで十分(大きいと時間とお金がかかる)
+  async function shrink(blob, max = 1024) {
     const img = await createImageBitmap(blob);
     const s = Math.min(1, max / Math.max(img.width, img.height));
     const c = document.createElement("canvas");
@@ -66,14 +82,15 @@ const AI = (() => {
     throw new Error("too many turns");
   }
 
-  const common = {
-    model: MODEL,
-    max_tokens: 16000,
-    // 断られたときは、サーバー側でほかのモデルが続きを引き受ける
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
-    tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 4 }],
-  };
+  // search: ネット検索を使うか(使うと正確になるが、1回あたり数円高くなる)
+  function common(search, maxUses = 2) {
+    const m = MODELS[opts.model];
+    const p = { model: m.id, max_tokens: 16000 };
+    // 断られたときは、サーバー側でほかのモデルが続きを引き受ける(Haiku には無い)
+    if (m.fallback) Object.assign(p, { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" });
+    if (search) p.tools = [{ type: m.search, name: "web_search", max_uses: maxUses }];
+    return p;
+  }
 
   // ---------- パーツの写真を読み取る ----------
   function specGuide() {
@@ -123,7 +140,7 @@ const AI = (() => {
 - 1つのパーツだけの写真なら items は1つ。自転車全体の写真なら、見分けられる部位をそれぞれ items に入れてください(フレームとフォークは同じモデルなら frame にまとめ、fork は入れない)。
 - slot はアプリの部位: ${slots}
 - brand / model はロゴ・刻印・形から読み取り、わかる範囲で正確な製品名(例: SHIMANO 105 FC-R7000)。年式がわかれば year。わからなければ空文字。
-- weight_g はその部位としての重さ(g)。ホイールは前後ペア、タイヤ・チューブは2本分、ペダルは左右ペア、クランクはクランク単体。web_search でメーカーの公式ページなどの公表値を確かめ、weight_source にそのURL(確かめられなければ「推定」)。わからなければ 0。
+- weight_g はその部位としての重さ(g)。ホイールは前後ペア、タイヤ・チューブは2本分、ペダルは左右ペア、クランクはクランク単体。${opts.search ? "web_search でメーカーの公式ページなどの公表値を確かめ、weight_source にそのURL(確かめられなければ「推定」)。" : "メーカーの公表値を知っていればその値、weight_source は「公表値(記憶)」か「推定」。"}わからなければ 0。
 - price_jpy はおおよその日本での新品価格(円)。わからなければ 0。
 - specs はアプリの項目キーで(当てはまるものだけ、数値は単位なしの文字):
 ${specGuide()}
@@ -133,8 +150,8 @@ ${specGuide()}
 - confidence は読み取りの確かさ(0〜1)。note に日本語で短い補足(迷った点など)。
 ${hint ? `- 使う人からのヒント: ${hint}` : ""}`;
     const out = await run(
-      Object.assign({}, common, {
-        output_config: { effort: "medium", format: { type: "json_schema", schema: identifySchema() } },
+      Object.assign(common(opts.search), {
+        output_config: { effort: opts.model === "haiku" ? "medium" : "low", format: { type: "json_schema", schema: identifySchema() } },
         messages: [
           {
             role: "user",
@@ -168,7 +185,7 @@ ${hint ? `- 使う人からのヒント: ${hint}` : ""}`;
   async function findImage(id, name) {
     if (imgCache[id]) return imgCache[id];
     const out = await run(
-      Object.assign({}, common, {
+      Object.assign(common(true, 1), {
         output_config: {
           effort: "low",
           format: {
@@ -204,10 +221,14 @@ ${hint ? `- 使う人からのヒント: ${hint}` : ""}`;
     get maskedKey() {
       return key ? key.slice(0, 10) + "…" + key.slice(-4) : "";
     },
+    get opts() {
+      return opts;
+    },
+    MODELS,
+    setOpts,
     setKey,
     identify,
     findImage,
     cachedImage,
-    MODEL,
   };
 })();
