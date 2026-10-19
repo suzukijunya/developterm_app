@@ -1222,3 +1222,13 @@ body.ms-open {
 .mx-comps span { flex: 1; min-width: 0; }
 .mx-comps b { font-variant-numeric: tabular-nums; }
 .mx-x.small { font-size: 1.1rem; padding: 0 4px; }
+.mx-cell.warn { border-color: #e0a100; }
+.mx-warn { font-style: normal; margin-right: 3px; }
+.mx-misfit { display: grid; gap: 6px; margin: 8px 0; }
+.mx-misfit .btn { justify-self: start; }
+.g-ladder-row { display: grid; grid-template-columns: 28px 1fr; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line, rgba(255,255,255,0.08)); }
+.g-ladder-row.goal { background: linear-gradient(90deg, rgba(255, 207, 90, 0.16), transparent); border-left: 3px solid #ffcf5a; padding-left: 6px; }
+.g-ladder-row .g-plan-meta em { font-style: normal; color: var(--brand); }
+.g-ladder .ac-rank { display: inline-block; min-width: 1.4em; text-align: center; font-weight: 800; border: 1px solid currentColor; border-radius: 3px; padding: 0 3px; line-height: 1.3; }
+.ac-rank.r-S { color: #ffcf5a; } .ac-rank.r-A { color: #ff9a2e; } .ac-rank.r-B { color: #6fc3ff; } .ac-rank.r-C { color: #b8c2cf; } .ac-rank.r-D, .ac-rank.r-E { color: #7d8794; }
+.g-rankup { font-style: normal; margin-left: 6px; font-size: 0.72rem; font-weight: 800; color: #111; background: #ffcf5a; padding: 1px 5px; border-radius: 3px; }

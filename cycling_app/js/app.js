@@ -190,6 +190,7 @@
       el.innerHTML = Store.prefs.wind
         ? `<p class="muted">${weatherStatus || "天気を取得しています…"}</p>`
         : `<p class="muted">設定で「天気予報を使う」をオンにすると、1時間ごとの天気を表示します。</p>`;
+      renderCommute();
       return;
     }
     const c = w.current;
@@ -226,6 +227,66 @@
           .join("")}
       </div>
       <p class="muted small">矢印は風が吹いていく向き${dest ? `。下の段は${esc(dest.name)}へ向かうときの風` : ""}</p>`;
+    renderCommute();
+  }
+
+  // ---------- 通勤予報(雨・向かい風・いちばんよい出発時間) ----------
+  function commuteTrip() {
+    const here = Store.lastPos;
+    const dest = here ? plannedDest() : null;
+    if (!dest) return null;
+    const straight = Physics.distance(here.lat, here.lon, dest.lat, dest.lon);
+    if (straight < 500) return null;
+    const L = Eta.learned(dest);
+    return { dest, from: here, to: dest, distanceM: straight * (L ? L.detour : 1.3), speed: (L && L.speed) || 15 / 3.6, learned: L ? L.n : 0 };
+  }
+
+  let commuteKey = "";
+  function renderCommute() {
+    const el = document.getElementById("commute");
+    if (!el) return;
+    const trip = Store.prefs.wind ? commuteTrip() : null;
+    if (!trip) {
+      el.hidden = true;
+      return;
+    }
+    el.hidden = false;
+    const pts = [trip.from, { lat: (trip.from.lat + trip.to.lat) / 2, lon: (trip.from.lon + trip.to.lon) / 2 }, trip.to];
+    const key = pts.map((p) => p.lat.toFixed(2) + "," + p.lon.toFixed(2)).join("|");
+    const draw = (data) => {
+      const el2 = document.getElementById("commute");
+      if (!el2) return;
+      // 地点ごとの予報が取れなければ、現在地の1時間ごとの予報だけで
+      const points = data || (Weather.latest ? [{ hourly: Weather.latest.hourly, m15: [] }] : null);
+      if (!points) {
+        el2.innerHTML = `<div class="today-label">🚲 通勤予報 → ${esc(trip.dest.name)}</div><p class="muted small">予報を取得しています…</p>`;
+        return;
+      }
+      const c = Commute.plan(points, trip, Store.profile);
+      const hm = Commute.hm;
+      const n = c.now;
+      el2.innerHTML = `
+        <div class="today-label">🚲 通勤予報 → ${esc(trip.dest.name)}</div>
+        <p class="cm-msg ${c.message.level}">${esc(c.message.text)}</p>
+        <p class="small">いま出ると <b>${hm(n.arrive)}着</b>(約${Math.round(n.sec / 60)}分)・${Commute.windTxt(n.hw)}・${n.wet ? `雨 ${n.mm ? n.mm.toFixed(1) + "mm/15分" : n.pop + "%"}` : `☔${n.pop}%`}</p>
+        <div class="cm-opts">${c.opts
+          .map(
+            (o, i) => `<div class="cm-opt ${o === c.best ? "best" : ""} ${o.wet ? "wet" : ""}">
+              <div class="cm-t">${i === 0 ? "いま" : hm(o.leave)}</div>
+              <div class="cm-i">${o.wet ? "☔" : o.hw > 0.5 ? "🌬️" : "🚲"}</div>
+              <div class="cm-m">${Math.round(o.sec / 60)}分</div>
+              <div class="cm-a">${hm(o.arrive)}着</div>
+            </div>`
+          )
+          .join("")}</div>
+        <p class="muted small">出発の時刻ごとの、かかる時間と雨(${data ? "出発地・途中・目的地の15分ごとの予報" : "現在地の1時間ごとの予報"})。時間は${trip.learned ? `これまでの到着${trip.learned}回分の速さ` : "目安の速さ(15km/h)"}に、風の強さを足して計算しています。</p>`;
+    };
+    draw(null);
+    if (commuteKey !== key) commuteKey = "";
+    Weather.route(pts).then((data) => {
+      commuteKey = key;
+      draw(data);
+    });
   }
 
   function windWord(w, heading) {
@@ -863,6 +924,7 @@
         <br /><button class="link" data-view="settings">体格・バイク・目的地を変更</button>
       </p>
       <div class="status center"><span id="wake" class="pill"></span></div>
+      <section class="card commute" id="commute" hidden></section>
       <section class="card weather" id="weather"></section>`;
   }
 
@@ -919,8 +981,41 @@
     return list.map((f) => `${f.name} ${(kcal / f.kcal).toFixed(1)}${f.unit}分`).join(" / ");
   }
 
+  // ---------- 出撃リザルト(ランク・スコア・バッジ) ----------
+  // ランクは「いつもの自分」と比べた速さ(過去のライドの平均速度の中央値)。記録が少ないうちは速度そのもので
+  function sortieOf(r) {
+    const avg = r.movingSec > 0 ? r.distance / r.movingSec : 0;
+    const kmh = avg * 3.6;
+    const others = Store.rides.filter((x) => x.id !== r.id && x.distance >= 1000 && x.movingSec > 0);
+    const past = others.slice(0, 20).map((x) => x.distance / x.movingSec).sort((a, b) => a - b);
+    const med = past.length >= 3 ? past[Math.floor(past.length / 2)] : null;
+    const ratio = med ? avg / med : null;
+    const place = placeById(r.arrivedPlaceId);
+    const trips = place ? place.trips || [] : [];
+    const trip = trips.find((t) => t.rideId === r.id);
+    const pb = !!(trip && trips.length >= 2 && trips.every((t) => t === trip || t.speed < trip.speed));
+    let rank;
+    if (pb || (ratio && ratio >= 1.08)) rank = "S";
+    else if (ratio) rank = ratio >= 1.03 ? "A" : ratio >= 0.97 ? "B" : ratio >= 0.9 ? "C" : "D";
+    else rank = kmh >= 28 ? "S" : kmh >= 25 ? "A" : kmh >= 21 ? "B" : kmh >= 17 ? "C" : "D";
+    const mult = { S: 1.3, A: 1.15, B: 1, C: 0.9, D: 0.8 }[rank];
+    const score = Math.round(((r.distance / 1000) * 40 + totalKcal(r) * 0.6 + r.elevGain * 2 + kmh * 8) * mult);
+    const badges = [];
+    if (pb) badges.push(`🏆 ${place.name}まで自己ベスト`);
+    if (others.length >= 3 && others.every((x) => x.distance < r.distance)) badges.push("📏 最長距離");
+    if (others.length >= 3 && others.every((x) => (x.maxSpeed || 0) < r.maxSpeed)) badges.push(`⚡ 最高速度 ${fmt.kmh(r.maxSpeed)}km/h`);
+    if (r.elevGain >= 100) badges.push(`⛰️ 獲得標高 ${Math.round(r.elevGain)}m`);
+    const week = Store.rides.filter((x) => x.startedAt > r.startedAt - 7 * 86400000 && x.startedAt <= r.startedAt).length;
+    if (week >= 3) badges.push(`🔥 7日間で${week}回目`);
+    const g = Store.garage && Store.garage.builds && Store.garage.builds.current;
+    const machine = `${Store.profile.useGarage && g ? g.name || "いまのバイク" : "バイク"} ${Store.profile.bikeKg}kg`;
+    const vs = ratio ? `いつもの平均より${ratio >= 1 ? "+" : "−"}${Math.abs(Math.round((ratio - 1) * 100))}%` : "記録が3回たまると、いつもの自分と比べます";
+    return { rank, score, kmh, badges, machine, vs, pb };
+  }
+
   function resultCard(r) {
     const k = totalKcal(r);
+    const so = sortieOf(r);
     const place = placeById(r.arrivedPlaceId);
     const L = place ? Eta.learned(place) : null;
     let placeLine = "";
@@ -933,14 +1028,149 @@
     } else if (r.end && r.distance >= 500) {
       placeLine = `<button class="btn sub" id="register-end">🏁 この到着地を目的地に登録</button>`;
     }
+    const avgPower = r.movingSec > 0 ? r.workJ / r.movingSec : 0;
+    const cells = [
+      ["DISTANCE", "距離", fmt.km(r.distance), "km"],
+      ["CALORIE", "消費カロリー", fmt.kcal(k), "kcal"],
+      ["AVG SPEED", "平均速度", so.kmh.toFixed(1), "km/h"],
+      ["TIME", "走行時間", fmt.dur(r.movingSec), ""],
+      ["CLIMB", "獲得標高", Math.round(r.elevGain), "m"],
+      ["POWER", "平均パワー", Math.round(avgPower), "W"],
+    ];
     return `
-      <section class="card result">
-        <h2>おつかれさまでした!</h2>
-        <div class="result-kcal">${fmt.kcal(k)}<small>kcal</small></div>
-        <p class="muted">${foodLine(k, true)}</p>
+      <section class="card result sortie">
+        <div class="so-head"><span>MISSION COMPLETE</span><small>${fmt.date(r.startedAt)} ${fmt.time(r.startedAt)}・${esc(so.machine)}</small></div>
+        <div class="so-main">
+          <div class="so-rank r-${so.rank}">${so.rank}</div>
+          <div><div class="so-label">SCORE</div><div class="so-score">${so.score.toLocaleString()}<small>pts</small></div><div class="so-vs">${esc(so.vs)}</div></div>
+        </div>
+        <div class="so-grid">${cells.map(([en, ja, v, u]) => `<div class="so-cell"><small>${en}<em>${ja}</em></small><b>${v}<i>${u}</i></b></div>`).join("")}</div>
+        ${so.badges.length ? `<div class="so-badges">${so.badges.map((b) => `<span>${esc(b)}</span>`).join("")}</div>` : ""}
+        <p class="so-food">おつかれさまでした! ${foodLine(k, true)}</p>
         ${placeLine}
-        ${detailTable(r)}
+        <button class="btn sub so-share" id="share-result">📤 リザルト画像を保存・共有</button>
+        <details class="so-detail"><summary>くわしい記録</summary>${detailTable(r)}</details>
       </section>`;
+  }
+
+  // 共有用の画像(1080×1350)をつくる
+  function sortieImage(r) {
+    const so = sortieOf(r);
+    const W = 1080, H = 1350;
+    const c = document.createElement("canvas");
+    c.width = W;
+    c.height = H;
+    const g = c.getContext("2d");
+    const F = (w, px) => `${w} ${px}px "Rajdhani", "Hiragino Sans", "Noto Sans JP", sans-serif`;
+    const bg = g.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, "#0d1117");
+    bg.addColorStop(1, "#1a1206");
+    g.fillStyle = bg;
+    g.fillRect(0, 0, W, H);
+    // 斜めの縞
+    g.save();
+    g.globalAlpha = 0.25;
+    g.fillStyle = "#ff9a2e";
+    for (let i = 0; i < 6; i++) {
+      g.beginPath();
+      g.moveTo(760 + i * 60, 0);
+      g.lineTo(800 + i * 60, 0);
+      g.lineTo(720 + i * 60, 110);
+      g.lineTo(680 + i * 60, 110);
+      g.fill();
+    }
+    g.restore();
+    g.fillStyle = "#ff9a2e";
+    g.fillRect(60, 150, 10, 70);
+    g.fillStyle = "#e8edf3";
+    g.font = F(800, 64);
+    g.fillText("MISSION COMPLETE", 90, 210);
+    g.fillStyle = "#8b96a5";
+    g.font = F(500, 30);
+    g.fillText(`${fmt.date(r.startedAt)} ${fmt.time(r.startedAt)}  ${so.machine}`, 90, 260);
+    // ランク
+    const col = { S: "#ffcf5a", A: "#ff9a2e", B: "#6fc3ff", C: "#b8c2cf", D: "#7d8794" }[so.rank];
+    g.strokeStyle = col;
+    g.lineWidth = 8;
+    g.strokeRect(90, 320, 260, 260);
+    g.fillStyle = col;
+    g.font = F(800, 230);
+    g.textAlign = "center";
+    g.fillText(so.rank, 220, 535);
+    g.textAlign = "left";
+    g.fillStyle = "#8b96a5";
+    g.font = F(600, 34);
+    g.fillText("SCORE", 400, 380);
+    g.fillStyle = "#e8edf3";
+    g.font = F(800, 130);
+    g.fillText(so.score.toLocaleString(), 400, 510);
+    g.fillStyle = "#8b96a5";
+    g.font = F(500, 30);
+    g.fillText(so.vs, 400, 565);
+    // 数値
+    const avgPower = r.movingSec > 0 ? r.workJ / r.movingSec : 0;
+    const cells = [
+      ["DISTANCE", fmt.km(r.distance), "km"],
+      ["CALORIE", fmt.kcal(totalKcal(r)), "kcal"],
+      ["AVG SPEED", so.kmh.toFixed(1), "km/h"],
+      ["TIME", fmt.dur(r.movingSec), ""],
+      ["CLIMB", String(Math.round(r.elevGain)), "m"],
+      ["POWER", String(Math.round(avgPower)), "W"],
+    ];
+    cells.forEach(([en, v, u], i) => {
+      const x = 90 + (i % 2) * 460, y = 660 + Math.floor(i / 2) * 170;
+      g.fillStyle = "rgba(255,255,255,0.04)";
+      g.fillRect(x, y, 430, 140);
+      g.fillStyle = "#ff9a2e";
+      g.fillRect(x, y, 6, 140);
+      g.fillStyle = "#8b96a5";
+      g.font = F(600, 28);
+      g.fillText(en, x + 30, y + 45);
+      g.fillStyle = "#e8edf3";
+      g.font = F(800, 70);
+      g.fillText(v, x + 30, y + 118);
+      const w = g.measureText(v).width;
+      g.fillStyle = "#8b96a5";
+      g.font = F(600, 32);
+      g.fillText(u, x + 40 + w, y + 118);
+    });
+    g.font = F(700, 32);
+    let bx = 90;
+    for (const b of so.badges.slice(0, 3)) {
+      const w = g.measureText(b).width + 40;
+      if (bx + w > W - 60) break;
+      g.fillStyle = "rgba(255,154,46,0.18)";
+      g.fillRect(bx, 1180, w, 56);
+      g.fillStyle = "#ffcf5a";
+      g.fillText(b, bx + 20, 1219);
+      bx += w + 16;
+    }
+    g.fillStyle = "#56606d";
+    g.font = F(700, 28);
+    g.fillText("RIDE CALORIE", 90, 1300);
+    return new Promise((res) => c.toBlob(res, "image/png"));
+  }
+
+  async function shareResult(r) {
+    const blob = await sortieImage(r);
+    if (!blob) return;
+    const name = `ride-result-${new Date(r.startedAt).toISOString().slice(0, 10)}.png`;
+    const file = new File([blob], name, { type: "image/png" });
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: "ライドのリザルト" });
+        return;
+      }
+    } catch (e) {
+      if (e && e.name === "AbortError") return;
+    }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   }
 
   function detailTable(r) {
@@ -992,6 +1222,7 @@
         <details class="card ride">
           <summary class="ride-summary">${summary}</summary>
           ${detailTable(r)}
+          <button class="link" data-result="${r.id}">🎖️ リザルトを見る</button>
           <button class="link danger" data-delete="${r.id}">この記録を削除</button>
         </details>`;
     };
@@ -1339,6 +1570,15 @@
       if (Store.places.length) cycleDest();
     });
     on("register-end", () => registerEnd(lastResult));
+    on("share-result", () => lastResult && shareResult(lastResult));
+    app.querySelectorAll("[data-result]").forEach((b) =>
+      b.addEventListener("click", () => {
+        lastResult = Store.rides.find((x) => x.id === b.dataset.result) || null;
+        view = "ride";
+        render();
+        window.scrollTo(0, 0);
+      })
+    );
     on("register-here", registerHere);
     app.querySelectorAll("[data-dest]").forEach((b) =>
       b.addEventListener("click", () => {
@@ -1496,7 +1736,7 @@
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2026.11.05";
+  const APP_VERSION = "2026.11.06";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });

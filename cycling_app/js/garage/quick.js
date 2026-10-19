@@ -16,9 +16,9 @@ const QuickAdd = (() => {
   ];
   // 型番の決まり(シマノなど)から部位を決める
   const CODES = [
-    [/\bFC-?[A-Z]?\d{3,4}/i, "groupset", "クランク"], [/\bRD-?[A-Z]?\d{3,4}/i, "groupset", "リアディレイラー"], [/\bFD-?[A-Z]?\d{3,4}/i, "groupset", "フロントディレイラー"],
-    [/\bST-?[A-Z]?\d{3,4}/i, "groupset", "STIレバー"], [/\bBR-?[A-Z]?\d{3,4}/i, "groupset", "ブレーキ"], [/\bCS-?[A-Z]?\d{3,4}/i, "groupset", "スプロケット"],
-    [/\bWH-?[A-Z]?\d{3,4}/i, "wheels", "ホイール"], [/\bPD-?[A-Z]?\d{3,4}/i, "pedals", "ペダル"], [/\bSM-?BB/i, "groupset", "BB"],
+    [/\bFC-?[A-Z]{0,2}\d{2,4}/i, "groupset", "クランク"], [/\bRD-?[A-Z]{0,2}\d{2,4}/i, "groupset", "リアディレイラー"], [/\bFD-?[A-Z]{0,2}\d{2,4}/i, "groupset", "フロントディレイラー"],
+    [/\bST-?[A-Z]{0,2}\d{2,4}/i, "groupset", "STIレバー"], [/\bBR-?[A-Z]{0,2}\d{2,4}/i, "groupset", "ブレーキ"], [/\bCS-?[A-Z]{0,2}\d{2,4}/i, "groupset", "スプロケット"],
+    [/\bWH-?[A-Z]{0,2}\d{2,4}/i, "wheels", "ホイール"], [/\bPD-?[A-Z]{0,2}\d{2,4}/i, "pedals", "ペダル"], [/\bSM-?BB/i, "groupset", "BB"],
     [/GP ?5000|AGILEST|CORSA|PRO ?ONE|P ?ZERO|GATORSKIN|GRAND ?PRIX/i, "tires", ""], [/RACING ?\d|ZONDA|SHAMAL|KSYRIUM|COSMIC/i, "wheels", ""],
     [/ANTARES|ARIONE|ALIANTE|SLR|POWER|ROMIN|SCRATCH|DIMENSION/i, "saddle", ""],
   ];
@@ -141,5 +141,21 @@ const QuickAdd = (() => {
     return { kind: "auto", crop, view: view === "other" ? "side" : view || "side", flip: facing === "left", ref: fromWholeBike ? "bike" : "part", w, h };
   }
 
-  return { detectCrop, ruleIdentify, guessFromText, decalFor };
+  // 名前の型番から部位を見分ける(部位まちがいの警告用)。
+  // メーカー名だけでは決めない(SHIMANO はホイールもペダルも作っている)。わからなければ null
+  function slotOfName(name) {
+    const t = up(name);
+    for (const [re, s, w] of CODES.slice(0, 11)) {
+      const m = t.match(re);
+      if (m) return { slot: s, what: w, code: m[0] };
+    }
+    for (const it of Catalog.ITEMS) {
+      if (it.kind !== "swap") continue;
+      const words = up(it.name).split(/[\s()/+×]+/).filter((w) => w.length >= 4 && !/^(SHIMANO|SPECIALIZED|PANARACER|CONTINENTAL|RITCHEY|リムブレーキ)$/.test(w));
+      if (words.length && words.filter((w) => t.includes(w)).length >= Math.min(2, words.length)) return { slot: it.slot, what: "", code: "" };
+    }
+    return null;
+  }
+
+  return { detectCrop, ruleIdentify, guessFromText, decalFor, slotOfName };
 })();

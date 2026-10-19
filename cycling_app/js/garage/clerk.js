@@ -126,6 +126,61 @@ const Clerk = (() => {
     };
   }
 
+  // コスパ順のアップグレード: 1円あたりで軽くなる重さの大きい順に、部位ごとに1つずつ付けていく。
+  // 軽くなるものが尽きたら、総合点の上がり方÷値段の順に(乗り心地・丈夫さなど)。
+  // scoreOf(build) → { total, rank, kg }。累計の値段と、付けたあとの総合点・ランクを返す
+  function ladder(build, usedOk, scoreOf) {
+    const sim = JSON.parse(JSON.stringify(build));
+    const used = new Set();
+    const start = scoreOf(sim);
+    const steps = [];
+    let now = start;
+    let cum = 0;
+    const take = (best, phase) => {
+      Catalog.apply(sim, best.item);
+      used.add(best.key);
+      cum += best.cost;
+      const after = scoreOf(sim);
+      steps.push({ item: best.item, key: best.key, cost: best.cost, save: best.save, gpk: (best.save / best.cost) * 1000, cum, after, gain: after.total - now.total, rankUp: after.rank !== now.rank, phase });
+      now = after;
+    };
+    for (let n = 0; n < 30; n++) {
+      let best = null;
+      for (const item of Catalog.ITEMS) {
+        const key = keyOf(item);
+        if (used.has(key) || blocked(item, sim)) continue;
+        const save = Catalog.saving(sim, item);
+        if (save <= 0) continue;
+        const cost = Catalog.cost(item, usedOk);
+        if (best && save / cost <= best.save / best.cost) continue;
+        // 軽くなっても総合点が下がるもの(細いタイヤで乗り心地が落ちるなど)は入れない
+        const trial = JSON.parse(JSON.stringify(sim));
+        Catalog.apply(trial, item);
+        if (scoreOf(trial).total < now.total) continue;
+        best = { item, key, save, cost };
+      }
+      if (!best) break;
+      take(best, "light");
+    }
+    for (let n = 0; n < 30; n++) {
+      let best = null;
+      for (const item of Catalog.ITEMS) {
+        const key = keyOf(item);
+        if (used.has(key) || blocked(item, sim)) continue;
+        const trial = JSON.parse(JSON.stringify(sim));
+        Catalog.apply(trial, item);
+        const gain = scoreOf(trial).total - now.total;
+        if (gain <= 0) continue;
+        const cost = Catalog.cost(item, usedOk);
+        if (!best || gain / cost > best.gain / best.cost) best = { item, key, save: Catalog.saving(sim, item), cost, gain };
+      }
+      if (!best) break;
+      take(best, "score");
+    }
+    const sAt = steps.findIndex((x) => x.after.rank === "S");
+    return { start, steps, sAt, sCost: start.rank === "S" ? 0 : sAt >= 0 ? steps[sAt].cum : null, top: steps.length ? steps[steps.length - 1].after : start };
+  }
+
   function reason(c, body) {
     const out = [];
     if (c.saving > 0) out.push(`−${c.saving}g`);
@@ -199,7 +254,7 @@ const Clerk = (() => {
     return out.sort((a, b) => b.pri - a.pri || ((a.text.length + day) % 3) - ((b.text.length + day) % 3)).map((x) => x.text);
   }
 
-  return { GOALS, BUDGETS, MAINT, keyOf, plan, maintenance, comments, blocked, totalKm };
+  return { GOALS, BUDGETS, MAINT, keyOf, plan, ladder, maintenance, comments, blocked, totalKm };
 })();
 
 if (typeof module !== "undefined") module.exports = Clerk;

@@ -70,5 +70,36 @@ const Weather = (() => {
     }
   }
 
-  return { get, describe, get latest() { return cache; } };
+  // 通勤予報用: いくつかの地点(出発地・途中・目的地)の、1時間ごとと15分ごとの予報を1回で取る
+  const routeCache = {};
+  async function route(points) {
+    const key = points.map((p) => p.lat.toFixed(2) + "," + p.lon.toFixed(2)).join("|");
+    const c = routeCache[key];
+    if (c && Date.now() - c.at < TTL) return c.data;
+    try {
+      const url =
+        "https://api.open-meteo.com/v1/forecast?latitude=" + points.map((p) => p.lat.toFixed(2)).join(",") +
+        "&longitude=" + points.map((p) => p.lon.toFixed(2)).join(",") +
+        "&hourly=precipitation_probability,precipitation,weather_code,wind_speed_10m,wind_direction_10m" +
+        "&minutely_15=precipitation&forecast_minutely_15=24" +
+        "&wind_speed_unit=ms&timezone=auto&timeformat=unixtime&forecast_days=2";
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(res.status);
+      let d = await res.json();
+      if (!Array.isArray(d)) d = [d];
+      const now = Date.now();
+      const data = d.map((x) => ({
+        hourly: x.hourly.time
+          .map((t, i) => ({ t: t * 1000, pop: x.hourly.precipitation_probability[i], mm: x.hourly.precipitation[i], code: x.hourly.weather_code[i], speed: x.hourly.wind_speed_10m[i], from: x.hourly.wind_direction_10m[i] }))
+          .filter((h) => h.t > now - 3 * 3600 * 1000 && h.t < now + 8 * 3600 * 1000),
+        m15: x.minutely_15 && x.minutely_15.time ? x.minutely_15.time.map((t, i) => ({ t: t * 1000, mm: x.minutely_15.precipitation[i] })).filter((m) => m.t > now - 30 * 60 * 1000) : [],
+      }));
+      routeCache[key] = { at: now, data };
+      return data;
+    } catch (e) {
+      return c ? c.data : null;
+    }
+  }
+
+  return { get, route, describe, get latest() { return cache; } };
 })();

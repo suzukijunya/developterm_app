@@ -332,6 +332,35 @@
     return !!(it && it.photoId && !it.decal);
   }
 
+  // 部位まちがいっぽいパーツ(型番から見分ける。例: ホイールの欄にスプロケット CS-6700)
+  function misfits(slot, p) {
+    if (!p || p.mounted === false || typeof QuickAdd === "undefined") return [];
+    const list = p.components && p.components.length ? p.components : [{ libId: p.libId || null, name: p.name }];
+    return list
+      .map((c) => ({ c, guess: QuickAdd.slotOfName(c.name) }))
+      .filter((x) => x.guess && x.guess.slot !== slot)
+      .map((x) => ({ libId: x.c.libId || null, name: x.c.name, to: x.guess.slot, what: x.guess.what || Parts.slotName(x.guess.slot), code: x.guess.code }));
+  }
+
+  // マイパーツを別の部位へ移す。付けていた所は、もう片方の構成のパーツ(なければ目安)に戻す
+  function moveLib(id, to) {
+    const it = libItem(id);
+    if (!it) return;
+    const from = it.slot;
+    it.slot = to;
+    for (const [k, b] of Object.entries(G.builds)) {
+      const p = b.parts[from];
+      if (!p) continue;
+      const ci = (p.components || []).findIndex((c) => c.libId === id);
+      if (ci >= 0) Library.removeComponent(b, from, ci, G.library);
+      else if (p.libId === id) {
+        const o = G.builds[k === "current" ? "next" : "current"].parts[from];
+        const uses = (q) => q && (q.libId === id || (q.components || []).some((c) => c.libId === id));
+        b.parts[from] = o && !uses(o) ? JSON.parse(JSON.stringify(o)) : Parts.defaultParts()[from];
+      }
+    }
+  }
+
   // ---------- 組み合わせ表(縦: 部位、横: 装着済み / NEW) ----------
   let cell = null; // 開いているマス { slot, k }
   let dataOpen = false; // 読み込み・バックアップの欄を開いているか
@@ -346,9 +375,10 @@
     const o = G.builds[k === "current" ? "next" : "current"].parts[slotId] || {};
     const diff = k === "next" && (o.name !== p.name || o.g !== p.g || (o.mounted === false) !== (p.mounted === false));
     const dg = (off ? 0 : +p.g || 0) - (o.mounted === false ? 0 : +o.g || 0);
+    const warn = !inBar && misfits(slotId, p).length;
     // マスには写真もアイコンも置かない(部位は左の列でわかる。写真はマスを開いた画面で見る)
-    return `<button class="mx-cell nothumb ${(cell ? cell.slot === slotId && cell.k === k : selected === slotId && G.active === k) ? "sel" : ""} ${off ? "off" : ""} ${diff ? "diff" : ""}" data-cell="${slotId}" data-k="${k}">
-      <span class="mx-name">${inBar ? "一体型ハンドルに含む" : off ? "外しています" : esc(p.name)}</span>
+    return `<button class="mx-cell nothumb ${(cell ? cell.slot === slotId && cell.k === k : selected === slotId && G.active === k) ? "sel" : ""} ${off ? "off" : ""} ${diff ? "diff" : ""} ${warn ? "warn" : ""}" data-cell="${slotId}" data-k="${k}">
+      <span class="mx-name">${warn ? `<i class="mx-warn" title="部位がちがうかも">⚠️</i>` : ""}${inBar ? "一体型ハンドルに含む" : off ? "外しています" : esc(p.name)}</span>
       <span class="mx-g">${inBar ? "0 g" : off ? "—" : (+p.g || 0).toLocaleString() + " g"}${diff && dg ? `<em class="${dg < 0 ? "up" : "down"}">${dg < 0 ? "−" : "+"}${Math.abs(dg)}g</em>` : ""}</span>
     </button>`;
   }
@@ -381,6 +411,7 @@
     const others = G.library.filter((x) => x.slot === slot && x.id !== p.libId && !inComps.has(x.id));
     const multi = Library.MULTI.includes(slot) && !off;
     const comps = p.components && p.components.length > 1 ? p.components : null;
+    const wrong = inBar ? [] : misfits(slot, p);
     return `
       <div class="mx-sheet" id="mxsheet">
         <div class="mx-panel">
@@ -392,6 +423,12 @@
               <small>${inBar ? "0 g" : (+p.g || 0).toLocaleString() + " g"}${off ? " ・ 外しています" : ""}</small>
               <div class="g-plan-btns">${inBar ? "" : `<button class="btn sub" data-mount="${slot}">${off ? "取り付ける" : "外す"}</button>`}${it ? `<button class="link" data-lib-edit="${it.id}">マイパーツを編集</button>` : ""}</div></div>
           </div>
+          ${wrong
+            .map(
+              (w) => `<div class="notice warn mx-misfit">⚠️ 「${esc(w.name)}」は${esc(w.what)}っぽいです${w.code ? `(型番 ${esc(w.code)})` : ""}。${esc(Parts.slotName(w.to))}のパーツではありませんか?
+                ${w.libId ? `<button class="btn sub" data-misfit-move="${w.libId}" data-to="${w.to}">${esc(Parts.slotName(w.to))}へ移動</button>` : `<small>マイパーツではないので、下の「数値を細かく」で名前を直すか、「外す」を押してください</small>`}</div>`
+            )
+            .join("")}
           <p class="g-sub">マイパーツから付け替える${multi ? "・追加する" : ""}</p>
           ${multi ? `<p class="muted small">${slot === "wheels" ? "前輪と後輪を別々に登録したときは、片方を付けてから、もう片方を「＋追加」すると両方の重さを合わせて数えます。" : "「＋追加」で、いまのパーツに足して付けられます(重さは合計)。"}</p>` : ""}
           ${
@@ -1719,7 +1756,49 @@
       </section>
       ${!c.hearing || c.editing ? hearingHtml : ""}
       ${planHtml}
+      ${ladderHtml()}
       ${maintHtml}`;
+  }
+
+  // ---------- コスパ順のアップグレード計画(1円あたりの軽量化・Sランクまでの値段) ----------
+  function ladderOf() {
+    const h = clerkState().hearing;
+    const usedOk = !h || h.usedOk !== false;
+    const scoreOf = (b) => {
+      const st = statsOf(b);
+      return { total: st.total, rank: st.rank, kg: Parts.totalGrams(b.parts) / 1000 };
+    };
+    return Object.assign(Clerk.ladder(G.builds.current, usedOk, scoreOf), { usedOk });
+  }
+
+  function ladderHtml() {
+    const L = ladderOf();
+    const rk = (r) => `<b class="ac-rank r-${r}">${r}</b>`;
+    const head =
+      L.start.rank === "S"
+        ? `<p class="g-plan-sum">いまのバイクで、もう <strong>Sランク</strong>(${L.start.total}点)です!</p>`
+        : L.sCost != null
+          ? `<p class="g-plan-sum">Sランクまで <strong>${Catalog.yen(L.sCost)}</strong>(${L.sAt + 1}点替える)</p>`
+          : `<p class="g-plan-sum">カタログのパーツだけでは、Sランク(800点)に届きません。ぜんぶ替えて ${rk(L.top.rank)} ${L.top.total}点(あと${800 - L.top.total}点)</p>
+             <p class="muted small">残りは、フィッティング(姿勢を低く・空気抵抗を小さく)か、体重を落とすと上がります。</p>`;
+    const rows = L.steps
+      .map(
+        (x, i) => `<div class="g-ladder-row ${i === L.sAt ? "goal" : ""}">
+          <div class="g-plan-n">${i + 1}</div>
+          <div class="g-plan-body">
+            <small>${esc(Parts.slotName(x.item.slot))}${x.phase === "score" ? "・点を上げる" : ""}</small><strong>${esc(x.item.name)}</strong>
+            <div class="g-plan-meta"><b>${x.save > 0 ? `−${x.save}g` : `+${x.gain}点`}・${Catalog.yen(x.cost)}${x.save > 0 ? `・<em>${x.gpk.toFixed(1)}g/千円</em>` : ""}</b>
+              <span>累計 ${Catalog.yen(x.cum)} → ${x.after.kg.toFixed(2)}kg・${x.after.total}点 ${rk(x.after.rank)}${x.rankUp ? `<em class="g-rankup">RANK UP</em>` : ""}</span></div>
+            <button class="link" data-ladder="${i}">ここまでNEWに組む</button>
+          </div></div>`
+      )
+      .join("");
+    return `<section class="card g-plan g-ladder">
+        <h2>💴 コスパ順アップグレード</h2>
+        <p class="small">いまのバイク(${L.start.kg.toFixed(2)}kg・${L.start.total}点 ${rk(L.start.rank)})から、1円あたりで軽くなる順に並べました(${L.usedOk ? "中古の相場" : "新品の値段"}で計算)。</p>
+        ${head}
+        ${rows || `<p class="muted">これ以上、カタログで効くパーツはありません。</p>`}
+      </section>`;
   }
 
   // 3Dの上に出す吹き出し(今日のひとこと)
@@ -1910,6 +1989,22 @@
       clerkState().editing = true;
       return renderPanel();
     }
+    if (t.dataset.ladder != null) {
+      const L = ladderOf();
+      const upto = L.steps.slice(0, +t.dataset.ladder + 1);
+      if (!upto.length || !confirm(`いまのバイク(装着済み)をもとに、上から${upto.length}点を付けたNEWを組みます。今のNEWの構成は置き換わります。よろしいですか?`)) return;
+      const nx = JSON.parse(JSON.stringify(G.builds.current));
+      nx.name = `コスパ順 ${upto.length}点`;
+      for (const x of upto) Catalog.apply(nx, x.item);
+      const top = upto.slice().sort((a, b) => b.cost - a.cost)[0];
+      G.active = "current";
+      equip({ slot: top.item.slot, name: `コスパ順 ${upto.length}点`, price: upto.reduce((a, x) => a + x.item.price, 0) }, () => {
+        G.builds.next = nx;
+        G.active = "next";
+      });
+      changed();
+      return renderAll();
+    }
     if (t.dataset.clerk === "build") {
       // いまのバイクをもとに、おすすめをぜんぶ付けたNEWを組む
       const plan = clerkContext().plan;
@@ -1967,6 +2062,16 @@
       changed();
       renderAll();
       if (has3D) View3D.highlight(selected, true);
+      return;
+    }
+    if (t.dataset.misfitMove) {
+      const it = libItem(t.dataset.misfitMove);
+      if (!it) return;
+      const name = Library.displayName(it);
+      moveLib(it.id, t.dataset.to);
+      changed();
+      renderAll();
+      alert(`「${name}」を${Parts.slotName(t.dataset.to)}のマイパーツに移しました。付けるときは${Parts.slotName(t.dataset.to)}のマスから選んでください。`);
       return;
     }
     if (t.dataset.compDel != null && cell) {
