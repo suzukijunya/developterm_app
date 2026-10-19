@@ -238,8 +238,28 @@
     const straight = Physics.distance(here.lat, here.lon, dest.lat, dest.lon);
     if (straight < 500) return null;
     const L = Eta.learned(dest);
-    return { dest, from: here, to: dest, distanceM: straight * (L ? L.detour : 1.3), speed: (L && L.speed) || 15 / 3.6, learned: L ? L.n : 0 };
+    return { dest, from: here, to: dest, distanceM: straight * (L ? L.detour : 1.3), speed: (L && L.speed) || 15 / 3.6, learned: L ? L.n : 0, evening: isEvening(dest) };
   }
+
+  // 帰りの予報にするか: 14〜21時で、行き先が家(名前、またはいつも夕方に着いている所)
+  function isEvening(dest, now = Date.now()) {
+    const h = new Date(now).getHours();
+    if (h < 14 || h >= 21) return false;
+    if (/自宅|家|ホーム|home/i.test(dest.name || "")) return true;
+    const hours = (dest.trips || []).map((t) => new Date(t.at).getHours()).sort((a, b) => a - b);
+    return !hours.length || hours[Math.floor(hours.length / 2)] >= 14;
+  }
+
+  function commuteOpts(trip, now = Date.now()) {
+    if (!trip.evening) return {};
+    const d = new Date(now);
+    const s17 = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 17, 0).getTime();
+    const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 21, 0).getTime();
+    const start = Math.max(now, s17);
+    return { evening: true, start, slots: Math.max(5, Math.round((end - start) / 900000) + 1) };
+  }
+
+  const routePoints = (trip) => [trip.from, { lat: (trip.from.lat + trip.to.lat) / 2, lon: (trip.from.lon + trip.to.lon) / 2 }, trip.to];
 
   let commuteKey = "";
   function renderCommute() {
@@ -251,7 +271,7 @@
       return;
     }
     el.hidden = false;
-    const pts = [trip.from, { lat: (trip.from.lat + trip.to.lat) / 2, lon: (trip.from.lon + trip.to.lon) / 2 }, trip.to];
+    const pts = routePoints(trip);
     const key = pts.map((p) => p.lat.toFixed(2) + "," + p.lon.toFixed(2)).join("|");
     const draw = (data) => {
       const el2 = document.getElementById("commute");
@@ -259,20 +279,21 @@
       // 地点ごとの予報が取れなければ、現在地の1時間ごとの予報だけで
       const points = data || (Weather.latest ? [{ hourly: Weather.latest.hourly, m15: [] }] : null);
       if (!points) {
-        el2.innerHTML = `<div class="today-label">🚲 通勤予報 → ${esc(trip.dest.name)}</div><p class="muted small">予報を取得しています…</p>`;
+        el2.innerHTML = `<div class="today-label">${trip.evening ? "🏠 帰りの予報" : "🚲 通勤予報"} → ${esc(trip.dest.name)}</div><p class="muted small">予報を取得しています…</p>`;
         return;
       }
-      const c = Commute.plan(points, trip, Store.profile);
+      const co = commuteOpts(trip);
+      const c = Commute.plan(points, trip, Store.profile, Date.now(), co);
       const hm = Commute.hm;
       const n = c.now;
       el2.innerHTML = `
-        <div class="today-label">🚲 通勤予報 → ${esc(trip.dest.name)}</div>
+        <div class="today-label">${trip.evening ? "🏠 帰りの予報" : "🚲 通勤予報"} → ${esc(trip.dest.name)}</div>
         <p class="cm-msg ${c.message.level}">${esc(c.message.text)}</p>
-        <p class="small">いま出ると <b>${hm(n.arrive)}着</b>(約${Math.round(n.sec / 60)}分)・${Commute.windTxt(n.hw)}・${n.wet ? `雨 ${n.mm ? n.mm.toFixed(1) + "mm/15分" : n.pop + "%"}` : `☔${n.pop}%`}</p>
+        <p class="small">${co.evening && co.start > Date.now() + 60000 ? `${hm(n.leave)}に出ると` : "いま出ると"} <b>${hm(n.arrive)}着</b>(約${Math.round(n.sec / 60)}分)・${Commute.windTxt(n.hw)}・${n.wet ? `雨 ${n.mm ? n.mm.toFixed(1) + "mm/15分" : n.pop + "%"}` : `☔${n.pop}%`}</p>
         <div class="cm-opts">${c.opts
           .map(
             (o, i) => `<div class="cm-opt ${o === c.best ? "best" : ""} ${o.wet ? "wet" : ""}">
-              <div class="cm-t">${i === 0 ? "いま" : hm(o.leave)}</div>
+              <div class="cm-t">${i === 0 && !(co.start > Date.now() + 60000) ? "いま" : hm(o.leave)}</div>
               <div class="cm-i">${o.wet ? "☔" : o.hw > 0.5 ? "🌬️" : "🚲"}</div>
               <div class="cm-m">${Math.round(o.sec / 60)}分</div>
               <div class="cm-a">${hm(o.arrive)}着</div>
@@ -287,6 +308,49 @@
       commuteKey = key;
       draw(data);
     });
+  }
+
+  // 夕方の決まった時刻に、帰りの予報を知らせる(アプリを開いているときだけ。閉じていると届かない)
+  const EVE_KEY = "cycling_evening_notified";
+  async function eveningCheck() {
+    const pr = Store.prefs;
+    if (!pr.eveningNotify || !pr.wind || ride) return;
+    const now = new Date();
+    const [hh, mi] = String(pr.eveningTime || "17:30").split(":").map(Number);
+    const at = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh || 17, mi || 0).getTime();
+    const today = now.toDateString();
+    if (Date.now() < at || now.getHours() >= 22) return;
+    try {
+      if (localStorage.getItem(EVE_KEY) === today) return;
+    } catch (e) {}
+    const trip = commuteTrip();
+    if (!trip) return;
+    trip.evening = true;
+    const data = await Weather.route(routePoints(trip));
+    const points = data || (Weather.latest ? [{ hourly: Weather.latest.hourly, m15: [] }] : null);
+    if (!points) return;
+    const c = Commute.plan(points, trip, Store.profile, Date.now(), Object.assign(commuteOpts(trip), { evening: true }));
+    try {
+      localStorage.setItem(EVE_KEY, today);
+    } catch (e) {}
+    const title = `🏠 帰りの予報(${trip.dest.name}まで)`;
+    try {
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification(title, { body: c.message.text, icon: "icons/icon-192.png", tag: "evening" });
+      }
+    } catch (e) {
+      // スマホのブラウザは、ページからの通知に対応していないことがある
+    }
+    toast(title, c.message.text);
+  }
+
+  function toast(title, text) {
+    let el = document.getElementById("toast");
+    if (el) el.remove();
+    document.body.insertAdjacentHTML("beforeend", `<div class="toast" id="toast" role="status"><strong>${esc(title)}</strong><span>${esc(text)}</span><button aria-label="閉じる">×</button></div>`);
+    el = document.getElementById("toast");
+    el.querySelector("button").addEventListener("click", () => el.remove());
+    setTimeout(() => el && el.remove(), 30000);
   }
 
   function windWord(w, heading) {
@@ -919,6 +983,7 @@
       </section>
       ${destPicker()}
       <button class="btn start" id="start">ライドを開始</button>
+      ${missionCard()}
       <p class="muted center">
         ${Store.profile.weightKg}kg + バイク${Store.profile.bikeKg}kg + 荷物${Store.profile.cargoKg}kg・${Store.profile.useGarage && Store.profile.cdaCustom ? `ガレージの空気抵抗(CdA ${Store.profile.cdaCustom})` : Physics.POSTURES[Store.profile.posture].label}で計算
         <br /><button class="link" data-view="settings">体格・バイク・目的地を変更</button>
@@ -981,6 +1046,25 @@
     return list.map((f) => `${f.name} ${(kcal / f.kcal).toFixed(1)}${f.unit}分`).join(" / ");
   }
 
+  // ホーム画面の今月のミッション(まだのものから3つ)
+  function missionCard() {
+    const st = Missions.status(Store.rides, Store.places);
+    const left = st.missions.filter((m) => !m.done).sort((a, b) => b.pct - a.pct).slice(0, 3);
+    const done = st.missions.filter((m) => m.done).length;
+    return `
+      <section class="card missions">
+        <div class="ms-head"><div class="today-label">🎖️ ${st.month}のミッション</div><span>${done}/${st.missions.length} 達成・残り${st.daysLeft}日</span></div>
+        ${left
+          .map(
+            (m) => `<div class="ms-row"><span>${m.icon} ${esc(m.label)}</span><small>${Missions.fmtVal(m, m.value)}/${m.target.toLocaleString()}${m.unit}</small>
+              <div class="ms-bar"><i style="width:${m.pct.toFixed(1)}%"></i></div></div>`
+          )
+          .join("") || `<p class="small">今月のミッションをぜんぶ達成しました!🎉</p>`}
+        <p class="muted small">バッジ ${st.count}個${st.next ? `・あと${st.next.need - st.count}個で「${esc(st.next.label)}」` : ""}
+          <a class="link" href="garage.html?tab=mission">ガレージで見る</a></p>
+      </section>`;
+  }
+
   // ---------- 出撃リザルト(ランク・スコア・バッジ) ----------
   // ランクは「いつもの自分」と比べた速さ(過去のライドの平均速度の中央値)。記録が少ないうちは速度そのもので
   function sortieOf(r) {
@@ -1005,6 +1089,7 @@
     if (others.length >= 3 && others.every((x) => x.distance < r.distance)) badges.push("📏 最長距離");
     if (others.length >= 3 && others.every((x) => (x.maxSpeed || 0) < r.maxSpeed)) badges.push(`⚡ 最高速度 ${fmt.kmh(r.maxSpeed)}km/h`);
     if (r.elevGain >= 100) badges.push(`⛰️ 獲得標高 ${Math.round(r.elevGain)}m`);
+    for (const m of Missions.newlyDone(Store.rides, Store.places, r)) badges.unshift(`🎖️ ミッション達成: ${m.label}`);
     const week = Store.rides.filter((x) => x.startedAt > r.startedAt - 7 * 86400000 && x.startedAt <= r.startedAt).length;
     if (week >= 3) badges.push(`🔥 7日間で${week}回目`);
     const g = Store.garage && Store.garage.builds && Store.garage.builds.current;
@@ -1370,6 +1455,9 @@
         <h2>天気と画面</h2>
         <label class="check"><input type="checkbox" name="wind" ${pr.wind ? "checked" : ""} />
           <span>天気予報を使う<small>1時間ごとの天気の表示と、風向き・風速を使った計算に使います(Open-Meteo)。送る位置は約1km単位に丸めます</small></span></label>
+        <label class="check"><input type="checkbox" name="eveningNotify" ${pr.eveningNotify ? "checked" : ""} />
+          <span>夕方に帰りの予報を知らせる<small>決まった時刻に、会社から家までの雨と風、雨に当たらない出発時刻を知らせます。アプリを開いているとき(画面に出ているとき)だけ届きます</small></span></label>
+        <label class="field"><span>知らせる時刻</span><input type="time" name="eveningTime" value="${esc(pr.eveningTime || "17:30")}" /></label>
         <label class="field"><span>画面を消さない</span>
           <select name="wake">
             <option value="always" ${pr.wake === "always" ? "selected" : ""}>開いている間ずっと</option>
@@ -1722,12 +1810,27 @@
       surface: f.get("surface"),
       useGarage: f.get("useGarage") === "on",
     });
-    Store.setPrefs({ wind: f.get("wind") === "on", wake: f.get("wake"), nav: f.get("nav") === "on", voice: f.get("voice") === "on" });
+    const eveningNotify = f.get("eveningNotify") === "on";
+    const newTime = f.get("eveningTime") || "17:30";
+    if (newTime !== Store.prefs.eveningTime || (eveningNotify && !Store.prefs.eveningNotify)) {
+      try {
+        localStorage.removeItem(EVE_KEY); // 時刻を変えたら、今日もう一度知らせる
+      } catch (err) {}
+    }
+    Store.setPrefs({ wind: f.get("wind") === "on", wake: f.get("wake"), nav: f.get("nav") === "on", voice: f.get("voice") === "on", eveningNotify, eveningTime: newTime });
+    if (eveningNotify && "Notification" in window && Notification.permission === "default") {
+      try {
+        Notification.requestPermission();
+      } catch (err) {}
+    }
     updateWake();
     view = "ride";
     render();
     window.scrollTo(0, 0);
   }
+
+  setInterval(eveningCheck, 60 * 1000);
+  setTimeout(eveningCheck, 3000);
 
   // 経過時間は測位がなくても1秒ごとに進める
   setInterval(() => {
@@ -1736,7 +1839,7 @@
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2026.11.06";
+  const APP_VERSION = "2026.11.07";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });
@@ -1751,7 +1854,10 @@
     }
   }
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") checkUpdate();
+    if (document.visibilityState === "visible") {
+      checkUpdate();
+      eveningCheck();
+    }
   });
   checkUpdate();
 

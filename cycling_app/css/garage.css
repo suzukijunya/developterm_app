@@ -1232,3 +1232,26 @@ body.ms-open {
 .g-ladder .ac-rank { display: inline-block; min-width: 1.4em; text-align: center; font-weight: 800; border: 1px solid currentColor; border-radius: 3px; padding: 0 3px; line-height: 1.3; }
 .ac-rank.r-S { color: #ffcf5a; } .ac-rank.r-A { color: #ff9a2e; } .ac-rank.r-B { color: #6fc3ff; } .ac-rank.r-C { color: #b8c2cf; } .ac-rank.r-D, .ac-rank.r-E { color: #7d8794; }
 .g-rankup { font-style: normal; margin-left: 6px; font-size: 0.72rem; font-weight: 800; color: #111; background: #ffcf5a; padding: 1px 5px; border-radius: 3px; }
+/* ミッション・ごほうび */
+.g-ms { display: grid; grid-template-columns: 30px 1fr; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line, rgba(255,255,255,0.08)); }
+.g-ms-i { font-size: 1.3rem; text-align: center; }
+.g-ms strong { font-size: 0.92rem; }
+.g-ms small { color: var(--muted, #8b96a5); }
+.g-ms-bar { height: 7px; background: rgba(255, 255, 255, 0.08); margin: 4px 0 2px; overflow: hidden; }
+.g-ms-bar i { display: block; height: 100%; background: linear-gradient(90deg, #ff7a1a, #ffcf5a); }
+.g-ms.done .g-ms-bar i { background: #44d68a; }
+.g-rw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin: 10px 0; }
+.g-rw { display: grid; gap: 4px; justify-items: start; padding: 10px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); }
+.g-rw.on { border-color: #ffcf5a; box-shadow: 0 0 10px rgba(255, 207, 90, 0.3); }
+.g-rw.locked { opacity: 0.45; }
+.g-rw small { color: var(--muted, #8b96a5); }
+.g-rw-lock { font-size: 0.8rem; }
+.g-rw-sw { width: 100%; height: 34px; background: var(--c); border: 1px solid rgba(255, 255, 255, 0.15); }
+.g-rw-sw.fin-metal { background: linear-gradient(135deg, var(--c), #fff 45%, var(--c) 60%, #222); }
+.g-rw-sw.fin-pearl { background: linear-gradient(135deg, var(--c), #f6e9ff 50%, #e3f4ff); }
+.g-rw-sw.fin-matte { filter: saturate(0.6); }
+.g-rw-sw.fin-holo { background: linear-gradient(120deg, #ff9adf, #9ad8ff, #b6ffb0, #fff59a, #ff9adf); }
+.g-rw-sw.fin-tape { background: repeating-linear-gradient(-45deg, var(--c) 0 7px, color-mix(in srgb, var(--c) 75%, #000) 7px 10px); }
+.g-bd-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.g-bd { display: grid; justify-items: center; width: 74px; padding: 6px 2px; background: rgba(255, 207, 90, 0.1); border: 1px solid rgba(255, 207, 90, 0.35); font-size: 1.5rem; text-align: center; }
+.g-bd small { font-size: 0.6rem; line-height: 1.2; color: #ffcf5a; }

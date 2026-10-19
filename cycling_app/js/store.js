@@ -22,6 +22,8 @@ const Store = (() => {
         destId: null, // 次のライドの目的地。null = 現在地から自動で選ぶ / "none" = 目的地なし
         nav: true, // 走行中に地図とルート案内を表示する
         voice: true, // 曲がる場所を音声で案内する
+        eveningNotify: false, // 夕方に帰りの予報を知らせる(アプリを開いているとき)
+        eveningTime: "17:30",
       },
       profileSet: false,
       rides: [], // 保存したライド(新しい順)

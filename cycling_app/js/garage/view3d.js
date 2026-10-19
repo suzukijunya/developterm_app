@@ -472,6 +472,15 @@ const View3D = (() => {
   }
 
   // クリア塗装(フレームの塗装やカーボンのツヤ)
+  // 塗装の仕上げ(ミッションのごほうび)
+  const FINISH = {
+    gloss: {},
+    matte: { roughness: 0.75, clearcoat: 0, metalness: 0.02 },
+    pearl: { roughness: 0.3, metalness: 0.15, sheen: 1, sheenColor: 0xf3e6ff, sheenRoughness: 0.35 },
+    metal: { roughness: 0.28, metalness: 0.85, clearcoat: 1, clearcoatRoughness: 0.05 },
+    holo: { roughness: 0.2, metalness: 0.6, iridescence: 1, iridescenceIOR: 1.6, iridescenceThicknessRange: [200, 900] },
+  };
+
   function paint(color, opts = {}) {
     const THREE = T();
     return new THREE.MeshPhysicalMaterial(Object.assign({ color, roughness: 0.38, metalness: 0.05, clearcoat: 1, clearcoatRoughness: 0.08, envMapIntensity: 0.55 }, opts));
@@ -528,13 +537,17 @@ const View3D = (() => {
   }
 
   // バーテープの巻き模様
-  function tapeTex() {
-    if (texCache.tape) return texCache.tape;
+  // バーテープの巻き目。color でテープの色(ミッションのごほうび)
+  function tapeTex(color) {
+    const key = "tape" + (color || "");
+    if (texCache[key]) return texCache[key];
     const THREE = T();
+    const base = new THREE.Color(color || "#121315");
+    const line = base.clone().multiplyScalar(color ? 0.78 : 1.6);
     const t = canvasTexture(64, (g, s) => {
-      g.fillStyle = "#121315";
+      g.fillStyle = "#" + base.getHexString();
       g.fillRect(0, 0, s, s);
-      g.strokeStyle = "#202226";
+      g.strokeStyle = "#" + line.getHexString();
       g.lineWidth = 6;
       for (let x = -s; x < 2 * s; x += 14) {
         g.beginPath();
@@ -545,7 +558,7 @@ const View3D = (() => {
     });
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     t.repeat.set(30, 1);
-    texCache.tape = t;
+    texCache[key] = t;
     return t;
   }
 
@@ -743,7 +756,7 @@ const View3D = (() => {
     const parts = build.parts;
     const at = (id) => (parts[id] && parts[id].attrs) || {};
     const color = build.color || "#0a3d91";
-    const frameMat = paint(new THREE.Color(color));
+    const frameMat = paint(new THREE.Color(color), FINISH[build.finish] || {});
     const aero = at("frame").aero === "aero";
     const k = aero ? 1.2 : 1; // エアロフレームは太め
     const flat = aero ? 0.55 : 1;
@@ -899,7 +912,7 @@ const View3D = (() => {
     const gbt = group("bartape");
     const barCarbon = at("handlebar").type !== "round";
     const barMat = barCarbon ? paint(0xffffff, { map: carbonTex(), roughness: 0.4 }) : mat(0x2c2f36, { metalness: 0.6, roughness: 0.3 });
-    const tapeMat = new THREE.MeshStandardMaterial({ map: tapeTex(), color: 0xffffff, roughness: 0.95 });
+    const tapeMat = new THREE.MeshStandardMaterial({ map: tapeTex(build.tapeColor), color: 0xffffff, roughness: 0.95 });
     for (const s of [-1, 1]) {
       const path = barPath(bk.barClamp, bk.p.barReach, bk.p.barDrop, bk.p.barWidth / 2, s);
       const r = at("handlebar").type === "aero" ? 0.013 : 0.012;

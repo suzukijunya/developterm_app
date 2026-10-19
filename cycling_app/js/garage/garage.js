@@ -4,7 +4,7 @@
   const el = document.getElementById("garage");
   const has3D = !!window.THREE;
 
-  let tab = "parts";
+  let tab = new URLSearchParams(location.search).get("tab") === "mission" ? "mission" : "parts";
   let selected = null; // 編集中の部位
   let suggestion = null; // 自動調整の提案
   let libForm = null; // マイパーツの入力フォーム(編集中の内容)
@@ -306,6 +306,7 @@
       ["aero", "💨 空力"],
       ["compare", "📊 比較"],
       ["clerk", "🧑‍🔧 店員さん"],
+      ["mission", "🎖️ ミッション"],
     ];
     document.getElementById("tabs").innerHTML = T.map(([id, label]) => `<button class="g-tab ${tab === id ? "on" : ""}" data-tab="${id}">${label}</button>`).join("");
   }
@@ -1801,6 +1802,51 @@
       </section>`;
   }
 
+  // ---------- 月間ミッション・バッジ・ごほうび ----------
+  function missionPanel() {
+    const st = Missions.status(Store.rides, Store.places);
+    const b = B();
+    const isOn = (r) => (r.kind === "paint" ? b.color === r.color && (b.finish || "gloss") === r.finish : b.tapeColor === r.color);
+    const months = [];
+    for (const x of st.badges) {
+      let m = months[months.length - 1];
+      if (!m || m.ym !== x.ym) months.push((m = { ym: x.ym, month: x.month, list: [] }));
+      m.list.push(x);
+    }
+    return `
+      <section class="card g-mission">
+        <h2>🎖️ ${st.month}のミッション <span class="g-total">残り${st.daysLeft}日</span></h2>
+        ${st.missions
+          .map(
+            (m) => `<div class="g-ms ${m.done ? "done" : ""}">
+              <span class="g-ms-i">${m.done ? "✅" : m.icon}</span>
+              <div><strong>${esc(m.label)}</strong>
+                <div class="g-ms-bar"><i style="width:${m.pct.toFixed(1)}%"></i></div>
+                <small>${Missions.fmtVal(m, m.value)} / ${m.target.toLocaleString()}${m.unit}${m.done ? " ・ バッジ獲得!" : ""}</small></div></div>`
+          )
+          .join("")}
+        <p class="muted small">記録したライドから毎回数えます(同期した記録も入ります)。毎月1日にリセット。</p>
+      </section>
+      <section class="card g-reward">
+        <h2>🎨 ごほうび <span class="g-total">バッジ ${st.count}個</span></h2>
+        <p class="small">${st.next ? `あと${st.next.need - st.count}個で「${esc(st.next.label)}」` : "ぜんぶのごほうびを手に入れました!"}。手に入れた色は「${G.active === "current" ? "装着済み" : "NEW"}」のバイクに付けられます。</p>
+        <div class="g-rw-grid">${Missions.REWARDS.map((r) => {
+          const open = st.count >= r.need;
+          return `<div class="g-rw ${open ? "" : "locked"} ${open && isOn(r) ? "on" : ""}">
+              <span class="g-rw-sw fin-${r.finish || "tape"}" style="--c:${r.color}"></span>
+              <strong>${esc(r.label)}</strong>
+              <small>${r.kind === "paint" ? "フレームの塗装" : "バーテープ"}</small>
+              ${open ? (isOn(r) ? `<span class="g-tag">付けています</span>` : `<button class="btn sub" data-reward="${r.id}">付ける</button>`) : `<span class="g-rw-lock">🔒 バッジ${r.need}個</span>`}
+            </div>`;
+        }).join("")}</div>
+        <div class="g-plan-btns"><button class="link" data-reward="reset-paint">塗装の仕上げを標準(つや)に戻す</button><button class="link" data-reward="reset-tape">バーテープを黒に戻す</button></div>
+      </section>
+      <section class="card g-badges">
+        <h2>🏅 もらったバッジ</h2>
+        ${months.length ? months.map((m) => `<p class="g-sub">${m.month}</p><div class="g-bd-row">${m.list.map((x) => `<span class="g-bd" title="${esc(x.label)}">${x.icon}<small>${esc(x.label)}</small></span>`).join("")}</div>`).join("") : `<p class="muted">まだバッジはありません。今月のミッションを1つ達成すると、最初のごほうび(ACオレンジ)が手に入ります。</p>`}
+      </section>`;
+  }
+
   // 3Dの上に出す吹き出し(今日のひとこと)
   function renderBubble() {
     if (!has3D) return;
@@ -1840,7 +1886,7 @@
 
   function renderPanel() {
     const panel = document.getElementById("panel");
-    panel.innerHTML = tab === "parts" ? partsPanel() : tab === "fit" ? fitPanel() : tab === "aero" ? aeroPanel() : tab === "clerk" ? clerkPanel() : comparePanel();
+    panel.innerHTML = tab === "parts" ? partsPanel() : tab === "fit" ? fitPanel() : tab === "aero" ? aeroPanel() : tab === "clerk" ? clerkPanel() : tab === "mission" ? missionPanel() : comparePanel();
     if (tab === "aero") drawSilhouette();
     if (tab === "parts") loadPhotos();
     renderPartCard();
@@ -1988,6 +2034,22 @@
     if (t.dataset.clerk === "edit") {
       clerkState().editing = true;
       return renderPanel();
+    }
+    if (t.dataset.reward) {
+      const b = B();
+      const id = t.dataset.reward;
+      if (id === "reset-paint") delete b.finish;
+      else if (id === "reset-tape") delete b.tapeColor;
+      else {
+        const r = Missions.REWARDS.find((x) => x.id === id);
+        if (!r || Missions.status(Store.rides, Store.places).count < r.need) return;
+        equip({ slot: r.kind === "paint" ? "frame" : "bartape", name: r.label, price: r.need >= 10 ? 100000 : r.need >= 6 ? 50000 : 20000 }, () => {
+          if (r.kind === "paint") (b.color = r.color), (b.finish = r.finish);
+          else b.tapeColor = r.color;
+        });
+      }
+      changed();
+      return renderAll();
     }
     if (t.dataset.ladder != null) {
       const L = ladderOf();

@@ -22,12 +22,16 @@ const Commute = (() => {
 
   // points: [{ hourly: [{ t, pop, mm, speed, from }], m15: [{ t, mm }] }](出発地・途中・目的地の順)
   // trip: { from, to, distanceM, speed(信号込みの実効速度 m/s) }
-  function plan(points, trip, profile, now = Date.now()) {
+  // opts.start: この時刻から出発を考える(帰りの予報: 夕方17時から)。opts.slots: 何通り(15分おき)
+  function plan(points, trip, profile, now = Date.now(), opts = {}) {
+    const late = !!(opts.start && opts.start > now);
+    const base = Math.ceil((late ? opts.start : now) / STEP) * STEP;
+    const slots = opts.slots || SLOTS;
     const heading = P.bearing(trip.from.lat, trip.from.lon, trip.to.lat, trip.to.lon);
     const hourAt = (pt, t) => pt.hourly.filter((h) => h.t <= t).pop() || pt.hourly[0];
-    const opts = [];
-    for (let i = 0; i < SLOTS; i++) {
-      const leave = i === 0 ? now : Math.ceil(now / STEP) * STEP + (i - 1) * STEP;
+    const opts_ = [];
+    for (let i = 0; i < slots; i++) {
+      const leave = late ? base + i * STEP : i === 0 ? now : base + (i - 1) * STEP;
       // 風は行程の真ん中の時刻、各地点の平均
       let hw = 0;
       const mid0 = leave + (trip.distanceM / trip.speed / 2) * 1000;
@@ -54,18 +58,31 @@ const Commute = (() => {
         for (const h of pt.hourly) if (h.t + 3600000 > leave && h.t < arrive) pop = Math.max(pop, h.pop || 0);
       });
       const wet = hasM15 ? mm >= WET_MM : pop >= 60;
-      const wait = (leave - now) / 60000;
+      const wait = (leave - (late ? base : now)) / 60000;
       // 点数(小さいほどよい): かかる時間 + 雨 + 待つ時間(早く出たい)
       const score = sec / 60 + (wet ? 45 + mm * 20 : 0) + pop * 0.15 + wait * 0.25;
-      opts.push({ leave, arrive, sec, hw, mm, pop, wet, wait, score });
+      opts_.push({ leave, arrive, sec, hw, mm, pop, wet, wait, score });
     }
-    const nowOpt = opts[0];
-    const best = opts.reduce((a, b) => (b.score < a.score ? b : a), nowOpt);
+    const nowOpt = opts_[0];
+    const best = opts_.reduce((a, b) => (b.score < a.score ? b : a), nowOpt);
     // 雨が止む / 降り出す時刻(出発地、15分ごと)
     const m0 = (points[0] && points[0].m15) || [];
     const rainNow = m0.length ? (m0.find((x) => x.t <= now && x.t + STEP > now) || m0[0]).mm >= WET_MM : false;
     const change = m0.find((x) => x.t > now && (x.mm >= WET_MM) !== rainNow);
-    return { heading, now: nowOpt, best, opts, rainNow, stopAt: rainNow && change ? change.t : null, startAt: !rainNow && change ? change.t : null, message: message(nowOpt, best, rainNow, change) };
+    const msg = opts.evening ? eveningMessage(opts_, best) : message(nowOpt, best, rainNow, change);
+    return { heading, now: nowOpt, best, opts: opts_, rainNow, stopAt: rainNow && change ? change.t : null, startAt: !rainNow && change ? change.t : null, message: msg };
+  }
+
+  // 帰りの予報のひとこと
+  function eveningMessage(list, best) {
+    const wet = list.filter((o) => o.wet);
+    const min = Math.round(best.sec / 60);
+    if (!wet.length) return { level: "go", text: `🏠 帰りは雨の心配なし。${hm(best.leave)}に出ると${windTxt(best.hw)}・約${min}分です` };
+    if (wet.length === list.length) return { level: "rain", text: `☔ 夕方はずっと雨の予報です。レインウェアを用意して帰りましょう` };
+    return {
+      level: "wait",
+      text: `☔ ${hm(wet[0].leave)}〜${hm(wet[wet.length - 1].leave)}に出ると雨に当たりそう。${hm(best.leave)}に出れば雨に当たりません(約${min}分)`,
+    };
   }
 
   const hm = (ms) => {
