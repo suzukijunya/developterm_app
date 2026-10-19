@@ -1,0 +1,436 @@
+/* ガレージを「ロボットの組み立て画面」のような見た目にする(暗いハンガー・細い線・アンバーの差し色)
+   garage.html の body.ac だけに効く */
+
+body.ac {
+  --bg: #07090c;
+  --card: #0e1217;
+  --text: #e6ebf1;
+  --muted: #8592a3;
+  --line: #222b35;
+  --brand: #ff9a2e;
+  --brand-2: #ffb35c;
+  --brand-bg: rgba(255, 154, 46, 0.1);
+  --on-brand: #120a02;
+  --navy: #050608;
+  --ok: #4ade80;
+  --ok-bg: rgba(74, 222, 128, 0.1);
+  --ng: #ff5d5d;
+  --ng-bg: rgba(255, 93, 93, 0.1);
+  --warn-bg: rgba(255, 154, 46, 0.12);
+  --warn-text: #ffc27a;
+  --shadow: none;
+  --ac-font: "Rajdhani", "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  color-scheme: dark;
+  background: var(--bg)
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.015) 0 1px, transparent 1px 3px);
+  color: var(--text);
+}
+
+/* 上の帯 */
+body.ac .topbar {
+  background: linear-gradient(180deg, #0b0e12, #06080a);
+  border-bottom: 1px solid #2a333e;
+}
+body.ac .topbar::after {
+  background: repeating-linear-gradient(115deg, transparent 0 10px, rgba(255, 154, 46, 0.55) 10px 14px, transparent 14px 22px);
+  width: 120px;
+}
+body.ac .topbar-inner {
+  font-family: var(--ac-font);
+  font-style: normal;
+  letter-spacing: 0.32em;
+  font-weight: 700;
+}
+body.ac .topbar-inner span {
+  color: var(--brand);
+}
+
+/* 見出し・カード: 角を斜めに切った枠 */
+body.ac .card {
+  background: linear-gradient(180deg, #10151b, #0b0f13);
+  border: 1px solid var(--line);
+  border-radius: 0;
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+  position: relative;
+}
+body.ac .card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 46px;
+  height: 2px;
+  background: var(--brand);
+}
+body.ac h2 {
+  font-family: var(--ac-font);
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  border-left: 3px solid var(--brand);
+  text-transform: uppercase;
+}
+
+/* ボタン */
+body.ac .btn {
+  border-radius: 0;
+  font-family: var(--ac-font), system-ui, sans-serif;
+  letter-spacing: 0.06em;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+body.ac .btn.start {
+  background: linear-gradient(180deg, #ffb35c, #ff8a14);
+  color: #140a00;
+  box-shadow: 0 0 18px rgba(255, 154, 46, 0.35);
+}
+body.ac .btn.sub {
+  background: rgba(255, 154, 46, 0.08);
+  color: var(--brand-2);
+  border: 1px solid rgba(255, 154, 46, 0.45);
+}
+body.ac .link {
+  color: var(--brand-2);
+}
+body.ac input,
+body.ac select,
+body.ac textarea {
+  background: #080b0e;
+  color: var(--text);
+  border-color: #2c3742;
+  border-radius: 0;
+}
+
+/* 3Dの上の道具・切り替え */
+body.ac .g-stage {
+  background: #050607;
+}
+body.ac .g-stage::after {
+  /* 画面の四隅のかぎ括弧 */
+  content: "";
+  position: absolute;
+  inset: 8px;
+  pointer-events: none;
+  z-index: 1;
+  background:
+    linear-gradient(var(--brand), var(--brand)) left top / 18px 1px no-repeat,
+    linear-gradient(var(--brand), var(--brand)) left top / 1px 18px no-repeat,
+    linear-gradient(var(--brand), var(--brand)) right top / 18px 1px no-repeat,
+    linear-gradient(var(--brand), var(--brand)) right top / 1px 18px no-repeat,
+    linear-gradient(var(--brand), var(--brand)) left bottom / 18px 1px no-repeat,
+    linear-gradient(var(--brand), var(--brand)) left bottom / 1px 18px no-repeat,
+    linear-gradient(var(--brand), var(--brand)) right bottom / 18px 1px no-repeat,
+    linear-gradient(var(--brand), var(--brand)) right bottom / 1px 18px no-repeat;
+  opacity: 0.7;
+}
+body.ac .g-tool,
+body.ac .g-chip {
+  border-radius: 0;
+  background: rgba(6, 8, 10, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  font-family: var(--ac-font), system-ui, sans-serif;
+  letter-spacing: 0.05em;
+  font-style: normal;
+}
+body.ac .g-tool.on,
+body.ac .g-chip.on {
+  background: rgba(255, 154, 46, 0.18);
+  border-color: var(--brand);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255, 154, 46, 0.4), 0 0 12px rgba(255, 154, 46, 0.25);
+}
+
+/* タブ */
+body.ac .g-tabs {
+  background: #0a0d10;
+}
+body.ac .g-tab {
+  font-family: var(--ac-font), system-ui, sans-serif;
+  letter-spacing: 0.05em;
+}
+body.ac .g-tab.on {
+  color: #fff;
+  box-shadow: inset 0 -2px 0 var(--brand);
+  background: linear-gradient(0deg, rgba(255, 154, 46, 0.14), transparent);
+}
+
+/* ---------- アセンブルの性能 ---------- */
+body.ac .g-summary {
+  display: block;
+  background: #090c0f;
+  border-bottom: 1px solid var(--line);
+  padding: 8px 12px 4px;
+}
+.ac-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 14px;
+  align-items: end;
+  margin-bottom: 6px;
+}
+.ac-head small {
+  display: block;
+  font-family: var(--ac-font);
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+}
+.ac-head b {
+  font-family: var(--ac-font);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.ac-rank b {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 0 14px currentColor;
+}
+.ac-rank.rank-S b { color: #ffcf5a; }
+.ac-rank.rank-A b { color: #ff9a2e; }
+.ac-rank.rank-B b { color: #6fc3ff; }
+.ac-rank.rank-C b { color: #b8c2cf; }
+.ac-rank.rank-D b,
+.ac-rank.rank-E b { color: #7d8794; }
+.ac-total b {
+  font-size: 1.6rem;
+  color: #fff;
+}
+.ac-total em,
+.ac-d,
+.ac-prev span,
+.ac-prev i {
+  font-style: normal;
+  font-family: var(--ac-font);
+  font-weight: 700;
+}
+.ac-total em {
+  margin-left: 6px;
+  font-size: 0.95rem;
+}
+.ac-cost {
+  text-align: right;
+}
+.ac-cost b {
+  font-size: 1rem;
+  color: var(--brand-2);
+}
+.up { color: var(--ok); }
+.down { color: var(--ng); }
+.ac-rows {
+  display: grid;
+  gap: 3px;
+}
+.ac-row {
+  display: grid;
+  grid-template-columns: 7.2em 6.6em 1fr 5.6em 4.8em;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+}
+.ac-en {
+  font-family: var(--ac-font);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #cfd6df;
+}
+.ac-ja {
+  color: var(--muted);
+  font-size: 0.66rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ac-bar {
+  position: relative;
+  height: 6px;
+  background: repeating-linear-gradient(90deg, #1b222a 0 9%, #0b0f13 9% 10%);
+}
+.ac-bar i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, #8c99a8, #f2f5f8);
+}
+.ac-bar em {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+}
+.ac-bar em.up {
+  background: var(--ok);
+  box-shadow: 0 0 8px var(--ok);
+}
+.ac-bar em.down {
+  background: var(--ng);
+  box-shadow: 0 0 8px var(--ng);
+}
+.ac-val {
+  font-family: var(--ac-font);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: #fff;
+  font-size: 0.8rem;
+}
+.ac-d {
+  text-align: right;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+body.ac .g-vs {
+  background: none;
+  padding: 4px 0 2px;
+}
+@media (max-width: 420px) {
+  .ac-row {
+    grid-template-columns: 6.6em 1fr 5.2em 4.6em;
+  }
+  .ac-ja {
+    display: none;
+  }
+}
+
+/* 付けたらどうなるか */
+.ac-prev {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+  font-size: 0.7rem;
+  margin-bottom: 2px;
+}
+.ac-prev i {
+  font-size: 0.68rem;
+}
+.tier {
+  font-family: var(--ac-font);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  padding: 1px 6px;
+  border: 1px solid currentColor;
+}
+.tier-legend { color: #ffb52e; text-shadow: 0 0 8px rgba(255, 181, 46, 0.7); }
+.tier-epic { color: #c06bff; text-shadow: 0 0 8px rgba(192, 107, 255, 0.6); }
+.tier-rare { color: #3fa3ff; }
+.tier-uncommon { color: #44d68a; }
+.tier-common { color: #9aa6b8; }
+
+/* 付けたときの帯 */
+.ac-banner {
+  position: absolute;
+  left: 50%;
+  top: 34%;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  min-width: 62%;
+  max-width: 92%;
+  text-align: center;
+  padding: 10px 18px 12px;
+  background: linear-gradient(90deg, transparent, rgba(6, 8, 10, 0.88) 15%, rgba(6, 8, 10, 0.88) 85%, transparent);
+  border-top: 1px solid var(--tc);
+  border-bottom: 1px solid var(--tc);
+  color: #fff;
+  pointer-events: none;
+  animation: ac-in 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.ac-banner small {
+  display: block;
+  font-family: var(--ac-font, sans-serif);
+  letter-spacing: 0.4em;
+  font-size: 0.78rem;
+  color: var(--tc);
+  text-shadow: 0 0 10px var(--tc);
+}
+.ac-banner strong {
+  display: block;
+  font-size: 1rem;
+  margin: 2px 0;
+}
+.ac-banner span {
+  font-family: var(--ac-font, sans-serif);
+  font-size: 0.78rem;
+  color: #cfd6df;
+}
+.ac-banner.tier-legend,
+.ac-banner.tier-epic {
+  box-shadow: 0 0 40px -6px var(--tc);
+}
+.ac-banner.tier-legend strong {
+  background: linear-gradient(90deg, #fff, #ffd77a, #fff);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: ac-shine 1.2s linear infinite;
+}
+.ac-banner.out {
+  transition: opacity 0.6s, transform 0.6s;
+  opacity: 0;
+  transform: translate(-50%, -60%);
+}
+@keyframes ac-in {
+  from { opacity: 0; transform: translate(-50%, -50%) scaleX(0.2); }
+  to { opacity: 1; transform: translate(-50%, -50%) scaleX(1); }
+}
+@keyframes ac-shine {
+  from { background-position: 200% 0; }
+  to { background-position: 0 0; }
+}
+
+/* 吹き出し・写真カード・進み具合も暗い画面に合わせる */
+body.ac .g-bubble {
+  background: rgba(8, 11, 14, 0.9);
+  color: #e6ebf1;
+  border: 1px solid rgba(255, 154, 46, 0.5);
+  border-radius: 0;
+}
+body.ac .g-bubble-x {
+  color: #8592a3;
+}
+body.ac .g-photo-st {
+  background: rgba(8, 11, 14, 0.9);
+  border: 1px solid rgba(255, 154, 46, 0.5);
+  border-radius: 0;
+}
+body.ac .g-photo-st i {
+  background: var(--brand);
+}
+body.ac .g-say {
+  background: #080b0e;
+  border-left: 2px solid var(--brand);
+  border-radius: 0;
+}
+body.ac .g-clerk-face {
+  background: #1a1206;
+  border: 1px solid var(--brand);
+}
+body.ac .g-plan-n {
+  background: var(--brand);
+  color: #140a00;
+  border-radius: 0;
+}
+body.ac .g-chip2 {
+  border-radius: 0;
+  background: #080b0e;
+}
+body.ac .g-chip2.on {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #140a00;
+}
+body.ac .g-web-item,
+body.ac .g-partcard {
+  border-radius: 0;
+}
+body.ac .g-summary > div {
+  background: none;
+  padding: 0;
+}
+body.ac .g-summary > .ac-head {
+  display: grid;
+  flex-direction: initial;
+}
+body.ac .g-summary > .ac-rows {
+  display: grid;
+}

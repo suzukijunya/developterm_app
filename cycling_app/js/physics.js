@@ -30,6 +30,8 @@ const Physics = (() => {
   const REF_AREA = frontalArea(1.75, 70);
 
   function cdaFor(profile) {
+    // ガレージで計算した空気抵抗を使う設定なら、それをそのまま使う
+    if (profile.useGarage && profile.cdaCustom > 0) return profile.cdaCustom;
     const base = (POSTURES[profile.posture] || POSTURES.hoods).cda;
     return base * (frontalArea(profile.heightCm / 100, profile.weightKg) / REF_AREA);
   }
