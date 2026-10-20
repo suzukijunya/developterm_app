@@ -46,6 +46,7 @@
       g.builds.next.parts.wheels = JSON.parse(JSON.stringify(Parts.PRESETS.wheels[3]));
     }
     if (!g.library) g.library = []; // マイパーツ(自分のパーツのデータベース)
+    if (!g.shops) g.shops = JSON.parse(JSON.stringify(Shops.DEFAULTS)); // 近くのメンテナンス店
     // 身長・体重は走行計算の設定と共通
     g.body.height = (prof.heightCm || g.body.height * 100) / 100;
     g.body.weight = prof.weightKg || g.body.weight;
@@ -1758,7 +1759,49 @@
       ${!c.hearing || c.editing ? hearingHtml : ""}
       ${planHtml}
       ${ladderHtml()}
-      ${maintHtml}`;
+      ${maintHtml}
+      ${shopsHtml()}`;
+  }
+
+  // ---------- 近くのメンテナンス店 ----------
+  let shopForm = null;
+  function shopsHtml() {
+    const list = G.shops || [];
+    const tel = (t) => String(t || "").replace(/[^\d+]/g, "");
+    return `<section class="card g-shops">
+        <h2>🏪 近くのメンテナンス店</h2>
+        <p class="small">荻窪のまわりで、ロードバイクの整備を頼めるお店です。口コミはどこも数件と少ないので、作業の内容と工賃は電話で確かめてから持ち込みましょう。</p>
+        <p class="muted small">使い分けの目安: ドロップ化などの改造 → ${esc((Shops.forJob(list, "custom")[0] || {}).name || "—")} ／ GIANTの相談 → ${esc((Shops.forJob(list, "giant")[0] || {}).name || "—")} ／ オーバーホール → ${esc((Shops.forJob(list, "overhaul")[0] || {}).name || "—")} ／ 急ぎのパンク → ${esc((Shops.forJob(list, "quick").slice(-1)[0] || {}).name || "—")}</p>
+        ${list
+          .map(
+            (x) => `<div class="g-shop">
+              <div class="g-shop-head"><strong>${esc(x.name)}</strong>${(x.tags || []).map((t) => `<em>${esc(t)}</em>`).join("")}</div>
+              <small class="g-shop-addr">📍 ${esc(x.addr || "")}${x.hours ? `<br />🕘 ${esc(x.hours)}` : ""}</small>
+              ${x.good ? `<p class="small">👍 ${esc(x.good)}</p>` : ""}
+              ${x.note ? `<p class="small muted">📝 ${esc(x.note)}</p>` : ""}
+              <label class="g-field"><span>自分のメモ</span><input type="text" data-shop-memo="${x.id}" value="${esc(x.memo || "")}" placeholder="例: 10/25 チェーン交換 ¥3,500" /></label>
+              <div class="g-plan-btns">
+                ${x.tel ? `<a class="btn sub" href="tel:${tel(x.tel)}">📞 ${esc(x.tel)}</a>` : ""}
+                <a class="btn sub" href="${Shops.routeUrl(x)}" target="_blank" rel="noopener">🚲 行き方</a>
+                <a class="link" href="${Shops.mapUrl(x)}" target="_blank" rel="noopener">地図</a>
+                ${x.src ? `<a class="link" href="${esc(x.src)}" target="_blank" rel="noopener">情報元</a>` : ""}
+                <button class="link danger" data-shop-del="${x.id}">消す</button>
+              </div></div>`
+          )
+          .join("")}
+        ${
+          shopForm
+            ? `<div class="g-shop g-shop-form">
+                <label class="g-field"><span>店名</span><input type="text" id="shop-name" value="${esc(shopForm.name)}" /></label>
+                <label class="g-field"><span>住所</span><input type="text" id="shop-addr" value="${esc(shopForm.addr)}" /></label>
+                <label class="g-field"><span>電話</span><input type="tel" id="shop-tel" value="${esc(shopForm.tel)}" /></label>
+                <label class="g-field"><span>メモ</span><input type="text" id="shop-note" value="${esc(shopForm.note)}" /></label>
+                <div class="g-plan-btns"><button class="btn sub" data-shop="save">追加する</button><button class="link" data-shop="cancel">やめる</button></div>
+              </div>`
+            : `<div class="g-plan-btns"><button class="btn sub" data-shop="new">＋ お店を追加</button>${list.length < Shops.DEFAULTS.length ? `<button class="link" data-shop="restore">消したおすすめを戻す</button>` : ""}</div>`
+        }
+        <p class="muted small">2026年10月にネットの店舗情報と口コミから調べました。営業時間・定休日は変わることがあります。</p>
+      </section>`;
   }
 
   // ---------- コスパ順のアップグレード計画(1円あたりの軽量化・Sランクまでの値段) ----------
@@ -2033,6 +2076,29 @@
     }
     if (t.dataset.clerk === "edit") {
       clerkState().editing = true;
+      return renderPanel();
+    }
+    if (t.dataset.shopDel) {
+      const x = G.shops.find((s) => s.id === t.dataset.shopDel);
+      if (!x || !confirm(`「${x.name}」をリストから消しますか?`)) return;
+      G.shops = G.shops.filter((s) => s !== x);
+      changed(false);
+      return renderPanel();
+    }
+    if (t.dataset.shop) {
+      const a = t.dataset.shop;
+      if (a === "new") shopForm = { name: "", addr: "", tel: "", note: "" };
+      else if (a === "cancel") shopForm = null;
+      else if (a === "restore") {
+        for (const d of Shops.DEFAULTS) if (!G.shops.some((s) => s.id === d.id)) G.shops.push(JSON.parse(JSON.stringify(d)));
+        changed(false);
+      } else if (a === "save") {
+        const v = (id) => document.getElementById(id).value.trim();
+        if (!v("shop-name")) return alert("店名を入れてください");
+        G.shops.push({ id: "u" + Date.now().toString(36), name: v("shop-name"), addr: v("shop-addr"), tel: v("shop-tel"), note: v("shop-note"), tags: [] });
+        shopForm = null;
+        changed(false);
+      }
       return renderPanel();
     }
     if (t.dataset.reward) {
@@ -2353,6 +2419,11 @@
 
   el.addEventListener("change", async (e) => {
     const t = e.target;
+    if (t.dataset.shopMemo) {
+      const x = (G.shops || []).find((s) => s.id === t.dataset.shopMemo);
+      if (x) (x.memo = t.value.trim()), changed(false);
+      return;
+    }
     if (t.dataset.imp && importRev) {
       const row = importRev.rows[+t.dataset.i];
       if (t.dataset.imp === "include") row.include = t.checked;

@@ -1255,3 +1255,10 @@ body.ms-open {
 .g-bd-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .g-bd { display: grid; justify-items: center; width: 74px; padding: 6px 2px; background: rgba(255, 207, 90, 0.1); border: 1px solid rgba(255, 207, 90, 0.35); font-size: 1.5rem; text-align: center; }
 .g-bd small { font-size: 0.6rem; line-height: 1.2; color: #ffcf5a; }
+/* 近くのメンテナンス店 */
+.g-shop { padding: 10px 0; border-top: 1px solid var(--line, rgba(255,255,255,0.08)); display: grid; gap: 4px; }
+.g-shop-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.g-shop-head em { font-style: normal; font-size: 0.7rem; padding: 1px 6px; border: 1px solid var(--brand); color: var(--brand); }
+.g-shop p { margin: 2px 0; }
+.g-shop .btn { text-decoration: none; }
+.g-shop .g-shop-addr { font-size: 0.85rem; line-height: 1.5; color: var(--muted, #b8c2cf); }
