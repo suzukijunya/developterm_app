@@ -1784,8 +1784,39 @@ const View3D = (() => {
   // レア度 lv(0〜4)が高いほど派手に: 衝撃波の輪・光の粒・部品の光・(lv3以上)光の柱
   const fxList = [];
   let fxGlow = null;
-  function equipFx(id, colorHex, lv = 0) {
+  // シンクロ召喚の演出: 緑の光の輪がいくつも、バイクを後ろから前へくぐり抜ける
+  function synchroRings(lv) {
     const THREE = T();
+    const b = new THREE.Box3().setFromObject(bikeGroup);
+    if (b.isEmpty()) return;
+    const c = b.getCenter(new THREE.Vector3());
+    const sz = b.getSize(new THREE.Vector3());
+    const R = Math.max(sz.y, sz.z) * 0.62;
+    const count = 3 + Math.min(3, lv);
+    for (let i = 0; i < count; i++) {
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(R, 0.006, 8, 120),
+        new THREE.MeshBasicMaterial({ color: 0x3dff8a, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })
+      );
+      ring.rotation.y = Math.PI / 2;
+      ring.position.copy(c);
+      scene.add(ring);
+      const delay = i * 0.18;
+      fxList.push({
+        obj: ring, t: 0, life: 1.6 + delay,
+        update: (o, t) => {
+          const k = Math.max(0, Math.min(1, (t - delay) / 1.2));
+          o.position.x = b.min.x - 0.2 + (sz.x + 0.4) * k;
+          o.material.opacity = k <= 0 || k >= 1 ? 0 : Math.sin(k * Math.PI) * 0.95;
+          o.scale.setScalar(1 - 0.25 * Math.sin(k * Math.PI));
+        },
+      });
+    }
+  }
+
+  function equipFx(id, colorHex, lv = 0, synchro = false) {
+    const THREE = T();
+    if (synchro && bikeGroup) synchroRings(lv);
     const gid = id === "stem" && !groups.stem ? "handlebar" : id === "tubes" ? "tires" : id;
     const g = groups[gid];
     const color = new THREE.Color(colorHex);

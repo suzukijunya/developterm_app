@@ -274,23 +274,35 @@
       .filter((x) => Math.abs(x.db) >= 0.5)
       .sort((a, b) => Math.abs(b.db) - Math.abs(a.db))
       .slice(0, 3);
-    fxQueue = { info, tier, gain, diffs };
+    fxQueue = { info, tier, gain, diffs, rank: after.rank, bikeName: B(G.active).name };
     if (!has3D) setTimeout(playFx);
   }
   let fxQueue = null;
+  // デュエルモード: 付けたパーツ(チューナー)とバイクのレベルを足して「シンクロ召喚」
+  const TUNERS = ["tubes", "cages", "accessories", "bartape", "pedals", "tires"];
+  function synchroLine(info, lv, rank, bikeName) {
+    const partLv = [2, 3, 4, 6, 8][lv] || 2;
+    const bikeLv = { S: 10, A: 8, B: 6, C: 5, D: 4, E: 3 }[rank] || 4;
+    const tuner = TUNERS.includes(info.slot);
+    const total = Math.min(12, tuner ? partLv + bikeLv - 2 : bikeLv + (lv >= 3 ? 1 : 0));
+    return tuner
+      ? `<small class="syn">✦ SYNCHRO SUMMON ★${total} ✦</small><em class="syn-sub">チューナー★${partLv} + ${esc(bikeName || "バイク")}★${bikeLv}</em>`
+      : `<small class="syn">✦ ACCEL ASSEMBLE ★${total} ✦</small>`;
+  }
   function playFx() {
     if (!fxQueue) return;
-    const { info, tier, gain, diffs } = fxQueue;
+    const { info, tier, gain, diffs, rank, bikeName } = fxQueue;
     fxQueue = null;
     const lv = Stats.TIERS.length - 1 - Stats.TIERS.indexOf(tier); // common=0 … legendary=4
-    if (has3D && info.slot) View3D.equipFx(info.slot, tier.color, lv);
+    const duel = !!Store.prefs.duel;
+    if (has3D && info.slot) View3D.equipFx(info.slot, duel ? "#3dff8a" : tier.color, lv, duel);
     Sfx.equip(lv);
     let el2 = document.getElementById("ac-banner");
     if (el2) el2.remove();
     stage.insertAdjacentHTML(
       "beforeend",
       `<div class="ac-banner tier-${tier.id}" id="ac-banner" style="--tc:${tier.color}">
-        <small>${lv >= 2 ? "◆ " : ""}${tier.label}${lv >= 2 ? " ◆" : ""}</small>
+        ${duel ? synchroLine(info, lv, rank, bikeName) : `<small>${lv >= 2 ? "◆ " : ""}${tier.label}${lv >= 2 ? " ◆" : ""}</small>`}
         <strong>${esc(info.name || "")}</strong>
         <span>${gain ? `TOTAL ${gain > 0 ? "+" : "−"}${Math.abs(gain)}` : "ASSEMBLED"}${diffs.map((x) => ` ・ ${x.r.ja} ${x.r.k === "comfort" || x.r.k === "durability" ? (x.db > 0 ? "▲" : "▼") + Math.abs(Math.round(x.db)) : rawDelta(x.r.k, x.d)}`).join("")}</span>
       </div>`

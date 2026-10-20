@@ -434,3 +434,6 @@ body.ac .g-summary > .ac-head {
 body.ac .g-summary > .ac-rows {
   display: grid;
 }
+/* デュエルモードのシンクロ演出 */
+.ac-banner .syn { color: #3dff8a !important; text-shadow: 0 0 10px rgba(61, 255, 138, 0.8); letter-spacing: 0.12em; }
+.ac-banner .syn-sub { display: block; font-style: normal; font-size: 0.75rem; color: #bff5d3; }

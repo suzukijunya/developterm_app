@@ -140,6 +140,7 @@ const Tracker = (() => {
       placeId: ride.placeId || null,
       etaMid: ride.etaMid || null,
       arrival: ride.arrival || null,
+      duel: ride.duel ? { spc: ride.duel.spc } : null, // デュエルモードのスピードカウンター
     };
   }
 

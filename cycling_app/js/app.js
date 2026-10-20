@@ -399,10 +399,22 @@
       if (ride.placeId) Store.markUsed(ride.placeId);
     }
     if (result !== "inaccurate") updateNav();
+    if (Store.prefs.duel) duelStep();
     updateEta();
     refreshWeather(pos);
     persist(false);
     renderLive();
+  }
+
+  // デュエルモード: スピードカウンターとゴーストの読み上げ
+  function duelStep() {
+    for (const e of Duel.step(ride)) {
+      if (e.type === "up" && (e.spc % 4 === 0 || e.spc === Duel.MAX_SPC)) speak(`スピードカウンター、${e.spc}`);
+      if (e.type === "down") speak(`止まりすぎです。スピードカウンター、マイナス1`);
+    }
+    const g = Duel.ghost(ride, placeById(ride.placeId));
+    if (g && g.ev === "pass") speak("ゴーストを抜きました!");
+    if (g && g.ev === "passed") speak("ゴーストに抜かれました。追いかけましょう");
   }
 
   function onGpsError(err) {
@@ -432,7 +444,9 @@
     lastResult = null;
     resumed = false;
     resetNav();
-    if (Store.prefs.nav && ride.placeId !== null) speak(ride.placeId ? `${placeById(ride.placeId).name}へのナビを開始します` : "ナビを開始します", true);
+    const navMsg = Store.prefs.nav && ride.placeId !== null ? (ride.placeId ? `${placeById(ride.placeId).name}へのナビを開始します` : "ナビを開始します") : "";
+    if (Store.prefs.duel) speak(`ライディング・デュエル、アクセラレーション!${navMsg ? " " + navMsg : ""}`, true);
+    else if (navMsg) speak(navMsg, true);
     Store.setActive(ride);
     startGps();
     updateWake();
@@ -950,6 +964,7 @@
                 : ""
             }
           </div>
+          ${Store.prefs.duel ? `<div class="duel-bar" id="duelbar"></div>` : ""}
           <div class="hero">
             <div class="hero-label">消費カロリー</div>
             <div class="hero-value"><span id="kcal">0</span><small>kcal</small></div>
@@ -1124,7 +1139,8 @@
     ];
     return `
       <section class="card result sortie">
-        <div class="so-head"><span>MISSION COMPLETE</span><small>${fmt.date(r.startedAt)} ${fmt.time(r.startedAt)}・${esc(so.machine)}</small></div>
+        ${duelHead(r)}
+        <div class="so-head"><span>${Store.prefs.duel || r.duel ? "TURBO DUEL END" : "MISSION COMPLETE"}</span><small>${fmt.date(r.startedAt)} ${fmt.time(r.startedAt)}・${esc(so.machine)}</small></div>
         <div class="so-main">
           <div class="so-rank r-${so.rank}">${so.rank}</div>
           <div><div class="so-label">SCORE</div><div class="so-score">${so.score.toLocaleString()}<small>pts</small></div><div class="so-vs">${esc(so.vs)}</div></div>
@@ -1136,6 +1152,19 @@
         <button class="btn sub so-share" id="share-result">📤 リザルト画像を保存・共有</button>
         <details class="so-detail"><summary>くわしい記録</summary>${detailTable(r)}</details>
       </section>`;
+  }
+
+  // デュエルモードの勝敗(いつもの自分=ゴーストと比べる)
+  function duelHead(r) {
+    if (!(Store.prefs.duel || r.duel)) return "";
+    const res = Duel.result(r, placeById(r.arrivedPlaceId));
+    const spc = (r.duel && r.duel.spc) || 0;
+    if (!res) return `<div class="duel-res"><b>RIDING DUEL</b><small>SPC ${spc}・目的地に着くと、ゴーストとの勝負になります</small></div>`;
+    if (res.first) return `<div class="duel-res"><b>FIRST DUEL</b><small>SPC ${spc}・次からは今日の自分がゴーストになります</small></div>`;
+    const m = Math.abs(res.diffSec);
+    const t = m >= 60 ? `${Math.floor(m / 60)}分${Math.round(m % 60)}秒` : `${Math.round(m)}秒`;
+    return `<div class="duel-res ${res.win ? "win" : "lose"}"><b>${res.win ? "DUEL WIN!" : "DUEL LOSE…"}</b>
+      <small>ゴーストより${t}${res.win ? "速い" : "遅い"}・LP ${res.lp.toLocaleString()} / ${Duel.LP0.toLocaleString()}・SPC ${spc}</small></div>`;
   }
 
   // 共有用の画像(1080×1350)をつくる
@@ -1169,7 +1198,19 @@
     g.fillRect(60, 150, 10, 70);
     g.fillStyle = "#e8edf3";
     g.font = F(800, 64);
-    g.fillText("MISSION COMPLETE", 90, 210);
+    const duelOn = Store.prefs.duel || r.duel;
+    g.fillText(duelOn ? "TURBO DUEL END" : "MISSION COMPLETE", 90, 210);
+    const dr = duelOn ? Duel.result(r, placeById(r.arrivedPlaceId)) : null;
+    if (dr && !dr.first) {
+      g.textAlign = "right";
+      g.font = F(900, 56);
+      g.fillStyle = dr.win ? "#3dff8a" : "#ff6b5b";
+      g.fillText(dr.win ? "DUEL WIN!" : "DUEL LOSE", W - 60, 300);
+      g.font = F(600, 28);
+      g.fillStyle = "#b8c2cf";
+      g.fillText(`LP ${dr.lp.toLocaleString()}  SPC ${dr.spc}`, W - 60, 340);
+      g.textAlign = "left";
+    }
     g.fillStyle = "#8b96a5";
     g.font = F(500, 30);
     g.fillText(`${fmt.date(r.startedAt)} ${fmt.time(r.startedAt)}  ${so.machine}`, 90, 260);
@@ -1464,6 +1505,9 @@
             <option value="riding" ${pr.wake === "riding" ? "selected" : ""}>走行中のみ</option>
           </select></label>
 
+        <h2>あそび</h2>
+        <label class="check"><input type="checkbox" name="duel" ${pr.duel ? "checked" : ""} />
+          <span>🃏 デュエルモード(5D's風)<small>走り出しの「アクセラレーション!」、1kmごとにたまるスピードカウンター、いつもの自分(ゴースト)とのLP勝負、ガレージのシンクロ召喚の演出</small></span></label>
         <h2>ナビ</h2>
         <label class="check"><input type="checkbox" name="nav" ${pr.nav ? "checked" : ""} />
           <span>走行中に地図とルート案内を表示する<small>目的地までの自転車向けのルートを調べ、次に曲がる場所を表示します。地図を表示するぶん、電池と通信量が増えます</small></span></label>
@@ -1520,6 +1564,7 @@
     renderEta();
     renderNavCard();
     updateNavMap();
+    renderDuel();
 
     const gps = document.getElementById("gps");
     if (gps) {
@@ -1542,6 +1587,22 @@
       gap.hidden = ride.gapSec < 30;
       gap.textContent = `画面が消えるなどで${fmt.min(ride.gapSec)}ほど計測が途切れました。その間は平均速度で走ったものとして計算しています。`;
     }
+  }
+
+  function renderDuel() {
+    const el = document.getElementById("duelbar");
+    if (!el || !ride) return;
+    const d = Duel.state(ride);
+    const g = Duel.ghost(ride, placeById(ride.placeId));
+    const pips = Array.from({ length: Duel.MAX_SPC }, (_, i) => `<i class="${i < d.spc ? "on" : ""}"></i>`).join("");
+    el.innerHTML = `
+      <div class="spc"><span>SPC</span><b>${d.spc}</b><div class="spc-pips">${pips}</div></div>
+      ${
+        g
+          ? `<div class="lp"><span>LP</span><b>${g.lp.toLocaleString()}</b><div class="lp-bar"><i style="width:${(g.lp / Duel.LP0) * 100}%"></i></div>
+             <small>${g.diff >= 0 ? `ゴーストより ${Math.round(g.diff)}m 前` : `ゴーストに ${Math.round(-g.diff)}m 遅れ`}</small></div>`
+          : `<div class="lp"><span>GHOST</span><small>目的地に何回か着くと、いつもの自分(ゴースト)と勝負できます</small></div>`
+      }`;
   }
 
   // 目的地までの推定を更新する。半分まで来たときの予測と、到着した時点の記録を残しておき、
@@ -1817,7 +1878,7 @@
         localStorage.removeItem(EVE_KEY); // 時刻を変えたら、今日もう一度知らせる
       } catch (err) {}
     }
-    Store.setPrefs({ wind: f.get("wind") === "on", wake: f.get("wake"), nav: f.get("nav") === "on", voice: f.get("voice") === "on", eveningNotify, eveningTime: newTime });
+    Store.setPrefs({ wind: f.get("wind") === "on", wake: f.get("wake"), nav: f.get("nav") === "on", voice: f.get("voice") === "on", eveningNotify, eveningTime: newTime, duel: f.get("duel") === "on" });
     if (eveningNotify && "Notification" in window && Notification.permission === "default") {
       try {
         Notification.requestPermission();
@@ -1839,7 +1900,7 @@
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2026.11.08";
+  const APP_VERSION = "2026.11.09";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });

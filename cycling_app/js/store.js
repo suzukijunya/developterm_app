@@ -24,6 +24,7 @@ const Store = (() => {
         voice: true, // 曲がる場所を音声で案内する
         eveningNotify: false, // 夕方に帰りの予報を知らせる(アプリを開いているとき)
         eveningTime: "17:30",
+        duel: false, // デュエルモード(スピードカウンター・ゴーストとのLP勝負・シンクロ演出)
       },
       profileSet: false,
       rides: [], // 保存したライド(新しい順)
