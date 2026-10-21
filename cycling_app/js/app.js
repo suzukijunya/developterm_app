@@ -408,13 +408,23 @@
 
   // デュエルモード: スピードカウンターとゴーストの読み上げ
   function duelStep() {
-    for (const e of Duel.step(ride)) {
-      if (e.type === "up" && (e.spc % 4 === 0 || e.spc === Duel.MAX_SPC)) speak(`スピードカウンター、${e.spc}`);
-      if (e.type === "down") speak(`止まりすぎです。スピードカウンター、マイナス1`);
+    const wind = currentWind();
+    const extra = { remainM: ride.eta && !ride.eta.arrived ? ride.eta.remainM : null, headwind: wind && ride.heading != null ? Physics.headwind(wind.speed, wind.from, ride.heading) : null };
+    for (const e of Duel.step(ride, extra)) {
+      if (e.type === "up" && (e.spc % 4 === 0 || e.spc === Duel.MAX_SPC)) speak(`スピードカウンター、${e.spc}!`, false, true);
+      if (e.type === "down") speak("止まりすぎた…スピードカウンター、マイナス1", false, true);
+      if (e.type === "draw") {
+        DuelFx.pop(e.card, "DRAW!");
+        speak("俺のターン、ドロー!", false, true);
+      }
+      if (e.type === "activate") {
+        DuelFx.pop(e.card, e.card.kind === "trap" ? "TRAP OPEN!" : "SPEED SPELL!");
+        speak(e.card.kind === "trap" ? `トラップ発動、${e.card.name}!` : `スピード・スペル、${e.card.name}、発動!`, false, true);
+      }
     }
     const g = Duel.ghost(ride, placeById(ride.placeId));
-    if (g && g.ev === "pass") speak("ゴーストを抜きました!");
-    if (g && g.ev === "passed") speak("ゴーストに抜かれました。追いかけましょう");
+    if (g && g.ev === "pass") speak("ゴーストを抜いた! このまま突っ切るぜ!", false, true);
+    if (g && g.ev === "passed") speak("抜かれたか…まだだ、ここからだ!", false, true);
   }
 
   function onGpsError(err) {
@@ -445,12 +455,21 @@
     resumed = false;
     resetNav();
     const navMsg = Store.prefs.nav && ride.placeId !== null ? (ride.placeId ? `${placeById(ride.placeId).name}へのナビを開始します` : "ナビを開始します") : "";
-    if (Store.prefs.duel) speak(`ライディング・デュエル、アクセラレーション!${navMsg ? " " + navMsg : ""}`, true);
-    else if (navMsg) speak(navMsg, true);
+    if (Store.prefs.duel) {
+      speak("ライディング・デュエル、アクセラレーション!", true);
+      speak("俺の先攻だ。ドロー!", true, true);
+      if (navMsg) speak(navMsg, true, true);
+    } else if (navMsg) speak(navMsg, true);
     Store.setActive(ride);
     startGps();
     updateWake();
     render();
+    if (Store.prefs.duel) {
+      const hand = Duel.deal(ride);
+      Store.setActive(ride);
+      const place = placeById(ride.placeId);
+      DuelFx.start({ hand, ghost: !!(place && Eta.learned(place)) });
+    }
   }
 
   function finishRide() {
@@ -480,6 +499,29 @@
     Store.setPrefs({ destId: null }); // 次のライドは現在地から自動で選び直す(帰り道なら自宅に切り替わる)
     updateWake();
     render();
+    if (Store.prefs.duel && lastResult) duelEnd(lastResult);
+  }
+
+  // デュエルの終わり: 相棒(バイク)をモンスターとして召喚して、勝敗を出す
+  function duelEnd(r) {
+    const res = Duel.result(r, placeById(r.arrivedPlaceId));
+    const so = sortieOf(r);
+    const g = Store.garage && Store.garage.builds && Store.garage.builds.current;
+    const frame = g && g.parts && g.parts.frame && g.parts.frame.name;
+    const name = frame && !/^(カーボン|アルミ|クロモリ)/.test(frame) ? frame : g && g.name && !/^(いまのバイク|NEW)$/.test(g.name) ? g.name : "ロードバイク";
+    const stars = { S: 8, A: 7, B: 6, C: 5, D: 4 }[so.rank] || 4;
+    const avgPower = r.movingSec > 0 ? r.workJ / r.movingSec : 0;
+    const monster = {
+      name,
+      stars,
+      atk: Math.min(5000, Math.round((so.kmh * 100) / 50) * 50),
+      def: Math.min(5000, Math.round((avgPower * 12 + r.elevGain * 5) / 50) * 50),
+    };
+    const used = ((r.duel && r.duel.used) || []).map(Duel.byId).filter(Boolean);
+    DuelFx.end({ res, monster, used });
+    speak(`限界を超えろ! 俺の相棒、${name}、シンクロ召喚!`, true);
+    if (res && !res.first) speak(res.win ? "俺の勝ちだ。いいライディングだったぜ" : "負けたか…次は必ず追い抜く。もう一度、走り出すだけだ", true, true);
+    else speak("デュエル終了。次はこの走りがゴーストになる", true, true);
   }
 
   // 目的地に着いたライドなら、その目的地の所要時間の学習に加える
@@ -540,7 +582,19 @@
   }
 
   // 音声案内。force はライド開始などのタップ時(iPhoneは最初にタップの中で話さないと音が出ない)
-  function speak(text, force) {
+  // デュエルモードの声: 端末にある日本語の男性の声を選び、低め・力強めに話す
+  // (特定の声優さんの声をまねることはできないので、話し方とセリフで寄せる)
+  const MALE = /otoya|ichiro|keita|daichi|hattori|takumi|naoki|kenji|male|男性/i;
+  function duelVoice() {
+    try {
+      const vs = speechSynthesis.getVoices().filter((v) => /^ja/i.test(v.lang));
+      return vs.find((v) => v.name === Store.prefs.duelVoice) || vs.find((v) => MALE.test(v.name)) || vs[0] || null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function speak(text, force, queue) {
     if (!Store.prefs.voice || !("speechSynthesis" in window)) return;
     if (!force && document.visibilityState !== "visible") return;
     // 音声で失敗しても、計測やナビは止めない
@@ -548,7 +602,13 @@
       const u = new SpeechSynthesisUtterance(text);
       u.lang = "ja-JP";
       u.rate = 1.05;
-      speechSynthesis.cancel();
+      if (Store.prefs.duel) {
+        const v = duelVoice();
+        if (v) u.voice = v;
+        u.pitch = 0.75;
+        u.rate = 1.12;
+      }
+      if (!queue) speechSynthesis.cancel();
       speechSynthesis.speak(u);
     } catch (e) {
       // 話せなかった
@@ -1061,6 +1121,18 @@
     return list.map((f) => `${f.name} ${(kcal / f.kcal).toFixed(1)}${f.unit}分`).join(" / ");
   }
 
+  // 設定の「デュエルの声」に、端末にある日本語の声を並べる
+  function fillVoices() {
+    const sel = document.getElementById("duel-voice");
+    if (!sel || !("speechSynthesis" in window)) return;
+    const put = () => {
+      const vs = speechSynthesis.getVoices().filter((v) => /^ja/i.test(v.lang));
+      sel.innerHTML = `<option value="">おまかせ(男性の声を探す)</option>` + vs.map((v) => `<option value="${esc(v.name)}" ${v.name === Store.prefs.duelVoice ? "selected" : ""}>${esc(v.name)}${MALE.test(v.name) ? "(男性)" : ""}</option>`).join("");
+    };
+    put();
+    speechSynthesis.onvoiceschanged = put;
+  }
+
   // ホーム画面の今月のミッション(まだのものから3つ)
   function missionCard() {
     const st = Missions.status(Store.rides, Store.places);
@@ -1508,6 +1580,8 @@
         <h2>あそび</h2>
         <label class="check"><input type="checkbox" name="duel" ${pr.duel ? "checked" : ""} />
           <span>🃏 デュエルモード(5D's風)<small>走り出しの「アクセラレーション!」、1kmごとにたまるスピードカウンター、いつもの自分(ゴースト)とのLP勝負、ガレージのシンクロ召喚の演出</small></span></label>
+        <label class="field"><span>デュエルの声</span><select name="duelVoice" id="duel-voice"><option value="">おまかせ(男性の声を探す)</option></select></label>
+        <button class="link" type="button" id="duel-voice-test">🔊 声を試す</button>
         <h2>ナビ</h2>
         <label class="check"><input type="checkbox" name="nav" ${pr.nav ? "checked" : ""} />
           <span>走行中に地図とルート案内を表示する<small>目的地までの自転車向けのルートを調べ、次に曲がる場所を表示します。地図を表示するぶん、電池と通信量が増えます</small></span></label>
@@ -1602,7 +1676,12 @@
           ? `<div class="lp"><span>LP</span><b>${g.lp.toLocaleString()}</b><div class="lp-bar"><i style="width:${(g.lp / Duel.LP0) * 100}%"></i></div>
              <small>${g.diff >= 0 ? `ゴーストより ${Math.round(g.diff)}m 前` : `ゴーストに ${Math.round(-g.diff)}m 遅れ`}</small></div>`
           : `<div class="lp"><span>GHOST</span><small>目的地に何回か着くと、いつもの自分(ゴースト)と勝負できます</small></div>`
-      }`;
+      }
+      <div class="duel-hand">${(d.hand || [])
+        .map(Duel.byId)
+        .filter(Boolean)
+        .map((c) => `<span class="mini ${c.kind}" title="${esc(c.text)}">${c.kind === "trap" ? "⚡" : "🌀"} ${esc(c.name)}</span>`)
+        .join("") || `<small>手札なし</small>`}</div>`;
   }
 
   // 目的地までの推定を更新する。半分まで来たときの予測と、到着した時点の記録を残しておき、
@@ -1719,6 +1798,14 @@
       if (Store.places.length) cycleDest();
     });
     on("register-end", () => registerEnd(lastResult));
+    fillVoices();
+    on("duel-voice-test", () => {
+      const sel = document.getElementById("duel-voice");
+      const keep = { duel: Store.prefs.duel, duelVoice: Store.prefs.duelVoice, voice: Store.prefs.voice };
+      Object.assign(Store.prefs, { duel: true, duelVoice: sel ? sel.value : "", voice: true });
+      speak("ライディング・デュエル、アクセラレーション!", true);
+      Object.assign(Store.prefs, keep);
+    });
     on("share-result", () => lastResult && shareResult(lastResult));
     app.querySelectorAll("[data-result]").forEach((b) =>
       b.addEventListener("click", () => {
@@ -1878,7 +1965,7 @@
         localStorage.removeItem(EVE_KEY); // 時刻を変えたら、今日もう一度知らせる
       } catch (err) {}
     }
-    Store.setPrefs({ wind: f.get("wind") === "on", wake: f.get("wake"), nav: f.get("nav") === "on", voice: f.get("voice") === "on", eveningNotify, eveningTime: newTime, duel: f.get("duel") === "on" });
+    Store.setPrefs({ wind: f.get("wind") === "on", wake: f.get("wake"), nav: f.get("nav") === "on", voice: f.get("voice") === "on", eveningNotify, eveningTime: newTime, duel: f.get("duel") === "on", duelVoice: f.get("duelVoice") || "" });
     if (eveningNotify && "Notification" in window && Notification.permission === "default") {
       try {
         Notification.requestPermission();
@@ -1900,7 +1987,7 @@
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2026.11.09";
+  const APP_VERSION = "2026.11.10";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });

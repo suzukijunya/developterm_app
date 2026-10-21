@@ -25,6 +25,7 @@ const Store = (() => {
         eveningNotify: false, // 夕方に帰りの予報を知らせる(アプリを開いているとき)
         eveningTime: "17:30",
         duel: false, // デュエルモード(スピードカウンター・ゴーストとのLP勝負・シンクロ演出)
+        duelVoice: "", // デュエルモードで使う声の名前(空ならおまかせ)
       },
       profileSet: false,
       rides: [], // 保存したライド(新しい順)
