@@ -422,9 +422,33 @@
         speak(e.card.kind === "trap" ? `トラップ発動、${e.card.name}!` : `スピード・スペル、${e.card.name}、発動!`, false, true);
       }
     }
+    // バトル: 1kmごとに1ターン
+    const L = placeById(ride.placeId) ? Eta.learned(placeById(ride.placeId)) : null;
+    const names = { you: "YOU", opp: L ? "ゴースト" : "練習相手" };
+    const bev = Battle.step(ride, (L && L.speed) || 15 / 3.6, Duel.state(ride).spc);
+    if (bev) {
+      DuelFx.turn(bev, Battle.state(ride), names);
+      battleVoice(bev, names);
+      persist(true);
+    }
     const g = Duel.ghost(ride, placeById(ride.placeId));
     if (g && g.ev === "pass") speak("ゴーストを抜いた! このまま突っ切るぜ!", false, true);
     if (g && g.ev === "passed") speak("抜かれたか…まだだ、ここからだ!", false, true);
+  }
+
+  function battleVoice(ev, names) {
+    const mine = ev.side === "you";
+    for (const st of ev.steps) {
+      if (st.t === "draw") speak(mine ? `俺のターン! ドロー!` : `${names.opp}のターン`, false, true);
+      if (st.t === "summon")
+        speak(st.synchro ? `${st.from[0]}に、${st.from[1]}をチューニング! シンクロ召喚! 来い、${st.mon.name}!` : mine ? `${st.mon.name}を召喚!` : `${names.opp}は${st.mon.name}を召喚した`, false, true);
+      if (st.t === "trap") speak(st.side === "you" ? `罠カード発動! ${st.card.name}!` : `${names.opp}の罠、${st.card.name}!`, false, true);
+      if (st.t === "attack") {
+        const res = st.result === "negated" ? "攻撃は無効になった" : st.result === "direct" ? `ダイレクトアタック! ${st.dmg}のダメージ` : st.result === "destroy" ? `撃破! ${st.dmg}のダメージ` : st.result === "repel" ? `返り討ちだ…${st.dmg}のダメージ` : "相打ちだ";
+        speak(mine ? `バトル! ${st.mon.name}で攻撃! ${res}` : `${st.mon.name}の攻撃。${res}`, false, true);
+      }
+      if (st.t === "win") speak(st.side === "you" ? "これで終わりだ! 俺の勝ちだ!" : "ライフがゼロに…だが、まだ走れる!", false, true);
+    }
   }
 
   function onGpsError(err) {
@@ -504,7 +528,7 @@
 
   // デュエルの終わり: 相棒(バイク)をモンスターとして召喚して、勝敗を出す
   function duelEnd(r) {
-    const res = Duel.result(r, placeById(r.arrivedPlaceId));
+    const res = duelOutcome(r);
     const so = sortieOf(r);
     const g = Store.garage && Store.garage.builds && Store.garage.builds.current;
     const frame = g && g.parts && g.parts.frame && g.parts.frame.name;
@@ -1226,11 +1250,24 @@
       </section>`;
   }
 
+  // 勝敗: バトルをしていれば、そのLP。なければゴーストとの時間の比べ
+  function duelOutcome(r) {
+    const res = Duel.result(r, placeById(r.arrivedPlaceId));
+    const b = r.duel && r.duel.b && r.duel.b.turn ? Battle.verdict(r.duel.b) : null;
+    if (!b) return res;
+    return Object.assign({}, res || {}, { first: false, battle: b, win: b.winner === "you", lp: b.you });
+  }
+
   // デュエルモードの勝敗(いつもの自分=ゴーストと比べる)
   function duelHead(r) {
     if (!(Store.prefs.duel || r.duel)) return "";
-    const res = Duel.result(r, placeById(r.arrivedPlaceId));
+    const res = duelOutcome(r);
     const spc = (r.duel && r.duel.spc) || 0;
+    if (res && res.battle) {
+      const b = res.battle;
+      return `<div class="duel-res ${b.winner === "you" ? "win" : b.winner === "opp" ? "lose" : ""}"><b>${b.winner === "you" ? "DUEL WIN!" : b.winner === "opp" ? "DUEL LOSE…" : "DRAW"}</b>
+        <small>${b.turns}ターン・LP ${b.you.toLocaleString()} 対 ${b.opp.toLocaleString()}・SPC ${spc}${res.diffSec != null ? `・ゴーストより${Math.abs(Math.round(res.diffSec))}秒${res.diffSec > 0 ? "速い" : "遅い"}` : ""}</small></div>`;
+    }
     if (!res) return `<div class="duel-res"><b>RIDING DUEL</b><small>SPC ${spc}・目的地に着くと、ゴーストとの勝負になります</small></div>`;
     if (res.first) return `<div class="duel-res"><b>FIRST DUEL</b><small>SPC ${spc}・次からは今日の自分がゴーストになります</small></div>`;
     const m = Math.abs(res.diffSec);
@@ -1272,7 +1309,7 @@
     g.font = F(800, 64);
     const duelOn = Store.prefs.duel || r.duel;
     g.fillText(duelOn ? "TURBO DUEL END" : "MISSION COMPLETE", 90, 210);
-    const dr = duelOn ? Duel.result(r, placeById(r.arrivedPlaceId)) : null;
+    const dr = duelOn ? duelOutcome(r) : null;
     if (dr && !dr.first) {
       g.textAlign = "right";
       g.font = F(900, 56);
@@ -1669,14 +1706,19 @@
     const d = Duel.state(ride);
     const g = Duel.ghost(ride, placeById(ride.placeId));
     const pips = Array.from({ length: Duel.MAX_SPC }, (_, i) => `<i class="${i < d.spc ? "on" : ""}"></i>`).join("");
+    const pl = placeById(ride.placeId);
+    const names = { you: "YOU", opp: pl && Eta.learned(pl) ? "ゴースト" : "練習相手" };
+    el.className = "duel-bar field";
     el.innerHTML = `
-      <div class="spc"><span>SPC</span><b>${d.spc}</b><div class="spc-pips">${pips}</div></div>
+      <div class="duel-top"><div class="spc"><span>SPC</span><b>${d.spc}</b><div class="spc-pips">${pips}</div></div>
       ${
         g
-          ? `<div class="lp"><span>LP</span><b>${g.lp.toLocaleString()}</b><div class="lp-bar"><i style="width:${(g.lp / Duel.LP0) * 100}%"></i></div>
-             <small>${g.diff >= 0 ? `ゴーストより ${Math.round(g.diff)}m 前` : `ゴーストに ${Math.round(-g.diff)}m 遅れ`}</small></div>`
+          ? `<div class="lp"><span>GHOST</span><b class="gh ${g.diff >= 0 ? "ahead" : "behind"}">${g.diff >= 0 ? "+" : "−"}${Math.round(Math.abs(g.diff)).toLocaleString()}m</b>
+             <small>${g.diff >= 0 ? "ゴーストより前を走っています" : "ゴーストに遅れています"}</small></div>`
           : `<div class="lp"><span>GHOST</span><small>目的地に何回か着くと、いつもの自分(ゴースト)と勝負できます</small></div>`
-      }
+      }</div>
+      ${DuelFx.fieldHtml(Battle.state(ride), names)}
+      <small class="duel-next">次のターンまで ${Math.max(0, Math.ceil((1000 - (ride.distance % 1000)) / 10) * 10)}m</small>
       <div class="duel-hand">${(d.hand || [])
         .map(Duel.byId)
         .filter(Boolean)
@@ -1987,7 +2029,7 @@
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2026.11.10";
+  const APP_VERSION = "2026.11.11";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });

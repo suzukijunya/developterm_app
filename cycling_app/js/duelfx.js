@@ -68,14 +68,14 @@ const DuelFx = (() => {
   // 終了: レーン → LPのカウント → 相棒(バイク)の召喚 → 勝敗
   function end({ res, monster, used }) {
     const lp = res && !res.first ? res.lp : null;
-    const verdict = !res || res.first ? "DUEL END" : res.win ? "DUEL WIN!" : "DUEL LOSE…";
+    const verdict = !res || res.first ? "DUEL END" : res.battle && res.battle.winner === "draw" ? "DRAW" : res.win ? "DUEL WIN!" : "DUEL LOSE…";
     const el = overlay(
       `${lanes}
       <div class="df-center">
         <div class="df-title">TURBO DUEL END</div>
         <div class="df-lps">
           <div class="df-lp you"><small>YOU</small><b id="df-lp-end">4,000</b></div>
-          ${res && !res.first ? `<div class="df-vs">VS</div><div class="df-lp ghost"><small>GHOST</small><b>${res.win ? "0" : "4,000"}</b></div>` : ""}
+          ${res && !res.first ? `<div class="df-vs">VS</div><div class="df-lp ghost"><small>GHOST</small><b>${res.battle ? res.battle.opp.toLocaleString() : res.win ? "0" : "4,000"}</b></div>` : ""}
         </div>
         <div class="df-summon">
           <div class="df-rings"><i></i><i></i><i></i></div>
@@ -104,5 +104,81 @@ const DuelFx = (() => {
     setTimeout(() => el && el.remove(), 2600);
   }
 
-  return { start, end, pop, close, cardHtml };
+  // ---------- バトルの盤面 ----------
+  // b: Battle の状態。names: { you, opp }。marks: { 新しいモンスター/やられたモンスター → class }
+  function monHtml(m, cls) {
+    return `<div class="bf-mon ${m.synchro ? "syn" : ""} ${cls || ""}"><span class="bf-icon">${m.icon}</span><span class="bf-name">${esc(m.name)}</span><b>${m.atk}</b></div>`;
+  }
+  function rowHtml(field, extra, marks) {
+    const list = field.concat(extra || []);
+    const cells = [];
+    for (let i = 0; i < 3; i++) cells.push(list[i] ? monHtml(list[i], marks.get(list[i])) : `<div class="bf-zone"></div>`);
+    return cells.join("");
+  }
+  function fieldHtml(b, names, ev) {
+    const marks = new Map();
+    const dead = { you: [], opp: [] };
+    if (ev) {
+      for (const st of ev.steps) {
+        if (st.t === "summon") marks.set(st.mon, st.synchro ? "new syn-new" : "new");
+        if (st.t === "attack") {
+          if (st.result === "destroy" || st.result === "both") st.target && (dead[st.side === "you" ? "opp" : "you"].push(st.target), marks.set(st.target, "dead"));
+          if (st.result === "repel" || st.result === "both") (dead[st.side].push(st.mon), marks.set(st.mon, "dead"));
+          if (!marks.has(st.mon)) marks.set(st.mon, "atk-" + st.side);
+        }
+      }
+    }
+    const lpBar = (side, lp) => `<div class="bf-lp ${side}"><small>${esc(names[side])}</small><div class="bf-lpbar"><i style="width:${(lp / 4000) * 100}%"></i></div><b>${lp.toLocaleString()}</b></div>`;
+    return `<div class="bf">
+      ${lpBar("opp", b.opp.lp)}
+      <div class="bf-row opp">${rowHtml(b.opp.field, dead.opp, marks)}</div>
+      <div class="bf-mid">TURN ${b.turn}</div>
+      <div class="bf-row you">${rowHtml(b.you.field, dead.you, marks)}</div>
+      ${lpBar("you", b.you.lp)}
+    </div>`;
+  }
+
+  // 1ターンの演出(画面の上に4〜5秒。触らなくてよい)
+  let turnTimer = null;
+  function turn(ev, b, names) {
+    clearTimeout(turnTimer);
+    let el = document.getElementById("bt");
+    if (el) el.remove();
+    const yours = ev.side === "you";
+    const seq = [];
+    let t = 0.5, tSum = 1.4, tAtk = null;
+    for (const st of ev.steps) {
+      if (st.t === "draw") {
+        seq.push(`<div class="bt-step bt-draw" style="--d:${t}s">${yours && st.card ? cardHtml(st.card, "mini-card") : `<div class="bt-back"></div>`}<span>DRAW!</span></div>`);
+        t += 0.9;
+      } else if (st.t === "summon") {
+        tSum = t;
+        seq.push(`<div class="bt-call" style="--d:${t}s">${st.synchro ? `✦ SYNCHRO SUMMON ✦<small>${esc(st.from.join(" + "))}</small>` : "SUMMON!"}<b>${st.mon.icon} ${esc(st.mon.name)} ATK ${st.mon.atk}</b></div>`);
+        t += 0.9;
+      } else if (st.t === "trap") {
+        seq.push(`<div class="bt-step bt-trap" style="--d:${t}s">${cardHtml(Object.assign({ kind: "trap" }, st.card), "mini-card")}<span>TRAP OPEN!</span></div>`);
+        t += 0.9;
+      } else if (st.t === "attack") {
+        tAtk = t + 0.3;
+        const txt = st.result === "negated" ? "無効化!" : st.result === "direct" ? `ダイレクトアタック! −${st.dmg}` : st.result === "destroy" ? `撃破! −${st.dmg}` : st.result === "repel" ? `返り討ち… −${st.dmg}` : "相打ち!";
+        seq.push(`<div class="bt-beam ${st.side}" style="--d:${t}s"></div><div class="bt-call dmg ${st.side}" style="--d:${t + 0.25}s">${st.mon.icon} ${esc(st.mon.name)}の攻撃 (${st.power})<b>${txt}</b></div>`);
+        t += 1.1;
+      } else if (st.t === "win") {
+        seq.push(`<div class="bt-call win ${st.side}" style="--d:${t}s"><b>${st.side === "you" ? "DUEL WIN!" : "DUEL LOSE…"}</b></div>`);
+        t += 1.2;
+      }
+    }
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      `<div class="bt" id="bt" style="--dsum:${tSum}s;--dead:${tAtk || t}s">
+        <div class="bt-banner ${ev.side}">TURN ${ev.turn}・${yours ? "YOUR TURN" : `${esc(names.opp)}のターン`}<small>この1km ${ev.ratio >= 1 ? "ゴーストより速い" : "ゴーストより遅い"}(×${ev.ratio.toFixed(2)})</small></div>
+        ${fieldHtml(b, names, ev)}
+        <div class="bt-seq">${seq.join("")}</div>
+      </div>`
+    );
+    el = document.getElementById("bt");
+    turnTimer = setTimeout(() => el && el.remove(), (t + 1.4) * 1000);
+  }
+
+  return { start, end, pop, close, cardHtml, fieldHtml, turn };
 })();

@@ -20,9 +20,11 @@ const Duel = (() => {
     { id: "burn", name: "カロリー・バーン", kind: "spell", text: "100kcal燃やすと発動。LP+300", test: (c) => c.kcal >= 100, spc: 0, lp: 300 },
     { id: "final", name: "ファイナル・スパート", kind: "spell", text: "目的地まで残り500mで発動。LP+800", test: (c) => c.remainM != null && c.remainM <= 500, spc: 0, lp: 800 },
     { id: "wind", name: "テイルウィンド", kind: "trap", text: "追い風を受けると発動。SPC+1・LP+200", test: (c) => c.tail, spc: 1, lp: 200 },
+    // バトルで使うトラップ(相手の攻撃のときに自動で開く)
+    { id: "reflect", name: "リフレクト・ギア", kind: "trap", text: "相手の攻撃を1回無効にする", test: () => false, spc: 0, lp: 0, battle: "negate" },
+    { id: "shield", name: "ブレーキ・シールド", kind: "trap", text: "相手の攻撃のダメージを半分にする", test: () => false, spc: 0, lp: 0, battle: "half" },
   ];
   const HAND0 = 5; // 最初の手札
-  const DRAW_KM = 2; // 2kmごとに1枚ドロー
   const HAND_MAX = 7;
   const LP_MAX = 8000;
 
@@ -96,11 +98,6 @@ const Duel = (() => {
         d.spc++;
         ev.push({ type: "up", spc: d.spc });
       }
-      // ドローフェイズ
-      if (d.km % DRAW_KM === 0) {
-        const c = drawOne(d);
-        if (c) ev.push({ type: "draw", card: c });
-      }
     }
     // 手札のカードの発動
     const c = track(d, ride, extra);
@@ -163,7 +160,22 @@ const Duel = (() => {
     return { win: win || (bonus > 0 && lp >= LP0), diffSec, lp, spc: (r.duel && r.duel.spc) || 0, bonus };
   }
 
-  return { MAX_SPC, LP0, LP_MAX, CARDS, byId, deal, step, ghost, result, state };
+  // バトルのドローフェイズ用
+  const drawCard = (ride) => drawOne(state(ride));
+  // 手札のバトル用トラップを使う(なければ null)
+  function useTrap(ride, kinds) {
+    const d = state(ride);
+    const id = d.hand.find((x) => {
+      const c = byId(x);
+      return c && c.battle && kinds.includes(c.battle);
+    });
+    if (!id) return null;
+    d.hand = d.hand.filter((x) => x !== id);
+    d.used.push(id);
+    return byId(id);
+  }
+
+  return { MAX_SPC, LP0, LP_MAX, CARDS, byId, deal, drawCard, useTrap, step, ghost, result, state };
 })();
 
 if (typeof module !== "undefined") module.exports = Duel;

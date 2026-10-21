@@ -141,7 +141,7 @@ const Tracker = (() => {
       etaMid: ride.etaMid || null,
       arrival: ride.arrival || null,
       // デュエルモードのスピードカウンター・使ったカード・カードで増えたLP
-      duel: ride.duel ? { spc: ride.duel.spc, used: ride.duel.used || [], lpBonus: ride.duel.lpBonus || 0 } : null,
+      duel: ride.duel ? { spc: ride.duel.spc, used: ride.duel.used || [], lpBonus: ride.duel.lpBonus || 0, b: ride.duel.b ? { turn: ride.duel.b.turn, winner: ride.duel.b.winner, you: { lp: ride.duel.b.you.lp }, opp: { lp: ride.duel.b.opp.lp } } : null } : null,
     };
   }
 
