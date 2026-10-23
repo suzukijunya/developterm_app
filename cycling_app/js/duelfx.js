@@ -47,6 +47,7 @@ const DuelFx = (() => {
     const el = overlay(
       `${lanes}
       <div class="df-center">
+        <div class="df-duelists"><div class="df-av you">${avatarHtml("you")}</div><div class="df-av opp">${ghost ? avatarHtml("opp") : ""}</div></div>
         <div class="df-title">RIDING DUEL</div>
         <div class="df-accel">ACCELERATION!</div>
         <div class="df-lps">
@@ -72,6 +73,7 @@ const DuelFx = (() => {
     const el = overlay(
       `${lanes}
       <div class="df-center">
+        <div class="df-duelists end"><div class="df-av you">${avatarHtml("you")}</div></div>
         <div class="df-title">TURBO DUEL END</div>
         <div class="df-lps">
           <div class="df-lp you"><small>YOU</small><b id="df-lp-end">4,000</b></div>
@@ -171,6 +173,7 @@ const DuelFx = (() => {
     document.body.insertAdjacentHTML(
       "beforeend",
       `<div class="bt" id="bt" style="--dsum:${tSum}s;--dead:${tAtk || t}s">
+        <div class="bt-face ${ev.side}">${avatarHtml(ev.side)}</div>
         <div class="bt-banner ${ev.side}">TURN ${ev.turn}・${yours ? "YOUR TURN" : `${esc(names.opp)}のターン`}<small>この1km ${ev.ratio >= 1 ? "ゴーストより速い" : "ゴーストより遅い"}(×${ev.ratio.toFixed(2)})</small></div>
         ${fieldHtml(b, names, ev)}
         <div class="bt-seq">${seq.join("")}</div>
@@ -180,5 +183,58 @@ const DuelFx = (() => {
     turnTimer = setTimeout(() => el && el.remove(), (t + 1.4) * 1000);
   }
 
-  return { start, end, pop, close, cardHtml, fieldHtml, turn };
+  // ---------- デュエリスト(オリジナルのキャラクター。設定で自分の画像に替えられる) ----------
+  const IMG_KEY = "cycling_duelist_img";
+  function customImg() {
+    try {
+      return localStorage.getItem(IMG_KEY) || "";
+    } catch (e) {
+      return "";
+    }
+  }
+  // ライダースーツにバイザー付きのヘルメット、カードを構えたライダー。ghost はゴースト(青く透けた自分)
+  function avatarSvg(ghost) {
+    const suit = ghost ? "#5fa8ff" : "#14203a", trim = ghost ? "#bfe0ff" : "#ff7a1a", visor = ghost ? "#d8f0ff" : "#3dff8a";
+    return `<svg viewBox="0 0 160 200" class="dl-svg ${ghost ? "ghost" : ""}" aria-hidden="true">
+      <defs><linearGradient id="dlv${ghost ? "g" : ""}" x1="0" x2="1"><stop offset="0" stop-color="${visor}" stop-opacity=".95"/><stop offset="1" stop-color="#0a1a14" stop-opacity=".9"/></linearGradient></defs>
+      <path d="M8 200 C14 150 40 128 80 126 C120 128 146 150 152 200Z" fill="${suit}"/>
+      <path d="M52 132 L80 168 L108 132 L98 128 L80 150 L62 128Z" fill="${trim}"/>
+      <path d="M20 200 L36 150 L44 152 L32 200Z" fill="${trim}" opacity=".85"/>
+      <path d="M140 200 L124 150 L116 152 L128 200Z" fill="${trim}" opacity=".85"/>
+      <rect x="66" y="112" width="28" height="22" rx="6" fill="${ghost ? "#9cc8ff" : "#d9a77e"}"/>
+      <path d="M36 70 C36 34 58 18 82 18 C108 18 128 36 128 70 C128 96 116 118 82 120 C50 120 36 98 36 70Z" fill="${ghost ? "#e8f3ff" : "#f2f4f7"}"/>
+      <path d="M40 62 C44 40 60 30 82 30 C104 30 120 42 124 62 L124 70 L40 70Z" fill="${trim}" opacity=".9"/>
+      <path d="M44 66 C60 58 104 58 122 66 L118 92 C100 100 64 100 46 92Z" fill="url(#dlv${ghost ? "g" : ""})"/>
+      <path d="M54 70 L76 68 L60 86Z" fill="#fff" opacity=".55"/>
+      <path d="M128 52 L150 40 L146 58 L130 64Z" fill="${trim}"/>
+      <g transform="rotate(-14 128 150)"><rect x="112" y="118" width="34" height="48" rx="3" fill="#2bd1b4" stroke="#c9a24a" stroke-width="3"/><circle cx="129" cy="138" r="8" fill="#0b2a24"/></g>
+      <path d="M104 160 C112 148 122 146 128 150 C126 160 118 168 108 170Z" fill="${suit}" stroke="${trim}" stroke-width="2"/>
+    </svg>`;
+  }
+  function avatarHtml(side) {
+    const img = side === "you" ? customImg() : "";
+    return img ? `<img class="dl-img" src="${img}" alt="" />` : avatarSvg(side === "opp");
+  }
+
+  // カットイン: 話すセリフと一緒に、キャラクターが斜めの帯で出てくる(順番に1.7秒ずつ)
+  const cutQ = [];
+  let cutBusy = false;
+  function cutIn(text, side = "you") {
+    cutQ.push({ text, side });
+    if (!cutBusy) nextCut();
+  }
+  function nextCut() {
+    const c = cutQ.shift();
+    let el = document.getElementById("dl-cut");
+    if (el) el.remove();
+    if (!c) {
+      cutBusy = false;
+      return;
+    }
+    cutBusy = true;
+    document.body.insertAdjacentHTML("beforeend", `<div class="dl-cut ${c.side}" id="dl-cut"><div class="dl-face">${avatarHtml(c.side)}</div><div class="dl-line">${esc(c.text)}</div></div>`);
+    setTimeout(nextCut, Math.max(1700, c.text.length * 120));
+  }
+
+  return { start, end, pop, close, cardHtml, fieldHtml, turn, cutIn, avatarHtml, IMG_KEY };
 })();

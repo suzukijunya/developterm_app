@@ -411,15 +411,15 @@
     const wind = currentWind();
     const extra = { remainM: ride.eta && !ride.eta.arrived ? ride.eta.remainM : null, headwind: wind && ride.heading != null ? Physics.headwind(wind.speed, wind.from, ride.heading) : null };
     for (const e of Duel.step(ride, extra)) {
-      if (e.type === "up" && (e.spc % 4 === 0 || e.spc === Duel.MAX_SPC)) speak(`スピードカウンター、${e.spc}!`, false, true);
-      if (e.type === "down") speak("止まりすぎた…スピードカウンター、マイナス1", false, true);
+      if (e.type === "up" && (e.spc % 4 === 0 || e.spc === Duel.MAX_SPC)) duelSay(`スピードカウンター、${e.spc}!`, false, true);
+      if (e.type === "down") duelSay("止まりすぎた…スピードカウンター、マイナス1", false, true);
       if (e.type === "draw") {
         DuelFx.pop(e.card, "DRAW!");
-        speak("俺のターン、ドロー!", false, true);
+        duelSay("俺のターン、ドロー!", false, true);
       }
       if (e.type === "activate") {
         DuelFx.pop(e.card, e.card.kind === "trap" ? "TRAP OPEN!" : "SPEED SPELL!");
-        speak(e.card.kind === "trap" ? `トラップ発動、${e.card.name}!` : `スピード・スペル、${e.card.name}、発動!`, false, true);
+        duelSay(e.card.kind === "trap" ? `トラップ発動、${e.card.name}!` : `スピード・スペル、${e.card.name}、発動!`, false, true);
       }
     }
     // バトル: 1kmごとに1ターン
@@ -432,22 +432,28 @@
       persist(true);
     }
     const g = Duel.ghost(ride, placeById(ride.placeId));
-    if (g && g.ev === "pass") speak("ゴーストを抜いた! このまま突っ切るぜ!", false, true);
-    if (g && g.ev === "passed") speak("抜かれたか…まだだ、ここからだ!", false, true);
+    if (g && g.ev === "pass") duelSay("ゴーストを抜いた! このまま突っ切るぜ!", false, true);
+    if (g && g.ev === "passed") duelSay("抜かれたか…まだだ、ここからだ!", false, true);
+  }
+
+  // デュエル中のセリフ: 声で話して、キャラクターのカットインも出す
+  function duelSay(text, force, queue, side = "you") {
+    speak(text, force, queue);
+    if (typeof DuelFx !== "undefined" && document.visibilityState === "visible") DuelFx.cutIn(text, side);
   }
 
   function battleVoice(ev, names) {
     const mine = ev.side === "you";
     for (const st of ev.steps) {
-      if (st.t === "draw") speak(mine ? `俺のターン! ドロー!` : `${names.opp}のターン`, false, true);
+      if (st.t === "draw") duelSay(mine ? `俺のターン! ドロー!` : `${names.opp}のターン`, false, true, mine ? "you" : "opp");
       if (st.t === "summon")
-        speak(st.synchro ? `${st.from[0]}に、${st.from[1]}をチューニング! シンクロ召喚! 来い、${st.mon.name}!` : mine ? `${st.mon.name}を召喚!` : `${names.opp}は${st.mon.name}を召喚した`, false, true);
-      if (st.t === "trap") speak(st.side === "you" ? `罠カード発動! ${st.card.name}!` : `${names.opp}の罠、${st.card.name}!`, false, true);
+        duelSay(st.synchro ? `${st.from[0]}に、${st.from[1]}をチューニング! シンクロ召喚! 来い、${st.mon.name}!` : mine ? `${st.mon.name}を召喚!` : `${names.opp}は${st.mon.name}を召喚した`, false, true, mine ? "you" : "opp");
+      if (st.t === "trap") duelSay(st.side === "you" ? `罠カード発動! ${st.card.name}!` : `${names.opp}の罠、${st.card.name}!`, false, true, st.side);
       if (st.t === "attack") {
         const res = st.result === "negated" ? "攻撃は無効になった" : st.result === "direct" ? `ダイレクトアタック! ${st.dmg}のダメージ` : st.result === "destroy" ? `撃破! ${st.dmg}のダメージ` : st.result === "repel" ? `返り討ちだ…${st.dmg}のダメージ` : "相打ちだ";
-        speak(mine ? `バトル! ${st.mon.name}で攻撃! ${res}` : `${st.mon.name}の攻撃。${res}`, false, true);
+        duelSay(mine ? `バトル! ${st.mon.name}で攻撃! ${res}` : `${st.mon.name}の攻撃。${res}`, false, true, mine ? "you" : "opp");
       }
-      if (st.t === "win") speak(st.side === "you" ? "これで終わりだ! 俺の勝ちだ!" : "ライフがゼロに…だが、まだ走れる!", false, true);
+      if (st.t === "win") duelSay(st.side === "you" ? "これで終わりだ! 俺の勝ちだ!" : "ライフがゼロに…だが、まだ走れる!", false, true);
     }
   }
 
@@ -480,8 +486,8 @@
     resetNav();
     const navMsg = Store.prefs.nav && ride.placeId !== null ? (ride.placeId ? `${placeById(ride.placeId).name}へのナビを開始します` : "ナビを開始します") : "";
     if (Store.prefs.duel) {
-      speak("ライディング・デュエル、アクセラレーション!", true);
-      speak("俺の先攻だ。ドロー!", true, true);
+      duelSay("ライディング・デュエル、アクセラレーション!", true);
+      duelSay("俺の先攻だ。ドロー!", true, true);
       if (navMsg) speak(navMsg, true, true);
     } else if (navMsg) speak(navMsg, true);
     Store.setActive(ride);
@@ -543,9 +549,9 @@
     };
     const used = ((r.duel && r.duel.used) || []).map(Duel.byId).filter(Boolean);
     DuelFx.end({ res, monster, used });
-    speak(`限界を超えろ! 俺の相棒、${name}、シンクロ召喚!`, true);
-    if (res && !res.first) speak(res.win ? "俺の勝ちだ。いいライディングだったぜ" : "負けたか…次は必ず追い抜く。もう一度、走り出すだけだ", true, true);
-    else speak("デュエル終了。次はこの走りがゴーストになる", true, true);
+    duelSay(`限界を超えろ! 俺の相棒、${name}、シンクロ召喚!`, true);
+    if (res && !res.first) duelSay(res.win ? "俺の勝ちだ。いいライディングだったぜ" : "負けたか…次は必ず追い抜く。もう一度、走り出すだけだ", true, true);
+    else duelSay("デュエル終了。次はこの走りがゴーストになる", true, true);
   }
 
   // 目的地に着いたライドなら、その目的地の所要時間の学習に加える
@@ -1255,6 +1261,8 @@
     const res = Duel.result(r, placeById(r.arrivedPlaceId));
     const b = r.duel && r.duel.b && r.duel.b.turn ? Battle.verdict(r.duel.b) : null;
     if (!b) return res;
+    // LPが同じ(短いライドなど)なら、ゴーストとの時間で決める
+    if (b.winner === "draw" && res && res.diffSec != null) b.winner = res.diffSec > 0 ? "you" : "opp";
     return Object.assign({}, res || {}, { first: false, battle: b, win: b.winner === "you", lp: b.you });
   }
 
@@ -1619,6 +1627,10 @@
           <span>🃏 デュエルモード(5D's風)<small>走り出しの「アクセラレーション!」、1kmごとにたまるスピードカウンター、いつもの自分(ゴースト)とのLP勝負、ガレージのシンクロ召喚の演出</small></span></label>
         <label class="field"><span>デュエルの声</span><select name="duelVoice" id="duel-voice"><option value="">おまかせ(男性の声を探す)</option></select></label>
         <button class="link" type="button" id="duel-voice-test">🔊 声を試す</button>
+        <div class="field duelist-field"><span>デュエリストの画像<small>ふだんはオリジナルのキャラクターが出ます。自分の写真など、使ってよい画像に替えられます(この端末の中だけに保存)</small></span>
+          <div class="duelist-pick"><span class="duelist-prev" id="duelist-prev"></span>
+            <label class="link">画像を選ぶ<input type="file" accept="image/*" id="duelist-file" hidden /></label>
+            <button class="link" type="button" id="duelist-reset">元に戻す</button></div></div>
         <h2>ナビ</h2>
         <label class="check"><input type="checkbox" name="nav" ${pr.nav ? "checked" : ""} />
           <span>走行中に地図とルート案内を表示する<small>目的地までの自転車向けのルートを調べ、次に曲がる場所を表示します。地図を表示するぶん、電池と通信量が増えます</small></span></label>
@@ -1841,6 +1853,33 @@
     });
     on("register-end", () => registerEnd(lastResult));
     fillVoices();
+    const prev = document.getElementById("duelist-prev");
+    if (prev) prev.innerHTML = DuelFx.avatarHtml("you");
+    on("duelist-reset", () => {
+      try {
+        localStorage.removeItem(DuelFx.IMG_KEY);
+      } catch (e) {}
+      if (prev) prev.innerHTML = DuelFx.avatarHtml("you");
+    });
+    const df = document.getElementById("duelist-file");
+    if (df)
+      df.addEventListener("change", async () => {
+        const f = df.files && df.files[0];
+        if (!f) return;
+        try {
+          // 縦長のカットインに合わせて、真ん中を切り出して小さくする
+          const img = await createImageBitmap(f);
+          const W = 240, H = 288, c = document.createElement("canvas");
+          c.width = W;
+          c.height = H;
+          const s = Math.max(W / img.width, H / img.height);
+          c.getContext("2d").drawImage(img, (W - img.width * s) / 2, (H - img.height * s) / 2, img.width * s, img.height * s);
+          localStorage.setItem(DuelFx.IMG_KEY, c.toDataURL("image/jpeg", 0.85));
+          if (prev) prev.innerHTML = DuelFx.avatarHtml("you");
+        } catch (e) {
+          alert("画像を読み込めませんでした");
+        }
+      });
     on("duel-voice-test", () => {
       const sel = document.getElementById("duel-voice");
       const keep = { duel: Store.prefs.duel, duelVoice: Store.prefs.duelVoice, voice: Store.prefs.voice };
@@ -2029,7 +2068,7 @@
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2026.11.11";
+  const APP_VERSION = "2026.11.12";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });
