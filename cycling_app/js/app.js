@@ -439,12 +439,6 @@
   // デュエル中のセリフ: 声で話して、キャラクターのカットインも出す
   function duelSay(text, force, queue, side = "you") {
     speak(text, force, queue);
-    const ch = document.getElementById("duelchibi");
-    if (ch && side === "you" && /[!!]/.test(text)) {
-      ch.classList.remove("jump");
-      void ch.offsetWidth;
-      ch.classList.add("jump");
-    }
     if (typeof DuelFx !== "undefined" && document.visibilityState === "visible") DuelFx.cutIn(text, side);
   }
 
@@ -1060,7 +1054,7 @@
                 : ""
             }
           </div>
-          ${Store.prefs.duel ? `<div class="duel-wrap"><div class="dl-chibi" id="duelchibi"></div><div class="duel-bar" id="duelbar"></div></div>` : ""}
+          ${Store.prefs.duel ? `<div class="duel-bar" id="duelbar"></div>` : ""}
           <div class="hero">
             <div class="hero-label">消費カロリー</div>
             <div class="hero-value"><span id="kcal">0</span><small>kcal</small></div>
@@ -1721,8 +1715,6 @@
   function renderDuel() {
     const el = document.getElementById("duelbar");
     if (!el || !ride) return;
-    const ch = document.getElementById("duelchibi");
-    if (ch && !ch.firstChild) ch.innerHTML = DuelFx.avatarHtml("you", "normal", true);
     const d = Duel.state(ride);
     const g = Duel.ghost(ride, placeById(ride.placeId));
     const pips = Array.from({ length: Duel.MAX_SPC }, (_, i) => `<i class="${i < d.spc ? "on" : ""}"></i>`).join("");
@@ -2076,7 +2068,7 @@
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2026.11.14";
+  const APP_VERSION = "2026.11.15";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });

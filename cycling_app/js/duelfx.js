@@ -304,7 +304,8 @@ const DuelFx = (() => {
       return;
     }
     cutBusy = true;
-    document.body.insertAdjacentHTML("beforeend", `<div class="dl-cut ${c.side}" id="dl-cut"><div class="dl-face">${avatarHtml(c.side, /[!!]/.test(c.text) ? "shout" : "normal")}</div><div class="dl-line">${esc(c.text)}</div></div>`);
+    const photo = c.side === "you" && !!customImg();
+    document.body.insertAdjacentHTML("beforeend", `<div class="dl-cut ${c.side} ${photo ? "photo" : ""}" id="dl-cut"><div class="dl-face">${avatarHtml(c.side, /[!!]/.test(c.text) ? "shout" : "normal")}</div><div class="dl-line">${esc(c.text)}</div></div>`);
     setTimeout(nextCut, Math.max(1700, c.text.length * 120));
   }
 

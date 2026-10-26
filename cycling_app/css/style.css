@@ -1403,6 +1403,3 @@ a.tab {
 .duelist-field { display: grid; gap: 6px; }
 .duelist-pick { display: flex; gap: 12px; align-items: center; }
 .duelist-prev { width: 60px; height: 72px; display: block; background: #0a1a3a; border-radius: 8px; overflow: hidden; }
-.duel-wrap { display: flex; align-items: flex-start; gap: 6px; }
-.duel-wrap .duel-bar { flex: 1; min-width: 0; }
-.duel-wrap .dl-chibi { margin-top: 12px; }

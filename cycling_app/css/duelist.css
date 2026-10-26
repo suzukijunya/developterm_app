@@ -17,3 +17,10 @@
 @keyframes dl-jump { 0% { transform: none; } 40% { transform: translateY(-16px) rotate(-6deg) scale(1.08); } 100% { transform: none; } }
 .g-chibi { position: absolute; left: 8px; bottom: 64px; z-index: 5; width: 72px; height: 90px; pointer-events: none; }
 .g-chibi .dl-chibi { width: 72px; height: 90px; }
+/* 自分で選んだ写真のとき: 大きめに、色を締めて、輪郭に光を入れ、後ろに集中線 */
+.dl-cut.photo { height: 132px; background: repeating-linear-gradient(100deg, transparent 0 18px, rgba(61, 184, 255, 0.14) 18px 20px), linear-gradient(90deg, rgba(4, 18, 40, 0.97), rgba(4, 18, 40, 0.8) 70%, transparent); }
+.dl-cut.photo .dl-face { width: 112px; height: 132px; flex-basis: 112px; position: relative; border-radius: 0; clip-path: polygon(8% 0, 100% 0, 92% 100%, 0 100%); }
+.dl-cut.photo .dl-img { filter: contrast(1.18) saturate(1.2) brightness(1.05); }
+.dl-cut.photo .dl-face::after { content: ""; position: absolute; inset: 0; background: linear-gradient(200deg, rgba(61, 184, 255, 0.45), transparent 35%), linear-gradient(20deg, rgba(255, 106, 26, 0.35), transparent 40%); mix-blend-mode: screen; }
+.dl-cut.photo .dl-line { font-size: 1.15rem; }
+.df-av .dl-img, .bt-face .dl-img { filter: contrast(1.15) saturate(1.15); }
