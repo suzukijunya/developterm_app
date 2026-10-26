@@ -216,21 +216,12 @@ const DuelFx = (() => {
     const mouth = face === "shout"
       ? `<path d="M86 146 Q101 140 116 146 Q113 164 101 165 Q89 164 86 146Z" fill="#5a1414"/><path d="M89 147 Q101 143 113 147 L112 151 Q101 148 90 151Z" fill="#fff"/><path d="M93 158 Q101 154 109 158 Q101 163 93 158Z" fill="#e0606a"/>`
       : `<path d="M90 148 Q101 154 113 145" stroke="${C.line}" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M111 144 L115 142" stroke="${C.line}" stroke-width="2" stroke-linecap="round"/>`;
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" class="dl-svg ${ghost ? "ghost" : ""}" aria-hidden="true">
+    const HEAD_BACK = `
     <!-- 後ろ髪 -->
     <path d="M48 118 L22 104 L44 94 L18 70 L50 72 L30 40 L64 56 L60 18 L86 46 L100 6 L112 44 L136 14 L136 52 L170 36 L152 70 L184 70 L158 94 L180 104 L152 118 Z" fill="${C.hair}"/>
     <path d="M100 6 L106 30 L112 44 L102 36Z M60 18 L72 38 L86 46 L72 44Z M136 14 L134 34 L136 52 L128 38Z M30 40 L48 52 L64 56 L46 56Z M170 36 L156 52 L152 70 L160 50Z" fill="${C.mesh}"/>
-    <!-- マフラー(後ろになびく) -->
-    <path d="M60 182 C30 176 14 160 4 140 C24 150 40 152 58 164Z" fill="${C.scarf2}"/>
-    <path d="M58 172 C34 172 18 166 2 158 C20 176 40 184 62 186Z" fill="${C.scarf}"/>
-    <!-- からだ・ジャケット -->
-    <path d="M24 240 C30 200 52 184 100 182 C148 184 170 200 176 240Z" fill="${C.jacket}"/>
-    <path d="M100 186 L84 240 L116 240Z" fill="${C.jacket2}"/>
-    <path d="M60 196 L72 240" stroke="${C.scarf}" stroke-width="4"/><path d="M140 196 L128 240" stroke="${C.scarf}" stroke-width="4"/>
-    <!-- 首・マフラー -->
-    <path d="M86 160 L86 182 L114 182 L114 160Z" fill="${C.skinS}"/>
-    <path d="M60 176 C80 168 120 168 140 176 C142 186 136 194 124 196 C108 190 92 190 76 196 C64 194 58 186 60 176Z" fill="${C.scarf}"/>
-    <path d="M78 194 C90 188 110 188 122 194" stroke="${C.scarf2}" stroke-width="3" fill="none"/>
+`;
+    const HEAD = `
     <!-- 耳 -->
     <path d="M56 118 C48 116 48 132 58 138Z" fill="${C.skinS}"/><path d="M146 118 C154 116 154 132 144 138Z" fill="${C.skinS}"/>
     <!-- 顔 -->
@@ -250,6 +241,38 @@ const DuelFx = (() => {
     <rect x="68" y="58" width="28" height="18" rx="8" fill="${C.gog}" stroke="#2b2f3a" stroke-width="3"/>
     <rect x="106" y="58" width="28" height="18" rx="8" fill="${C.gog}" stroke="#2b2f3a" stroke-width="3"/>
     <path d="M73 62 L82 62" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity=".8"/><path d="M111 62 L120 62" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity=".8"/>
+`;
+    // ちびキャラ(デフォルメ): 大きな頭に小さな体。カードを掲げたポーズ
+    if (o.chibi)
+      return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 250" class="dl-svg chibi ${ghost ? "ghost" : ""}" aria-hidden="true">
+    <path d="M70 196 C46 196 30 188 16 176 C34 186 52 188 70 186Z" fill="${C.scarf}"/>
+    <path d="M70 204 C50 208 34 206 20 198 C36 212 54 214 72 210Z" fill="${C.scarf2}"/>
+    <path d="M78 238 L80 216 L94 216 L92 240Z M108 240 L106 216 L120 216 L122 238Z" fill="${C.jacket2}"/>
+    <path d="M72 246 C72 238 80 236 94 238 L94 246Z M106 246 L106 238 C120 236 128 238 128 246Z" fill="#2b2f3a"/>
+    <path d="M70 222 C68 196 78 182 100 182 C122 182 132 196 130 222Z" fill="${C.jacket}"/>
+    <path d="M100 184 L92 222 L108 222Z" fill="${C.jacket2}"/>
+    <path d="M78 190 L84 222 M122 190 L116 222" stroke="${C.scarf}" stroke-width="3"/>
+    <path d="M70 196 C60 204 58 214 64 218" stroke="${C.jacket}" stroke-width="10" stroke-linecap="round" fill="none"/>
+    <path d="M128 192 C142 180 148 166 150 154" stroke="${C.jacket}" stroke-width="10" stroke-linecap="round" fill="none"/>
+    <circle cx="150" cy="152" r="7" fill="#2b2f3a"/>
+    <g transform="rotate(14 158 128)"><rect x="142" y="104" width="32" height="44" rx="3" fill="#2bd1b4" stroke="#c9a24a" stroke-width="3"/><rect x="147" y="109" width="22" height="20" fill="#0b2a24"/><circle cx="158" cy="119" r="6" fill="#3dff8a" opacity=".9"/></g>
+    <path d="M74 182 C86 176 114 176 126 182 C128 190 122 196 112 196 C104 192 96 192 88 196 C78 196 72 190 74 182Z" fill="${C.scarf}"/>
+    <g transform="translate(14 4) scale(0.86)">${HEAD_BACK}${HEAD}</g>
+  </svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" class="dl-svg ${ghost ? "ghost" : ""}" aria-hidden="true">
+    ${HEAD_BACK}
+    <!-- マフラー(後ろになびく) -->
+    <path d="M60 182 C30 176 14 160 4 140 C24 150 40 152 58 164Z" fill="${C.scarf2}"/>
+    <path d="M58 172 C34 172 18 166 2 158 C20 176 40 184 62 186Z" fill="${C.scarf}"/>
+    <!-- からだ・ジャケット -->
+    <path d="M24 240 C30 200 52 184 100 182 C148 184 170 200 176 240Z" fill="${C.jacket}"/>
+    <path d="M100 186 L84 240 L116 240Z" fill="${C.jacket2}"/>
+    <path d="M60 196 L72 240" stroke="${C.scarf}" stroke-width="4"/><path d="M140 196 L128 240" stroke="${C.scarf}" stroke-width="4"/>
+    <!-- 首・マフラー -->
+    <path d="M86 160 L86 182 L114 182 L114 160Z" fill="${C.skinS}"/>
+    <path d="M60 176 C80 168 120 168 140 176 C142 186 136 194 124 196 C108 190 92 190 76 196 C64 194 58 186 60 176Z" fill="${C.scarf}"/>
+    <path d="M78 194 C90 188 110 188 122 194" stroke="${C.scarf2}" stroke-width="3" fill="none"/>
+    ${HEAD}
     <!-- カードを構える手 -->
     <g transform="rotate(-12 160 196)">
       <rect x="146" y="150" width="38" height="54" rx="3" fill="#2bd1b4" stroke="#c9a24a" stroke-width="3"/>
@@ -260,9 +283,9 @@ const DuelFx = (() => {
   </svg>`;
   }
 
-  function avatarHtml(side, face) {
+  function avatarHtml(side, face, chibi) {
     const img = side === "you" ? customImg() : "";
-    return img ? `<img class="dl-img" src="${img}" alt="" />` : charaSvg({ ghost: side === "opp", face });
+    return img ? `<img class="dl-img ${chibi ? "chibi" : ""}" src="${img}" alt="" />` : charaSvg({ ghost: side === "opp", face, chibi });
   }
 
   // カットイン: 話すセリフと一緒に、キャラクターが斜めの帯で出てくる(順番に1.7秒ずつ)

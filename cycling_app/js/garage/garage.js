@@ -296,6 +296,10 @@
     const lv = Stats.TIERS.length - 1 - Stats.TIERS.indexOf(tier); // common=0 … legendary=4
     const duel = !!Store.prefs.duel;
     if (has3D && info.slot) View3D.equipFx(info.slot, duel ? "#3dff8a" : tier.color, lv, duel);
+    if (duel && typeof DuelFx !== "undefined") {
+      chibiJump();
+      DuelFx.cutIn(TUNERS.includes(info.slot) ? `チューニング! シンクロ召喚! 来い、${info.name || "新しいパーツ"}!` : `${info.name || "新しいパーツ"}、アクセル・アッセンブル!`, "you");
+    }
     Sfx.equip(lv);
     let el2 = document.getElementById("ac-banner");
     if (el2) el2.remove();
@@ -324,7 +328,29 @@
     document.getElementById("tabs").innerHTML = T.map(([id, label]) => `<button class="g-tab ${tab === id ? "on" : ""}" data-tab="${id}">${label}</button>`).join("");
   }
 
+  // デュエルモードのときは、3Dの左下にちびキャラ(設定で選んだ画像があればその画像)
+  function renderChibi() {
+    if (!stage) return;
+    let c = document.getElementById("g-chibi");
+    if (!Store.prefs.duel || typeof DuelFx === "undefined") {
+      if (c) c.remove();
+      return;
+    }
+    if (!c) {
+      stage.insertAdjacentHTML("beforeend", `<div class="g-chibi" id="g-chibi"><div class="dl-chibi">${DuelFx.avatarHtml("you", "normal", true)}</div></div>`);
+      c = document.getElementById("g-chibi");
+    }
+  }
+  function chibiJump() {
+    const c = document.querySelector("#g-chibi .dl-chibi");
+    if (!c) return;
+    c.classList.remove("jump");
+    void c.offsetWidth;
+    c.classList.add("jump");
+  }
+
   function renderAll() {
+    renderChibi();
     renderBuilds();
     renderTools();
     renderSummary();
