@@ -47,7 +47,7 @@ const DuelFx = (() => {
     const el = overlay(
       `${lanes}
       <div class="df-center">
-        <div class="df-duelists"><div class="df-av you">${avatarHtml("you")}</div><div class="df-av opp">${ghost ? avatarHtml("opp") : ""}</div></div>
+        <div class="df-duelists"><div class="df-av you">${avatarHtml("you", "shout")}</div><div class="df-av opp">${ghost ? avatarHtml("opp", "shout") : ""}</div></div>
         <div class="df-title">RIDING DUEL</div>
         <div class="df-accel">ACCELERATION!</div>
         <div class="df-lps">
@@ -192,28 +192,77 @@ const DuelFx = (() => {
       return "";
     }
   }
-  // ライダースーツにバイザー付きのヘルメット、カードを構えたライダー。ghost はゴースト(青く透けた自分)
-  function avatarSvg(ghost) {
-    const suit = ghost ? "#5fa8ff" : "#14203a", trim = ghost ? "#bfe0ff" : "#ff7a1a", visor = ghost ? "#d8f0ff" : "#3dff8a";
-    return `<svg viewBox="0 0 160 200" class="dl-svg ${ghost ? "ghost" : ""}" aria-hidden="true">
-      <defs><linearGradient id="dlv${ghost ? "g" : ""}" x1="0" x2="1"><stop offset="0" stop-color="${visor}" stop-opacity=".95"/><stop offset="1" stop-color="#0a1a14" stop-opacity=".9"/></linearGradient></defs>
-      <path d="M8 200 C14 150 40 128 80 126 C120 128 146 150 152 200Z" fill="${suit}"/>
-      <path d="M52 132 L80 168 L108 132 L98 128 L80 150 L62 128Z" fill="${trim}"/>
-      <path d="M20 200 L36 150 L44 152 L32 200Z" fill="${trim}" opacity=".85"/>
-      <path d="M140 200 L124 150 L116 152 L128 200Z" fill="${trim}" opacity=".85"/>
-      <rect x="66" y="112" width="28" height="22" rx="6" fill="${ghost ? "#9cc8ff" : "#d9a77e"}"/>
-      <path d="M36 70 C36 34 58 18 82 18 C108 18 128 36 128 70 C128 96 116 118 82 120 C50 120 36 98 36 70Z" fill="${ghost ? "#e8f3ff" : "#f2f4f7"}"/>
-      <path d="M40 62 C44 40 60 30 82 30 C104 30 120 42 124 62 L124 70 L40 70Z" fill="${trim}" opacity=".9"/>
-      <path d="M44 66 C60 58 104 58 122 66 L118 92 C100 100 64 100 46 92Z" fill="url(#dlv${ghost ? "g" : ""})"/>
-      <path d="M54 70 L76 68 L60 86Z" fill="#fff" opacity=".55"/>
-      <path d="M128 52 L150 40 L146 58 L130 64Z" fill="${trim}"/>
-      <g transform="rotate(-14 128 150)"><rect x="112" y="118" width="34" height="48" rx="3" fill="#2bd1b4" stroke="#c9a24a" stroke-width="3"/><circle cx="129" cy="138" r="8" fill="#0b2a24"/></g>
-      <path d="M104 160 C112 148 122 146 128 150 C126 160 118 168 108 170Z" fill="${suit}" stroke="${trim}" stroke-width="2"/>
-    </svg>`;
+  // オリジナルの主人公: 黒髪にオレンジのメッシュのツンツン頭、額にゴーグル、オレンジのマフラー、紺のライダージャケット、カードを構える。
+  // o.ghost: ゴースト(青く透けた自分)。o.face: "normal" / "shout"(ドロー・攻撃などで叫ぶ顔)
+  function charaSvg(o = {}) {
+    const ghost = !!o.ghost, face = o.face || "normal";
+    const C = ghost
+      ? { hair: "#7fb4ff", hair2: "#cfe6ff", mesh: "#e6f3ff", skin: "#dcebff", skinS: "#b9d3f5", jacket: "#5f8fd8", jacket2: "#3f6fbf", scarf: "#bfe0ff", scarf2: "#9cc8f5", eye: "#ffffff", line: "#2a4a80", gog: "#d8ecff" }
+      : { hair: "#1c1f2b", hair2: "#2e3446", mesh: "#ff8a1f", skin: "#ffe0c8", skinS: "#f2bfa0", jacket: "#1b2a4e", jacket2: "#24396a", scarf: "#ff6a1a", scarf2: "#e04e10", eye: "#1fc7a0", line: "#2b1a14", gog: "#ffb02e" };
+    const iris = (cx, shout) => `
+         <ellipse cx="${cx}" cy="${shout ? 124 : 123}" rx="8" ry="${shout ? 7.5 : 10}" fill="${C.eye}"/>
+         <ellipse cx="${cx}" cy="${shout ? 125 : 125}" rx="4" ry="${shout ? 4.5 : 6}" fill="${ghost ? "#2f5fa8" : "#06352b"}"/>
+         <path d="M${cx - 8} ${shout ? 120 : 117} Q${cx} ${shout ? 117 : 113} ${cx + 8} ${shout ? 120 : 117}" stroke="${ghost ? "#2f5fa8" : "#06352b"}" stroke-width="3" fill="none" opacity=".55"/>
+         <circle cx="${cx - 3}" cy="${shout ? 121 : 118}" r="2.8" fill="#fff"/><circle cx="${cx + 3.5}" cy="${shout ? 127 : 128}" r="1.3" fill="#fff"/>`;
+    const eyes = `
+         <path d="M70 ${face === "shout" ? 120 : 116} Q83 ${face === "shout" ? 114 : 110} 97 116 L96 129 Q84 134 72 129Z" fill="#fff"/>
+         <path d="M105 116 Q119 ${face === "shout" ? 114 : 110} 132 ${face === "shout" ? 120 : 116} L130 129 Q118 134 106 129Z" fill="#fff"/>
+         ${iris(85, face === "shout")}${iris(117, face === "shout")}
+         <path d="M68 ${face === "shout" ? 121 : 117} Q83 ${face === "shout" ? 113 : 108} 98 115" stroke="${C.line}" stroke-width="4" fill="none" stroke-linecap="round"/>
+         <path d="M104 115 Q119 ${face === "shout" ? 113 : 108} 134 ${face === "shout" ? 121 : 117}" stroke="${C.line}" stroke-width="4" fill="none" stroke-linecap="round"/>
+         <path d="M73 130 Q84 134 95 130" stroke="${C.line}" stroke-width="1.4" fill="none" opacity=".6"/><path d="M107 130 Q118 134 129 130" stroke="${C.line}" stroke-width="1.4" fill="none" opacity=".6"/>
+         <path d="M66 ${face === "shout" ? 104 : 101} L97 ${face === "shout" ? 112 : 108} L96 ${face === "shout" ? 116 : 112} L67 ${face === "shout" ? 109 : 106}Z" fill="${C.hair}"/>
+         <path d="M136 ${face === "shout" ? 104 : 101} L105 ${face === "shout" ? 112 : 108} L106 ${face === "shout" ? 116 : 112} L135 ${face === "shout" ? 109 : 106}Z" fill="${C.hair}"/>`;
+    const mouth = face === "shout"
+      ? `<path d="M86 146 Q101 140 116 146 Q113 164 101 165 Q89 164 86 146Z" fill="#5a1414"/><path d="M89 147 Q101 143 113 147 L112 151 Q101 148 90 151Z" fill="#fff"/><path d="M93 158 Q101 154 109 158 Q101 163 93 158Z" fill="#e0606a"/>`
+      : `<path d="M90 148 Q101 154 113 145" stroke="${C.line}" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M111 144 L115 142" stroke="${C.line}" stroke-width="2" stroke-linecap="round"/>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" class="dl-svg ${ghost ? "ghost" : ""}" aria-hidden="true">
+    <!-- 後ろ髪 -->
+    <path d="M48 118 L22 104 L44 94 L18 70 L50 72 L30 40 L64 56 L60 18 L86 46 L100 6 L112 44 L136 14 L136 52 L170 36 L152 70 L184 70 L158 94 L180 104 L152 118 Z" fill="${C.hair}"/>
+    <path d="M100 6 L106 30 L112 44 L102 36Z M60 18 L72 38 L86 46 L72 44Z M136 14 L134 34 L136 52 L128 38Z M30 40 L48 52 L64 56 L46 56Z M170 36 L156 52 L152 70 L160 50Z" fill="${C.mesh}"/>
+    <!-- マフラー(後ろになびく) -->
+    <path d="M60 182 C30 176 14 160 4 140 C24 150 40 152 58 164Z" fill="${C.scarf2}"/>
+    <path d="M58 172 C34 172 18 166 2 158 C20 176 40 184 62 186Z" fill="${C.scarf}"/>
+    <!-- からだ・ジャケット -->
+    <path d="M24 240 C30 200 52 184 100 182 C148 184 170 200 176 240Z" fill="${C.jacket}"/>
+    <path d="M100 186 L84 240 L116 240Z" fill="${C.jacket2}"/>
+    <path d="M60 196 L72 240" stroke="${C.scarf}" stroke-width="4"/><path d="M140 196 L128 240" stroke="${C.scarf}" stroke-width="4"/>
+    <!-- 首・マフラー -->
+    <path d="M86 160 L86 182 L114 182 L114 160Z" fill="${C.skinS}"/>
+    <path d="M60 176 C80 168 120 168 140 176 C142 186 136 194 124 196 C108 190 92 190 76 196 C64 194 58 186 60 176Z" fill="${C.scarf}"/>
+    <path d="M78 194 C90 188 110 188 122 194" stroke="${C.scarf2}" stroke-width="3" fill="none"/>
+    <!-- 耳 -->
+    <path d="M56 118 C48 116 48 132 58 138Z" fill="${C.skinS}"/><path d="M146 118 C154 116 154 132 144 138Z" fill="${C.skinS}"/>
+    <!-- 顔 -->
+    <path d="M58 98 C58 84 76 74 101 74 C126 74 144 84 144 98 L142 130 C138 148 120 166 101 168 C82 166 64 148 60 130Z" fill="${C.skin}" stroke="${C.line}" stroke-width="1.6" stroke-opacity=".55"/>
+    <path d="M60 130 C64 148 82 166 101 168 C90 160 72 148 66 130Z" fill="${C.skinS}" opacity=".5"/>
+    ${eyes}
+    <path d="M100 132 L97 140 L102 140" stroke="${C.skinS}" stroke-width="2" fill="none" stroke-linecap="round"/>
+    ${mouth}
+    <!-- ほっぺの絆創膏(主人公っぽさ) -->
+    <g transform="rotate(-18 126 140)"><rect x="118" y="135" width="16" height="7" rx="3" fill="${ghost ? "#eaf4ff" : "#fff3e0"}" stroke="${ghost ? "#b9d3f5" : "#e7c9a5"}" stroke-width="1"/></g>
+    <!-- 前髪(ツンツン・オレンジのメッシュ) -->
+    <path d="M56 110 L56 84 L66 100 L68 76 L80 96 L84 72 L94 102 L100 76 L106 102 L116 72 L120 96 L132 76 L136 100 L146 84 L146 110 C152 78 134 56 101 54 C68 56 50 78 56 110Z" fill="${C.hair}"/>
+    <path d="M84 72 L90 88 L94 102 L88 90Z M116 72 L119 86 L120 96 L114 86Z" fill="${C.mesh}"/>
+
+    <!-- ゴーグル(おでこ) -->
+    <path d="M52 74 C80 60 122 60 150 74 L148 80 C122 68 80 68 54 80Z" fill="#2b2f3a"/>
+    <rect x="68" y="58" width="28" height="18" rx="8" fill="${C.gog}" stroke="#2b2f3a" stroke-width="3"/>
+    <rect x="106" y="58" width="28" height="18" rx="8" fill="${C.gog}" stroke="#2b2f3a" stroke-width="3"/>
+    <path d="M73 62 L82 62" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity=".8"/><path d="M111 62 L120 62" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity=".8"/>
+    <!-- カードを構える手 -->
+    <g transform="rotate(-12 160 196)">
+      <rect x="146" y="150" width="38" height="54" rx="3" fill="#2bd1b4" stroke="#c9a24a" stroke-width="3"/>
+      <rect x="152" y="156" width="26" height="24" fill="#0b2a24"/><circle cx="165" cy="168" r="7" fill="#3dff8a" opacity=".85"/>
+    </g>
+    <path d="M136 214 C140 198 152 190 164 194 C170 200 166 212 156 218 Z" fill="${ghost ? C.jacket : "#2b2f3a"}"/>
+    <path d="M150 196 C156 190 166 190 170 196" stroke="${C.skin}" stroke-width="5" stroke-linecap="round" fill="none"/>
+  </svg>`;
   }
-  function avatarHtml(side) {
+
+  function avatarHtml(side, face) {
     const img = side === "you" ? customImg() : "";
-    return img ? `<img class="dl-img" src="${img}" alt="" />` : avatarSvg(side === "opp");
+    return img ? `<img class="dl-img" src="${img}" alt="" />` : charaSvg({ ghost: side === "opp", face });
   }
 
   // カットイン: 話すセリフと一緒に、キャラクターが斜めの帯で出てくる(順番に1.7秒ずつ)
@@ -232,7 +281,7 @@ const DuelFx = (() => {
       return;
     }
     cutBusy = true;
-    document.body.insertAdjacentHTML("beforeend", `<div class="dl-cut ${c.side}" id="dl-cut"><div class="dl-face">${avatarHtml(c.side)}</div><div class="dl-line">${esc(c.text)}</div></div>`);
+    document.body.insertAdjacentHTML("beforeend", `<div class="dl-cut ${c.side}" id="dl-cut"><div class="dl-face">${avatarHtml(c.side, /[!!]/.test(c.text) ? "shout" : "normal")}</div><div class="dl-line">${esc(c.text)}</div></div>`);
     setTimeout(nextCut, Math.max(1700, c.text.length * 120));
   }
 
