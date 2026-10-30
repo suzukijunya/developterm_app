@@ -391,7 +391,12 @@
       altitudeAccuracy: c.altitudeAccuracy,
     };
     const result = Tracker.step(ride, fix, { profile: Store.profile, wind: currentWind() });
-    gpsStatus = result === "inaccurate" ? `GPSの精度が低いため待っています(±${Math.round(c.accuracy)}m)` : "";
+    gpsStatus =
+      result === "inaccurate"
+        ? `GPSの電波が弱いため待っています(誤差 ±${Math.round(c.accuracy)}m)。電車の中・地下・高い建物の間では、位置がとれないことがあります`
+        : result === "vehicle"
+          ? `🚃 電車・車での移動のようです(時速${Math.round(((ride.vehicle && ride.vehicle.v) || 0) * 3.6)}km)。自転車の距離とカロリーには入れていません`
+          : "";
     if (result !== "inaccurate") pos = { lat: c.latitude, lon: c.longitude };
     // 走り始めたら、行き先を自動で選ぶ(あとでタップして変えられる)
     if (pos && ride.placeId === undefined) {
@@ -1153,6 +1158,7 @@
       return `
         <section class="live ${Store.prefs.nav ? "nav-on" : ""}">
           ${resumed ? `<p class="notice">前回の記録の続きから計測しています</p>` : ""}
+          <p class="notice warn gps-top" id="gpstop" hidden></p>
           ${
             Store.prefs.nav
               ? `<div class="nav-card" id="navcard"></div>
@@ -1543,6 +1549,7 @@
     if (place) rows.unshift(["到着地", esc(place.name)]);
     return `
       <dl class="detail">${rows.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join("")}</dl>
+      ${r.vehicleDist > 200 ? `<p class="notice">🚃 電車・車での移動と判断した ${fmt.km(r.vehicleDist)}km は、距離とカロリーに入れていません。</p>` : ""}
       ${r.gapSec > 30 ? `<p class="notice warn">画面が消えるなどで${fmt.min(r.gapSec)}ほど計測が途切れました。その間は平均速度で走ったものとして計算しています。</p>` : ""}`;
   }
 
@@ -1808,6 +1815,12 @@
         const dir = hw > 0.3 ? `向かい風 ${hw.toFixed(1)}m/s` : hw < -0.3 ? `追い風 ${(-hw).toFixed(1)}m/s` : "横風";
         w.textContent = `${Weather.describe(wind.code).icon} ${Math.round(wind.temp)}° ${compass(wind.from)}の風 ${wind.speed.toFixed(1)}m/s・${dir}`;
       }
+    }
+    // GPSが使えない・乗り物と判断したときは、画面のいちばん上で知らせる
+    const top = document.getElementById("gpstop");
+    if (top) {
+      top.hidden = !gpsStatus || /^GPSを探して/.test(gpsStatus);
+      if (!top.hidden && top.textContent !== gpsStatus) top.textContent = gpsStatus;
     }
     const gap = document.getElementById("gapwarn");
     if (gap) {
@@ -2172,7 +2185,7 @@
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2026.11.17";
+  const APP_VERSION = "2026.11.18";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });

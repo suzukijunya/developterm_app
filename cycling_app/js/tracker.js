@@ -11,6 +11,13 @@ const Tracker = (() => {
   const MIN_GRADE = 0.01; // これより緩い勾配は平地とみなす(標高のぶれを坂と誤認しないため)
   const MAX_ALT_ACCURACY = 15; // m。これより粗い標高は使わない
   const CLIMB_STEP = 3; // m。獲得標高はこれ以上上がったときだけ数える
+  // 電車・車の見分け: 時速50kmを超えて15秒続くか、時速80kmを超えたら乗り物とみなす。
+  // 時速30kmを超えない状態が3分続いたら自転車に戻ったとみなす(駅で止まっている間は乗り物のまま)
+  const VEHICLE_V = 50 / 3.6;
+  const VEHICLE_MAX = 80 / 3.6;
+  const VEHICLE_SEC = 15;
+  const VEHICLE_KEEP_V = 30 / 3.6;
+  const VEHICLE_EXIT_SEC = 180;
 
   function create(now) {
     return {
@@ -61,6 +68,60 @@ const Tracker = (() => {
       raw = 0;
     }
 
+    // 電車・車での移動は、自転車の距離・カロリーに入れない
+    const vNow = d / dt;
+    const fast = Math.max(raw, dt <= GAP_SEC ? vNow : 0);
+    if (fast > VEHICLE_V) ride.fastSec = (ride.fastSec || 0) + dt;
+    else (ride.fastSec = 0), (ride.fast = null);
+    if (!ride.vehicle && (ride.fastSec >= VEHICLE_SEC || fast > VEHICLE_MAX)) {
+      ride.vehicle = { since: fix.t, calm: 0, bike: 0 };
+      // 乗り物とわかるまでの間に数えてしまった分を取り消す
+      const f = ride.fast;
+      if (f) {
+        ride.distance -= f.d;
+        ride.workJ -= f.work;
+        ride.kcalExercise -= f.kcal;
+        ride.movingSec -= f.sec;
+        ride.vehicleDist = (ride.vehicleDist || 0) + f.d;
+        ride.fast = null;
+      }
+    }
+    if (ride.vehicle) {
+      ride.vehicle.calm = fast > VEHICLE_KEEP_V ? 0 : ride.vehicle.calm + dt;
+      // 自転車くらいの速さ(時速8〜30km)が1分続いたら、降りて自転車に乗ったとみなす
+      const bikeLike = fast > 8 / 3.6 && fast <= VEHICLE_KEEP_V;
+      ride.vehicle.bike = bikeLike ? ride.vehicle.bike + dt : Math.max(0, ride.vehicle.bike - dt * 0.5);
+      // 自転車らしく走った分は、自転車に戻ったとわかったときに足せるように取っておく
+      const pend = ride.vehicle.pend || (ride.vehicle.pend = { d: 0, work: 0, kcal: 0, sec: 0 });
+      if (bikeLike) {
+        const pw = P.legPower(env.profile, { v: fast });
+        pend.d += d;
+        pend.work += pw * dt;
+        pend.kcal += P.kcalFor(env.profile, pw, dt).exercise;
+        pend.sec += dt;
+      } else if (fast > VEHICLE_KEEP_V) Object.assign(pend, { d: 0, work: 0, kcal: 0, sec: 0 });
+      ride.vehicle.v = fast;
+      if (ride.vehicle.calm >= VEHICLE_EXIT_SEC || ride.vehicle.bike >= 60) {
+        if (ride.vehicle.bike >= 60) {
+          ride.distance += pend.d;
+          ride.workJ += pend.work;
+          ride.kcalExercise += pend.kcal;
+          ride.movingSec += pend.sec;
+          ride.vehicleDist -= pend.d;
+          ride.vEma = fast;
+        }
+        ride.vehicle = null;
+      }
+      else {
+        ride.vehicleDist = (ride.vehicleDist || 0) + d;
+        ride.vehicleSec = (ride.vehicleSec || 0) + dt;
+        ride.kcalBasal += P.kcalFor(env.profile, 0, dt).basal;
+        ride.vEma = 0;
+        ride.last = { lat: fix.lat, lon: fix.lon, t: fix.t };
+        return "vehicle";
+      }
+    }
+
     let v;
     let accel = 0;
     if (dt > GAP_SEC) {
@@ -85,6 +146,14 @@ const Tracker = (() => {
     const power = P.legPower(env.profile, { v, accel, grade: ride.grade, headwind, rho });
     const kcal = P.kcalFor(env.profile, power, dt);
 
+    // 時速50kmを超えている間の分は、乗り物とわかったときに取り消せるように覚えておく
+    if (fast > VEHICLE_V) {
+      const f = ride.fast || (ride.fast = { d: 0, work: 0, kcal: 0, sec: 0 });
+      f.d += d;
+      f.work += power * dt;
+      f.kcal += kcal.exercise;
+      if (v >= P.STOP_SPEED) f.sec += dt;
+    }
     ride.distance += d;
     ride.workJ += power * dt;
     ride.kcalBasal += kcal.basal;
@@ -141,6 +210,7 @@ const Tracker = (() => {
       etaMid: ride.etaMid || null,
       arrival: ride.arrival || null,
       // デュエルモードのスピードカウンター・使ったカード・カードで増えたLP
+      vehicleDist: ride.vehicleDist || 0, // 電車・車と判断して数えなかった距離
       duel: ride.duel ? { spc: ride.duel.spc, used: ride.duel.used || [], lpBonus: ride.duel.lpBonus || 0, b: ride.duel.b ? { turn: ride.duel.b.turn, winner: ride.duel.b.winner, you: { lp: ride.duel.b.you.lp }, opp: { lp: ride.duel.b.opp.lp } } : null } : null,
     };
   }
