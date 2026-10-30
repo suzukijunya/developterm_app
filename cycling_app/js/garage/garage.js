@@ -109,6 +109,7 @@
       View3D.create(stage);
       View3D.onClerk(() => openClerk());
     } catch (e) {
+      console.error("3D init failed", e);
       stage.insertAdjacentHTML("afterbegin", `<p class="g-no3d">この端末では3D表示を使えません。数値の計算はこのまま使えます。</p>`);
     }
   }

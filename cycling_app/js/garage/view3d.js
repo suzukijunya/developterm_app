@@ -497,6 +497,96 @@ const View3D = (() => {
     g.rotation.y = -0.35;
     envGroup.add(g);
     clerkGroup = g;
+    loadClerkModel();
+  }
+
+  // ---------- 整備士の本物の人体モデル(Microsoft Rocketbox "Wood_Male_01"・MITライセンス) ----------
+  // 読み込めたら、プログラムで組んだ整備士と入れ替える。読み込めなければ(オフラインなど)そのまま
+  let clerkBones = null; // { rArm, rFore, head, spine }
+  let clerkIdle = null; // { t, rest: Map(bone → quaternion) }
+  function loadClerkModel() {
+    if (!window.GLTFLoader) return;
+    const THREE = T();
+    const base = "assets/mechanic/";
+    const texLoader = new THREE.TextureLoader();
+    const tex = (name, srgb) => {
+      const t = texLoader.load(base + name);
+      if (srgb) t.encoding = THREE.sRGBEncoding;
+      t.anisotropy = 4;
+      return t;
+    };
+    new window.GLTFLoader().load(
+      base + "mechanic.glb",
+      (gltf) => {
+        if (!clerkGroup) return;
+        const model = gltf.scene;
+        // 単位は cm。身長 181cm → 1.74m に
+        model.scale.setScalar(0.0096);
+        const bodyMap = tex("body_color.jpg", true), headMap = tex("head_color.jpg", true);
+        const bodyN = tex("body_normal.jpg"), headN = tex("head_normal.jpg");
+        model.traverse((o) => {
+          if (!o.isMesh && !o.isSkinnedMesh) return;
+          o.castShadow = true;
+          o.frustumCulled = false;
+          const ms = Array.isArray(o.material) ? o.material : [o.material];
+          const out = ms.map((m) => {
+            const head = /head/i.test(m.name);
+            return new THREE.MeshPhysicalMaterial({
+              map: head ? headMap : bodyMap,
+              normalMap: head ? headN : bodyN,
+              normalScale: new THREE.Vector2(0.6, 0.6),
+              roughness: head ? 0.55 : 0.8,
+              sheen: head ? 0.3 : 0.15,
+              sheenColor: new THREE.Color(head ? 0xe8a888 : 0x8a9099).convertSRGBToLinear(),
+              sheenRoughness: 0.5,
+              envMapIntensity: 0.35,
+              name: m.name,
+            });
+          });
+          o.material = Array.isArray(o.material) ? out : out[0];
+        });
+        const bone = (n) => model.getObjectByName(n);
+        const b = { rArm: bone("Bip01_R_UpperArm"), rFore: bone("Bip01_R_Forearm"), lArm: bone("Bip01_L_UpperArm"), lFore: bone("Bip01_L_Forearm"), head: bone("Bip01_Head"), spine: bone("Bip01_Spine1"), rHand: bone("Bip01_R_Hand") };
+        if (!b.rArm || !b.lArm) return;
+        // Aポーズ(両腕を斜め下に広げた姿勢)から、腕を体の横に下ろす
+        const rest = new Map();
+        for (const k of Object.keys(b)) if (b[k]) rest.set(b[k], b[k].quaternion.clone());
+        const Z = new THREE.Vector3(0, 0, 1), Y = new THREE.Vector3(0, 1, 0);
+        const rot = (bn, axis, a) => bn && bn.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(axis, a));
+        // Aポーズから腕を下ろす。この骨組みでは、腕の骨のY軸まわりが体の面の中で腕を振る向き(測って決めた)
+        rot(b.rArm, Y, -0.95);
+        rot(b.lArm, Y, 0.95);
+        // ひじを軽く曲げて、くつろいだ立ち姿に(Z軸まわりが前後の向き)
+        rot(b.rFore, Z, -0.35);
+        rot(b.lFore, Z, -0.35);
+        for (const k of Object.keys(b)) if (b[k]) rest.set(b[k], b[k].quaternion.clone());
+        // 左手にレンチ(手の骨の先、指の中に)
+        const hand = bone("Bip01_L_Hand");
+        if (hand) {
+          const wrench = new THREE.Mesh(new THREE.BoxGeometry(24, 2.4, 1.2), mat(0xc9ced6, { metalness: 0.9, roughness: 0.25 }));
+          wrench.position.set(9, -1.5, 1);
+          wrench.rotation.set(0, 0, 0.1);
+          hand.add(wrench);
+        }
+        // 入れ替え: 位置と向きは今の整備士のまま
+        const g = clerkGroup;
+        while (g.children.length) g.remove(g.children[0]);
+        g.add(model);
+        // タップ判定用の見えない柱(皮膚つきのメッシュは判定が不安定なので、こちらに当てる)
+        const hit = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.2, 1.8, 10), new THREE.MeshBasicMaterial({ visible: false }));
+        hit.name = "clerkHit";
+        hit.position.y = 0.9;
+        g.add(hit);
+        clerkArm = null;
+        clerkBones = b;
+        clerkIdle = { t: 0, rest };
+        photo.dirty = true;
+      },
+      undefined,
+      () => {
+        // 読み込めないときはプログラムで組んだ整備士のまま
+      }
+    );
   }
 
   // 店員さんをタップしたときに呼ぶ関数
@@ -1913,7 +2003,8 @@ const View3D = (() => {
         const r = renderer.domElement.getBoundingClientRect();
         const ray = new THREE.Raycaster();
         ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
-        if (ray.intersectObject(clerkGroup, true).length) clerkTap();
+        const hit = clerkGroup.getObjectByName("clerkHit");
+        if ((hit ? ray.intersectObject(hit, false) : ray.intersectObject(clerkGroup, true)).length) clerkTap();
       }
       down = null;
       pts.delete(e.pointerId);
@@ -2310,12 +2401,26 @@ const View3D = (() => {
     const scaleLen = (o, matrix) => new THREE.Vector3().setFromMatrixColumn(matrix, 1).length();
     const bake = (o, matrix) => {
       // 細長い三角形を減らすため、作り直せる形は細かく作り直す(写真を貼った形はそのまま)
+      if (o.material && o.material.visible === false) return; // タップ判定用の見えない柱など
       const sx = new THREE.Vector3().setFromMatrixColumn(matrix, 0).length();
-      const dense = o.userData.projected ? null : densify(o.geometry, scaleLen(o, matrix), sx);
-      const src = dense || o.geometry;
+      // 皮膚つきのメッシュ(整備士の人体モデル)は、いまの姿勢を頂点に焼き込む
+      let skinned = null;
+      if (o.isSkinnedMesh) {
+        skinned = o.geometry.clone();
+        const pos = skinned.attributes.position, nrm = skinned.attributes.normal;
+        const v = new THREE.Vector3();
+        for (let i = 0; i < pos.count; i++) {
+          o.boneTransform(i, v);
+          pos.setXYZ(i, v.x, v.y, v.z);
+        }
+        if (nrm) skinned.computeVertexNormals();
+      }
+      const dense = skinned ? null : o.userData.projected ? null : densify(o.geometry, scaleLen(o, matrix), sx);
+      const src = skinned || dense || o.geometry;
       // 頂点の番号つき・なしが混ざると、まとめるときに別の物どうしがつながってしまうので、すべて番号なしにそろえる
       let g = src.index ? src.toNonIndexed() : src.clone();
       if (dense) dense.dispose();
+      if (skinned) skinned.dispose();
       for (const k of Object.keys(g.attributes)) if (!["position", "normal", "uv"].includes(k)) g.deleteAttribute(k);
       if (!g.attributes.normal) g.computeVertexNormals();
       if (!g.attributes.uv) g.setAttribute("uv", new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
@@ -2329,6 +2434,12 @@ const View3D = (() => {
         m = m.clone();
         if (o.userData.baseEmissive) m.emissive.copy(o.userData.baseEmissive);
         m.emissiveIntensity = o.userData.baseEmissiveI != null ? o.userData.baseEmissiveI : 1;
+      }
+      // 凹凸マップ(人の肌・服)は外す。写真モードは凹凸マップのある形だけに接線を足すので、他の形とまとめられなくなる
+      if (m.normalMap || m.bumpMap) {
+        m = m.clone();
+        m.normalMap = null;
+        m.bumpMap = null;
       }
       temp.add(new THREE.Mesh(g, m));
     };
@@ -2488,10 +2599,30 @@ const View3D = (() => {
     // 店員さん: ゆっくり揺れる・手を振る
     if (clerkGroup && !photo.on) {
       clerkGroup.position.y = Math.sin(now / 900) * 0.004;
-      if (clerkWave > 0) {
-        clerkWave -= dt;
-        clerkArm.rotation.z = 2.6 + Math.sin(now / 120) * 0.35;
-      } else clerkArm.rotation.z += (0.08 - clerkArm.rotation.z) * Math.min(1, dt * 6);
+      if (clerkBones) {
+        // 本物の人体モデル: 息をするように胸がわずかに動き、頭は少しバイクを見る。手を振るときは右腕を上げて振る
+        const THREE = T();
+        const q = (axis, a) => new THREE.Quaternion().setFromAxisAngle(axis, a);
+        const X = new THREE.Vector3(1, 0, 0), Z = new THREE.Vector3(0, 0, 1);
+        const b = clerkBones, rest = clerkIdle.rest;
+        b.spine.quaternion.copy(rest.get(b.spine)).multiply(q(X, Math.sin(now / 1400) * 0.015));
+        b.head.quaternion.copy(rest.get(b.head)).multiply(q(Z, -0.12 + Math.sin(now / 2300) * 0.04));
+        clerkIdle.wave = clerkIdle.wave || 0;
+        if (clerkWave > 0) {
+          clerkWave -= dt;
+          clerkIdle.wave = Math.min(1, clerkIdle.wave + dt * 5);
+        } else clerkIdle.wave = Math.max(0, clerkIdle.wave - dt * 4);
+        const w = clerkIdle.wave;
+        // 腕を上げる(下ろした姿勢から、体の面の中で 2.2rad 振り上げる)+ ひじから先を左右に振る
+        const Y = new THREE.Vector3(0, 1, 0);
+        b.rArm.quaternion.copy(rest.get(b.rArm)).multiply(q(Y, 2.2 * w));
+        b.rFore.quaternion.copy(rest.get(b.rFore)).multiply(q(Y, (0.3 + Math.sin(now / 110) * 0.5) * w));
+      } else if (clerkArm) {
+        if (clerkWave > 0) {
+          clerkWave -= dt;
+          clerkArm.rotation.z = 2.6 + Math.sin(now / 120) * 0.35;
+        } else clerkArm.rotation.z += (0.08 - clerkArm.rotation.z) * Math.min(1, dt * 6);
+      }
     }
     if (!state) return renderer.render(scene, camera);
     const THREE = T();
