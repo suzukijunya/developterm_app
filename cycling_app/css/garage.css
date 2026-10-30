@@ -1262,3 +1262,4 @@ body.ms-open {
 .g-shop p { margin: 2px 0; }
 .g-shop .btn { text-decoration: none; }
 .g-shop .g-shop-addr { font-size: 0.85rem; line-height: 1.5; color: var(--muted, #b8c2cf); }
+.mx-side { display: inline-block; min-width: 1.4em; margin-right: 4px; text-align: center; font-size: 0.7rem; padding: 0 3px; border: 1px solid var(--brand); color: var(--brand); }

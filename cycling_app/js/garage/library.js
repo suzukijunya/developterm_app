@@ -26,9 +26,10 @@ const Library = (() => {
       { k: "rimRear", label: "後ろのリム高", unit: "mm", to: "attrs.rimRear", keys: ["リア", "後輪", "rear"] },
       { k: "rimWidth", label: "リム内幅", unit: "mm", keys: ["リム内幅", "内幅", "internal width", "inner width"] },
       { k: "discRear", label: "後輪ディスク", type: "select", options: [["", "いいえ"], ["1", "はい"]], to: "attrs.discRear" },
+      { k: "side", label: "前後", type: "select", options: [["", "前後ペア(2本・前後セット)"], ["front", "フロントだけ"], ["rear", "リアだけ"]] },
     ],
-    tires: [{ k: "width", label: "タイヤ幅", unit: "mm", to: "attrs.width", keys: ["タイヤ幅", "幅", "width"] }],
-    tubes: [],
+    tires: [{ k: "width", label: "タイヤ幅", unit: "mm", to: "attrs.width", keys: ["タイヤ幅", "幅", "width"] }, { k: "side", label: "前後", type: "select", options: [["", "前後ペア(2本・前後セット)"], ["front", "フロントだけ"], ["rear", "リアだけ"]] }],
+    tubes: [{ k: "side", label: "前後", type: "select", options: [["", "前後ペア(2本・前後セット)"], ["front", "フロントだけ"], ["rear", "リアだけ"]] }],
     groupset: [
       { k: "crank", label: "クランク長", unit: "mm", to: "pos.crank", scale: 0.001, keys: ["クランク長", "クランク", "crank length", "crank"] },
       { k: "speeds", label: "変速段数", unit: "速" },
@@ -145,6 +146,8 @@ const Library = (() => {
   // マイパーツ item をバイク build の部位に付ける(数値もポジション・ジオメトリに反映)
   function apply(build, item) {
     const prev = build.parts[item.slot];
+    const side = sideOf(item);
+    if (side) return applySide(build, item, side);
     const attrs = Object.assign({}, DEFAULT_ATTRS[item.slot] || {}, (prev && prev.attrs) || {});
     for (const f of SPEC_FIELDS[item.slot] || []) {
       const raw = item.specs && item.specs[f.k];
@@ -163,6 +166,60 @@ const Library = (() => {
     if (item.slot === "frame" && item.color) build.color = item.color;
   }
 
+  // ---------- 前後のある部位(ホイール・タイヤ・チューブ) ----------
+  // フロントだけ・リアだけのパーツは、反対側を残したまま、その側だけを付け替える。
+  // 前後ペアのパーツ(完成車付属のホイールなど)に片側だけ付けたときは、ペアの重さを半分ずつに分けて残す
+  const SIDE_SLOTS = ["wheels", "tires", "tubes"];
+  const FRONT = /フロント|前輪|前用|front|(^|[\s\-_(（])F($|[\s\-_)）])/i;
+  const REAR = /リア|リヤ|後輪|後用|rear|(^|[\s\-_(（])R($|[\s\-_)）])/i;
+  function sideOfName(name) {
+    const t = String(name || "");
+    if (/前後|ペア|セット|pair|×2|x2/i.test(t)) return "";
+    return FRONT.test(t) && !REAR.test(t) ? "front" : REAR.test(t) && !FRONT.test(t) ? "rear" : "";
+  }
+  function sideOf(item) {
+    if (!SIDE_SLOTS.includes(item.slot)) return "";
+    const s = item.specs && item.specs.side;
+    if (s === "front" || s === "rear") return s;
+    if (s === "pair") return "";
+    return sideOfName(displayName(item) + " " + (item.notes || ""));
+  }
+  function attrsFor(build, item, prev) {
+    const attrs = Object.assign({}, DEFAULT_ATTRS[item.slot] || {}, (prev && prev.attrs) || {});
+    for (const f of SPEC_FIELDS[item.slot] || []) {
+      const raw = item.specs && item.specs[f.k];
+      if (raw == null || raw === "" || !f.to) continue;
+      const key = f.to.split(".")[1];
+      attrs[key] = f.k === "discRear" ? raw === "1" || raw === true : isNaN(+raw) ? raw : +raw * (f.scale || 1);
+    }
+    return attrs;
+  }
+  // いまの部位の中身を、前後に分けた内訳にする
+  function sideComps(prev) {
+    if (!prev || prev.mounted === false) return [];
+    const list = prev.components ? prev.components.slice() : [{ libId: prev.libId || null, name: prev.name, g: +prev.g || 0, side: prev.side || "" }];
+    const out = [];
+    for (const c of list) {
+      const side = c.side || sideOfName(c.name);
+      if (side) out.push(Object.assign({}, c, { side }));
+      else {
+        const half = Math.round((+c.g || 0) / 2);
+        out.push(Object.assign({}, c, { side: "front", g: half, half: true }), Object.assign({}, c, { side: "rear", g: (+c.g || 0) - half, half: true }));
+      }
+    }
+    return out;
+  }
+  function applySide(build, item, side) {
+    const prev = build.parts[item.slot];
+    const comps = sideComps(prev).filter((c) => c.side !== side);
+    comps.push({ libId: item.id, name: displayName(item), g: +item.g || 0, side });
+    comps.sort((a, b) => (a.side === "front" ? 0 : 1) - (b.side === "front" ? 0 : 1));
+    const p = fromComponents(prev || {}, comps);
+    p.attrs = attrsFor(build, item, prev);
+    if (!p.decal && item.decal && item.photoId) p.decal = Object.assign({ photoId: item.photoId }, item.decal);
+    build.parts[item.slot] = p;
+  }
+
   // 1つの部位に複数のパーツを付けられる部位(前後のホイール、コンポの部品、小物など)
   const MULTI = ["wheels", "tires", "tubes", "groupset", "cages", "accessories"];
 
@@ -172,7 +229,7 @@ const Library = (() => {
     delete p.libId;
     delete p.shop;
     p.components = comps;
-    p.name = comps.map((c) => c.name).join(" + ");
+    p.name = comps.map((c) => (c.side === "front" ? "F: " : c.side === "rear" ? "R: " : "") + c.name + (c.half ? "(片側分)" : "")).join(" ／ ");
     p.g = comps.reduce((a, c) => a + (+c.g || 0), 0);
     p.mounted = true;
     return p;
@@ -180,6 +237,7 @@ const Library = (() => {
 
   // いまのパーツはそのままに、マイパーツを追加で付ける(例: 前輪に後輪を足す)
   function addComponent(build, item) {
+    if (sideOf(item)) return apply(build, item);
     const prev = build.parts[item.slot];
     if (!prev || prev.mounted === false) return apply(build, item);
     const comps = prev.components ? prev.components.slice() : [{ libId: prev.libId || null, name: prev.name, g: +prev.g || 0 }];
@@ -197,7 +255,8 @@ const Library = (() => {
     if (!prev || !prev.components) return;
     const comps = prev.components.filter((_, k) => k !== i);
     if (!comps.length) return;
-    if (comps.length === 1) {
+    // 前後の内訳は、1つになってもその側の分として残す
+    if (comps.length === 1 && !comps[0].side) {
       const it = comps[0].libId && library.find((x) => x.id === comps[0].libId);
       if (it) return apply(build, it);
       build.parts[slot] = Object.assign(fromComponents(prev, comps), { components: undefined });
@@ -214,7 +273,7 @@ const Library = (() => {
       if (!p) continue;
       if (p.libId === item.id) apply(b, item);
       else if (p.components && p.components.some((c) => c.libId === item.id)) {
-        const comps = p.components.map((c) => (c.libId === item.id ? { libId: item.id, name: displayName(item), g: +item.g || 0 } : c));
+        const comps = p.components.map((c) => (c.libId === item.id ? Object.assign({}, c, { name: displayName(item), g: +item.g || 0, half: false }) : c));
         b.parts[item.slot] = Object.assign(fromComponents(p, comps), { attrs: p.attrs, decal: p.decal });
       }
     }
@@ -315,7 +374,7 @@ const Library = (() => {
     return `#${hex(r)}${hex(gg)}${hex(b)}`;
   }
 
-  return { SPEC_FIELDS, displayName, parse, apply, syncAll, addComponent, removeComponent, MULTI, unlinkAll, putPhoto, getPhoto, deletePhoto, resize, dominantColor };
+  return { SPEC_FIELDS, displayName, parse, apply, syncAll, addComponent, removeComponent, MULTI, SIDE_SLOTS, sideOf, sideOfName, unlinkAll, putPhoto, getPhoto, deletePhoto, resize, dominantColor };
 })();
 
 if (typeof module !== "undefined") module.exports = Library;

@@ -450,6 +450,7 @@
     const inComps = new Set((p.components || []).map((c) => c.libId).filter(Boolean));
     const others = G.library.filter((x) => x.slot === slot && x.id !== p.libId && !inComps.has(x.id));
     const multi = Library.MULTI.includes(slot) && !off;
+    const sided = Library.SIDE_SLOTS.includes(slot);
     const comps = p.components && p.components.length > 1 ? p.components : null;
     const wrong = inBar ? [] : misfits(slot, p);
     return `
@@ -459,7 +460,7 @@
           <div class="mx-now">
             ${it && it.photoId ? photoTag(it.photoId, "mx-thumb big") : `<span class="mx-thumb big empty">${sl.icon}</span>`}
             <div><small>いま付いているパーツ${comps ? `(${comps.length}点・合計)` : ""}</small><strong>${inBar ? "一体型ハンドルに含む" : comps ? "" : esc(p.name)}</strong>
-              ${comps ? `<div class="mx-comps">${comps.map((c, i) => `<div><span>${esc(c.name)}</span><b>${(+c.g || 0).toLocaleString()}g</b><button class="mx-x small" data-comp-del="${i}" aria-label="外す">×</button></div>`).join("")}</div>` : ""}
+              ${comps ? `<div class="mx-comps">${comps.map((c, i) => `<div><span>${c.side ? `<b class="mx-side">${c.side === "front" ? "F" : "R"}</b>` : ""}${esc(c.name)}${c.half ? "(片側分)" : ""}</span><b>${(+c.g || 0).toLocaleString()}g</b><button class="mx-x small" data-comp-del="${i}" aria-label="外す">×</button></div>`).join("")}</div>` : ""}
               <small>${inBar ? "0 g" : (+p.g || 0).toLocaleString() + " g"}${off ? " ・ 外しています" : ""}</small>
               <div class="g-plan-btns">${inBar ? "" : `<button class="btn sub" data-mount="${slot}">${off ? "取り付ける" : "外す"}</button>`}${it ? `<button class="link" data-lib-edit="${it.id}">マイパーツを編集</button>` : ""}</div></div>
           </div>
@@ -470,13 +471,17 @@
             )
             .join("")}
           <p class="g-sub">マイパーツから付け替える${multi ? "・追加する" : ""}</p>
-          ${multi ? `<p class="muted small">${slot === "wheels" ? "前輪と後輪を別々に登録したときは、片方を付けてから、もう片方を「＋追加」すると両方の重さを合わせて数えます。" : "「＋追加」で、いまのパーツに足して付けられます(重さは合計)。"}</p>` : ""}
+          ${sided ? `<p class="muted small">フロントとリアは別々に付けられます。「フロントに」を押すとフロントだけ入れ替わり、リアはそのまま残ります(重さは前後の合計)。2本セットのものは「前後ペアで」。</p>` : multi ? `<p class="muted small">「＋追加」で、いまのパーツに足して付けられます(重さは合計)。</p>` : ""}
           ${
             others.length
               ? others
                   .map(
                     (x) => `<div class="g-lib">${photoTag(x.photoId)}<div class="g-lib-text"><strong>${esc(Library.displayName(x))}</strong><small>${(+x.g || 0).toLocaleString()}g${specSummary(x)}</small></div>
-                      <div class="g-lib-actions">${multi ? `<button class="btn sub" data-lib-add="${x.id}" data-target="${k}">＋追加</button>` : ""}<button class="btn sub" data-lib-put="${x.id}" data-target="${k}">${multi ? "入れ替え" : "付ける"}</button><button class="link" data-lib-edit="${x.id}">編集</button></div></div>`
+                      <div class="g-lib-actions">${
+                        sided
+                          ? `<button class="btn sub" data-lib-side="front" data-lib-id="${x.id}" data-target="${k}">フロントに</button><button class="btn sub" data-lib-side="rear" data-lib-id="${x.id}" data-target="${k}">リアに</button><button class="btn sub" data-lib-side="pair" data-lib-id="${x.id}" data-target="${k}">前後ペアで</button>`
+                          : `${multi ? `<button class="btn sub" data-lib-add="${x.id}" data-target="${k}">＋追加</button>` : ""}<button class="btn sub" data-lib-put="${x.id}" data-target="${k}">${multi ? "入れ替え" : "付ける"}</button>`
+                      }<button class="link" data-lib-edit="${x.id}">編集</button></div></div>`
                   )
                   .join("")
               : `<p class="muted small">この部位のマイパーツはほかにありません。</p>`
@@ -2244,6 +2249,23 @@
       Library.removeComponent(G.builds[cell.k], cell.slot, +t.dataset.compDel, G.library);
       changed();
       return renderAll();
+    }
+    if (t.dataset.libSide) {
+      const it = libItem(t.dataset.libId);
+      if (!it) return;
+      // 前後のどちらに使うパーツかを覚えておく(次からは写真・手入力の登録でもその側に付く)
+      it.specs = Object.assign({}, it.specs, { side: t.dataset.libSide === "pair" ? "pair" : t.dataset.libSide });
+      Library.syncAll(G, it);
+      const label = { front: "フロント", rear: "リア", pair: "前後" }[t.dataset.libSide];
+      equip({ slot: it.slot, name: `${label}: ${Library.displayName(it)}` }, () => {
+        Library.apply(G.builds[t.dataset.target], it);
+        G.active = t.dataset.target;
+      });
+      selected = it.slot;
+      changed();
+      renderAll();
+      if (has3D) View3D.highlight(selected, true);
+      return;
     }
     if (t.dataset.libPut) {
       const it = libItem(t.dataset.libPut);
