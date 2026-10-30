@@ -1646,11 +1646,17 @@
 
   // ---------- おすすめパーツの写真 ----------
   // AIがあれば製品写真を探して出す(一度見つけたら覚えておく)。なければ画像検索へのリンク
+  // メルカリの検索に使う商品名: 「(リムブレーキ)」「×2」などの補足を外して、ヒットしやすくする
+  function mercariKeyword(name) {
+    return String(name || "").replace(/[(（][^)）]*[)）]/g, " ").replace(/[×x]\s*2\b/gi, " ").replace(/\s+/g, " ").trim();
+  }
+  const mercariUrl = (name) => "https://jp.mercari.com/search?keyword=" + encodeURIComponent(mercariKeyword(name)) + "&status=on_sale";
+
+  // おすすめパーツは、まずメルカリで探す(商品名を入れた状態で検索を開く)。AIで探した写真があれば小さく見せる
   function prodImg(it) {
     const c = AI.cachedImage(it.id);
-    if (c && c.url) return `<a class="g-prod" href="${esc(c.page || c.url)}" target="_blank" rel="noopener"><img src="${esc(c.url)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('empty');this.remove()" /></a>`;
-    if (AI.ready && !(c && !c.url)) return `<button class="g-prod empty" data-find-one="${it.id}">📷<small>AIで写真を探す</small></button>`;
-    return `<a class="g-prod empty" href="https://www.google.com/search?tbm=isch&q=${encodeURIComponent(it.name)}" target="_blank" rel="noopener">🔎<small>写真を見る</small></a>`;
+    const img = c && c.url ? `<img src="${esc(c.url)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()" />` : "🛍️";
+    return `<a class="g-prod mercari ${c && c.url ? "" : "empty"}" href="${esc(mercariUrl(it.name))}" target="_blank" rel="noopener">${img}<small>メルカリで探す</small></a>`;
   }
 
   // 画面に出ている「探しています」の写真を、ひとつずつ探す

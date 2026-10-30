@@ -1272,3 +1272,6 @@ body.ms-open {
 .mv-prev, .mv-video { display: block; width: 100%; max-width: 270px; aspect-ratio: 9 / 16; margin: 0 auto 10px; background: #000; }
 .mv-bar { height: 6px; background: #ffffff18; overflow: hidden; }
 .mv-bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #1f6fe5, #ff8a1f); transition: width 0.25s linear; }
+.g-prod.mercari { text-decoration: none; }
+.g-prod.mercari small { display: block; font-size: 0.62rem; color: #ff5b5b; font-weight: 800; }
+.g-prod.mercari img { width: 100%; height: 48px; object-fit: cover; display: block; margin-bottom: 2px; }
