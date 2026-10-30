@@ -1857,6 +1857,10 @@ const View3D = (() => {
   function setModel(fit, build, body, decals) {
     state = { fit, build, body };
     buildBike(fit, build);
+    if (scanGroup) {
+      bikeGroup.visible = false;
+      layoutScan();
+    }
     applyDecals(decals);
     buildRider();
     buildFlow();
@@ -1870,11 +1874,12 @@ const View3D = (() => {
     if (!state) return;
     const bk = state.fit.bike;
     const ground = bk.g.bbDrop - bk.R; // タイヤの接地点の高さ(BB基準)
-    const lift = anim.rider ? 0 : 0.35;
+    // スキャンしたバイクは床に直接置く(スタンドはプログラムのバイクのシートポストをつかむ形なので)
+    const lift = anim.rider || scanGroup ? 0 : 0.35;
     root.position.y = -ground + lift;
     const stand = envGroup.getObjectByName("stand");
-    stand.visible = !anim.rider;
-    if (!anim.rider) {
+    stand.visible = !anim.rider && !scanGroup;
+    if (!anim.rider && !scanGroup) {
       // シートポストをクランプする
       const c = bk.clamp;
       const clampPt = new (T().Vector3)(c.x - 0.03, c.y - 0.12 + root.position.y, 0);
@@ -2698,6 +2703,114 @@ const View3D = (() => {
     if (movie && movie.onFrame) movie.onFrame(renderer.domElement, now / 1000);
   }
 
+  // ---------- 自分のバイクの3Dスキャン(GLB)を表示する ----------
+  // スキャンアプリで作ったモデルは、向き(どの軸が上か)も大きさ(mm・cm・m)もまちまちなので、
+  // 「いちばん長い方向 = 前後、いちばん薄い方向 = 左右」とみなして向きをそろえ、いまのバイクの長さに合わせて床に置く。
+  // tf: { rotY(ラジアン), flip(上下さかさま), scale(倍), dx, dy(m) } は、その上でのユーザーの微調整
+  let scanGroup = null;
+  let scanInner = null;
+  let scanTf = { rotY: 0, flip: false, scale: 1, dx: 0, dy: 0 };
+  function setScan(buffer, tf, onDone) {
+    const THREE = T();
+    if (scanGroup) {
+      root.remove(scanGroup);
+      scanGroup.traverse((o) => {
+        if (o.isMesh) {
+          o.geometry.dispose();
+          for (const m of Array.isArray(o.material) ? o.material : [o.material]) m.dispose();
+        }
+      });
+      scanGroup = scanInner = null;
+    }
+    if (!buffer) {
+      if (bikeGroup) bikeGroup.visible = true;
+      placeOnStand();
+      photo.dirty = true;
+      if (onDone) onDone(null);
+      return;
+    }
+    if (!window.GLTFLoader) return onDone && onDone(new Error("GLTFLoader がありません"));
+    new window.GLTFLoader().parse(
+      buffer,
+      "",
+      (gltf) => {
+        const model = gltf.scene;
+        model.updateMatrixWorld(true);
+        // 向きをそろえる: 大きさの順に 長い→X(前後)、中→Y(上下)、薄い→Z(左右)
+        const box = new THREE.Box3().setFromObject(model);
+        const size = box.getSize(new THREE.Vector3());
+        const order = [0, 1, 2].sort((a, b) => size.getComponent(b) - size.getComponent(a)); // 長い順の軸番号
+        const M = new THREE.Matrix4();
+        const cols = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+        // 元の軸 order[i] を、行き先の軸 i(0=X,1=Y,2=Z)へ
+        cols[order[0]].setComponent(0, 1);
+        cols[order[1]].setComponent(1, 1);
+        cols[order[2]].setComponent(2, 1);
+        M.makeBasis(cols[0], cols[1], cols[2]);
+        if (M.determinant() < 0) M.premultiply(new THREE.Matrix4().makeScale(1, 1, -1)); // 鏡写しなら左右(Z)を返す。上下は変えない
+        const center = box.getCenter(new THREE.Vector3());
+        model.applyMatrix4(new THREE.Matrix4().multiplyMatrices(M, new THREE.Matrix4().makeTranslation(-center.x, -center.y, -center.z)));
+        let tris = 0;
+        model.traverse((o) => {
+          if (!o.isMesh) return;
+          o.castShadow = true;
+          o.frustumCulled = false;
+          o.userData.projected = true; // 写真モードで細かく分け直さない(スキャンは三角形がとても多い)
+          tris += o.geometry.index ? o.geometry.index.count / 3 : o.geometry.attributes.position.count / 3;
+          for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+            m.side = THREE.DoubleSide; // スキャンは面の表裏が不ぞろいなことが多い
+            if (m.map) m.map.anisotropy = 4;
+          }
+        });
+        // 自動でそろえた向きは model に焼き込み、ユーザーの微調整はその外側の scanInner に持つ(上書きし合わないように)
+        scanInner = new THREE.Group();
+        scanInner.add(model);
+        scanGroup = new THREE.Group();
+        scanGroup.name = "scan";
+        scanGroup.add(scanInner);
+        root.add(scanGroup);
+        scanTf = Object.assign({ rotY: 0, flip: false, scale: 1, dx: 0, dy: 0 }, tf || {});
+        if (bikeGroup) bikeGroup.visible = false;
+        layoutScan();
+        placeOnStand();
+        photo.dirty = true;
+        if (onDone) onDone(null, { tris, size: size.toArray() });
+      },
+      (e) => onDone && onDone(e || new Error("読み込めませんでした"))
+    );
+  }
+  function updateScan(tf) {
+    if (!scanGroup) return;
+    Object.assign(scanTf, tf);
+    layoutScan();
+    photo.dirty = true;
+  }
+  // 微調整を当てて、いまのバイクと同じ位置・長さで床に置き直す
+  function layoutScan() {
+    const THREE = T();
+    if (!scanGroup || !state) return;
+    const bk = state.fit.bike;
+    scanInner.rotation.set(scanTf.flip ? Math.PI : 0, scanTf.rotY, 0);
+    scanInner.scale.setScalar(1);
+    scanInner.position.set(0, 0, 0);
+    scanGroup.position.set(0, 0, 0);
+    scanGroup.updateMatrixWorld(true);
+    // 箱は root の中の座標で測る(setFromObject は世界座標で測るので、root の高さの分を戻す)
+    const toRoot = new THREE.Matrix4().copy(root.matrixWorld).invert();
+    const b0 = new THREE.Box3().setFromObject(scanInner).applyMatrix4(toRoot);
+    const len = Math.max(1e-6, b0.getSize(new THREE.Vector3()).x);
+    const want = bk.frontAxle.x - bk.rearAxle.x + 2 * bk.R; // いまのバイクの全長
+    const sc = (want / len) * (scanTf.scale || 1);
+    scanInner.scale.setScalar(sc);
+    scanGroup.updateMatrixWorld(true);
+    const b = new THREE.Box3().setFromObject(scanInner).applyMatrix4(toRoot);
+    const c = b.getCenter(new THREE.Vector3());
+    const ground = bk.g.bbDrop - bk.R;
+    scanGroup.position.set((bk.frontAxle.x + bk.rearAxle.x) / 2 - c.x + (scanTf.dx || 0), ground - b.min.y + (scanTf.dy || 0), -c.z);
+    scanGroup.updateMatrixWorld(true);
+  }
+  const hasScan = () => !!scanGroup;
+
   // ---------- 動画づくり ----------
   // 縦長の動画の大きさで描き、店員さんとスタンドを隠して、バイクを床に置く。
   // direct(t, dt) → { az, el, dist, target } でカメラを動かし、onFrame(canvas, t) で毎フレームの絵を受け取る
@@ -2731,7 +2844,7 @@ const View3D = (() => {
   // 部位の真ん中(カメラを寄せるため)と、バイク全体の箱
   function partBox(id) {
     const THREE = T();
-    const g = id ? groups[id === "tubes" ? "tires" : id] : bikeGroup;
+    const g = id ? (scanGroup ? null : groups[id === "tubes" ? "tires" : id]) : scanGroup || bikeGroup;
     if (!g) return null;
     const b = new THREE.Box3().setFromObject(g);
     if (b.isEmpty()) return null;
@@ -2745,5 +2858,5 @@ const View3D = (() => {
     if (renderer) renderer.dispose();
   }
 
-  return { startMovie, stopMovie, partBox, equipFx, setPhotoreal, onClerk, waveClerk, create, setModel, setRider, setFlow, setPedaling, setExploded, highlight, clearHighlight, animateMount, setView, resize, dispose };
+  return { setScan, updateScan, hasScan, startMovie, stopMovie, partBox, equipFx, setPhotoreal, onClerk, waveClerk, create, setModel, setRider, setFlow, setPedaling, setExploded, highlight, clearHighlight, animateMount, setView, resize, dispose };
 })();

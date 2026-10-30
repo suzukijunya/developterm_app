@@ -108,6 +108,7 @@
     try {
       View3D.create(stage);
       View3D.onClerk(() => openClerk());
+      setTimeout(scanInit, 800);
     } catch (e) {
       console.error("3D init failed", e);
       stage.insertAdjacentHTML("afterbegin", `<p class="g-no3d">この端末では3D表示を使えません。数値の計算はこのまま使えます。</p>`);
@@ -172,6 +173,7 @@
       <button class="g-tool ${flow ? "on" : ""}" data-tool="flow" ${mode === "ride" ? "" : "disabled"}>💨 流れ</button>
       <button class="g-tool" data-tool="view">👁 ${VIEWS[viewIdx].label}</button>
       ${has3D ? `<button class="g-tool ${photoOn ? "on" : ""}" data-tool="photo">📸 写真</button><button class="g-tool" data-tool="movie">🎬 動画</button>` : ""}
+      ${has3D && scan.blob ? `<button class="g-tool ${G.scan && G.scan.on ? "on" : ""}" data-tool="scan">📦 スキャン</button>` : ""}
       <button class="g-tool" data-tool="sound" aria-label="効果音">${Sfx.muted ? "🔇" : "🔊"}</button>`;
   }
 
@@ -506,6 +508,130 @@
     if (has3D) View3D.highlight(slot, true);
   }
 
+  // ---------- 自分のバイクの3Dスキャン(GLB) ----------
+  // スキャンアプリ(Polycam・Luma・Scaniverse など)で書き出した GLB を読み込んで、プログラムのバイクの代わりに表示する。
+  // ファイルはこの端末の IndexedDB だけに置く(大きいので同期しない)。向きや大きさの微調整(G.scan.tf)は同期する
+  const SCAN_KEY = "scan-bike";
+  const scan = { blob: null, loading: false, status: "", info: null, checked: false };
+  const scanTf = () => Object.assign({ rotY: 0, flip: false, scale: 1, dx: 0, dy: 0 }, (G.scan && G.scan.tf) || {});
+  async function scanInit() {
+    if (scan.checked || !G.scan) return;
+    scan.checked = true;
+    try {
+      scan.blob = await Library.getPhoto(SCAN_KEY);
+    } catch (e) {
+      scan.blob = null;
+    }
+    if (scan.blob && G.scan.on) await scanShow(true);
+    else renderPanel();
+  }
+  function scanShow(on) {
+    return new Promise((resolve) => {
+      if (!has3D) return resolve();
+      if (!on || !scan.blob) {
+        View3D.setScan(null);
+        renderTools();
+        return resolve();
+      }
+      scan.loading = true;
+      renderPanel();
+      scan.blob.arrayBuffer().then((buf) =>
+        View3D.setScan(buf, scanTf(), (err, info) => {
+          scan.loading = false;
+          if (err) {
+            scan.status = "読み込めませんでした: " + (err.message || err);
+            G.scan.on = false;
+          } else {
+            scan.status = "";
+            scan.info = info;
+            G.scan.on = true;
+            if (mode !== "mechanic") setMode("mechanic");
+          }
+          save();
+          renderTools();
+          renderPanel();
+          resolve();
+        })
+      );
+    });
+  }
+  async function scanLoadFile(file) {
+    if (!file) return;
+    if (!/\.glb$/i.test(file.name) && file.type !== "model/gltf-binary") {
+      scan.status = "GLB形式(.glb)のファイルを選んでください。スキャンアプリの書き出しで「GLB」か「glTF(binary)」を選びます";
+      return renderPanel();
+    }
+    scan.status = "保存しています…";
+    renderPanel();
+    try {
+      await Library.putPhoto(SCAN_KEY, file);
+    } catch (e) {
+      scan.status = "この端末に保存できませんでした(空き容量が足りないかもしれません)";
+      return renderPanel();
+    }
+    scan.blob = file;
+    G.scan = { name: file.name, size: file.size, tf: { rotY: 0, flip: false, scale: 1, dx: 0, dy: 0 }, on: true, at: Date.now() };
+    save();
+    await scanShow(true);
+  }
+  async function scanDelete() {
+    if (!confirm("スキャンしたバイクのモデルを、この端末から消しますか?")) return;
+    try {
+      await Library.deletePhoto(SCAN_KEY);
+    } catch (e) {}
+    scan.blob = null;
+    scan.info = null;
+    G.scan = null;
+    save();
+    if (has3D) View3D.setScan(null);
+    renderTools();
+    renderPanel();
+  }
+  function scanAdjust(k) {
+    const tf = scanTf();
+    if (k === "rot") tf.rotY = (tf.rotY + Math.PI / 2) % (Math.PI * 2);
+    if (k === "flip") tf.flip = !tf.flip;
+    if (k === "big") tf.scale = Math.min(3, +(tf.scale * 1.05).toFixed(3));
+    if (k === "small") tf.scale = Math.max(0.3, +(tf.scale / 1.05).toFixed(3));
+    if (k === "up") tf.dy = +(tf.dy + 0.02).toFixed(3);
+    if (k === "down") tf.dy = +(tf.dy - 0.02).toFixed(3);
+    if (k === "fwd") tf.dx = +(tf.dx + 0.03).toFixed(3);
+    if (k === "back") tf.dx = +(tf.dx - 0.03).toFixed(3);
+    if (k === "reset") Object.assign(tf, { rotY: 0, flip: false, scale: 1, dx: 0, dy: 0 });
+    G.scan.tf = tf;
+    save();
+    if (has3D) View3D.updateScan(tf);
+    renderPanel();
+  }
+  function scanHtml() {
+    const mb = (n) => (n / 1048576).toFixed(1) + "MB";
+    const tf = scanTf();
+    const body = !G.scan
+      ? `<p class="small">スマホの3Dスキャンアプリ(Polycam・Luma AI・Scaniverse・KIRI Engine など)で自転車を一周撮って、<b>GLB形式</b>で書き出したファイルを読み込むと、ここのバイクが自分のバイクそのものになります。</p>
+         <p class="muted small">明るい場所で、無地の背景の前に置いて、ゆっくり一周半くらい撮るときれいに出ます。パーツの付け替えは3Dに反映されなくなります(数値はこれまでどおり)。ファイルはこの端末の中だけに置き、同期しません。</p>`
+      : !scan.blob
+        ? `<p class="small">「${esc(G.scan.name)}」(${mb(G.scan.size)})を別の端末で読み込んでいます。モデルのファイルは端末ごとに置くので、この端末でも使うにはもう一度ファイルを選んでください。</p>`
+        : `<p class="small"><b>${esc(G.scan.name)}</b> ${mb(G.scan.size)}${scan.info ? `・三角形 ${Math.round(scan.info.tris).toLocaleString()}` : ""}${scan.loading ? "・読み込み中…" : G.scan.on ? "・表示中" : ""}</p>
+           <div class="g-plan-btns"><button class="btn sub" data-scan="toggle">${G.scan.on ? "プログラムのバイクに戻す" : "スキャンを表示する"}</button><button class="link danger" data-scan="delete">この端末から消す</button></div>
+           ${
+             G.scan.on
+               ? `<p class="g-sub">向き・大きさを合わせる</p>
+                  <div class="g-scan-adj">
+                    <button class="g-chip2" data-scan="rot">↻ 90°回す</button><button class="g-chip2 ${tf.flip ? "on" : ""}" data-scan="flip">上下さかさま</button>
+                    <button class="g-chip2" data-scan="big">大きく</button><button class="g-chip2" data-scan="small">小さく</button>
+                    <button class="g-chip2" data-scan="up">上へ</button><button class="g-chip2" data-scan="down">下へ</button>
+                    <button class="g-chip2" data-scan="fwd">前へ</button><button class="g-chip2" data-scan="back">後ろへ</button>
+                    <button class="link" data-scan="reset">自動の位置に戻す</button>
+                  </div>
+                  <p class="muted small">長い方向を前後、薄い方向を左右とみなして自動で置いています。横から見て逆向きなら「90°回す」を2回、天地が逆なら「上下さかさま」を押してください。大きさは ${tf.scale.toFixed(2)}倍。</p>`
+               : ""
+           }`;
+    return `<section class="card g-scan"><h2>📦 自分のバイク(3Dスキャン)</h2>${body}
+      ${scan.status ? `<p class="notice warn small">${esc(scan.status)}</p>` : ""}
+      <div class="g-plan-btns"><label class="btn sub g-file">📂 GLBファイルを選ぶ<input type="file" accept=".glb,model/gltf-binary" id="scan-file" hidden /></label></div>
+    </section>`;
+  }
+
   function partsPanel() {
     const b = B();
     const rows = Parts.SLOTS.map((sl) => {
@@ -532,6 +658,7 @@
       ${importRev ? importHtml() : ""}
       ${matrixHtml()}
       ${cell ? sheetHtml() : ""}
+      ${scanHtml()}
       ${libraryHtml()}`;
   }
 
@@ -2259,6 +2386,16 @@
       }
       return renderPanel();
     }
+    if (t.dataset.scan) {
+      const a = t.dataset.scan;
+      if (a === "toggle") {
+        G.scan.on = !G.scan.on;
+        save();
+        return scanShow(G.scan.on);
+      }
+      if (a === "delete") return scanDelete();
+      return scanAdjust(a);
+    }
     if (t.dataset.reward) {
       const b = B();
       const id = t.dataset.reward;
@@ -2457,6 +2594,11 @@
     } else if (t.dataset.tool) {
       const k = t.dataset.tool;
       if (k === "movie") return openMovie();
+      if (k === "scan") {
+        G.scan.on = !G.scan.on;
+        save();
+        return scanShow(G.scan.on);
+      }
       if (k === "mode") setMode(mode === "ride" ? "mechanic" : "ride");
       if (k === "explode") {
         exploded = !exploded;
@@ -2595,6 +2737,11 @@
 
   el.addEventListener("change", async (e) => {
     const t = e.target;
+    if (t.id === "scan-file") {
+      const f = t.files && t.files[0];
+      t.value = "";
+      return scanLoadFile(f);
+    }
     if (t.dataset.shopMemo) {
       const x = (G.shops || []).find((s) => s.id === t.dataset.shopMemo);
       if (x) (x.memo = t.value.trim()), changed(false);
