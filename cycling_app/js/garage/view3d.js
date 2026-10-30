@@ -2385,7 +2385,17 @@ const View3D = (() => {
       if (g) g.traverse((o) => o.isMesh && o.material.emissive && (o.material.emissiveIntensity = pulse));
     }
     updateFlow(dt);
-    // カメラ
+    // カメラ(動画づくりの間は、監督の指示どおりに動かす)
+    if (movie && movie.direct) {
+      const c = movie.direct(now / 1000, dt);
+      if (c) {
+        cam.az = c.az;
+        cam.el = c.el;
+        cam.dist = c.dist;
+        cam.target.set(c.target.x, c.target.y, c.target.z);
+        cam.goal.copy(cam.target);
+      }
+    }
     if (cam.azGoal != null) cam.az += (cam.azGoal - cam.az) * Math.min(1, dt * 4);
     if (cam.elGoal != null) cam.el += (cam.elGoal - cam.el) * Math.min(1, dt * 4);
     if (cam.distGoal != null) cam.dist += (cam.distGoal - cam.dist) * Math.min(1, dt * 4);
@@ -2399,8 +2409,50 @@ const View3D = (() => {
     // カメラが動いたか
     const key = [camera.position.x, camera.position.y, camera.position.z, cam.target.x, cam.target.y, cam.target.z].map((x) => x.toFixed(4)).join(",");
     if (key !== photo.last) (photo.last = key), (moving = true);
-    if (renderPhoto(moving)) return;
+    if (!movie && renderPhoto(moving)) return;
     renderer.render(scene, camera);
+    if (movie && movie.onFrame) movie.onFrame(renderer.domElement, now / 1000);
+  }
+
+  // ---------- 動画づくり ----------
+  // 縦長の動画の大きさで描き、店員さんとスタンドを隠して、バイクを床に置く。
+  // direct(t, dt) → { az, el, dist, target } でカメラを動かし、onFrame(canvas, t) で毎フレームの絵を受け取る
+  let movie = null;
+  function startMovie(opts) {
+    if (!renderer || !state) return false;
+    movie = Object.assign({ pr: renderer.getPixelRatio(), cam: { az: cam.az, el: cam.el, dist: cam.dist, auto: cam.auto } }, opts);
+    cam.azGoal = cam.elGoal = cam.distGoal = undefined;
+    renderer.setPixelRatio(1);
+    renderer.setSize(opts.w, opts.h, false);
+    camera.aspect = opts.w / opts.h;
+    camera.updateProjectionMatrix();
+    if (clerkGroup) clerkGroup.visible = false;
+    const stand = envGroup.getObjectByName("stand");
+    if (stand) stand.visible = false;
+    const bk = state.fit.bike;
+    root.position.y = -(bk.g.bbDrop - bk.R);
+    return true;
+  }
+  function stopMovie() {
+    if (!movie) return;
+    const m = movie;
+    movie = null;
+    renderer.setPixelRatio(m.pr);
+    if (clerkGroup) clerkGroup.visible = true;
+    Object.assign(cam, { az: m.cam.az, el: m.cam.el, dist: m.cam.dist });
+    anim.explodeTarget = 0;
+    resize();
+    placeOnStand();
+  }
+  // 部位の真ん中(カメラを寄せるため)と、バイク全体の箱
+  function partBox(id) {
+    const THREE = T();
+    const g = id ? groups[id === "tubes" ? "tires" : id] : bikeGroup;
+    if (!g) return null;
+    const b = new THREE.Box3().setFromObject(g);
+    if (b.isEmpty()) return null;
+    const c = b.getCenter(new THREE.Vector3()), sz = b.getSize(new THREE.Vector3());
+    return { x: c.x, y: c.y, z: c.z, size: Math.max(sz.x, sz.y, sz.z) };
   }
 
   function dispose() {
@@ -2409,5 +2461,5 @@ const View3D = (() => {
     if (renderer) renderer.dispose();
   }
 
-  return { equipFx, setPhotoreal, onClerk, waveClerk, create, setModel, setRider, setFlow, setPedaling, setExploded, highlight, clearHighlight, animateMount, setView, resize, dispose };
+  return { startMovie, stopMovie, partBox, equipFx, setPhotoreal, onClerk, waveClerk, create, setModel, setRider, setFlow, setPedaling, setExploded, highlight, clearHighlight, animateMount, setView, resize, dispose };
 })();

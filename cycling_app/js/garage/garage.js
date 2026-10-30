@@ -170,7 +170,7 @@
       <button class="g-tool ${pedaling ? "on" : ""}" data-tool="pedal">${pedaling ? "⏸" : "▶"} ペダル</button>
       <button class="g-tool ${flow ? "on" : ""}" data-tool="flow" ${mode === "ride" ? "" : "disabled"}>💨 流れ</button>
       <button class="g-tool" data-tool="view">👁 ${VIEWS[viewIdx].label}</button>
-      ${has3D ? `<button class="g-tool ${photoOn ? "on" : ""}" data-tool="photo">📸 写真</button>` : ""}
+      ${has3D ? `<button class="g-tool ${photoOn ? "on" : ""}" data-tool="photo">📸 写真</button><button class="g-tool" data-tool="movie">🎬 動画</button>` : ""}
       <button class="g-tool" data-tool="sound" aria-label="効果音">${Sfx.muted ? "🔇" : "🔊"}</button>`;
   }
 
@@ -1933,6 +1933,114 @@
       </section>`;
   }
 
+  // ---------- 🎬 動画を作る ----------
+  const MOVIE_LABEL = { wheels: "WHEELS", frame: "FRAME", saddle: "SADDLE", handlebar: "COCKPIT", groupset: "DRIVETRAIN", tires: "TIRES", pedals: "PEDALS", seatpost: "SEATPOST" };
+  async function movieData() {
+    const b = B();
+    const st = statsOf(b);
+    const frame = b.parts.frame || {};
+    const title = frame.libId || !/^(カーボン|アルミ|クロモリ)/.test(frame.name || "") ? frame.name || b.name : b.name;
+    const order = ["wheels", "frame", "saddle", "handlebar", "groupset", "tires", "pedals", "seatpost"];
+    const withPhoto = order.filter((s) => b.parts[s] && b.parts[s].mounted !== false && b.parts[s].libId && (libItem(b.parts[s].libId) || {}).photoId);
+    const slots = withPhoto.concat(order.filter((s) => !withPhoto.includes(s) && b.parts[s] && b.parts[s].mounted !== false)).slice(0, 3);
+    const parts = [];
+    for (const s of slots) {
+      const p = b.parts[s];
+      const it = p.libId ? libItem(p.libId) : null;
+      let img = null;
+      if (it && it.photoId) {
+        try {
+          const blob = await Library.getPhoto(it.photoId);
+          if (blob) img = await createImageBitmap(blob);
+        } catch (e) {}
+      }
+      parts.push({ slot: s, label: MOVIE_LABEL[s] || s.toUpperCase(), name: p.name, g: +p.g || 0, img });
+    }
+    const d = new Date();
+    return {
+      title,
+      sub: `${G.active === "current" ? "いまのバイク" : "NEWの構成"} ・ ${(Parts.totalGrams(b.parts) / 1000).toFixed(2)}kg ・ ${st.rank}ランク`,
+      kg: Parts.totalGrams(b.parts) / 1000,
+      rank: st.rank,
+      total: st.total,
+      rows: Stats.ROWS.map((r) => ({ en: r.en, ja: r.ja, bar: Math.round(st.v[r.k].bar) })),
+      parts,
+      date: `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`,
+    };
+  }
+
+  let movieUrl = null;
+  function openMovie() {
+    closeMovie();
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      `<div class="mv" id="mv"><div class="mv-panel">
+        <div class="mv-head"><strong>🎬 動画を作る</strong><button class="mv-x" data-mv="close" aria-label="閉じる">×</button></div>
+        <div class="mv-body" id="mv-body">
+          <p>いまの${G.active === "current" ? "装着済み" : "NEW"}のバイクで、映画の予告のような縦長の動画(約16秒・音つき)を作ります。</p>
+          <ul class="mv-list"><li>3Dのバイクをカメラが回り込んで撮影</li><li>パーツの写真は、ゆっくり動く写真に</li><li>重さ・性能・ランクを、文字とグラフの動きで</li></ul>
+          <p class="muted small">撮影の間(約16秒)はこの画面のままにしてください。音が出ます。作った動画はこの端末の中だけにあります。</p>
+          <button class="btn start" data-mv="start">撮影スタート</button>
+        </div></div></div>`
+    );
+  }
+  function closeMovie() {
+    const el = document.getElementById("mv");
+    if (el) el.remove();
+    if (movieUrl) URL.revokeObjectURL(movieUrl), (movieUrl = null);
+  }
+  async function startMovie() {
+    const body = document.getElementById("mv-body");
+    if (!body) return;
+    body.innerHTML = `<canvas class="mv-prev" id="mv-prev" width="270" height="480"></canvas><div class="mv-bar"><i id="mv-bar"></i></div><p class="muted small" id="mv-msg">撮影中…</p>`;
+    const prev = document.getElementById("mv-prev").getContext("2d");
+    try {
+      const data = await movieData();
+      const out = await Movie.make(data, (k, cv) => {
+        prev.drawImage(cv, 0, 0, 270, 480);
+        const bar = document.getElementById("mv-bar");
+        if (bar) bar.style.width = `${Math.round(k * 100)}%`;
+      });
+      const b2 = document.getElementById("mv-body");
+      if (!b2) return;
+      movieUrl = URL.createObjectURL(out.blob);
+      b2.innerHTML = `<video class="mv-video" src="${movieUrl}" controls playsinline autoplay loop></video>
+        <div class="g-plan-btns"><button class="btn start" data-mv="share" data-ext="${out.ext}">📤 保存・共有</button><button class="btn sub" data-mv="again">もう一度撮る</button></div>
+        <p class="muted small">${out.ext === "webm" ? "WebM形式で書き出しました。TikTokなどに上げるときは、いったん写真アプリなどで保存してから選んでください。" : "MP4形式で書き出しました。"}</p>`;
+      b2.querySelector("video").dataset.blob = "1";
+      movieBlob = out;
+    } catch (e) {
+      const b2 = document.getElementById("mv-body");
+      if (b2) b2.innerHTML = `<p class="notice warn">動画を作れませんでした: ${esc(e.message || String(e))}</p><button class="btn sub" data-mv="again">もう一度</button>`;
+    }
+  }
+  let movieBlob = null;
+  async function shareMovie() {
+    if (!movieBlob) return;
+    const name = `my-bike-${Date.now()}.${movieBlob.ext}`;
+    const file = new File([movieBlob.blob], name, { type: movieBlob.type });
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [file] })) return void (await navigator.share({ files: [file], title: "MY MACHINE" }));
+    } catch (e) {
+      if (e && e.name === "AbortError") return;
+    }
+    const a = document.createElement("a");
+    a.href = movieUrl;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest && e.target.closest("[data-mv]");
+    if (!b) return;
+    const a = b.dataset.mv;
+    if (a === "close") closeMovie();
+    if (a === "start") startMovie();
+    if (a === "again") openMovie();
+    if (a === "share") shareMovie();
+  });
+
   // 3Dの上に出す吹き出し(今日のひとこと)
   function renderBubble() {
     if (!has3D) return;
@@ -2341,6 +2449,7 @@
       window.scrollTo({ top: document.getElementById("tabs").offsetTop - 60, behavior: "smooth" });
     } else if (t.dataset.tool) {
       const k = t.dataset.tool;
+      if (k === "movie") return openMovie();
       if (k === "mode") setMode(mode === "ride" ? "mechanic" : "ride");
       if (k === "explode") {
         exploded = !exploded;

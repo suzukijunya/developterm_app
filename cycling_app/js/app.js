@@ -1006,16 +1006,35 @@
       navMap = null;
       navLayers = {};
     }
-    app.innerHTML = `
-      <header class="topbar"><div class="topbar-inner">RIDE <span>CALORIE</span></div></header>
-      <main class="main">${view === "ride" ? rideView() : view === "history" ? historyView() : settingsView()}</main>
-      <nav class="tabs">
+    // 上のバーと下のタブは一度だけ作り、流れる文字やタブの下線の動きを途切れさせない
+    if (!app.querySelector(".topbar")) {
+      app.innerHTML = `
+        <header class="topbar">
+          <div class="topbar-inner"><span class="tb-w1" data-kt>RIDE</span> <span class="tb-w2" data-kt>CALORIE</span></div>
+          <div class="marquee" aria-hidden="true"><div class="mq-track" id="mq"></div></div>
+        </header>
+        <main class="main"></main>
+        <nav class="tabs"><div class="tab-row" id="tabrow"></div><i class="tab-ink" id="tabink"></i></nav>`;
+      app.querySelectorAll(".topbar [data-kt]").forEach(Motion.split);
+    }
+    const main = app.querySelector(".main");
+    main.innerHTML = view === "ride" ? rideView() : view === "history" ? historyView() : settingsView();
+    document.getElementById("tabrow").innerHTML = `
         ${tab("ride", "🚴", ride ? "走行中" : "走る")}
         ${tab("history", "📋", "記録")}
         <a class="tab" href="garage.html"><span>🔧</span>ガレージ</a>
-        ${tab("settings", "⚙️", "設定")}
-      </nav>`;
+        ${tab("settings", "⚙️", "設定")}`;
+    const TABI = { ride: 0, history: 1, settings: 3 };
+    document.getElementById("tabink").style.setProperty("--x", TABI[view] || 0);
+    renderMarquee();
     bind();
+    // 画面が変わったときだけ登場の動き。同じ画面の描き直しでは動かさない
+    const key = `${view}|${ride ? "live" : ""}|${lastResult ? lastResult.id : ""}|${editMode}`;
+    if (key !== animKey) {
+      main.dataset.dir = (TABI[view] || 0) >= (TABI[animKey.split("|")[0]] || 0) ? "next" : "prev";
+      animKey = key;
+      Motion.enter(main);
+    } else Motion.settle(main);
     renderWake();
     renderLive();
     renderWeather();
@@ -1023,6 +1042,101 @@
     mountNavMap();
     if (view === "settings") backfillAddresses();
     if (view === "ride" && !ride) locateForWeather();
+  }
+
+  let animKey = "";
+  // 上のバーを流れる文字(今日と7日間の数字を入れる)
+  function renderMarquee() {
+    const el = document.getElementById("mq");
+    if (!el) return;
+    const t = todayRides().reduce((a, r) => a + totalKcal(r), 0);
+    const w = weekTotal();
+    const words = ["RIDE", "BURN", "REPEAT", `TODAY ${fmt.kcal(t)} KCAL`, `7 DAYS ${fmt.km(w.dist)} KM`, "ACCELERATE"];
+    const html = words.map((x) => `<span>${esc(x)}</span><b>✦</b>`).join("");
+    if (el.dataset.html !== html) {
+      el.dataset.html = html;
+      el.innerHTML = html + html;
+    }
+  }
+
+  // ---------- インフォグラフィック ----------
+  // 1日ごとの合計(古い順)。n日分
+  function dailyTotals(n) {
+    const out = [];
+    const d0 = new Date();
+    d0.setHours(0, 0, 0, 0);
+    for (let i = n - 1; i >= 0; i--) {
+      const from = d0.getTime() - i * 86400000;
+      const list = Store.rides.filter((r) => r.startedAt >= from && r.startedAt < from + 86400000);
+      out.push({ t: from, kcal: list.reduce((a, r) => a + totalKcal(r), 0), dist: list.reduce((a, r) => a + r.distance, 0), n: list.length });
+    }
+    return out;
+  }
+
+  // いつもの1日(走った日の平均。50kcal単位、最低300kcal)
+  function usualKcal() {
+    const days = dailyTotals(14).filter((d) => d.n);
+    if (!days.length) return 500;
+    return Math.max(300, Math.round(days.reduce((a, d) => a + d.kcal, 0) / days.length / 50) * 50);
+  }
+
+  function ringHtml(pct, inner) {
+    const v = Math.max(0, Math.min(100, pct));
+    return `<div class="ring">
+      <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="ring-bg" cx="60" cy="60" r="52" pathLength="100"/><circle class="ring-fg" cx="60" cy="60" r="52" pathLength="100" data-grow="${v.toFixed(1)}"/>${pct > 100 ? `<circle class="ring-over" cx="60" cy="60" r="44" pathLength="100" data-grow="${Math.min(100, pct - 100).toFixed(1)}"/>` : ""}</svg>
+      <div class="ring-in">${inner}</div></div>`;
+  }
+
+  // おにぎりの数で見せる(1個180kcal・最大15個)
+  function foodGrid(kcal) {
+    const n = kcal / 180;
+    const full = Math.min(15, Math.floor(n));
+    const rest = n - Math.floor(n);
+    let cells = "";
+    for (let i = 0; i < full; i++) cells += `<span class="fg-i" style="--i:${i}">🍙</span>`;
+    if (full < 15 && rest > 0.05) cells += `<span class="fg-i part" style="--i:${full};--p:${Math.round(rest * 100)}%">🍙</span>`;
+    return `<div class="fg">${cells || `<span class="fg-empty">走るとここにおにぎりが並びます</span>`}</div><div class="fg-cap">おにぎり <b data-count="${n.toFixed(1)}" data-dec="1">${n.toFixed(1)}</b> 個分</div>`;
+  }
+
+  // 7日間の棒グラフ
+  function weekChart(title) {
+    const days = dailyTotals(7);
+    const max = Math.max(1, ...days.map((d) => d.kcal));
+    const W = "日月火水木金土";
+    const tot = days.reduce((a, d) => a + d.kcal, 0);
+    const dist = days.reduce((a, d) => a + d.dist, 0);
+    const rides = days.reduce((a, d) => a + d.n, 0);
+    return `<section class="card wk">
+      <h2>${title}</h2>
+      <div class="wk-tot"><div><b class="disp" data-count="${Math.round(tot)}">${fmt.kcal(tot)}</b><small>kcal</small></div><div><b class="disp" data-count="${(dist / 1000).toFixed(1)}" data-dec="1" data-delay="120">${(dist / 1000).toFixed(1)}</b><small>km</small></div><div><b class="disp" data-count="${rides}" data-delay="240">${rides}</b><small>回</small></div></div>
+      <div class="wk-bars">${days
+        .map((d, i) => {
+          const day = new Date(d.t);
+          const today = i === days.length - 1;
+          return `<div class="wk-col ${today ? "today" : ""}" style="--i:${i}"><span class="wk-v">${d.kcal ? Math.round(d.kcal) : ""}</span><div class="wk-bar"><i data-grow="${((d.kcal / max) * 100).toFixed(1)}"></i></div><span class="wk-d">${today ? "今日" : W[day.getDay()]}</span></div>`;
+        })
+        .join("")}</div>
+    </section>`;
+  }
+
+  function todayHero() {
+    const today = todayRides();
+    const k = today.reduce((s, r) => s + totalKcal(r), 0);
+    const dist = today.reduce((s, r) => s + r.distance, 0);
+    const goal = usualKcal();
+    const pct = (k / goal) * 100;
+    return `<section class="card today-hero">
+      <div class="th-top">
+        ${ringHtml(pct, `<b class="disp th-k" data-count="${Math.round(k)}">${fmt.kcal(k)}</b><small>kcal</small><em>いつもの${Math.round(pct)}%</em>`)}
+        <div class="th-side">
+          <div class="kt-big" data-kt>TODAY</div>
+          <div class="th-row"><span>ライド</span><b data-count="${today.length}">${today.length}</b><small>回</small></div>
+          <div class="th-row"><span>距離</span><b data-count="${(dist / 1000).toFixed(2)}" data-dec="2">${(dist / 1000).toFixed(2)}</b><small>km</small></div>
+          <div class="th-row"><span>いつもの1日</span><b>${goal.toLocaleString()}</b><small>kcal</small></div>
+        </div>
+      </div>
+      ${foodGrid(k)}
+    </section>`;
   }
 
   function tab(id, icon, label) {
@@ -1077,15 +1191,9 @@
           <button class="btn stop" id="finish">ライドを終了</button>
         </section>`;
     }
-    const today = todayRides();
-    const todayKcal = today.reduce((s, r) => s + totalKcal(r), 0);
     return `
       ${lastResult ? resultCard(lastResult) : ""}
-      <section class="card today">
-        <div class="today-label">今日の合計</div>
-        <div class="today-value">${fmt.kcal(todayKcal)}<small>kcal</small></div>
-        <div class="muted">${today.length}回のライド・${fmt.km(today.reduce((s, r) => s + r.distance, 0))}km</div>
-      </section>
+      ${todayHero()}
       ${destPicker()}
       <button class="btn start" id="start">ライドを開始</button>
       ${missionCard()}
@@ -1231,13 +1339,14 @@
       placeLine = `<button class="btn sub" id="register-end">🏁 この到着地を目的地に登録</button>`;
     }
     const avgPower = r.movingSec > 0 ? r.workJ / r.movingSec : 0;
+    const cnt = (v, dec, i) => `<span data-count="${v}" data-dec="${dec}" data-delay="${i * 90}">${(+v).toLocaleString("ja-JP", { minimumFractionDigits: dec, maximumFractionDigits: dec })}</span>`;
     const cells = [
-      ["DISTANCE", "距離", fmt.km(r.distance), "km"],
-      ["CALORIE", "消費カロリー", fmt.kcal(k), "kcal"],
-      ["AVG SPEED", "平均速度", so.kmh.toFixed(1), "km/h"],
+      ["DISTANCE", "距離", cnt((r.distance / 1000).toFixed(r.distance < 10000 ? 2 : 1), r.distance < 10000 ? 2 : 1, 0), "km"],
+      ["CALORIE", "消費カロリー", cnt(Math.round(k), 0, 1), "kcal"],
+      ["AVG SPEED", "平均速度", cnt(so.kmh.toFixed(1), 1, 2), "km/h"],
       ["TIME", "走行時間", fmt.dur(r.movingSec), ""],
-      ["CLIMB", "獲得標高", Math.round(r.elevGain), "m"],
-      ["POWER", "平均パワー", Math.round(avgPower), "W"],
+      ["CLIMB", "獲得標高", cnt(Math.round(r.elevGain), 0, 4), "m"],
+      ["POWER", "平均パワー", cnt(Math.round(avgPower), 0, 5), "W"],
     ];
     return `
       <section class="card result sortie">
@@ -1245,7 +1354,7 @@
         <div class="so-head"><span>${Store.prefs.duel || r.duel ? "TURBO DUEL END" : "MISSION COMPLETE"}</span><small>${fmt.date(r.startedAt)} ${fmt.time(r.startedAt)}・${esc(so.machine)}</small></div>
         <div class="so-main">
           <div class="so-rank r-${so.rank}">${so.rank}</div>
-          <div><div class="so-label">SCORE</div><div class="so-score">${so.score.toLocaleString()}<small>pts</small></div><div class="so-vs">${esc(so.vs)}</div></div>
+          <div><div class="so-label">SCORE</div><div class="so-score"><span class="disp" data-count="${so.score}" data-dur="1600">${so.score.toLocaleString()}</span><small>pts</small></div><div class="so-vs">${esc(so.vs)}</div></div>
         </div>
         <div class="so-grid">${cells.map(([en, ja, v, u]) => `<div class="so-cell"><small>${en}<em>${ja}</em></small><b>${v}<i>${u}</i></b></div>`).join("")}</div>
         ${so.badges.length ? `<div class="so-badges">${so.badges.map((b) => `<span>${esc(b)}</span>`).join("")}</div>` : ""}
@@ -1448,7 +1557,6 @@
       if (!g || g.key !== k) groups.push((g = { key: k, date: r.startedAt, rides: [] }));
       g.rides.push(r);
     }
-    const week = weekTotal();
     const rideRow = (r) => {
       const summary = `
         <span class="ride-time">${fmt.time(r.startedAt)}〜${fmt.time(r.endedAt)}${placeById(r.arrivedPlaceId) ? `<em>→${esc(placeById(r.arrivedPlaceId).name)}</em>` : ""}</span>
@@ -1481,11 +1589,7 @@
               <button class="chip" id="select-all">すべて選択</button>
               <button class="chip" id="select-none">選択を解除</button>
             </div>`
-          : `<section class="card">
-              <div class="today-label">直近7日間</div>
-              <div class="today-value">${fmt.kcal(week.kcal)}<small>kcal</small></div>
-              <div class="muted">${week.count}回のライド・${fmt.km(week.dist)}km・${foodLine(week.kcal, false)}</div>
-            </section>`
+          : weekChart("この7日間")
       }
       ${groups
         .map(
@@ -2068,7 +2172,7 @@
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2026.11.16";
+  const APP_VERSION = "2026.11.17";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });

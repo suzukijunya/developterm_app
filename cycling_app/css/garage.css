@@ -1263,3 +1263,12 @@ body.ms-open {
 .g-shop .btn { text-decoration: none; }
 .g-shop .g-shop-addr { font-size: 0.85rem; line-height: 1.5; color: var(--muted, #b8c2cf); }
 .mx-side { display: inline-block; min-width: 1.4em; margin-right: 4px; text-align: center; font-size: 0.7rem; padding: 0 3px; border: 1px solid var(--brand); color: var(--brand); }
+/* 🎬 動画を作る */
+.mv { position: fixed; inset: 0; z-index: 3000; background: rgba(0, 0, 0, 0.82); display: grid; place-items: center; padding: 16px; }
+.mv-panel { width: min(100%, 420px); max-height: 100%; overflow: auto; background: #0d1117; border: 1px solid #ff8a1f55; color: #e8edf3; padding: 16px; }
+.mv-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.mv-x { background: none; border: 0; color: #fff; font-size: 1.4rem; }
+.mv-list { margin: 6px 0 10px; padding-left: 1.2em; font-size: 0.9rem; line-height: 1.7; }
+.mv-prev, .mv-video { display: block; width: 100%; max-width: 270px; aspect-ratio: 9 / 16; margin: 0 auto 10px; background: #000; }
+.mv-bar { height: 6px; background: #ffffff18; overflow: hidden; }
+.mv-bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #1f6fe5, #ff8a1f); transition: width 0.25s linear; }
