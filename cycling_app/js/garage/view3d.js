@@ -364,20 +364,36 @@ const View3D = (() => {
     const THREE = T();
     const g = new THREE.Group();
     g.name = "clerk";
-    const skin = mat(0xf1c6a0, { roughness: 0.7 });
-    const pants = mat(0x2b2f38, { roughness: 0.85 });
-    const shirt = mat(0xb9c4d4, { roughness: 0.8 });
+    // 実際の整備士らしく: 濃いグレーの作業シャツ(袖まくり)、デニムのエプロン、黒いキャップ、ひげ
+    const skin = skinMat(0xc98f6b);
+    const pants = fabricMat(0x1d2025, { roughness: 0.8 });
+    const shirt = fabricMat(0x2c3037, { roughness: 0.75 });
     const apronTex = canvasTexture(256, (c, sz) => {
-      c.fillStyle = "#0a3d91";
+      // デニムの綾織り
+      c.fillStyle = "#2c3f5e";
       c.fillRect(0, 0, sz, sz);
-      c.fillStyle = "#ffffff";
-      c.font = `bold ${sz * 0.13}px sans-serif`;
+      for (let i = -sz; i < sz * 2; i += 3) {
+        c.strokeStyle = i % 2 ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.12)";
+        c.beginPath();
+        c.moveTo(i, 0);
+        c.lineTo(i + sz, sz);
+        c.stroke();
+      }
+      // 胸ポケットと刺繍のロゴ
+      c.strokeStyle = "rgba(220,170,90,0.8)";
+      c.setLineDash([4, 3]);
+      c.strokeRect(sz * 0.3, sz * 0.12, sz * 0.4, sz * 0.22);
+      c.setLineDash([]);
+      c.fillStyle = "#e6e9ee";
+      c.font = `700 ${sz * 0.075}px "Rajdhani", sans-serif`;
       c.textAlign = "center";
-      c.fillText("MECHANIC", sz / 2, sz * 0.3);
-      c.font = `${sz * 0.22}px sans-serif`;
-      c.fillText("🔧", sz / 2, sz * 0.62);
+      c.fillText("RIDE CALORIE", sz / 2, sz * 0.22);
+      c.font = `600 ${sz * 0.05}px "Rajdhani", sans-serif`;
+      c.fillText("BIKE GARAGE", sz / 2, sz * 0.29);
+      c.fillStyle = "rgba(0,0,0,0.25)";
+      c.fillRect(sz * 0.08, sz * 0.58, sz * 0.84, sz * 0.18);
     });
-    const apron = new THREE.MeshStandardMaterial({ map: apronTex, roughness: 0.9 });
+    const apron = new THREE.MeshStandardMaterial({ map: apronTex, roughness: 0.85 });
     const cyl = (r1, r2, h, m, y, x = 0, z = 0) => {
       const o = new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, 16, Math.max(1, Math.ceil(h / 0.05))), m);
       o.position.set(x, y, z);
@@ -400,16 +416,46 @@ const View3D = (() => {
     ap.position.set(0, 1.04, 0.172);
     g.add(ap);
     cyl(0.05, 0.055, 0.1, skin, 1.5);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.11, 24, 18), skin);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.11, 40, 30), skin);
     head.position.y = 1.62;
-    head.scale.set(0.95, 1.05, 1);
+    head.scale.set(0.92, 1.08, 1);
     g.add(head);
+    // 顔: 白目と茶色の瞳・まゆ毛・鼻・耳・ひげ・帽子からのぞく髪
+    const hair = mat(0x1c1714, { roughness: 0.9 });
     for (const s of [-1, 1]) {
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.012, 8, 6), mat(0x111111));
-      eye.position.set(s * 0.038, 1.64, 0.1);
-      g.add(eye);
+      const white = new THREE.Mesh(new THREE.SphereGeometry(0.014, 12, 8), mat(0xf2efe9, { roughness: 0.3 }));
+      white.position.set(s * 0.037, 1.638, 0.093);
+      white.scale.set(1.2, 0.7, 0.6);
+      g.add(white);
+      const iris = new THREE.Mesh(new THREE.SphereGeometry(0.0075, 10, 8), new THREE.MeshPhysicalMaterial({ color: 0x3a2516, roughness: 0.1, clearcoat: 1 }));
+      iris.position.set(s * 0.036, 1.638, 0.1);
+      g.add(iris);
+      const brow = new THREE.Mesh(new THREE.BoxGeometry(0.036, 0.007, 0.01), hair);
+      brow.position.set(s * 0.038, 1.662, 0.1);
+      brow.rotation.z = s * -0.12;
+      g.add(brow);
+      const ear = new THREE.Mesh(new THREE.SphereGeometry(0.022, 12, 10), skin);
+      ear.position.set(s * 0.1, 1.625, 0);
+      ear.scale.set(0.4, 1, 0.75);
+      g.add(ear);
     }
-    const capM = mat(0x0a3d91, { roughness: 0.6 });
+    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.04, 12), skin);
+    nose.position.set(0, 1.615, 0.108);
+    nose.rotation.x = Math.PI / 2.4;
+    g.add(nose);
+    const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.032, 0.004, 0.006), mat(0x6e3a30, { roughness: 0.6 }));
+    mouth.position.set(0, 1.583, 0.104);
+    g.add(mouth);
+    const beard = new THREE.Mesh(new THREE.SphereGeometry(0.106, 30, 14, -Math.PI * 0.85, Math.PI * 0.7, Math.PI * 0.68, Math.PI * 0.3), new THREE.MeshStandardMaterial({ color: 0x241c17, roughness: 1, transparent: true, opacity: 0.7 }));
+    beard.position.set(0, 1.62, 0.006);
+    beard.rotation.y = Math.PI;
+    beard.scale.set(0.95, 1.12, 1.03);
+    g.add(beard);
+    const back = new THREE.Mesh(new THREE.SphereGeometry(0.112, 24, 14, Math.PI * 0.2, Math.PI * 1.6, Math.PI * 0.3, Math.PI * 0.3), hair);
+    back.position.set(0, 1.625, -0.004);
+    back.rotation.y = Math.PI;
+    g.add(back);
+    const capM = mat(0x16181c, { roughness: 0.75 });
     const cap = new THREE.Mesh(new THREE.SphereGeometry(0.118, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), capM);
     cap.position.y = 1.66;
     g.add(cap);
@@ -419,8 +465,15 @@ const View3D = (() => {
     // 腕: 左は下ろしてレンチを持つ、右は手を振れるように肩を中心に回す
     const armL = new THREE.Group();
     armL.position.set(-0.21, 1.4, 0);
-    const ual = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.045, 0.56, 12, 12), shirt);
-    ual.position.y = -0.28;
+    // 袖まくり: 上が袖、ひじから先は素肌
+    const ual = new THREE.Group();
+    const sleeveM = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.048, 0.3, 16, 6), shirt);
+    sleeveM.position.y = -0.15;
+    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.052, 0.04, 16), shirt);
+    cuff.position.y = -0.3;
+    const fore = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.035, 0.27, 16, 6), skin);
+    fore.position.y = -0.43;
+    ual.add(sleeveM, cuff, fore);
     armL.add(ual);
     const handL = new THREE.Mesh(new THREE.SphereGeometry(0.045, 12, 10), skin);
     handL.position.y = -0.6;
@@ -562,16 +615,104 @@ const View3D = (() => {
     return t;
   }
 
+  // ---------- 人の質感(肌・ニットの生地・ロゴ入りジャージ) ----------
+  // 細かいニットの凹凸(生地のざらつき。光の当たり方が布らしくなる)
+  function knitBump() {
+    if (texCache.knit) return texCache.knit;
+    const THREE = T();
+    const t = canvasTexture(128, (g, s) => {
+      g.fillStyle = "#808080";
+      g.fillRect(0, 0, s, s);
+      for (let y = 0; y < s; y += 2)
+        for (let x = 0; x < s; x += 2) {
+          const v = Math.round(110 + ((x * 7 + y * 13) % 5) * 9 + Math.random() * 30);
+          g.fillStyle = `rgb(${v},${v},${v})`;
+          g.fillRect(x, y, 2, 1);
+        }
+    });
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(8, 8);
+    texCache.knit = t;
+    return t;
+  }
+  // 肌の毛穴・むら
+  function skinBump() {
+    if (texCache.skinB) return texCache.skinB;
+    const THREE = T();
+    const t = canvasTexture(128, (g, s) => {
+      g.fillStyle = "#808080";
+      g.fillRect(0, 0, s, s);
+      for (let i = 0; i < 2600; i++) {
+        const v = Math.round(100 + Math.random() * 60);
+        g.fillStyle = `rgba(${v},${v},${v},0.6)`;
+        g.fillRect(Math.random() * s, Math.random() * s, 1, 1);
+      }
+    });
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(4, 4);
+    texCache.skinB = t;
+    return t;
+  }
+  // 色は見た目どおり(sRGB)の値で指定し、計算用(リニア)に直して使う
+  const srgb = (hex) => new (T().Color)(hex).convertSRGBToLinear();
+  function skinMat(color = 0xc68a66) {
+    const THREE = T();
+    return new THREE.MeshPhysicalMaterial({ color: srgb(color), roughness: 0.5, sheen: 0.45, sheenColor: srgb(0xe8a888), sheenRoughness: 0.5, clearcoat: 0.06, clearcoatRoughness: 0.6, bumpMap: skinBump(), bumpScale: 0.0006, envMapIntensity: 0.35 });
+  }
+  function fabricMat(color, opts = {}) {
+    const THREE = T();
+    if (opts.sheenColor && opts.sheenColor.isColor) opts = Object.assign({}, opts, { sheenColor: opts.sheenColor.clone().convertSRGBToLinear() });
+    return new THREE.MeshPhysicalMaterial(Object.assign({ color: srgb(color), roughness: 0.62, sheen: 0.25, sheenColor: srgb(0x4a505a), sheenRoughness: 0.45, bumpMap: knitBump(), bumpScale: 0.0012, envMapIntensity: 0.3 }, opts));
+  }
+  // 横から見える胸のロゴ(ジャージの円柱の、こちら側=u 0 の位置に来るように半分ずらす)
+  function jerseyTex() {
+    if (texCache.jersey) return texCache.jersey;
+    const THREE = T();
+    const t = canvasTexture(1024, (g, w, h) => {
+      g.fillStyle = "#17191d";
+      g.fillRect(0, 0, w, h);
+      g.fillStyle = "#22252b";
+      g.fillRect(w * 0.18, 0, w * 0.06, h);
+      g.fillRect(w * 0.76, 0, w * 0.06, h);
+      g.save();
+      g.translate(w / 2, h * 0.62);
+      g.rotate(-Math.PI / 2);
+      g.font = `900 ${h * 0.05}px "Rajdhani", "Arial Black", sans-serif`;
+      g.textAlign = "center";
+      g.fillStyle = "#8a909b";
+      g.fillText("RIDE CALORIE", 0, h * 0.04);
+      g.restore();
+      g.fillStyle = "#0c0d10";
+      g.fillRect(w * 0.245, 0, 4, h);
+    }, 512);
+    t.wrapS = THREE.RepeatWrapping;
+    t.offset.x = 0.5;
+    texCache.jersey = t;
+    return t;
+  }
+
   // ヘルメットの通気口の模様
   function helmetTex() {
     if (texCache.helmet) return texCache.helmet;
-    const t = canvasTexture(128, (g, s) => {
-      g.fillStyle = "#f7f7f7";
+    const t = canvasTexture(256, (g, s) => {
+      // つや消しの黒いヘルメット。通気口は黒く深く、縁に細いグレーのライン
+      g.fillStyle = "#2b2e34";
       g.fillRect(0, 0, s, s);
-      g.fillStyle = "#24272d";
-      for (let i = 0; i < 7; i++) g.fillRect(8 + i * 17, 20, 8, 70);
-      g.fillStyle = "#1f6fe5";
-      g.fillRect(0, 96, s, 8);
+      for (let i = 0; i < 9; i++) {
+        const x = 10 + i * 27;
+        g.fillStyle = "#08090b";
+        g.beginPath();
+        g.ellipse(x + 8, 95, 6, 46, 0, 0, Math.PI * 2);
+        g.fill();
+        g.strokeStyle = "#4a4f57";
+        g.lineWidth = 2;
+        g.stroke();
+      }
+      g.fillStyle = "#5c626b";
+      g.fillRect(0, 196, s, 6);
+      g.font = "700 18px sans-serif";
+      g.fillStyle = "#9aa1ab";
+      g.fillText("RIDE CALORIE", 12, 228);
     });
     texCache.helmet = t;
     return t;
@@ -1065,11 +1206,14 @@ const View3D = (() => {
     root.add(riderGroup);
     riderParts = [];
     const sph = new THREE.SphereGeometry(1, 20, 14);
-    const jersey = new THREE.MeshPhysicalMaterial({ color: COLORS.jersey, roughness: 0.7, sheen: 0.25, sheenColor: new THREE.Color(0x3d6fd0), sheenRoughness: 0.6, envMapIntensity: 0.4 });
-    const shorts = new THREE.MeshPhysicalMaterial({ color: COLORS.shorts, roughness: 0.45, sheen: 0.4, sheenColor: new THREE.Color(0x444a55) });
-    const skin = new THREE.MeshPhysicalMaterial({ color: COLORS.skin, roughness: 0.6, sheen: 0.2, sheenColor: new THREE.Color(0xffd0b0), envMapIntensity: 0.4 });
-    const shoe = paint(COLORS.shoe, { roughness: 0.35 });
-    const matFor = (part) => (part === "torso" || part === "arm" ? jersey : part === "thigh" ? shorts : part === "foot" ? shoe : skin);
+    // 黒のジャージ(ニットの生地)・グレーのアームカバー・つやのある黒いビブショーツ・素肌
+    const jersey = fabricMat(0x1a1c20);
+    const chestMat = fabricMat(0xffffff, { map: jerseyTex() });
+    const sleeve = fabricMat(0x5e646d, { roughness: 0.55, sheen: 0.3, sheenColor: new THREE.Color(0x9aa2ae) });
+    const shorts = fabricMat(0x0c0d0f, { roughness: 0.35, sheen: 0.3, sheenColor: new THREE.Color(0x3a4048), bumpScale: 0.0006 });
+    const skin = skinMat();
+    const shoe = paint(0x15171b, { roughness: 0.3 });
+    const matFor = (part) => (part === "torso" || part === "arm" ? jersey : part === "forearm" ? sleeve : part === "thigh" ? shorts : part === "foot" ? shoe : skin);
     for (let i = 0; i < state.fit.caps.length; i++) {
       const c = state.fit.caps[i];
       const m = matFor(c.part);
@@ -1085,7 +1229,7 @@ const View3D = (() => {
     // 腰側の太さは体型で変わる(体重が多いと、胸より腰回りが太くなる)
     const sgB = state.fit.seg;
     const waistRatio = Math.max(0.78, Math.min(1.35, (sgB.r.torso[0] / sgB.r.torso[1]) * 0.9));
-    const chest = new THREE.Mesh(new THREE.CylinderGeometry(1, waistRatio, 1, 32, 10), jersey);
+    const chest = new THREE.Mesh(new THREE.CylinderGeometry(1, waistRatio, 1, 48, 10), chestMat);
     chest.name = "chest";
     riderGroup.add(chest);
     // お腹(前傾すると下側に出る)
@@ -1096,25 +1240,30 @@ const View3D = (() => {
     shoulders.name = "shoulders";
     riderGroup.add(shoulders);
     // ソックス(足首)・シューズの底・グローブ
-    const sockMat = mat(COLORS.sock, { roughness: 0.9 });
+    const sockMat = fabricMat(0x15171a, { roughness: 0.8 });
     const extras = new THREE.Group();
     extras.name = "extras";
     for (let i = 0; i < 2; i++) {
       const sock = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 16), sockMat);
       sock.name = "sock";
       extras.add(sock);
-      const glove = new THREE.Mesh(sph, mat(0x111214, { roughness: 0.8 }));
+      const glove = new THREE.Mesh(sph, fabricMat(0x101113, { roughness: 0.7 }));
       glove.name = "glove";
       extras.add(glove);
     }
     riderGroup.add(extras);
     // ヘルメット(通気口の模様)とサングラス
-    const helmet = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 16, 0, Math.PI * 2, 0, Math.PI / 1.85), paint(0xffffff, { map: helmetTex(), roughness: 0.3 }));
+    const helmet = new THREE.Mesh(new THREE.SphereGeometry(1, 40, 20, 0, Math.PI * 2, 0, Math.PI / 1.85), paint(0xffffff, { map: helmetTex(), roughness: 0.55, clearcoat: 0.25, clearcoatRoughness: 0.5 }));
     helmet.name = "helmet";
     riderGroup.add(helmet);
-    const glasses = new THREE.Mesh(new THREE.TorusGeometry(1, 0.12, 8, 24, Math.PI * 0.9), new THREE.MeshPhysicalMaterial({ color: COLORS.lens, metalness: 0.6, roughness: 0.05, clearcoat: 1 }));
+    // 一枚レンズのサングラス(オレンジのミラー。見る角度で色が変わる)
+    const glasses = new THREE.Mesh(new THREE.TorusGeometry(1, 0.16, 10, 40, Math.PI * 0.95), new THREE.MeshPhysicalMaterial({ color: 0xff6a20, metalness: 0.85, roughness: 0.06, clearcoat: 1, iridescence: 1, iridescenceIOR: 1.8, iridescenceThicknessRange: [250, 700], envMapIntensity: 1.2 }));
     glasses.name = "glasses";
     riderGroup.add(glasses);
+    // 無精ひげ(あごのまわり)
+    const beard = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 12, 0, Math.PI * 2, Math.PI * 0.55, Math.PI * 0.45), new THREE.MeshStandardMaterial({ color: 0x2a221d, roughness: 1, transparent: true, opacity: 0.55 }));
+    beard.name = "beard";
+    riderGroup.add(beard);
     riderGroup.traverse((o) => o.isMesh && (o.castShadow = true));
     riderGroup.visible = anim.rider;
     updateRider();
@@ -1193,6 +1342,10 @@ const View3D = (() => {
     glasses.position.copy(V(head.a)).add(new THREE.Vector3(head.r * 0.35, -head.r * 0.2, 0));
     glasses.scale.setScalar(head.r * 0.82);
     glasses.rotation.set(Math.PI / 2, 0, Math.PI / 2 + Math.PI * 0.05);
+    const beard = riderGroup.getObjectByName("beard");
+    beard.position.copy(V(head.a)).add(new THREE.Vector3(head.r * 0.08, -head.r * 0.05, 0));
+    beard.scale.setScalar(head.r * 1.02);
+    beard.rotation.set(0, 0, tilt - 0.35);
   }
 
   // ---------- 空気の流れ(イメージ) ----------
