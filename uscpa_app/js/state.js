@@ -20,14 +20,14 @@ const Store = (() => {
   function defaults() {
     return {
       q: {}, // { [questionId]: { n, ok, last: bool, flag: bool, ts } }
-      cards: {}, // { [cardId]: { box, due } }
+      cards: {}, // { [cardId]: { box, due, first } } first = 初めて覚えた日
       notes: {}, // { [chapterId]: 'YYYY-MM-DD' } 講義ノートを読了した日
       tbs: {}, // { [tbsId]: { best, last, n } } 正答率(0〜1)
       study: {}, // { 'YYYY-MM-DD': { [sectionId]: seconds } }
       history: [], // 演習セッションの結果(新しい順、最大200件)
       mocks: [], // 模擬試験の結果(新しい順、最大50件)
       plan: { discipline: "BAR", examDates: {}, targetHours: 1200, dailyMin: 120 },
-      prefs: { showJa: false },
+      prefs: { showJa: false, newPerDay: 20 },
       last: null, // 最後に開いた章 { chapter, tab }
     };
   }
@@ -86,7 +86,7 @@ const Store = (() => {
   // ---- 単語カード ----
   function reviewCard(cid, grade) {
     // grade: 0 = わからない, 1 = あいまい, 2 = わかった
-    const r = state.cards[cid] || { box: 1, due: today() };
+    const r = state.cards[cid] || { box: 1, due: today(), first: today() };
     if (grade === 0) r.box = 1;
     else if (grade === 2) r.box = Math.min(5, r.box + 1);
     r.due = addDays(today(), grade === 0 ? 0 : grade === 1 ? 1 : BOX_DAYS[r.box]);
@@ -97,6 +97,13 @@ const Store = (() => {
   const isCardDue = (cid) => {
     const r = state.cards[cid];
     return !r || r.due <= today();
+  };
+  // 初めて見たカードの枚数(今日)。新しいカードは1日に prefs.newPerDay 枚までに抑える
+  const newCardsToday = () => Object.values(state.cards).filter((r) => r.first === today()).length;
+  // 復習期日が来た、一度は覚えたカード
+  const isCardReviewDue = (cid) => {
+    const r = state.cards[cid];
+    return !!r && r.due <= today();
   };
   const isCardMastered = (cid) => {
     const r = state.cards[cid];
@@ -139,6 +146,12 @@ const Store = (() => {
       });
     });
     return total;
+  }
+
+  // 最後に学習した日(1分以上)。一度も無ければ null
+  function lastStudyDate() {
+    const ds = Object.keys(state.study).filter((d) => Object.values(state.study[d]).some((x) => x >= 60)).sort();
+    return ds.length ? ds[ds.length - 1] : null;
   }
 
   function streak() {
@@ -208,6 +221,8 @@ const Store = (() => {
     reviewCard,
     cardRec,
     isCardDue,
+    isCardReviewDue,
+    newCardsToday,
     isCardMastered,
     markNote,
     noteRead,
@@ -216,6 +231,7 @@ const Store = (() => {
     addStudy,
     studySeconds,
     streak,
+    lastStudyDate,
     pushHistory,
     pushMock,
     setPlan,

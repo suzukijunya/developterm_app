@@ -146,6 +146,46 @@ const App = (() => {
     return CORE.concat([Store.get().plan.discipline]);
   }
 
+  // いま力を入れる科目:受験日が近い科目 → 最後に開いた章の科目 → FAR
+  function focusSection() {
+    const st = Store.get();
+    const up = mySections()
+      .map((id) => ({ id, date: st.plan.examDates[id] }))
+      .filter((x) => x.date && daysUntil(x.date) >= 0)
+      .sort((a, b) => a.date.localeCompare(b.date));
+    if (up.length) return up[0].id;
+    const last = st.last && CPA.getChapter(st.last.chapter);
+    return last ? last.section : mySections()[0];
+  }
+
+  // 今日の単語カード:期日が来た復習カード + 新しいカード(1日 prefs.newPerDay 枚まで)。
+  // 新しいカードは力を入れる科目の章の順に出す
+  function todayCards(list) {
+    const review = list.filter((c) => Store.isCardReviewDue(c.id));
+    const per = Store.get().prefs.newPerDay ?? 20;
+    const left = Math.max(0, per - Store.newCardsToday());
+    const f = focusSection();
+    const unseen = list.filter((c) => !Store.cardRec(c.id));
+    const fresh = unseen.filter((c) => c.section === f).concat(unseen.filter((c) => c.section !== f)).slice(0, left);
+    return { review, fresh, unseen: unseen.length };
+  }
+
+  // ひとこと5分:力を入れる科目の「いまの章」から、未回答・不正解の問題を5問
+  function startQuick() {
+    const st = Store.get();
+    const last = st.last && CPA.getChapter(st.last.chapter);
+    const sec = CPA.getSection(focusSection());
+    const ch = last && last.section === sec.id ? last : sec.chapters.find((c) => c.mcq.some((q) => !(Store.qRec(q.id) || {}).n)) || sec.chapters[0];
+    const rank = (q) => {
+      const r = Store.qRec(q.id);
+      return !r || !r.n ? 0 : r.last === false ? 1 : 2;
+    };
+    let qs = shuffle(ch.mcq).sort((a, b) => rank(a) - rank(b));
+    // 章の問題がほぼ解き終わっていれば、科目全体から補う
+    if (rank(qs[Math.min(4, qs.length - 1)]) === 2) qs = shuffle(sec.chapters.flatMap((c) => c.mcq)).sort((a, b) => rank(a) - rank(b));
+    startPractice({ title: "5分だけ演習(" + sec.id + ")", qs: qs.slice(0, 5), back: "#/home" });
+  }
+
   // 章の進捗:講義・単語・MC・TBS の4ステップの平均
   function chapterProgress(ch) {
     const steps = [];
@@ -256,7 +296,9 @@ const App = (() => {
       .filter((x) => x.date && daysUntil(x.date) >= 0)
       .sort((a, b) => a.date.localeCompare(b.date));
     const weakCount = CPA.allMcq().filter((q) => Store.isWeak(q.id)).length;
-    const dueCards = CPA.allCards().filter((c) => mySections().includes(c.section) && Store.isCardDue(c.id)).length;
+    const tc = todayCards(CPA.allCards().filter((c) => mySections().includes(c.section)));
+    const lastDay = Store.lastStudyDate();
+    const gap = lastDay ? daysUntil(Store.today()) - daysUntil(lastDay) : null;
     const last = st.last && CPA.getChapter(st.last.chapter);
 
     const countdown = upcoming.length
@@ -285,6 +327,15 @@ const App = (() => {
       </div>
       ${pace}
 
+      <a class="quick ${gap === null || gap >= 3 ? "back" : ""}" href="#/quick">
+        <span class="quick-text">${
+          gap === null
+            ? "<b>まずは5分だけ</b><small>" + focusSection() + "の問題を5問。1問ずつ解説つき</small>"
+            : gap >= 3
+              ? "<b>おかえりなさい(" + gap + "日ぶり)</b><small>まずは5問だけ。続きの章から出します</small>"
+              : "<b>5分だけやる</b><small>" + focusSection() + "の未回答・不正解から5問</small>"
+        }</span><span class="quick-go">はじめる</span></a>
+
       <h2 class="h2">今日やること</h2>
       <div class="actions">
         ${resumeCard()}
@@ -293,7 +344,7 @@ const App = (() => {
             ? `<a class="action" href="#/ch/${last.id}/${st.last.tab || "note"}"><span class="ai">▶</span><span><b>続きから</b><small>${last.section} ${esc(last.title)}</small></span></a>`
             : `<a class="action" href="#/ch/FAR-01/note"><span class="ai">▶</span><span><b>まずはFARから始める</b><small>概念フレームワークと財務諸表</small></span></a>`
         }
-        <a class="action" href="#/cards/run/due"><span class="ai">🗂</span><span><b>単語カード</b><small>復習予定 ${dueCards} 枚</small></span></a>
+        <a class="action" href="#/cards/run/due"><span class="ai">🗂</span><span><b>単語カード</b><small>${cardsLine(tc)}</small></span></a>
         <a class="action ${weakCount ? "" : "dim"}" href="${weakCount ? "#/review" : "#/practice"}"><span class="ai">↻</span><span><b>苦手復習</b><small>${weakCount ? weakCount + " 問(不正解・要復習)" : "まだありません"}</small></span></a>
         <a class="action" href="#/mock"><span class="ai">⏱</span><span><b>模擬試験</b><small>本番形式で実力チェック</small></span></a>
       </div>
@@ -538,14 +589,19 @@ const App = (() => {
       </div>
 
       <h2 class="h2">TBS(Task-Based Simulation)</h2>
-      <div class="q-list">
-        ${CPA.tbsList
-          .map((t) => {
-            const r = Store.tbsRec(t.id);
-            return `<a class="q-item" href="#/tbs/${t.id}"><span class="qm ${r ? (r.best >= 0.7 ? "ok" : "ng") : "none"}">${r ? pct(r.best) + "%" : "—"}</span><span class="q-text">${tag(t.section)} ${esc(t.title)}</span></a>`;
-          })
-          .join("")}
-      </div>`;
+      ${CPA.sections
+        .map((s) => {
+          const ts = CPA.tbsFor({ section: s.id });
+          const done = ts.filter((t) => Store.tbsRec(t.id)).length;
+          return `<details class="tbs-group ${mySections().includes(s.id) ? "" : "dim"}" style="--c:${s.color}"><summary>${tag(s.id)}<b>${s.ja}</b><span class="muted small">${done}/${ts.length} 問</span></summary>
+            <div class="q-list">${ts
+              .map((t) => {
+                const r = Store.tbsRec(t.id);
+                return `<a class="q-item" href="#/tbs/${t.id}"><span class="qm ${r ? (r.best >= 0.7 ? "ok" : "ng") : "none"}">${r ? pct(r.best) + "%" : "—"}</span><span class="q-text">${esc(t.title)}</span></a>`;
+              })
+              .join("")}</div></details>`;
+        })
+        .join("")}`;
     page({ title: "演習", body, tab: "practice" });
 
     const $sec = $app.querySelector("#p-sec");
@@ -1246,23 +1302,30 @@ const App = (() => {
   }
 
   // ---------- 単語カード ----------
+  function cardsLine(tc) {
+    const n = tc.review.length + tc.fresh.length;
+    if (!n) return tc.unseen ? "今日の分は終わり(新しいカードはまた明日)" : "今日の復習はありません";
+    return `今日 ${n} 枚(復習 ${tc.review.length}・新しい ${tc.fresh.length})`;
+  }
+
   function viewCards() {
     current.section = null;
     const mine = mySections();
     const rows = CPA.sections
       .map((s) => {
         const cs = s.chapters.flatMap((c) => c.cards);
-        const due = cs.filter((c) => Store.isCardDue(c.id)).length;
+        const due = cs.filter((c) => Store.isCardReviewDue(c.id)).length;
+        const unseen = cs.filter((c) => !Store.cardRec(c.id)).length;
         const m = cs.filter((c) => Store.isCardMastered(c.id)).length;
         return `<a class="sec-card ${mine.includes(s.id) ? "" : "dim"}" href="#/cards/run/sec/${s.id}" style="--c:${s.color}">
           <div class="sec-id">${s.id}</div>
           <div class="sec-body"><div class="sec-name">${s.ja}</div>${bar(m / cs.length, s.color)}
-          <div class="sec-meta"><span>覚えた ${m}/${cs.length}</span><span>復習予定 ${due}</span></div></div></a>`;
+          <div class="sec-meta"><span>覚えた ${m}/${cs.length}</span><span>復習 ${due}</span><span>未学習 ${unseen}</span></div></div></a>`;
       })
       .join("");
-    const dueAll = CPA.allCards().filter((c) => mine.includes(c.section) && Store.isCardDue(c.id)).length;
+    const tc = todayCards(CPA.allCards().filter((c) => mine.includes(c.section)));
     const body = `
-      <a class="action wide" href="#/cards/run/due"><span class="ai">🗂</span><span><b>今日の復習を始める</b><small>受験科目(${mine.join("・")})の復習予定 ${dueAll} 枚</small></span></a>
+      <a class="action wide" href="#/cards/run/due"><span class="ai">🗂</span><span><b>今日の復習を始める</b><small>${cardsLine(tc)} ・ 新しいカードは1日${Store.get().prefs.newPerDay ?? 20}枚まで</small></span></a>
       <h2 class="h2">科目別</h2>
       <div class="sec-list">${rows}</div>
       <h2 class="h2">用語集</h2>
@@ -1272,12 +1335,26 @@ const App = (() => {
     const $q = $app.querySelector("#g-q");
     const draw = () => {
       const k = $q.value.trim().toLowerCase();
-      const list = CPA.allCards().filter((c) => !k || (c.en + c.ja + c.desc).toLowerCase().includes(k));
+      const hit = CPA.allCards().filter((c) => !k || (c.en + c.ja + c.desc).toLowerCase().includes(k));
+      // 全件(1,000枚超)を一度に描くと重いので、最初は一部だけ出して「もっと見る」で足す
+      const list = hit.slice(0, glossMax);
+      const more = hit.length > list.length ? `<button class="btn block" id="g-more">もっと見る(残り ${hit.length - list.length} 件)</button>` : "";
       $app.querySelector("#g-list").innerHTML = list.length
-        ? list.map((c) => `<div class="gloss-row">${tag(c.section)}<div class="gloss-body"><b>${esc(c.en)}</b><span>${esc(c.ja)}</span><small>${esc(c.desc)}</small>${explainBtn(c.id)}</div>${Speech.button(c.en)}</div>`).join("")
+        ? (k ? `<p class="muted small">${hit.length} 件</p>` : "") + list.map((c) => `<div class="gloss-row">${tag(c.section)}<div class="gloss-body"><b>${esc(c.en)}</b><span>${esc(c.ja)}</span><small>${esc(c.desc)}</small>${explainBtn(c.id)}</div>${Speech.button(c.en)}</div>`).join("")
         : `<p class="muted">見つかりませんでした</p>`;
+      if (more) {
+        $app.querySelector("#g-list").insertAdjacentHTML("beforeend", more);
+        $app.querySelector("#g-more").onclick = () => {
+          glossMax += 50;
+          draw();
+        };
+      }
     };
-    $q.oninput = draw;
+    let glossMax = 30;
+    $q.oninput = () => {
+      glossMax = 30;
+      draw();
+    };
     draw();
   }
 
@@ -1295,14 +1372,18 @@ const App = (() => {
       const s = CPA.getSection(id);
       if (!s) return go("#/cards");
       const all = s.chapters.flatMap((c) => c.cards);
-      const due = all.filter((c) => Store.isCardDue(c.id));
+      const tc = todayCards(all);
+      const due = tc.review.concat(tc.fresh);
       cards = due.length ? due : all;
       title = s.id + (due.length ? " 復習" : " 全カード");
     } else {
-      cards = CPA.allCards().filter((c) => mySections().includes(c.section) && Store.isCardDue(c.id));
-      title = "今日の復習";
+      const tc = todayCards(CPA.allCards().filter((c) => mySections().includes(c.section)));
+      // 復習を先に(混ぜて)、新しいカードはその後に章の順で
+      cards = shuffle(tc.review).concat(tc.fresh);
+      title = "今日の単語";
     }
-    cards = shuffle(cards).slice(0, 30);
+    if (kind !== "due") cards = shuffle(cards);
+    cards = cards.slice(0, kind === "due" ? 60 : 30);
     cardRun = { title, cards, idx: 0, flipped: false, back, tally: [0, 0, 0] };
   }
 
@@ -1457,6 +1538,7 @@ const App = (() => {
           .join("")}
         <label class="field"><span>目標の総学習時間(時間)</span><input type="number" id="s-target" min="100" step="50" value="${plan.targetHours}"></label>
         <label class="field"><span>1日の目標(分)</span><input type="number" id="s-daily" min="10" step="10" value="${plan.dailyMin}"></label>
+        <label class="field"><span>新しい単語カード(1日の枚数)</span><input type="number" id="s-newcards" min="0" max="200" step="5" value="${st.prefs.newPerDay ?? 20}"></label>
         <label class="check"><input type="checkbox" id="s-ja" ${st.prefs.showJa ? "checked" : ""}> 問題の和訳を最初から表示する</label>
         ${
           Speech.supported
@@ -1505,6 +1587,7 @@ const App = (() => {
       };
     });
     $app.querySelector("#s-target").onchange = (e) => Store.setPlan({ targetHours: Math.max(1, +e.target.value || 1200) });
+    $app.querySelector("#s-newcards").onchange = (e) => Store.setPref("newPerDay", Math.max(0, Math.min(200, Math.round(+e.target.value) || 0)));
     $app.querySelector("#s-daily").onchange = (e) => Store.setPlan({ dailyMin: Math.max(1, +e.target.value || 120) });
     $app.querySelector("#s-ja").onchange = (e) => Store.setPref("showJa", e.target.checked);
     $app.querySelectorAll("#s-rate button").forEach((b) => {
@@ -1956,6 +2039,8 @@ const App = (() => {
         return viewQuiz();
       case "resume":
         return resumeSession();
+      case "quick":
+        return startQuick();
       case "mock":
         return viewMockSetup(b);
       case "tbs":
