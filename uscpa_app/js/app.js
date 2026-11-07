@@ -342,6 +342,11 @@ const App = (() => {
           : ""
       }
       ${
+        typeof Backup !== "undefined" && !Backup.info().cloud && !Backup.info().gh && !Store.get().prefs.hideSyncNudge
+          ? `<div class="nudge"><a href="#/settings/sync" style="flex:1;color:inherit;text-decoration:none">🔄 PCとスマホで記録を自動同期する(設定 ›)</a><button class="btn small" data-act="hide-sync">あとで</button></div>`
+          : ""
+      }
+      ${
         typeof Backup !== "undefined" && Backup.info().cloudNewer
           ? `<a class="nudge" href="#/settings"><span>☁ 別の端末で勉強した新しい記録があります。設定画面で読み込めます</span></a>`
           : ""
@@ -383,6 +388,12 @@ const App = (() => {
       <a class="link-card" href="#/compare"><b>講座の料金比較</b><span>アビタス・CPA会計学院の受講料を、給付金・キャッシュバック込みで比較 ›</span></a>
       <a class="link-card" href="#/guide"><b>USCPA試験ガイド</b><span>試験制度・科目の選び方・おすすめの学習の流れ ›</span></a>`;
     page({ title: "ホーム", body, tab: "home" });
+    const hn = $app.querySelector("[data-act=hide-sync]");
+    if (hn)
+      hn.onclick = () => {
+        Store.setPref("hideSyncNudge", true);
+        viewHome();
+      };
     const hs = $app.querySelector("[data-act=home-save]");
     if (hs) hs.onclick = () => Backup.saveFile().then((ok) => ok && (toast("記録を保存しました"), viewHome()));
   }
@@ -1564,14 +1575,37 @@ const App = (() => {
     };
     const last = Store.get().prefs.lastFileBackup;
     return `<ul class="bk-list">
-        <li class="${b.cloud ? "ok" : ""}"><b>クラウド</b>${
+        ${
           b.cloud
-            ? `自動で保存中${b.cloudAt ? `(最終 ${t(b.cloudAt)})` : ""}。別の端末でも、claude.ai のこのアプリを開けば記録が戻ります`
-            : "claude.ai のアプリとして開いたときだけ使えます(GitHub Pages 版では使えません)"
-        }</li>
+            ? `<li class="ok"><b>クラウド</b>自動で保存中${b.cloudAt ? `(最終 ${t(b.cloudAt)})` : ""}。別の端末でも、claude.ai のこのアプリを開けば記録が戻ります</li>`
+            : `<li class="${b.gh && !b.ghError ? "ok" : ""}"><b>PC・スマホの自動同期</b>${
+                b.gh
+                  ? `GitHub(@${esc(b.gh)})の非公開メモに自動で保存中${b.ghAt ? `(最終 ${t(b.ghAt)})` : ""}${b.ghError ? `<br><span class="ng-text">${esc(b.ghError)}</span>` : ""}`
+                  : "未設定(下で設定すると、PCとスマホで同じ記録を使えます)"
+              }</li>`
+        }
         <li class="${b.device ? "ok" : ""}"><b>この端末</b>保存のたびに、ブラウザの別の保存場所にも写しています${b.persisted ? "(消さないよう設定済み)" : ""}</li>
         <li class="${last ? "ok" : ""}"><b>ファイル</b>${last ? `最終保存 ${last}` : "まだ保存していません"}。機種変更の前や、ブラウザのデータを消す前に保存してください</li>
       </ul>
+      ${
+        !b.cloud && !b.gh
+          ? `<details class="sync-setup" open><summary>PC・スマホの自動同期を設定する(初回だけ・各端末で)</summary>
+              <ol class="steps-list">
+                <li><a href="https://github.com/settings/tokens/new?scopes=gist&description=USCPA%E5%AD%A6%E7%BF%92%E3%82%A2%E3%83%97%E3%83%AA" target="_blank" rel="noopener"><b>GitHubでトークンを作る ›</b></a><br>「gist」にチェックが入った状態で開きます。Expiration(有効期限)を <b>No expiration</b> にして、一番下の「Generate token」を押します。</li>
+                <li>表示された <code>ghp_</code> で始まる文字列をコピーして、下に貼り付けます。</li>
+                <li>PCでも同じ手順で(同じトークンを貼っても、もう1つ作ってもOK)。同じGitHubアカウントなら、自動で同じ記録につながります。</li>
+              </ol>
+              <label class="field"><span>トークン</span><input type="password" id="s-ghtoken" placeholder="ghp_..." autocomplete="off"></label>
+              <button class="btn primary" data-act="ghconnect">自動同期を始める</button>
+              <p class="muted small">記録はあなたのGitHubアカウントの非公開メモ(Gist)に保存されます。トークンはこの端末にだけ保存され、記録の書き出しファイルには入りません。トークンは gist(メモ)の読み書きしかできない権限にしてください。</p>
+            </details>`
+          : ""
+      }
+      ${
+        b.gh
+          ? `<div class="btn-row"><button class="btn" data-act="ghsync">今すぐ同期</button><button class="btn" data-act="ghoff">同期をやめる</button></div>`
+          : ""
+      }
       ${
         b.cloudNewer
           ? `<div class="warn-box"><b>別の端末で勉強した新しい記録がクラウドにあります</b>この端末の記録と入れ替えるか、この端末の記録でクラウドを上書きするか選んでください。
@@ -1668,6 +1702,38 @@ const App = (() => {
         toast("読み込めませんでした。バックアップのテキストをそのまま貼り付けてください");
       }
     };
+    // ホームの「自動同期」から来たときは、設定の場所まで移動する
+    if (location.hash === "#/settings/sync") {
+      const el = $app.querySelector(".sync-setup") || $app.querySelector(".bk-list");
+      if (el) setTimeout(() => el.scrollIntoView({ block: "center" }), 50);
+    }
+    const ghc = $app.querySelector("[data-act=ghconnect]");
+    if (ghc)
+      ghc.onclick = () => {
+        const tk = $app.querySelector("#s-ghtoken").value.trim();
+        if (!tk) return toast("トークンを貼り付けてください");
+        ghc.disabled = true;
+        ghc.textContent = "接続中…";
+        Backup.ghConnect(tk)
+          .then((login) => {
+            toast(`@${login} で自動同期を始めました`);
+            viewSettings();
+          })
+          .catch((e) => {
+            toast(e.status === 401 ? "トークンが正しくありません" : e.status === 403 || e.status === 404 ? "トークンに gist の権限がありません" : "接続できませんでした");
+            ghc.disabled = false;
+            ghc.textContent = "自動同期を始める";
+          });
+      };
+    const ghs = $app.querySelector("[data-act=ghsync]");
+    if (ghs) ghs.onclick = () => Backup.ghSync().then(() => (toast(Backup.info().ghError || "同期しました"), viewSettings()));
+    const gho = $app.querySelector("[data-act=ghoff]");
+    if (gho)
+      gho.onclick = () => {
+        Backup.ghDisconnect();
+        toast("自動同期をやめました(GitHubの記録は残っています)");
+        viewSettings();
+      };
     $app.querySelector("[data-act=savefile]").onclick = () => Backup.saveFile().then((ok) => ok && toast("記録を保存しました"));
     const pull = $app.querySelector("[data-act=pull]");
     if (pull) pull.onclick = () => Backup.pullCloud().then((ok) => !ok && toast("読み込めませんでした"));
@@ -2693,14 +2759,17 @@ const App = (() => {
     if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost") && !window.claude) navigator.serviceWorker.register("sw.js").catch(() => {});
     // 自動バックアップから記録を戻したら、画面を描き直す
     window.addEventListener("uscpa:restored", (e) => {
-      toast(e.detail === "cloud" ? "クラウドの記録を読み込みました" : "端末内のバックアップから記録を戻しました");
+      toast(
+        { cloud: "クラウドの記録を読み込みました", github: "別の端末の記録を読み込みました", merge: "別の端末の記録と合わせました", device: "端末内のバックアップから記録を戻しました" }[e.detail] ||
+          "記録を読み込みました"
+      );
       route();
     });
     // クラウドが使えるとわかったときなど、表示が変わるときだけ描き直す(保存のたびには描き直さない)
-    let bkSig = "false|false";
+    let bkSig = "false|false|null|null";
     if (typeof Backup !== "undefined")
       Backup.onChange((b) => {
-        const sig = `${b.cloud}|${b.cloudNewer}`;
+        const sig = `${b.cloud}|${b.cloudNewer}|${b.gh}|${b.ghError}`;
         if (sig === bkSig) return;
         bkSig = sig;
         if (/^#\/(settings|home)?$/.test(location.hash || "#/")) route();

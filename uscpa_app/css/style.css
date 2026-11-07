@@ -2781,3 +2781,22 @@ button.q-item {
 .nudge span {
   flex: 1;
 }
+.sync-setup {
+  margin: 4px 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.sync-setup summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 14px;
+}
+.sync-setup code {
+  background: var(--bg);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+.ng-text {
+  color: var(--ng);
+}
