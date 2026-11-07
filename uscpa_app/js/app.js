@@ -2755,8 +2755,13 @@ const App = (() => {
     window.addEventListener("keydown", onKey);
     window.addEventListener("hashchange", route);
     timerId = setInterval(tick, 5000);
-    // 電波がなくても開けるように、読み込んだファイルを端末に保存しておく(GitHub Pages 版のみ)
-    if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost") && !window.claude) navigator.serviceWorker.register("sw.js").catch(() => {});
+    // 以前のオフライン対応(Service Worker)は廃止。入っている端末からは取り除き、保存したファイルも消す
+    if ("serviceWorker" in navigator && navigator.serviceWorker.getRegistrations)
+      navigator.serviceWorker
+        .getRegistrations()
+        .then((rs) => rs.forEach((r) => r.unregister()))
+        .catch(() => {});
+    if (window.caches) caches.delete("uscpa-app").catch(() => {});
     // 自動バックアップから記録を戻したら、画面を描き直す
     window.addEventListener("uscpa:restored", (e) => {
       toast(
