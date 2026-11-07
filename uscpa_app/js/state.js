@@ -49,13 +49,24 @@ const Store = (() => {
     }
   }
 
+  // 保存のたびに呼ぶ処理(自動バックアップなど)
+  const saveHooks = [];
   function save() {
+    state.savedAt = Date.now();
     try {
       localStorage.setItem(KEY, JSON.stringify(state));
     } catch (e) {
       // 保存できない環境では今回の起動中のみ有効
     }
+    saveHooks.forEach((fn) => {
+      try {
+        fn();
+      } catch (e) {}
+    });
   }
+  const onSave = (fn) => saveHooks.push(fn);
+  // 記録が空(学習の形跡なし)か
+  const isEmpty = () => !Object.keys(state.q).length && !Object.keys(state.cards).length && !Object.keys(state.study).length;
 
   // ---- MC問題 ----
   function answer(qid, ok) {
@@ -63,6 +74,8 @@ const Store = (() => {
     r.n += 1;
     if (ok) r.ok += 1;
     r.last = ok;
+    // 正解したら「間違えた理由」は消す(いま間違えている問題の傾向だけを見る)
+    if (ok) delete r.why;
     r.ts = Date.now();
     state.q[qid] = r;
     save();
@@ -77,6 +90,14 @@ const Store = (() => {
   }
 
   const qRec = (qid) => state.q[qid];
+  // 間違えた理由(know=知識不足, calc=計算ミス, read=英文の読み違い, slip=うっかり)
+  function setWhy(qid, why) {
+    const r = state.q[qid];
+    if (!r) return;
+    if (why) r.why = why;
+    else delete r.why;
+    save();
+  }
   // 苦手問題:直近で間違えた or 要復習フラグ
   const isWeak = (qid) => {
     const r = state.q[qid];
@@ -217,6 +238,9 @@ const Store = (() => {
     answer,
     toggleFlag,
     qRec,
+    setWhy,
+    onSave,
+    isEmpty,
     isWeak,
     reviewCard,
     cardRec,

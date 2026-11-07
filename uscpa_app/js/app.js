@@ -336,6 +336,17 @@ const App = (() => {
               : "<b>5分だけやる</b><small>" + focusSection() + "の未回答・不正解から5問</small>"
         }</span><span class="quick-go">はじめる</span></a>
 
+      ${
+        typeof Backup !== "undefined" && Backup.fileDue()
+          ? `<div class="nudge"><span>📦 記録はこの端末にしかありません。1週間に1回、ファイルに保存しておくと安心です</span><button class="btn small" data-act="home-save">保存</button></div>`
+          : ""
+      }
+      ${
+        typeof Backup !== "undefined" && Backup.info().cloudNewer
+          ? `<a class="nudge" href="#/settings"><span>☁ 別の端末で勉強した新しい記録があります。設定画面で読み込めます</span></a>`
+          : ""
+      }
+
       <h2 class="h2">今日やること</h2>
       <div class="actions">
         ${resumeCard()}
@@ -347,6 +358,8 @@ const App = (() => {
         <a class="action" href="#/cards/run/due"><span class="ai">🗂</span><span><b>単語カード</b><small>${cardsLine(tc)}</small></span></a>
         <a class="action ${weakCount ? "" : "dim"}" href="${weakCount ? "#/review" : "#/practice"}"><span class="ai">↻</span><span><b>苦手復習</b><small>${weakCount ? weakCount + " 問(不正解・要復習)" : "まだありません"}</small></span></a>
         <a class="action" href="#/mock"><span class="ai">⏱</span><span><b>模擬試験</b><small>本番形式で実力チェック</small></span></a>
+        <a class="action" href="#/listen"><span class="ai">🎧</span><span><b>聞き流し</b><small>通勤・ジムで単語を音声で</small></span></a>
+        <a class="action" href="#/analysis"><span class="ai">📈</span><span><b>実力分析</b><small>合格の目安と間違いの傾向</small></span></a>
       </div>
 
       <h2 class="h2">科目別の進捗</h2>
@@ -370,6 +383,8 @@ const App = (() => {
       <a class="link-card" href="#/compare"><b>講座の料金比較</b><span>アビタス・CPA会計学院の受講料を、給付金・キャッシュバック込みで比較 ›</span></a>
       <a class="link-card" href="#/guide"><b>USCPA試験ガイド</b><span>試験制度・科目の選び方・おすすめの学習の流れ ›</span></a>`;
     page({ title: "ホーム", body, tab: "home" });
+    const hs = $app.querySelector("[data-act=home-save]");
+    if (hs) hs.onclick = () => Backup.saveFile().then((ok) => ok && (toast("記録を保存しました"), viewHome()));
   }
 
   // ---------- 学習(科目一覧) ----------
@@ -931,6 +946,11 @@ const App = (() => {
     const body = `
       ${bar(idx / qs.length)}
       ${questionHtml(q, idx, qs.length, answered ? { picked, reveal: true } : { picked: pending, reveal: false })}
+      ${
+        answered && picked !== q.a
+          ? `<div class="why-pick"><span>間違えた理由は?</span><div class="chips">${WHY.map(([k, l]) => `<button data-why-pick="${k}" class="${(Store.qRec(q.id) || {}).why === k ? "on" : ""}">${l}</button>`).join("")}</div></div>`
+          : ""
+      }
       <div class="btn-row sticky">
         <a class="btn" href="${session.back}">中断</a>
         ${
@@ -968,6 +988,13 @@ const App = (() => {
     const cm = $app.querySelector("[data-act=commit]");
     if (cm && pending !== undefined) cm.onclick = () => commit(pending);
     bindQuestionCommon(q, viewQuiz);
+    $app.querySelectorAll("[data-why-pick]").forEach((b) => {
+      b.onclick = () => {
+        const on = b.classList.contains("on");
+        Store.setWhy(q.id, on ? null : b.dataset.whyPick);
+        $app.querySelectorAll("[data-why-pick]").forEach((x) => x.classList.toggle("on", !on && x === b));
+      };
+    });
     const nx = $app.querySelector("[data-act=next]");
     if (nx)
       nx.onclick = () => {
@@ -1327,6 +1354,7 @@ const App = (() => {
     const tc = todayCards(CPA.allCards().filter((c) => mine.includes(c.section)));
     const body = `
       <a class="action wide" href="#/cards/run/due"><span class="ai">🗂</span><span><b>今日の復習を始める</b><small>${cardsLine(tc)} ・ 新しいカードは1日${Store.get().prefs.newPerDay ?? 20}枚まで</small></span></a>
+      <a class="action wide" href="#/listen"><span class="ai">🎧</span><span><b>聞き流し(通勤・ジム)</b><small>画面を見ずに単語を音声で。○✕クイズも</small></span></a>
       <h2 class="h2">科目別</h2>
       <div class="sec-list">${rows}</div>
       <h2 class="h2">用語集</h2>
@@ -1488,6 +1516,7 @@ const App = (() => {
         <div class="stat"><div class="stat-num">${accuracy(allQ) === null ? "—" : pct(accuracy(allQ)) + "<small>%</small>"}</div><div class="stat-label">通算正答率</div></div>
       </div>
 
+      <a class="link-card" href="#/analysis"><b>実力分析</b><span>科目ごとの合格の目安・弱い章・間違えた問題の傾向 ›</span></a>
       <h2 class="h2">直近14日の学習時間</h2>
       <div class="chart">
         ${days
@@ -1525,6 +1554,32 @@ const App = (() => {
   }
 
   // ---------- 設定 ----------
+  // 自動バックアップの状態(設定画面)
+  function backupStatus() {
+    if (typeof Backup === "undefined") return `<p class="muted small">学習記録はこの端末のブラウザにだけ保存されます。</p>`;
+    const b = Backup.info();
+    const t = (ms) => {
+      const d = new Date(ms);
+      return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    };
+    const last = Store.get().prefs.lastFileBackup;
+    return `<ul class="bk-list">
+        <li class="${b.cloud ? "ok" : ""}"><b>クラウド</b>${
+          b.cloud
+            ? `自動で保存中${b.cloudAt ? `(最終 ${t(b.cloudAt)})` : ""}。別の端末でも、claude.ai のこのアプリを開けば記録が戻ります`
+            : "claude.ai のアプリとして開いたときだけ使えます(GitHub Pages 版では使えません)"
+        }</li>
+        <li class="${b.device ? "ok" : ""}"><b>この端末</b>保存のたびに、ブラウザの別の保存場所にも写しています${b.persisted ? "(消さないよう設定済み)" : ""}</li>
+        <li class="${last ? "ok" : ""}"><b>ファイル</b>${last ? `最終保存 ${last}` : "まだ保存していません"}。機種変更の前や、ブラウザのデータを消す前に保存してください</li>
+      </ul>
+      ${
+        b.cloudNewer
+          ? `<div class="warn-box"><b>別の端末で勉強した新しい記録がクラウドにあります</b>この端末の記録と入れ替えるか、この端末の記録でクラウドを上書きするか選んでください。
+             <div class="btn-row"><button class="btn primary" data-act="pull">クラウドの記録を読み込む</button><button class="btn" data-act="push">この端末の記録で上書き</button></div></div>`
+          : ""
+      }`;
+  }
+
   function viewSettings() {
     current.section = null;
     const st = Store.get();
@@ -1559,8 +1614,9 @@ const App = (() => {
 
       <div class="panel">
         <h2 class="h2 first">データ</h2>
-        <p class="muted small">学習記録はこの端末のブラウザにだけ保存されます。機種変更の前にはバックアップを書き出してください。</p>
+        ${backupStatus()}
         <div class="btn-row">
+          <button class="btn" data-act="savefile">記録をファイルに保存</button>
           <button class="btn" data-act="export">バックアップを表示</button>
           <label class="btn">ファイルから読み込む<input type="file" accept="application/json,.json" id="s-import" hidden></label>
         </div>
@@ -1612,6 +1668,16 @@ const App = (() => {
         toast("読み込めませんでした。バックアップのテキストをそのまま貼り付けてください");
       }
     };
+    $app.querySelector("[data-act=savefile]").onclick = () => Backup.saveFile().then((ok) => ok && toast("記録を保存しました"));
+    const pull = $app.querySelector("[data-act=pull]");
+    if (pull) pull.onclick = () => Backup.pullCloud().then((ok) => !ok && toast("読み込めませんでした"));
+    const push = $app.querySelector("[data-act=push]");
+    if (push)
+      push.onclick = () =>
+        Backup.pushCloud().then(() => {
+          toast("この端末の記録をクラウドに保存しました");
+          viewSettings();
+        });
     $app.querySelector("[data-act=export]").onclick = () => {
       $text.value = Store.exportJson();
       $box.hidden = false;
@@ -1851,6 +1917,292 @@ const App = (() => {
       el.onchange = draw;
     });
     draw();
+  }
+
+  // ---------- 聞き流し(通勤・ジム) ----------
+  // 単語カードを音声で流す。画面を見なくても進む。○✕クイズはジムの合間でも答えられる難しさ
+  const LISTEN_KINDS = [
+    ["word", "単語(英→日)", "英語 → 少し間 → 日本語と一言説明"],
+    ["quiz", "○✕クイズ", "「この用語の意味は○○。○か✕か?」→ 間 → 正解"],
+    ["deep", "詳しく聞く", "日本語の詳しい説明と「日本でいうと」まで"],
+  ];
+  const LISTEN_GAPS = [
+    [1500, "短め"],
+    [3000, "ふつう"],
+    [5000, "長め"],
+  ];
+
+  function listenPrefs() {
+    return Object.assign({ kind: "word", scope: "mine", order: "weak", gap: 3000, count: 50 }, Store.get().prefs.listen || {});
+  }
+
+  function listenItems(lp) {
+    let cards = CPA.allCards();
+    if (lp.scope === "mine") cards = cards.filter((c) => mySections().includes(c.section));
+    else if (lp.scope.length === 3) cards = cards.filter((c) => c.section === lp.scope);
+    else cards = cards.filter((c) => c.chapter === lp.scope);
+    if (lp.kind === "deep") cards = cards.filter((c) => explainFor(c.id));
+    if (lp.order === "weak") {
+      // 覚えていない(箱が小さい)カードと、まだ見ていないカードを先に
+      const box = (c) => (Store.cardRec(c.id) || { box: 0 }).box;
+      cards = shuffle(cards).sort((a, b) => box(a) - box(b));
+    } else if (lp.order === "random") cards = shuffle(cards);
+    cards = cards.slice(0, lp.count);
+    const g = lp.gap;
+    return cards.map((c) => {
+      const base = { title: c.en, sub: c.ja, card: c, onSpeak: () => {
+        lastInput = Date.now();
+        current.section = c.section;
+      } };
+      if (lp.kind === "quiz") {
+        const others = CPA.getChapter(c.chapter).cards.filter((x) => x.id !== c.id && x.ja !== c.ja);
+        const truth = !others.length || Math.random() < 0.5;
+        const shown = truth ? c.ja : others[Math.floor(Math.random() * others.length)].ja;
+        return Object.assign(base, {
+          quiz: { shown, truth },
+          segs: [
+            { t: c.en, lang: "en" },
+            { t: `の意味は、${shown}。○か✕か?`, lang: "ja" },
+            { wait: g + 1000 },
+            { t: truth ? "正解は、まる。" : `正解は、ばつ。正しくは、${c.ja}。`, lang: "ja" },
+            { t: c.desc, lang: "ja" },
+            { wait: Math.round(g / 2) },
+          ],
+        });
+      }
+      if (lp.kind === "deep") {
+        const x = explainFor(c.id);
+        return Object.assign(base, {
+          segs: [
+            { t: c.en, lang: "en" },
+            { t: `${c.ja}。${c.desc}`, lang: "ja" },
+            { t: x[0], lang: "ja" },
+            { t: `日本でいうと。${x[1]}`, lang: "ja" },
+            { wait: g },
+          ],
+        });
+      }
+      return Object.assign(base, {
+        segs: [
+          { t: c.en, lang: "en" },
+          { wait: g },
+          { t: `${c.ja}。${c.desc}`, lang: "ja" },
+          { wait: Math.round(g / 3) },
+          { t: c.en, lang: "en" },
+          { wait: Math.round(g / 2) },
+        ],
+      });
+    });
+  }
+
+  function viewListen() {
+    current.section = null;
+    if (!Listen.supported) {
+      page({ title: "聞き流し", back: "#/cards", body: `<div class="panel"><p>このブラウザは音声の読み上げに対応していません。iPhone の Safari や Android の Chrome で開いてください。</p></div>`, tab: "cards" });
+      return;
+    }
+    const lp = listenPrefs();
+    const chip = (id, list, v) => `<div class="chips" id="${id}">${list.map(([k, l]) => `<button data-v="${k}" class="${String(v) === String(k) ? "on" : ""}">${l}</button>`).join("")}</div>`;
+    const scopes = [["mine", "受験科目すべて"]].concat(CPA.sections.map((s) => [s.id, `${s.id} ${s.ja}`]));
+    const body = `
+      <div class="panel">
+        <p class="muted small" style="margin-top:0">通勤中やジムの合間に、画面を見ずに単語を聞き流せます。<b>画面はつけたまま</b>にしてください(画面を消すと読み上げが止まるスマホが多いため、再生中は自動で消えないようにします)。</p>
+        <div class="field"><span>内容</span>${chip("ls-kind", LISTEN_KINDS, lp.kind)}<small class="muted" id="ls-kind-hint"></small></div>
+        <label class="field"><span>範囲</span><select id="ls-scope">${scopes.map(([k, l]) => `<option value="${k}" ${lp.scope === k ? "selected" : ""}>${l}</option>`).join("")}${CPA.allChapters()
+          .map((c) => `<option value="${c.id}" ${lp.scope === c.id ? "selected" : ""}>${c.id} ${esc(c.title)}</option>`)
+          .join("")}</select></label>
+        <div class="field"><span>順番</span>${chip("ls-order", [["weak", "覚えていない順"], ["random", "ランダム"], ["seq", "章の順"]], lp.order)}</div>
+        <div class="field"><span>考える間</span>${chip("ls-gap", LISTEN_GAPS, lp.gap)}</div>
+        <div class="field"><span>枚数</span>${chip("ls-count", [[20, "20"], [50, "50"], [100, "100"], [999, "全部"]], lp.count)}</div>
+        ${Listen.hasJa() ? "" : `<p class="warn-box small">この端末には日本語の読み上げ音声が見つかりませんでした。英語だけが読まれる場合は、端末の設定で日本語の音声を追加してください。</p>`}
+      </div>
+      <div class="player" id="ls-player">
+        <div class="player-now" id="ls-now"></div>
+        <div class="player-ctl">
+          <button class="pbtn" data-p="prev" aria-label="前へ">⏮</button>
+          <button class="pbtn main" data-p="toggle" aria-label="再生/一時停止" id="ls-toggle">▶</button>
+          <button class="pbtn" data-p="next" aria-label="次へ">⏭</button>
+        </div>
+      </div>`;
+    page({ title: "聞き流し", back: "#/cards", body, tab: "cards" });
+
+    const kindHint = () => ($app.querySelector("#ls-kind-hint").textContent = LISTEN_KINDS.find((k) => k[0] === listenPrefs().kind)[2]);
+    const render = (s) => {
+      const box = $app.querySelector("#ls-now");
+      if (!box) return;
+      const it = s.item;
+      $app.querySelector("#ls-toggle").textContent = s.playing ? "⏸" : "▶";
+      box.innerHTML = it
+        ? `<div class="player-count">${s.idx + 1} / ${s.total}</div>
+           <div class="player-en">${esc(it.title)}</div>
+           ${it.quiz ? `<div class="player-ja">${esc(it.quiz.shown)}?</div><div class="muted small">${s.playing ? "…" : ""}</div>` : `<div class="player-ja">${esc(it.sub)}</div>`}`
+        : `<div class="muted">「▶」で再生</div>`;
+    };
+    const reload = () => {
+      const items = listenItems(listenPrefs());
+      Listen.load(items, { rate: Store.get().prefs.speechRate || 0.95, onChange: render });
+    };
+    const save = (k, v) => {
+      Store.setPref("listen", Object.assign(listenPrefs(), { [k]: v }));
+      kindHint();
+      reload();
+    };
+    [["ls-kind", "kind"], ["ls-order", "order"], ["ls-gap", "gap"], ["ls-count", "count"]].forEach(([id, k]) =>
+      $app.querySelectorAll(`#${id} button`).forEach((b) => {
+        b.onclick = () => {
+          $app.querySelectorAll(`#${id} button`).forEach((x) => x.classList.remove("on"));
+          b.classList.add("on");
+          save(k, /^\d+$/.test(b.dataset.v) ? +b.dataset.v : b.dataset.v);
+        };
+      })
+    );
+    $app.querySelector("#ls-scope").onchange = (e) => save("scope", e.target.value);
+    $app.querySelectorAll("[data-p]").forEach((b) => {
+      b.onclick = () => {
+        const a = b.dataset.p;
+        if (a === "prev") Listen.prev();
+        else if (a === "next") Listen.next();
+        else if (Listen.state().playing) Listen.pause();
+        else Listen.play();
+      };
+    });
+    kindHint();
+    reload();
+  }
+
+  // ---------- 実力分析(合格の目安・間違いの傾向) ----------
+  const WHY = [
+    ["know", "知識不足"],
+    ["calc", "計算ミス"],
+    ["read", "英文の読み違い"],
+    ["slip", "うっかり"],
+  ];
+  // 選択肢の3つ以上に数字があれば計算問題とみなす
+  const isCalcQ = (q) => q.c.filter((c) => /\d/.test(c)).length >= 3;
+
+  // 科目ごとの合格の目安。MC(いまの正答率)とTBS(最高点の平均)を本番の配点どおり半々で合わせ、
+  // 模試の最高点があれば半分ずつ混ぜる。点数への換算は模試と同じ estScore
+  function readiness(s) {
+    const qs = s.chapters.flatMap((c) => c.mcq);
+    const ans = qs.filter((q) => (Store.qRec(q.id) || {}).n);
+    const okN = ans.filter((q) => Store.qRec(q.id).last === true).length;
+    const mcAcc = ans.length ? okN / ans.length : null;
+    const ts = CPA.tbsFor({ section: s.id });
+    const tr = ts.map((t) => Store.tbsRec(t.id)).filter(Boolean);
+    const tbsAvg = tr.length ? tr.reduce((a, r) => a + r.best, 0) / tr.length : null;
+    const mocks = Store.get().mocks.filter((m) => m.section === s.id);
+    const mockBest = mocks.length ? Math.max(...mocks.map((m) => m.score)) : null;
+    const cov = ans.length / qs.length;
+    let est = null;
+    if (ans.length >= 30) {
+      const ratio = tbsAvg === null ? mcAcc : (mcAcc + tbsAvg) / 2;
+      est = estScore(ratio);
+      if (mockBest !== null) est = Math.round((est + mockBest) / 2);
+    } else if (mockBest !== null) est = mockBest;
+    const level = est === null ? "none" : est >= 75 && cov >= 0.6 ? "ok" : est >= 65 ? "near" : "far";
+    // 弱い章:5問以上解いて正答率が低い順。手をつけていない章も別に出す
+    const chs = s.chapters.map((c) => {
+      const a = c.mcq.filter((q) => (Store.qRec(q.id) || {}).n);
+      return { c, n: a.length, acc: a.length ? a.filter((q) => Store.qRec(q.id).last === true).length / a.length : null };
+    });
+    const weak = chs.filter((x) => x.n >= 5 && x.acc < 0.7).sort((a, b) => a.acc - b.acc).slice(0, 3);
+    const untouched = chs.filter((x) => !x.n);
+    return { s, qs, ans: ans.length, mcAcc, tbsAvg, tbsN: tr.length, tbsTotal: ts.length, mockBest, cov, est, level, weak, untouched };
+  }
+
+  function viewAnalysis() {
+    current.section = null;
+    const LV = { ok: ["合格圏", "ok"], near: ["あと少し", "near"], far: ["要強化", "far"], none: ["データ不足", "none"] };
+    const rd = mySections().map((id) => readiness(CPA.getSection(id)));
+    const readyHtml = rd
+      .map((r) => {
+        const [lab, cls] = LV[r.level];
+        return `<div class="ready-card" style="--c:${r.s.color}">
+          <div class="ready-head">${tag(r.s.id)}<b>${r.s.ja}</b><span class="ready-lv ${cls}">${lab}</span></div>
+          <div class="ready-score">${r.est === null ? `<span class="muted">あと${Math.max(0, 30 - r.ans)}問解くと目安が出ます</span>` : `予想 <b>${r.est}</b><small> / 合格ライン 75${r.cov < 0.3 && r.mockBest === null ? "(解いた範囲が狭いので参考値)" : ""}</small>`}</div>
+          ${r.est !== null ? `<div class="ready-bar"><span style="width:${r.est}%"></span><i style="left:75%"></i></div>` : ""}
+          <div class="ready-meta">
+            <span>MC正答率 ${r.mcAcc === null ? "—" : pct(r.mcAcc) + "%"}<small>(目安65%以上)</small></span>
+            <span>カバー率 ${pct(r.cov)}%<small>(${r.ans}/${r.qs.length}問・目安60%以上)</small></span>
+            <span>TBS ${r.tbsAvg === null ? "—" : pct(r.tbsAvg) + "%"}<small>(${r.tbsN}/${r.tbsTotal}問)</small></span>
+            <span>模試最高 ${r.mockBest === null ? "—" : r.mockBest}</span>
+          </div>
+          ${
+            r.weak.length
+              ? `<div class="ready-weak"><b>弱い章</b>${r.weak.map((w) => `<a href="#/ch/${w.c.id}/mcq">${esc(w.c.title)}<small>${pct(w.acc)}%</small></a>`).join("")}</div>`
+              : ""
+          }
+          ${r.untouched.length && r.ans ? `<div class="ready-weak"><b>まだ解いていない章</b>${r.untouched.slice(0, 3).map((w) => `<a href="#/ch/${w.c.id}/mcq">${esc(w.c.title)}</a>`).join("")}${r.untouched.length > 3 ? `<small class="muted">ほか${r.untouched.length - 3}章</small>` : ""}</div>` : ""}
+        </div>`;
+      })
+      .join("");
+
+    // 間違いの傾向(いま間違えたままの問題)
+    const wrong = CPA.allMcq().filter((q) => (Store.qRec(q.id) || {}).last === false);
+    const byWhy = WHY.map(([k, l]) => ({ k, l, qs: wrong.filter((q) => Store.qRec(q.id).why === k) })).concat([
+      { k: "none", l: "理由未選択", qs: wrong.filter((q) => !Store.qRec(q.id).why) },
+    ]);
+    const answered = CPA.allMcq().filter((q) => (Store.qRec(q.id) || {}).n);
+    const typeRow = (label, f) => {
+      const a = answered.filter(f);
+      const w = a.filter((q) => Store.qRec(q.id).last === false);
+      return { label, a: a.length, w, rate: a.length ? w.length / a.length : null };
+    };
+    const types = [typeRow("計算問題", isCalcQ), typeRow("理論問題", (q) => !isCalcQ(q))];
+    const byCh = CPA.allChapters()
+      .map((c) => ({ c, qs: wrong.filter((q) => q.chapter === c.id) }))
+      .filter((x) => x.qs.length)
+      .sort((a, b) => b.qs.length - a.qs.length)
+      .slice(0, 6);
+    const maxW = Math.max(1, ...byWhy.map((x) => x.qs.length));
+    const tendHtml = wrong.length
+      ? `<div class="panel">
+          <p class="muted small" style="margin-top:0">いま間違えたままの問題 <b>${wrong.length}</b> 問の内訳です。問題を間違えたときに理由を選ぶと、ここに集計されます。</p>
+          <div class="why-bars">${byWhy
+            .filter((x) => x.qs.length)
+            .map(
+              (x) => `<button class="why-bar" data-why="${x.k}"><span class="why-l">${x.l}</span><span class="why-track"><span style="width:${(x.qs.length / maxW) * 100}%"></span></span><span class="why-n">${x.qs.length}問 ›</span></button>`
+            )
+            .join("")}</div>
+          <h3 class="h3">計算と理論</h3>
+          <div class="why-types">${types
+            .map((t) => `<button class="why-type" data-type="${t.label}" ${t.w.length ? "" : "disabled"}><b>${t.label}</b><span>${t.rate === null ? "—" : "間違い " + pct(t.rate) + "%"}</span><small>${t.w.length}問を解き直す ›</small></button>`)
+            .join("")}</div>
+          ${(() => {
+            const [c, th] = types;
+            if (c.rate === null || th.rate === null || c.a < 10 || th.a < 10) return "";
+            if (c.rate > th.rate + 0.1) return `<p class="small">計算問題の間違いが多めです。電卓の操作と、TBSの計算(仕訳・CF・税額)を重点的に。</p>`;
+            if (th.rate > c.rate + 0.1) return `<p class="small">理論問題の間違いが多めです。単語カードの「詳しく」と講義ノートで論点の整理を。</p>`;
+            return "";
+          })()}
+          <h3 class="h3">間違いが多い章</h3>
+          <div class="q-list">${byCh
+            .map((x) => `<button class="q-item why-ch" data-ch="${x.c.id}"><span class="qm ng">${x.qs.length}</span><span class="q-text">${tag(x.c.section)} ${esc(x.c.title)}</span></button>`)
+            .join("")}</div>
+        </div>`
+      : `<div class="panel"><p class="muted" style="margin:0">間違えたままの問題はありません。問題演習で間違えると、ここに傾向が出ます。</p></div>`;
+
+    const body = `
+      <h2 class="h2 first">合格の目安<small>受験科目</small></h2>
+      <div class="ready-list">${readyHtml}</div>
+      <p class="muted small">予想はアプリ内の正答率からの目安です(MCとTBSを本番の配点どおり半々、模試の結果があれば半分ずつ反映)。本番は問題の難易度で点数が調整されるため、合格ラインに余裕をもって届くのを目標にしましょう。</p>
+      <h2 class="h2">間違えた問題の傾向</h2>
+      ${tendHtml}`;
+    page({ title: "実力分析", back: "#/stats", body, tab: "stats" });
+
+    const run = (title, qs) => startPractice({ title, qs: shuffle(qs).slice(0, 20), back: "#/analysis" });
+    $app.querySelectorAll("[data-why]").forEach((b) => (b.onclick = () => {
+      const x = byWhy.find((y) => y.k === b.dataset.why);
+      run(`${x.l}の問題を解き直す`, x.qs);
+    }));
+    $app.querySelectorAll("[data-type]").forEach((b) => (b.onclick = () => {
+      const t = types.find((y) => y.label === b.dataset.type);
+      run(`${t.label}の解き直し`, t.w);
+    }));
+    $app.querySelectorAll("[data-ch].why-ch").forEach((b) => (b.onclick = () => {
+      const x = byCh.find((y) => y.c.id === b.dataset.ch);
+      run(`${x.c.id} 間違えた問題`, x.qs);
+    }));
   }
 
   // ---------- 受験日プランナー ----------
@@ -2251,6 +2603,8 @@ const App = (() => {
     const [a, b, c, d] = parts;
     // 模擬試験中に他の画面へ移動したら、セッションを破棄する(タイマー不整合を防ぐ)
     if (a !== "quiz" && session && session.kind === "mock" && !session.finished && a) session = null;
+    // 聞き流しの画面を離れたら再生を止める
+    if (a !== "listen" && typeof Listen !== "undefined") Listen.stop();
     switch (a) {
       case undefined:
       case "home":
@@ -2293,6 +2647,10 @@ const App = (() => {
         return viewCompare();
       case "planner":
         return viewPlanner();
+      case "listen":
+        return viewListen();
+      case "analysis":
+        return viewAnalysis();
       default:
         return viewHome();
     }
@@ -2331,6 +2689,22 @@ const App = (() => {
     window.addEventListener("keydown", onKey);
     window.addEventListener("hashchange", route);
     timerId = setInterval(tick, 5000);
+    // 電波がなくても開けるように、読み込んだファイルを端末に保存しておく(GitHub Pages 版のみ)
+    if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost") && !window.claude) navigator.serviceWorker.register("sw.js").catch(() => {});
+    // 自動バックアップから記録を戻したら、画面を描き直す
+    window.addEventListener("uscpa:restored", (e) => {
+      toast(e.detail === "cloud" ? "クラウドの記録を読み込みました" : "端末内のバックアップから記録を戻しました");
+      route();
+    });
+    // クラウドが使えるとわかったときなど、表示が変わるときだけ描き直す(保存のたびには描き直さない)
+    let bkSig = "false|false";
+    if (typeof Backup !== "undefined")
+      Backup.onChange((b) => {
+        const sig = `${b.cloud}|${b.cloudNewer}`;
+        if (sig === bkSig) return;
+        bkSig = sig;
+        if (/^#\/(settings|home)?$/.test(location.hash || "#/")) route();
+      });
     // 模試の残り時間表示は1秒ごとに更新する
     setInterval(() => {
       if (session && session.kind === "mock" && !session.finished && location.hash === "#/quiz") {
