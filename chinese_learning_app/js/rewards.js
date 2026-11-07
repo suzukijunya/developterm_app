@@ -18,7 +18,7 @@ const Rewards = (() => {
   const DAILY_CHEST = [30, 60];
 
   function today() {
-    return new Date().toISOString().slice(0, 10);
+    return todayStr();
   }
 
   function dayNumber() {

@@ -4,8 +4,19 @@ const STORAGE_KEY = "zh_app_state_v1";
 const DAILY_GOAL_XP = 30;
 const STUDY_DATES_LIMIT = 60;
 
+// 日付は端末のローカル時刻で数える(UTCだと日本では朝9時に日付が変わってしまう)
+function dateStr(d) {
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+  return dateStr(new Date());
+}
+
+// "YYYY-MM-DD" 同士の日数差(b - a)
+function daysBetween(a, b) {
+  return Math.round((Date.parse(b) - Date.parse(a)) / 86400000);
 }
 
 function defaultState() {
@@ -84,8 +95,7 @@ const AppState = (() => {
     if (state.lastStudyDate === today) return;
 
     if (state.lastStudyDate) {
-      const prev = new Date(state.lastStudyDate);
-      const diffDays = Math.round((new Date(today) - prev) / 86400000);
+      const diffDays = daysBetween(state.lastStudyDate, today);
       const missed = diffDays - 1;
       if (diffDays === 1) {
         state.streak += 1;
@@ -110,6 +120,20 @@ const AppState = (() => {
       if (state.studyDates.length > STUDY_DATES_LIMIT) state.studyDates.shift();
     }
     save();
+  }
+
+  // 表示用の連続記録。最後の学習から日が空いて、フリーズでも守れないなら 0 とみなす
+  // (state.streak 自体は次に学習したときに markStudiedToday で更新される)
+  function getCurrentStreak() {
+    if (!state.lastStudyDate || !state.streak) return 0;
+    const diff = daysBetween(state.lastStudyDate, todayStr());
+    if (diff <= 1) return state.streak;
+    return (state.streakFreezes || 0) >= diff - 1 ? state.streak : 0;
+  }
+
+  // 最後に学習した日から何日たったか(一度も学習していなければ null)
+  function daysSinceLastStudy() {
+    return state.lastStudyDate ? daysBetween(state.lastStudyDate, todayStr()) : null;
   }
 
   // 以前のバージョンでは累計日数を持っていなかったので、studyDates の件数も考慮する
@@ -276,7 +300,7 @@ const AppState = (() => {
     const days = FLASHCARD_BOX_INTERVAL_DAYS[entry.box] ?? 14;
     const due = new Date();
     due.setDate(due.getDate() + days);
-    entry.dueDate = due.toISOString().slice(0, 10);
+    entry.dueDate = dateStr(due);
     state.flashcards[key] = entry;
     save();
   }
@@ -316,6 +340,8 @@ const AppState = (() => {
     isArticleRead,
     markArticleRead,
     getTotalStudyDays,
+    getCurrentStreak,
+    daysSinceLastStudy,
     getDailyGoal,
     setDailyGoal,
     getNickname,
