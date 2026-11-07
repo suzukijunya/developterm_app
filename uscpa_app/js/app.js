@@ -307,7 +307,7 @@ const App = (() => {
           <div class="hero-num">${daysUntil(upcoming[0].date)}<small>日</small></div>
           <div class="hero-sub">${upcoming[0].date}${upcoming.length > 1 ? ` ・ 次は ${upcoming[1].id}(${daysUntil(upcoming[1].date)}日後)` : ""}</div>
         </div>`
-      : `<a class="hero hero-empty" href="#/settings"><div class="hero-label">受験日が未設定です</div><div class="hero-sub">設定すると残り日数と1日の目安時間を表示します ›</div></a>`;
+      : `<a class="hero hero-empty" href="#/planner"><div class="hero-label">受験日を決めよう</div><div class="hero-sub">単位・手続き・勉強時間から、いつ受けられるかを逆算します ›</div></a>`;
 
     let pace = "";
     if (upcoming.length) {
@@ -365,6 +365,7 @@ const App = (() => {
           })
           .join("")}
       </div>
+      <a class="link-card" href="#/planner"><b>受験日プランナー</b><span>単位・手続き・勉強時間から受験日を逆算。希望日に間に合う締切もわかる ›</span></a>
       <a class="link-card" href="#/eligibility"><b>受験資格チェック</b><span>学歴と単位から、出願できる州と次にやることを判定 ›</span></a>
       <a class="link-card" href="#/compare"><b>講座の料金比較</b><span>アビタス・CPA会計学院の受講料を、給付金・キャッシュバック込みで比較 ›</span></a>
       <a class="link-card" href="#/guide"><b>USCPA試験ガイド</b><span>試験制度・科目の選び方・おすすめの学習の流れ ›</span></a>`;
@@ -1536,6 +1537,7 @@ const App = (() => {
         ${mySections()
           .map((id) => `<label class="field"><span>${id} 受験日</span><input type="date" data-exam="${id}" value="${plan.examDates[id] || ""}"></label>`)
           .join("")}
+        <a class="link-card" href="#/planner"><b>受験日プランナー</b><span>単位・手続き・勉強時間から受験日を逆算して設定 ›</span></a>
         <label class="field"><span>目標の総学習時間(時間)</span><input type="number" id="s-target" min="100" step="50" value="${plan.targetHours}"></label>
         <label class="field"><span>1日の目標(分)</span><input type="number" id="s-daily" min="10" step="10" value="${plan.dailyMin}"></label>
         <label class="field"><span>新しい単語カード(1日の枚数)</span><input type="number" id="s-newcards" min="0" max="200" step="5" value="${st.prefs.newPerDay ?? 20}"></label>
@@ -1851,6 +1853,234 @@ const App = (() => {
     draw();
   }
 
+  // ---------- 受験日プランナー ----------
+  // 単位・手続き・勉強時間から受験日を逆算する。期間や時間はすべて予備校・解説サイトの一般的な目安で、画面で変えられる。
+  const PLAN_HOURS = { FAR: 400, AUD: 250, REG: 250, BAR: 200, ISC: 150, TCP: 150 };
+  const PLAN_ORDERS = [
+    ["FAR", "AUD", "REG", "D"],
+    ["FAR", "REG", "AUD", "D"],
+    ["FAR", "D", "AUD", "REG"],
+    ["REG", "FAR", "AUD", "D"],
+  ];
+  const PAPER_STAGES = [
+    ["none", "まだ何もしていない"],
+    ["credits", "単位はそろった(学歴評価はまだ)"],
+    ["eval", "学歴評価が済んだ(出願はまだ)"],
+    ["applied", "出願した(受験票NTS待ち)"],
+    ["nts", "NTSが届いた"],
+  ];
+  // 選択科目(BAR・ISC・TCP)を受けられる月(要確認。設定で外せる)
+  const DISC_MONTHS = [1, 4, 7, 10];
+
+  function plannerInput() {
+    const plan = Store.get().plan;
+    return Object.assign(
+      { stage: "none", state: "MT", order: 0, dpw: 6, credWeeks: 2, evalDays: 60, appDays: 30, bookDays: 14, discWin: true, hours: {}, target: "" },
+      Store.get().prefs.planner || {},
+      { daily: plan.dailyMin }
+    );
+  }
+
+  const fmtDate = (d) => {
+    const [y, m, dd] = d.split("-");
+    return `${y}年${+m}月${+dd}日`;
+  };
+  const daysBetween = (a, b) => Math.round((new Date(b + "T00:00:00") - new Date(a + "T00:00:00")) / 86400000);
+
+  // 選択科目は受験できる月の初日まで後ろにずらす
+  function snapDisc(date) {
+    let [y, m] = date.split("-").map(Number);
+    if (DISC_MONTHS.includes(m)) return date;
+    while (!DISC_MONTHS.includes(m)) {
+      m += 1;
+      if (m > 12) {
+        m = 1;
+        y += 1;
+      }
+    }
+    return `${y}-${String(m).padStart(2, "0")}-01`;
+  }
+
+  function computePlan(p) {
+    const today = Store.today();
+    const disc = Store.get().plan.discipline;
+    const order = PLAN_ORDERS[p.order].map((x) => (x === "D" ? disc : x));
+    const el = eligInput();
+    const st = ELIGIBILITY.states.find((s) => s.id === p.state) || ELIGIBILITY.states[0];
+    const needAcct = Math.max(0, st.exam.acct - el.acct);
+    const needBiz = Math.max(0, st.exam.biz - el.biz);
+    const needTotal = Math.max(0, st.exam.total - el.total - needAcct - needBiz);
+    const stageIdx = PAPER_STAGES.findIndex((s) => s[0] === p.stage);
+    const missing = stageIdx >= 1 ? 0 : needAcct + needBiz + needTotal;
+    const courses = Math.ceil(missing / 3);
+    // 手続きの段階(残っているものだけ数える)
+    const paper = [];
+    // 日本の大学の学歴評価は、単位取得と並行して進められる(遅いほうが終わったら出願)
+    if (courses && stageIdx < 2) {
+      const cd = courses * p.credWeeks * 7;
+      paper.push({ key: "credits", label: `不足単位を取る(約${missing}単位・${courses}科目)+並行して学歴評価を申し込む`, days: Math.max(cd, p.evalDays) });
+    } else if (stageIdx < 2) paper.push({ key: "eval", label: "学歴評価(NIES・FACS など)", days: p.evalDays });
+    if (stageIdx < 3) paper.push({ key: "app", label: `${st.name}に出願`, days: 0 });
+    if (stageIdx < 4) paper.push({ key: "nts", label: "受験票(NTS)が届く", days: p.appDays });
+    paper.push({ key: "book", label: "テストセンターを予約(空き待ち)", days: p.bookDays });
+
+    const perDayH = (p.daily / 60) * (p.dpw / 7);
+    const remainH = (id) => Math.max(0, (p.hours[id] ?? PLAN_HOURS[id]) - Store.studySeconds({ section: id }) / 3600);
+    const isDisc = (id) => DISCIPLINES.includes(id);
+
+    // 1科目めの受験日:勉強が終わる日と手続きが終わる日の遅いほう(希望日があればそれ)
+    const paperDays = paper.reduce((a, x) => a + x.days, 0);
+    const paperReady = Store.addDays(today, paperDays);
+    const first = order[0];
+    const studyEnd = Store.addDays(today, Math.ceil(remainH(first) / Math.max(0.01, perDayH)));
+    let d1 = p.target || (studyEnd > paperReady ? studyEnd : paperReady);
+    if (isDisc(first) && p.discWin) d1 = snapDisc(d1);
+
+    // 手続きの締切(1科目めの受験日から逆算)
+    let cursor = d1;
+    const deadlines = [];
+    for (let i = paper.length - 1; i >= 0; i--) {
+      cursor = Store.addDays(cursor, -paper[i].days);
+      deadlines.unshift(Object.assign({ start: cursor }, paper[i]));
+    }
+
+    const exams = [];
+    let prev = null;
+    order.forEach((id, i) => {
+      const h = remainH(id);
+      const days = Math.ceil(h / Math.max(0.01, perDayH));
+      let date;
+      if (i === 0) date = d1;
+      else {
+        date = Store.addDays(prev, Math.max(14, days));
+        if (isDisc(id) && p.discWin) date = snapDisc(date);
+      }
+      exams.push({ id, date, hours: h, from: i === 0 ? today : prev });
+      prev = date;
+    });
+    // 1科目めを希望日で受けるのに必要な1日の勉強時間
+    const avail = daysBetween(today, d1);
+    const needMin = avail > 0 ? Math.ceil(((remainH(first) * 60) / avail) * (7 / p.dpw)) : null;
+    const span = daysBetween(exams[0].date, exams[exams.length - 1].date);
+    return { studyEnd, paperReady, order, st, el, missing, needAcct, needBiz, needTotal, deadlines, exams, needMin, perDayH, span, today, stageIdx };
+  }
+
+  function viewPlanner() {
+    current.section = null;
+    const p = plannerInput();
+    const disc = Store.get().plan.discipline;
+    const num = (id, label, val, attrs, hint) =>
+      `<label class="field"><span>${label}</span><input type="number" inputmode="numeric" id="${id}" value="${val}" ${attrs}>${hint ? `<small class="muted">${hint}</small>` : ""}</label>`;
+    const body = `
+      <div class="panel">
+        <p class="muted small" style="margin-top:0">USCPAの受験日は自分で決めて予約します(FAR・AUD・REGは年中受験可)。単位・手続き・勉強時間から、いつ受けられるかを逆算します。<b>希望日を入れると</b>、その日に間に合わせるための締切と1日の勉強時間を出します。</p>
+        <label class="field"><span>1科目めの希望日(空欄なら最短の日を提案)</span><input type="date" id="pl-target" value="${p.target}"></label>
+        ${num("pl-daily", "1日の勉強時間(分)", p.daily, 'min="10" step="10"')}
+        ${num("pl-dpw", "週に勉強する日数", p.dpw, 'min="1" max="7" step="1"')}
+        <div class="field"><span>受験の順番</span><div class="chips" id="pl-order">${PLAN_ORDERS.map((o, i) => `<button data-v="${i}" class="${+p.order === i ? "on" : ""}">${o.map((x) => (x === "D" ? disc : x)).join("→")}</button>`).join("")}</div></div>
+        <label class="field"><span>手続きの進み具合</span><select id="pl-stage">${PAPER_STAGES.map(([v, l]) => `<option value="${v}" ${p.stage === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+        <label class="field"><span>出願する州</span><select id="pl-state">${ELIGIBILITY.states.map((s) => `<option value="${s.id}" ${p.state === s.id ? "selected" : ""}>${s.name}</option>`).join("")}</select></label>
+        <details class="pl-more"><summary>期間・時間の目安を変える</summary>
+          ${num("pl-cred", "単位:1科目(3単位)にかかる週数", p.credWeeks, 'min="1" step="1"', "予備校の単位プログラムや通信制大学のペースに合わせて")}
+          ${num("pl-eval", "学歴評価にかかる日数", p.evalDays, 'min="0" step="5"', "目安1.5〜3か月")}
+          ${num("pl-app", "出願から受験票(NTS)までの日数", p.appDays, 'min="0" step="5"', "州や時期で変わる。目安2〜6週間")}
+          ${num("pl-book", "予約から受験までの日数", p.bookDays, 'min="0" step="1"', "東京・大阪の会場は混む時期がある")}
+          ${["FAR", "AUD", "REG", disc].map((id) => num("pl-h-" + id, `${id} の必要勉強時間(時間)`, p.hours[id] ?? PLAN_HOURS[id], 'min="0" step="10"')).join("")}
+          <label class="check"><input type="checkbox" id="pl-win" ${p.discWin ? "checked" : ""}> 選択科目(BAR・ISC・TCP)は1・4・7・10月だけ受けられるものとして計算(最新の受験期間は要確認)</label>
+        </details>
+        <p class="muted small">単位は<a href="#/eligibility">受験資格チェック</a>の入力(会計 ${eligInput().acct}・ビジネス ${eligInput().biz}・総 ${eligInput().total} 単位)を使います。</p>
+      </div>
+      <div id="pl-result"></div>`;
+    page({ title: "受験日プランナー", back: "#/home", body, tab: "home" });
+
+    const val = (id) => $app.querySelector(id).value;
+    const read = () => {
+      const hours = {};
+      ["FAR", "AUD", "REG", disc].forEach((id) => (hours[id] = Math.max(0, +val("#pl-h-" + id) || 0)));
+      const np = {
+        target: val("#pl-target"),
+        dpw: Math.min(7, Math.max(1, +val("#pl-dpw") || 6)),
+        order: +$app.querySelector("#pl-order .on").dataset.v,
+        stage: val("#pl-stage"),
+        state: val("#pl-state"),
+        credWeeks: Math.max(1, +val("#pl-cred") || 2),
+        evalDays: Math.max(0, +val("#pl-eval") || 0),
+        appDays: Math.max(0, +val("#pl-app") || 0),
+        bookDays: Math.max(0, +val("#pl-book") || 0),
+        discWin: $app.querySelector("#pl-win").checked,
+        hours,
+      };
+      Store.setPref("planner", np);
+      Store.setPlan({ dailyMin: Math.max(10, +val("#pl-daily") || 120) });
+      return plannerInput();
+    };
+    const draw = () => {
+      const pp = read();
+      const r = computePlan(pp);
+      const late = r.deadlines.filter((d) => d.start < r.today);
+      const first = r.exams[0];
+      const warn = [];
+      if (pp.target && late.length) warn.push(`希望日には手続きが間に合わない見込みです。「${late[0].label}」は${fmtDate(late[0].start)}に始める必要がありました。希望日を遅らせるか、各期間を見直してください。`);
+      if (pp.target && r.needMin && r.needMin > pp.daily) warn.push(`希望日に${first.id}を受けるには、1日 約${r.needMin}分(週${pp.dpw}日)の勉強が必要です。いまの設定は1日${pp.daily}分です。`);
+      if (pp.target && r.needMin === null) warn.push("希望日が今日より前です。");
+      if (r.span > 913) warn.push(`最初の受験から最後の受験まで約${Math.round(r.span / 30)}か月です。多くの州で「最初の合格から30か月以内に全科目合格」が必要なため、順番か勉強時間を見直しましょう。`);
+      if (r.el.edu !== "bachelor" && r.el.edu !== "master" && r.st.exam.degree === "bachelor") warn.push(`${r.st.name}は受験に学士号が必要です。受験資格チェックで出願先を確認してください。`);
+      const credLine = r.stageIdx >= 1 ? "単位はそろっている前提で計算しています。" : r.missing ? `${r.st.name}の受験要件まで、会計 ${r.needAcct}・ビジネス ${r.needBiz}${r.needTotal ? `・その他 ${r.needTotal}` : ""} 単位が不足しています(受験資格チェックの入力から計算)。` : `受験資格チェックの入力では、${r.st.name}の単位要件を満たしています。`;
+      $app.querySelector("#pl-result").innerHTML = `
+        ${warn.map((w) => `<div class="warn-box">${w}</div>`).join("")}
+        <h2 class="h2">受験日の提案<small>${pp.target ? "希望日から逆算" : "最短で受けられる日"}</small></h2>
+        <div class="pl-exams">
+          ${r.exams
+            .map((e) => {
+              const s = CPA.getSection(e.id);
+              return `<div class="pl-exam" style="--c:${s.color}">${tag(e.id)}<div class="pl-exam-body"><b>${fmtDate(e.date)}</b><small>あと${daysBetween(r.today, e.date)}日 ・ 残り約${Math.round(e.hours)}時間を${Math.max(1, Math.round(daysBetween(e.from, e.date) / 7))}週間で</small></div></div>`;
+            })
+            .join("")}
+        </div>
+        ${
+          pp.target
+            ? r.needMin !== null
+              ? `<p class="muted small">${first.id}を${fmtDate(first.date)}に受けるのに必要な勉強時間:1日 約${r.needMin}分(週${pp.dpw}日)</p>`
+              : ""
+            : r.paperReady > r.studyEnd
+              ? `<p class="muted small">勉強だけなら${fmtDate(r.studyEnd)}ごろに${first.id}を受けられますが、単位と手続きが終わるのを待つ日程になっています。単位を早く取れれば前に倒せます。</p>`
+              : `<p class="muted small">手続きは先に終わる見込みなので、勉強のペースで日程が決まっています。</p>`
+        }
+        <div class="btn-row"><button class="btn primary" id="pl-apply">この日程を受験日に設定</button>${pp.target && r.needMin && r.needMin > pp.daily ? `<button class="btn" id="pl-daily-set">1日の目標を${r.needMin}分にする</button>` : ""}</div>
+        <h2 class="h2">手続きのスケジュール<small>${first.id}受験日からの逆算</small></h2>
+        <p class="muted small">${credLine}</p>
+        <ol class="pl-steps">
+          ${r.deadlines
+            .map((d) => `<li class="${d.start < r.today ? "late" : ""}"><b>${d.start < r.today ? "今すぐ" : fmtDate(d.start) + "までに開始"}</b><span>${esc(d.label)}${d.days ? `(約${d.days >= 28 ? Math.round(d.days / 7) + "週間" : d.days + "日"})` : ""}</span></li>`)
+            .join("")}
+          <li><b>${fmtDate(first.date)}</b><span>${first.id} 受験</span></li>
+        </ol>
+        <p class="muted small">期間や必要時間は予備校・解説サイトの一般的な目安です(必要時間は1科目の講義・演習・総復習を含む目安。すでに学習した時間は差し引いています)。合格の有効期限・受験期間・手続きの期間は州や時期で変わるため、出願前に各州の Board of Accountancy・NASBA で確認してください。</p>`;
+      $app.querySelector("#pl-apply").onclick = () => {
+        const dates = Object.assign({}, Store.get().plan.examDates);
+        r.exams.forEach((e) => (dates[e.id] = e.date));
+        Store.setPlan({ examDates: dates });
+        toast("受験日を設定しました");
+        go("#/home");
+      };
+      const ds = $app.querySelector("#pl-daily-set");
+      if (ds)
+        ds.onclick = () => {
+          $app.querySelector("#pl-daily").value = r.needMin;
+          draw();
+        };
+    };
+    $app.querySelectorAll("#pl-order button").forEach((b) => {
+      b.onclick = () => {
+        $app.querySelectorAll("#pl-order button").forEach((x) => x.classList.remove("on"));
+        b.classList.add("on");
+        draw();
+      };
+    });
+    $app.querySelectorAll(".panel input, .panel select").forEach((el) => (el.onchange = draw));
+    draw();
+  }
+
   // ---------- 講座の料金比較 ----------
   const yen = (n) => Math.round(n).toLocaleString("ja-JP") + "円";
 
@@ -2061,6 +2291,8 @@ const App = (() => {
         return viewEligibility();
       case "compare":
         return viewCompare();
+      case "planner":
+        return viewPlanner();
       default:
         return viewHome();
     }

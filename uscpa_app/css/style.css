@@ -2409,3 +2409,70 @@ details.panel summary {
 .tbs-group .q-list {
   padding: 0 10px 10px;
 }
+
+/* 受験日プランナー */
+.pl-more {
+  margin: 4px 0 10px;
+}
+.pl-more summary {
+  cursor: pointer;
+  color: var(--brand-2);
+  font-size: 14px;
+  padding: 6px 0;
+}
+.pl-exams {
+  display: grid;
+  gap: 8px;
+}
+.pl-exam {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--c);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+.pl-exam-body b {
+  display: block;
+  font-size: 16px;
+}
+.pl-exam-body small {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.pl-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 14px;
+  border-left: 2px solid var(--line);
+}
+.pl-steps li {
+  position: relative;
+  padding: 0 0 14px 12px;
+}
+.pl-steps li::before {
+  content: "";
+  position: absolute;
+  left: -21px;
+  top: 5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--brand-2);
+}
+.pl-steps li.late::before {
+  background: var(--ng);
+}
+.pl-steps li b {
+  display: block;
+  font-size: 14px;
+}
+.pl-steps li.late b {
+  color: var(--ng);
+}
+.pl-steps li span {
+  font-size: 13px;
+  color: var(--muted);
+}
