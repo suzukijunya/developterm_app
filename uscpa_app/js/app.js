@@ -2292,11 +2292,15 @@ const App = (() => {
 
   function plannerInput() {
     const plan = Store.get().plan;
-    return Object.assign(
-      { stage: "none", state: "MT", order: 0, dpw: 6, credWeeks: 2, evalDays: 60, appDays: 30, bookDays: 14, discWin: true, hours: {}, target: "" },
+    const p = Object.assign(
+      { mode: "auto", stage: "none", state: "MT", order: 0, dpw: 6, credWeeks: 2, evalDays: 60, appDays: 30, bookDays: 14, discWin: true, hours: {}, target: "" },
       Store.get().prefs.planner || {},
       { daily: plan.dailyMin }
     );
+    // 希望日は「希望日から逆算」を選び、明日以降の日付を入れたときだけ使う
+    // (iPhone は空の日付欄に触れると今日の日付が入るため、空欄=最短 の判定には頼らない)
+    p.tgt = p.mode === "target" && p.target && p.target > Store.today() ? p.target : "";
+    return p;
   }
 
   const fmtDate = (d) => {
@@ -2351,7 +2355,7 @@ const App = (() => {
     const paperReady = Store.addDays(today, paperDays);
     const first = order[0];
     const studyEnd = Store.addDays(today, Math.ceil(remainH(first) / Math.max(0.01, perDayH)));
-    let d1 = p.target || (studyEnd > paperReady ? studyEnd : paperReady);
+    let d1 = p.tgt || (studyEnd > paperReady ? studyEnd : paperReady);
     if (isDisc(first) && p.discWin) d1 = snapDisc(d1);
 
     // 手続きの締切(1科目めの受験日から逆算)
@@ -2392,7 +2396,8 @@ const App = (() => {
     const body = `
       <div class="panel">
         <p class="muted small" style="margin-top:0">USCPAの受験日は自分で決めて予約します(FAR・AUD・REGは年中受験可)。単位・手続き・勉強時間から、いつ受けられるかを逆算します。<b>希望日を入れると</b>、その日に間に合わせるための締切と1日の勉強時間を出します。</p>
-        <label class="field"><span>1科目めの希望日(空欄なら最短の日を提案)</span><input type="date" id="pl-target" value="${p.target}"></label>
+        <div class="field"><span>決め方</span><div class="chips" id="pl-mode"><button data-v="auto" class="${p.mode !== "target" ? "on" : ""}">最短で受けられる日を提案</button><button data-v="target" class="${p.mode === "target" ? "on" : ""}">希望日から逆算</button></div></div>
+        <label class="field" id="pl-target-f" ${p.mode === "target" ? "" : "hidden"}><span>1科目めの希望日</span><input type="date" id="pl-target" value="${p.target}" min="${Store.addDays(Store.today(), 1)}"></label>
         ${num("pl-daily", "1日の勉強時間(分)", p.daily, 'min="10" step="10"')}
         ${num("pl-dpw", "週に勉強する日数", p.dpw, 'min="1" max="7" step="1"')}
         <div class="field"><span>受験の順番</span><div class="chips" id="pl-order">${PLAN_ORDERS.map((o, i) => `<button data-v="${i}" class="${+p.order === i ? "on" : ""}">${o.map((x) => (x === "D" ? disc : x)).join("→")}</button>`).join("")}</div></div>
@@ -2417,6 +2422,7 @@ const App = (() => {
       ["FAR", "AUD", "REG", disc].forEach((id) => (hours[id] = Math.max(0, +val("#pl-h-" + id) || 0)));
       const np = {
         target: val("#pl-target"),
+        mode: $app.querySelector("#pl-mode .on").dataset.v,
         dpw: Math.min(7, Math.max(1, +val("#pl-dpw") || 6)),
         order: +$app.querySelector("#pl-order .on").dataset.v,
         stage: val("#pl-stage"),
@@ -2438,15 +2444,15 @@ const App = (() => {
       const late = r.deadlines.filter((d) => d.start < r.today);
       const first = r.exams[0];
       const warn = [];
-      if (pp.target && late.length) warn.push(`希望日には手続きが間に合わない見込みです。「${late[0].label}」は${fmtDate(late[0].start)}に始める必要がありました。希望日を遅らせるか、各期間を見直してください。`);
-      if (pp.target && r.needMin && r.needMin > pp.daily) warn.push(`希望日に${first.id}を受けるには、1日 約${r.needMin}分(週${pp.dpw}日)の勉強が必要です。いまの設定は1日${pp.daily}分です。`);
-      if (pp.target && r.needMin === null) warn.push("希望日が今日より前です。");
+      if (pp.tgt && late.length) warn.push(`希望日には手続きが間に合わない見込みです。「${late[0].label}」は${fmtDate(late[0].start)}に始める必要がありました。希望日を遅らせるか、各期間を見直してください。`);
+      if (pp.tgt && r.needMin && r.needMin > pp.daily) warn.push(`希望日に${first.id}を受けるには、1日 約${r.needMin}分(週${pp.dpw}日)の勉強が必要です。いまの設定は1日${pp.daily}分です。`);
+      if (pp.mode === "target" && !pp.tgt) warn.push("希望日は明日以降の日付を選んでください。それまでは最短で受けられる日を表示しています。");
       if (r.span > 913) warn.push(`最初の受験から最後の受験まで約${Math.round(r.span / 30)}か月です。多くの州で「最初の合格から30か月以内に全科目合格」が必要なため、順番か勉強時間を見直しましょう。`);
       if (r.el.edu !== "bachelor" && r.el.edu !== "master" && r.st.exam.degree === "bachelor") warn.push(`${r.st.name}は受験に学士号が必要です。受験資格チェックで出願先を確認してください。`);
       const credLine = r.stageIdx >= 1 ? "単位はそろっている前提で計算しています。" : r.missing ? `${r.st.name}の受験要件まで、会計 ${r.needAcct}・ビジネス ${r.needBiz}${r.needTotal ? `・その他 ${r.needTotal}` : ""} 単位が不足しています(受験資格チェックの入力から計算)。` : `受験資格チェックの入力では、${r.st.name}の単位要件を満たしています。`;
       $app.querySelector("#pl-result").innerHTML = `
         ${warn.map((w) => `<div class="warn-box">${w}</div>`).join("")}
-        <h2 class="h2">受験日の提案<small>${pp.target ? "希望日から逆算" : "最短で受けられる日"}</small></h2>
+        <h2 class="h2">受験日の提案<small>${pp.tgt ? "希望日から逆算" : "最短で受けられる日"}</small></h2>
         <div class="pl-exams">
           ${r.exams
             .map((e) => {
@@ -2456,7 +2462,7 @@ const App = (() => {
             .join("")}
         </div>
         ${
-          pp.target
+          pp.tgt
             ? r.needMin !== null
               ? `<p class="muted small">${first.id}を${fmtDate(first.date)}に受けるのに必要な勉強時間:1日 約${r.needMin}分(週${pp.dpw}日)</p>`
               : ""
@@ -2464,7 +2470,7 @@ const App = (() => {
               ? `<p class="muted small">勉強だけなら${fmtDate(r.studyEnd)}ごろに${first.id}を受けられますが、単位と手続きが終わるのを待つ日程になっています。単位を早く取れれば前に倒せます。</p>`
               : `<p class="muted small">手続きは先に終わる見込みなので、勉強のペースで日程が決まっています。</p>`
         }
-        <div class="btn-row"><button class="btn primary" id="pl-apply">この日程を受験日に設定</button>${pp.target && r.needMin && r.needMin > pp.daily ? `<button class="btn" id="pl-daily-set">1日の目標を${r.needMin}分にする</button>` : ""}</div>
+        <div class="btn-row"><button class="btn primary" id="pl-apply">この日程を受験日に設定</button>${pp.tgt && r.needMin && r.needMin > pp.daily ? `<button class="btn" id="pl-daily-set">1日の目標を${r.needMin}分にする</button>` : ""}</div>
         <h2 class="h2">手続きのスケジュール<small>${first.id}受験日からの逆算</small></h2>
         <p class="muted small">${credLine}</p>
         <ol class="pl-steps">
@@ -2488,6 +2494,14 @@ const App = (() => {
           draw();
         };
     };
+    $app.querySelectorAll("#pl-mode button").forEach((b) => {
+      b.onclick = () => {
+        $app.querySelectorAll("#pl-mode button").forEach((x) => x.classList.remove("on"));
+        b.classList.add("on");
+        $app.querySelector("#pl-target-f").hidden = b.dataset.v !== "target";
+        draw();
+      };
+    });
     $app.querySelectorAll("#pl-order button").forEach((b) => {
       b.onclick = () => {
         $app.querySelectorAll("#pl-order button").forEach((x) => x.classList.remove("on"));
