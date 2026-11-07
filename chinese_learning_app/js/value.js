@@ -116,6 +116,7 @@ const ChineseValue = (() => {
 
   // ---------- 画面 ----------
   function screen(onBack) {
+    AppState.setPref("valueSeen", true);
     const s = UI.screen("screen--sub screen--value");
     s.appendChild(UI.subHeader("中国語の価値", onBack || (() => App.go("home"))));
     const body = el("div", "sub-body");

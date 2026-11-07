@@ -359,7 +359,7 @@
     }
 
     const stats = el("div", "topbar-stats");
-    const streak = el("div", "stat-pill stat-pill--streak", `🔥 ${state.streak}`);
+    const streak = el("div", "stat-pill stat-pill--streak", `🔥 ${AppState.getCurrentStreak()}`);
     const xp = el("div", "stat-pill stat-pill--xp", `${Rewards.xpMultiplier() > 1 ? "⚡×2 " : "⚡ "}${state.xp}`);
     const gems = el("button", "stat-pill stat-pill--gems", `💎 ${state.gems || 0}`);
     gems.type = "button";
@@ -395,7 +395,13 @@
     if (state.dailyXp >= goal) {
       message = "✅ 今日の目標達成!お見事です";
     } else if (state.dailyXp === 0) {
-      message = state.streak > 0 ? `🔥 継続${state.streak}日目!今日も1レッスン進めよう` : "今日から中国語学習をはじめよう!";
+      const cur = AppState.getCurrentStreak();
+      message =
+        cur > 0
+          ? `🔥 ${cur}日連続中!今日も1レッスンで記録を伸ばそう`
+          : state.lastStudyDate
+            ? "今日からまた1日目。3分だけでも進めよう"
+            : "今日から中国語学習をはじめよう!";
     } else {
       message = `あと${goal - state.dailyXp}XPで今日の目標達成!`;
     }
@@ -414,7 +420,7 @@
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
+      const key = dateStr(d);
       const studied = studySet.has(key);
       const isToday = i === 0;
 
@@ -462,8 +468,9 @@
     clear(appRoot);
     const screen = el("div", "screen screen--home");
     renderTopBar(screen);
+    screen.appendChild(Comeback.startCard(renderHome));
     renderLevelBanner(screen);
-    screen.appendChild(ChineseValue.teaser(() => ChineseValue.screen(renderHome)));
+    if (!AppState.getPref("valueSeen", false)) screen.appendChild(ChineseValue.teaser(() => ChineseValue.screen(renderHome)));
     renderDailyGoal(screen);
     renderWeakReviewCard(screen);
     renderSpecialCourses(screen);
@@ -552,6 +559,7 @@
     screen.appendChild(renderBottomNav("study"));
 
     appRoot.appendChild(screen);
+    Comeback.maybeWelcome(renderHome);
     if (currentNode) {
       // 描画が終わってから、次のレッスンが画面の真ん中に来るようにスクロールする
       requestAnimationFrame(() => {
@@ -619,7 +627,7 @@
   }
 
   function todayStrForFlashcards() {
-    return new Date().toISOString().slice(0, 10);
+    return todayStr();
   }
 
   function renderFlashcardHome() {
@@ -937,6 +945,42 @@
     const entry = FLAT_LESSONS.find((x) => x.lesson.id === lessonId);
     if (!entry) return;
     runLesson(entry.lesson);
+  }
+
+  // 次にやるレッスン(ホームの「今日の3分」カードで使う)
+  function nextLesson() {
+    const id = getFrontierLessonId();
+    const entry = id && FLAT_LESSONS.find((x) => x.lesson.id === id);
+    return entry ? { lesson: entry.lesson, unit: entry.unit } : null;
+  }
+
+  // 久しぶりに開いたとき用のウォームアップ: これまでに終えたレッスンから
+  // 聞き取り・意味を選ぶ問題を少しだけ集めた短い復習レッスン
+  function buildWarmup(count = 8) {
+    const pool = [];
+    FLAT_LESSONS.forEach(({ lesson }) => {
+      if (!AppState.isLessonCompleted(lesson.id)) return;
+      lesson.exercises.forEach((ex, i) => {
+        if (ex.type === "listening_choice" || ex.type === "translate_choice") pool.push({ key: lesson.id + "#" + i, exercise: ex });
+      });
+    });
+    if (pool.length < 4) return null;
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    const picked = pool.slice(0, count);
+    return {
+      lesson: { id: "warmup", title: "ウォームアップ", exercises: picked.map((x) => x.exercise) },
+      keys: picked.map((x) => x.key),
+    };
+  }
+
+  function startWarmup() {
+    const w = buildWarmup();
+    if (!w) return false;
+    runLesson(w.lesson, { keys: w.keys, isReview: true });
+    return true;
   }
 
   // ---------------- レッスン共通UI(ChineseSkill風) ----------------
@@ -1545,6 +1589,10 @@
     openArticle: renderArticleReader,
     startLesson,
     runLesson,
+    nextLesson,
+    canWarmup: () => !!buildWarmup(),
+    startWarmup,
+    startWeakReview,
     getBadges,
     getDisplay: () => Object.assign({}, display),
     toggleDisplay,
@@ -1552,4 +1600,9 @@
 
   // 起動
   renderHome();
+
+  // オフラインでも開けるように(ネットワーク優先のキャッシュ)
+  if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
+    window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+  }
 })();

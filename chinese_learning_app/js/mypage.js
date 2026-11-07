@@ -34,7 +34,7 @@ const MyPage = (() => {
     const [timeVal, timeUnit] = formatStudyTime(state.totalStudySeconds);
     [
       ["学習時間", timeVal, timeUnit],
-      ["連続記録", String(state.streak), "日"],
+      ["連続記録", String(AppState.getCurrentStreak()), "日"],
       ["合計学習日数", String(AppState.getTotalStudyDays()), "日"],
     ].forEach(([label, value, unit]) => {
       const box = el("div", "mp-stat");
@@ -71,6 +71,7 @@ const MyPage = (() => {
       { icon: "💰", label: "中国語の価値(年収・ビジネス)", go: () => ChineseValue.screen(home) },
       { icon: "⭐", label: "ブックマーク", note: `${AppState.getBookmarks().length}件`, go: bookmarks },
       { icon: "🚀", label: "学習目標", note: `1日${goal}XP`, go: goalScreen },
+      { icon: "⏰", label: "毎日のリマインダー", note: AppState.getPref("reminderTime", "") || "未設定", go: () => Comeback.reminder(home) },
       { icon: "📊", label: "中国語レベルチェックテスト", note: lastTest ? `正解率${lastTest.accuracy}%` : "未受験", go: levelTestIntro },
       { icon: "🐼", label: "AI先生に質問", go: () => Practice.askAI(home) },
       "sep",
