@@ -2981,3 +2981,8 @@ button.q-item {
     font-size: 16px;
   }
 }
+/* 読み上げ中のボタンは停止アイコン(■) */
+.spk.playing svg rect {
+  fill: currentColor;
+  stroke: none;
+}

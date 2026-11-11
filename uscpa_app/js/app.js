@@ -279,6 +279,7 @@ const App = (() => {
               .join("")}</nav>`
       }`;
     $app.classList.toggle("no-tabs", tab === null);
+    if (typeof Speech !== "undefined" && Speech.refresh) Speech.refresh();
     // 画面が切り替わったら、前の画面で出した翻訳ポップアップを閉じる
     if (typeof QuickTranslate !== "undefined") QuickTranslate.hide();
     window.scrollTo(0, 0);
