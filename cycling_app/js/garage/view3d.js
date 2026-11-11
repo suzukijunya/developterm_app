@@ -1356,6 +1356,7 @@ const View3D = (() => {
     riderGroup.add(beard);
     riderGroup.traverse((o) => o.isMesh && (o.castShadow = true));
     riderGroup.visible = anim.rider;
+    loadRig();
     updateRider();
   }
 
@@ -1436,6 +1437,166 @@ const View3D = (() => {
     beard.position.copy(V(head.a)).add(new THREE.Vector3(head.r * 0.08, -head.r * 0.05, 0));
     beard.scale.setScalar(head.r * 1.02);
     beard.rotation.set(0, 0, tilt - 0.35);
+    // 本物の人体モデルが読み込めていれば、そちらを同じ姿勢にして、プログラムで組んだ体は隠す(ヘルメットとサングラスは使う)
+    const rigOn = poseRig(pose);
+    if (rigOn) for (const o of riderGroup.children) if (o !== helmet && o !== glasses) o.visible = false;
+    if (rigOn) {
+      const hp = rig.headPos;
+      const ang = rig.headAng; // 頭の上向きの軸の角度(水平から)
+      const up = new THREE.Vector3(Math.cos(ang), Math.sin(ang), 0), fw = new THREE.Vector3(Math.sin(ang), -Math.cos(ang), 0);
+      const hr = 0.098 * rig.scale * 100; // 頭の半径の目安
+      const c = hp.clone().addScaledVector(up, hr * 0.95).addScaledVector(fw, hr * 0.12);
+      helmet.position.copy(c).addScaledVector(up, hr * 0.16);
+      helmet.scale.set(hr * 1.3, hr * 1.3, hr * 1.12);
+      helmet.rotation.set(0, 0, ang - Math.PI / 2 - 0.12);
+      glasses.position.copy(c).addScaledVector(fw, hr * 0.42).addScaledVector(up, -hr * 0.02);
+      glasses.scale.setScalar(hr * 0.8);
+      glasses.rotation.set(Math.PI / 2, 0, Math.PI / 2 + (ang - Math.PI / 2) + 0.1);
+    }
+  }
+
+  // ---------- ライダーの本物の人体モデル(Microsoft Rocketbox "Sports_Male_01"・MITライセンス) ----------
+  // 肌にぴったりした体のモデルに、サイクルウェアを描いたテクスチャを貼っている。
+  // 骨組みを、フィッティングの計算(Fit.rider)が出した関節の位置に毎回合わせる:
+  // 各骨を「目標の関節の位置」に置き、「次の関節への向き」に向ける(腕や脚の長さは、計算の長さに合わせて伸び縮みする)
+  let rig = null; // { root, bones, rest, scale, headPos, headAng }
+  let rigLoading = false;
+  function loadRig() {
+    if (rig || rigLoading || !window.GLTFLoader) return;
+    rigLoading = true;
+    const THREE = T();
+    const base = "assets/rider/";
+    const tl = new THREE.TextureLoader();
+    const tex = (n, srgb) => {
+      const t = tl.load(base + n, () => (photo.dirty = true));
+      if (srgb) t.encoding = THREE.sRGBEncoding;
+      t.anisotropy = 4;
+      return t;
+    };
+    new window.GLTFLoader().load(
+      base + "rider.glb",
+      (gltf) => {
+        const model = gltf.scene;
+        const bodyMap = tex("body_color.jpg", true), headMap = tex("head_color.jpg", true), bodyN = tex("body_normal.jpg"), headN = tex("head_normal.jpg");
+        model.traverse((o) => {
+          if (!o.isSkinnedMesh) return;
+          o.castShadow = true;
+          o.frustumCulled = false;
+          const ms = Array.isArray(o.material) ? o.material : [o.material];
+          const out = ms.map((m) => {
+            const head = /head/i.test(m.name);
+            return new THREE.MeshPhysicalMaterial({ map: head ? headMap : bodyMap, normalMap: head ? headN : bodyN, normalScale: new THREE.Vector2(0.7, 0.7), roughness: head ? 0.55 : 0.62, sheen: 0.25, sheenColor: new THREE.Color(head ? 0xe8a888 : 0x59606b).convertSRGBToLinear(), sheenRoughness: 0.5, envMapIntensity: 0.35, name: m.name });
+          });
+          o.material = Array.isArray(o.material) ? out : out[0];
+        });
+        const g = new THREE.Group();
+        g.name = "riderRig";
+        g.add(model);
+        g.updateMatrixWorld(true);
+        const B = (n) => model.getObjectByName("Bip01_" + n);
+        const names = ["Pelvis", "Spine", "Spine1", "Spine2", "Neck", "Head"];
+        for (const sd of ["R", "L"]) for (const n of ["Thigh", "Calf", "Foot", "Toe0", "UpperArm", "Forearm", "Hand"]) names.push(sd + "_" + n);
+        const bones = {}, rest = {};
+        for (const n of names) {
+          const b = B(n);
+          if (!b) return (rigLoading = false);
+          bones[n] = b;
+          rest[n] = { p: b.getWorldPosition(new THREE.Vector3()), q: b.getWorldQuaternion(new THREE.Quaternion()) };
+        }
+        // モデルの向き(前・上・右)を、足先の向きから求める
+        const fwd = rest.R_Toe0.p.clone().sub(rest.R_Foot.p).add(rest.L_Toe0.p).sub(rest.L_Foot.p);
+        fwd.y = 0;
+        fwd.normalize();
+        const up = new THREE.Vector3(0, 1, 0), right = new THREE.Vector3().crossVectors(fwd, up);
+        const hipY = (rest.R_Thigh.p.y + rest.L_Thigh.p.y) / 2, shY = (rest.R_UpperArm.p.y + rest.L_UpperArm.p.y) / 2;
+        const frac = {};
+        for (const n of ["Spine", "Spine1", "Spine2", "Neck"]) frac[n] = (rest[n].p.y - hipY) / (shY - hipY);
+        // 身長(足の裏〜頭のてっぺん)。頭の骨は首の付け根のあたりなので、頭の分を足す
+        const height = rest.Head.p.y + 14 - Math.min(rest.R_Toe0.p.y, 0);
+        rig = { root: g, model, bones, rest, fwd, up, right, frac, height, scale: 0.01, headPos: new THREE.Vector3(), headAng: Math.PI / 2 };
+        rigLoading = false;
+        root.add(g);
+        g.visible = anim.rider;
+        updateRider();
+        photo.dirty = true;
+      },
+      undefined,
+      () => (rigLoading = false)
+    );
+  }
+
+  // 骨を、位置 pos(root の中の座標)に置き、基準の向き(rest)から R だけ回した向きにする
+  function poseRig(pose) {
+    if (!rig || !state) return false;
+    const THREE = T();
+    const { bones, rest } = rig;
+    if (rig.root.parent !== root) root.add(rig.root);
+    rig.root.visible = anim.rider;
+    const sc = (state.fit.seg.H || 1.72) / rig.height; // cm → m と身長合わせ
+    rig.scale = sc;
+    rig.model.scale.setScalar(sc);
+    rig.root.updateMatrixWorld(true);
+    const rootQ = root.getWorldQuaternion(new THREE.Quaternion());
+    // 向きの基準: (主軸 a, 目印 h) から直交する3軸を作る
+    const basis = (a, h) => {
+      const x = a.clone().normalize();
+      const z = new THREE.Vector3().crossVectors(x, h);
+      if (z.lengthSq() < 1e-8) z.crossVectors(x, new THREE.Vector3(0, 1, 0.01));
+      z.normalize();
+      const y = new THREE.Vector3().crossVectors(z, x);
+      return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z));
+    };
+    const Z = new THREE.Vector3(0, 0, 1), X = new THREE.Vector3(1, 0, 0);
+    // name の骨: 位置 p、主軸 restDir→dir、目印 restHint→hint
+    const set = (name, p, restDir, restHint, dir, hint) => {
+      const b = bones[name];
+      const R = basis(dir, hint).multiply(basis(restDir, restHint).invert());
+      const worldQ = rootQ.clone().multiply(R).multiply(rest[name].q);
+      const pq = b.parent.getWorldQuaternion(new THREE.Quaternion());
+      b.quaternion.copy(pq.invert().multiply(worldQ));
+      if (p) b.position.copy(b.parent.worldToLocal(root.localToWorld(p.clone())));
+      b.updateMatrixWorld(true);
+    };
+    const hip = V(pose.hipMid), sh = V(pose.shoulderMid);
+    const spine = sh.clone().sub(hip);
+    // 背中を少し丸める: 腰は立て気味、胸は前に倒す
+    const bend = (k) => spine.clone().normalize().applyAxisAngle(Z, k);
+    set("Pelvis", hip, rig.up, rig.right, bend(0.22), Z);
+    const along = (f) => hip.clone().addScaledVector(spine, f).addScaledVector(new THREE.Vector3(-spine.y, spine.x, 0).normalize(), Math.sin(Math.min(1, Math.max(0, f)) * Math.PI) * 0.025);
+    set("Spine", along(rig.frac.Spine), rig.up, rig.right, bend(0.12), Z);
+    set("Spine1", along(rig.frac.Spine1), rig.up, rig.right, bend(0), Z);
+    set("Spine2", along(rig.frac.Spine2), rig.up, rig.right, bend(-0.14), Z);
+    const head = V(pose.head);
+    const neckDir = head.clone().sub(sh).normalize();
+    const neckP = along(rig.frac.Neck);
+    set("Neck", neckP, rig.up, rig.right, neckDir, Z);
+    // 頭: 前を見るように、首より起こす
+    const neckAng = Math.atan2(neckDir.y, neckDir.x);
+    const headAng = Math.max(neckAng, Math.min(Math.PI / 2, neckAng + 0.45, 1.25));
+    const neckLen = rest.Head.p.distanceTo(rest.Neck.p) * sc;
+    const headP = neckP.clone().addScaledVector(neckDir, neckLen);
+    set("Head", headP, rig.up, rig.right, new THREE.Vector3(Math.cos(headAng), Math.sin(headAng), 0), Z);
+    rig.headPos.copy(headP);
+    rig.headAng = headAng;
+    for (const sd of ["R", "L"]) {
+      const l = pose.legs[sd];
+      const H = V(l.hip), K = V(l.knee), A = V(l.ankle), To = V(l.toe);
+      const rd = (a, b) => rest[sd + "_" + b].p.clone().sub(rest[sd + "_" + a].p);
+      set(sd + "_Thigh", H, rd("Thigh", "Calf"), rig.right, K.clone().sub(H), Z);
+      set(sd + "_Calf", K, rd("Calf", "Foot"), rig.right, A.clone().sub(K), Z);
+      set(sd + "_Foot", A, rd("Foot", "Toe0"), rig.right, To.clone().sub(A), Z);
+      const a = pose.arms[sd];
+      const S = V(a.shoulder), E = V(a.elbow), Hd = V(a.hand);
+      const u = E.clone().sub(S).normalize(), f = Hd.clone().sub(E).normalize();
+      // ひじの曲がる側を目印にする(腕がねじれないように)。まっすぐに近いときは上向きを使う
+      let hu = f.clone().addScaledVector(u, -u.dot(f)), hf = u.clone().addScaledVector(f, -f.dot(u)).negate();
+      if (hu.lengthSq() < 1e-4) (hu = new THREE.Vector3(0, 1, 0)), (hf = hu.clone());
+      set(sd + "_UpperArm", S, rd("UpperArm", "Forearm"), rig.fwd, u, hu);
+      set(sd + "_Forearm", E, rd("Forearm", "Hand"), rig.fwd, f, hf);
+      // 手: ブラケットを握る向き(前腕の続きで、手のひらを内側に)
+      set(sd + "_Hand", Hd, rd("Forearm", "Hand"), rig.fwd, f.clone().applyAxisAngle(Z, -0.25), hf);
+    }
+    return true;
   }
 
   // ---------- 空気の流れ(イメージ) ----------
@@ -1907,6 +2068,7 @@ const View3D = (() => {
     anim.rider = on;
     photo.dirty = true;
     if (riderGroup) riderGroup.visible = on;
+    if (rig) rig.root.visible = on;
     if (flowPoints) flowPoints.visible = anim.flow && on;
     placeOnStand();
   }
