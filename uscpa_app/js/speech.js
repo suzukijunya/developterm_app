@@ -84,6 +84,102 @@ const Speech = (() => {
     }
   }
 
+  // ---- 追いかけ表示(カラオケ) ----
+  // 読み上げているボタンの data-follow(CSSセレクタ)が指す英文の中で、読み終わった部分と
+  // いま読んでいる単語に色を付ける。DOMは書き換えず CSS Custom Highlight API で塗る。
+  const Karaoke = (() => {
+    const ok = typeof CSS !== "undefined" && CSS.highlights && typeof Highlight !== "undefined";
+    const SKIP = ".cl-ja, .c-ja, .ja, .spk, .spk-restart, .cja-btn, .c-tools, .q-ja";
+    const norm = (w) => w.toLowerCase().replace(/[^a-z0-9$%]/g, "");
+    let sel = null;
+    let spoken = []; // [{ part, start, n }]
+    let dom = []; // [{ node, start, end, n }]
+    let map = []; // 読み上げの単語番号 → 画面の単語番号
+    let last = -1;
+
+    function collect() {
+      dom = [];
+      if (!sel) return;
+      let roots = [];
+      try {
+        roots = [...document.querySelectorAll(sel)];
+      } catch (e) {}
+      roots.forEach((root) => {
+        const tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+          acceptNode: (n) => (n.parentElement && n.parentElement.closest(SKIP) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+        });
+        for (let n = tw.nextNode(); n; n = tw.nextNode()) for (const m of n.data.matchAll(/\S+/g)) dom.push({ node: n, start: m.index, end: m.index + m[0].length, n: norm(m[0]) });
+      });
+      // 読み上げの単語と画面の単語を、前から順に対応づける(「A.」など画面にない語は飛ばす)
+      map = [];
+      let d = 0;
+      spoken.forEach((w, k) => {
+        let hit = -1;
+        for (let j = d; j < Math.min(dom.length, d + 6); j++)
+          if (w.n && dom[j].n === w.n) {
+            hit = j;
+            break;
+          }
+        map[k] = hit;
+        if (hit >= 0) d = hit + 1;
+      });
+    }
+
+    function start(follow, parts) {
+      clear();
+      if (!ok || !follow || Store.get().prefs.karaoke === false) return;
+      sel = follow;
+      spoken = [];
+      parts.forEach((t, p) => {
+        for (const m of t.matchAll(/\S+/g)) spoken.push({ part: p, start: m.index, n: norm(m[0]) });
+      });
+      collect();
+    }
+
+    // part 番目の文の pos 文字目から読み始めた、という知らせを受けて塗り直す
+    function at(part, pos) {
+      if (!sel) return;
+      let k = -1;
+      for (let x = 0; x < spoken.length; x++) {
+        if (spoken[x].part < part || (spoken[x].part === part && spoken[x].start <= pos)) k = x;
+        else break;
+      }
+      paintWord(k);
+    }
+    function paintWord(k) {
+      if (!sel || k < 0) return;
+      if (dom.length && !dom[0].node.isConnected) collect(); // 画面が描き直された
+      let j = -1;
+      for (let x = k; x >= 0 && j < 0; x--) j = map[x];
+      if (j < 0 || !dom[j]) return;
+      last = k;
+      try {
+        const now = new Range();
+        now.setStart(dom[j].node, dom[j].start);
+        now.setEnd(dom[j].node, dom[j].end);
+        const done = new Range();
+        done.setStart(dom[0].node, dom[0].start);
+        done.setEnd(dom[j].node, dom[j].start);
+        CSS.highlights.set("spk-now", new Highlight(now));
+        CSS.highlights.set("spk-done", new Highlight(done));
+        // 読んでいる所が画面の外に出たら、見える位置までスクロールする
+        const r = now.getBoundingClientRect();
+        if (r.bottom > window.innerHeight - 90 || r.top < 70) window.scrollBy({ top: r.top - window.innerHeight / 3, behavior: "smooth" });
+      } catch (e) {}
+    }
+    // 単語の区切りの知らせが来ない声のための、時間からの推定
+    const wordsIn = (part) => spoken.filter((w) => w.part === part);
+    function clear() {
+      sel = null;
+      last = -1;
+      if (ok) {
+        CSS.highlights.delete("spk-now");
+        CSS.highlights.delete("spk-done");
+      }
+    }
+    return { start, at, clear, active: () => !!sel, wordsIn, lastWord: () => last, paintWord, indexOf: (part, start) => spoken.findIndex((w) => w.part === part && w.start >= start) };
+  })();
+
   // from:{ i, offset } を渡すと、その位置から読み始める
   function speak(text, onend, from) {
     if (!supported || !text) return false;
@@ -96,11 +192,13 @@ const Speech = (() => {
     mark(btn, "playing");
     playingSay = btn ? btn.dataset.say : null;
     const parts = chunks(text);
+    Karaoke.start(btn && btn.dataset.follow, parts);
     let i = from ? Math.min(from.i, parts.length - 1) : 0;
     let offset = from ? from.offset : 0;
     const finish = () => {
       if (my !== token) return;
       playingSay = null;
+      Karaoke.clear();
       unmark();
       if (onend) onend();
     };
@@ -115,11 +213,40 @@ const Speech = (() => {
       u.lang = "en-US";
       if (voice) u.voice = voice;
       u.rate = rate();
-      // 単語ごとに位置を覚えておく(止めたときに、その単語から再開するため)
+      // 単語ごとに位置を覚えておく(止めたときに、その単語から再開するため)。追いかけ表示も進める
+      const part = i - 1;
+      let gotBoundary = false;
+      let est = null;
       u.onboundary = (e) => {
-        if (my === token && (!e.name || e.name === "word")) pos = { i: i - 1, offset: base + (e.charIndex || 0) };
+        if (my !== token || (e.name && e.name !== "word")) return;
+        gotBoundary = true;
+        clearInterval(est);
+        pos = { i: part, offset: base + (e.charIndex || 0) };
+        Karaoke.at(part, base + (e.charIndex || 0));
       };
-      u.onend = next;
+      u.onstart = () => {
+        if (my !== token) return;
+        Karaoke.at(part, base);
+        // 単語の区切りを知らせない声(オンラインの声など)は、話す速さから位置を推定する
+        if (Karaoke.active()) {
+          const words = Karaoke.wordsIn(part).filter((w) => w.start >= base);
+          let k = 0;
+          const per = 380 / rate();
+          setTimeout(() => {
+            if (gotBoundary || my !== token) return;
+            est = setInterval(() => {
+              if (gotBoundary || my !== token || k >= words.length) return clearInterval(est);
+              pos = { i: part, offset: words[k].start };
+              Karaoke.at(part, words[k].start);
+              k += 1;
+            }, per);
+          }, 500);
+        }
+      };
+      u.onend = () => {
+        clearInterval(est);
+        next();
+      };
       u.onerror = (e) => (e && (e.error === "interrupted" || e.error === "canceled") ? null : next());
       speechSynthesis.speak(u);
     };
@@ -147,20 +274,34 @@ const Speech = (() => {
     mark(btn, "paused");
   }
 
+  // 読み上げ中に速さを変えたら、いまの位置から新しい速さで読み直す
+  function rateChanged() {
+    if (playingSay === null) return;
+    const btn = markedBtn;
+    pause();
+    const p = paused;
+    if (!p || !btn) return;
+    speak.source = btn;
+    speak(p.say, null, { i: p.i, offset: p.offset });
+  }
+
   function stop() {
     token += 1;
     playingSay = null;
     paused = null;
+    Karaoke.clear();
     if (supported) speechSynthesis.cancel();
     unmark();
   }
 
   // 読み上げボタン(ボタンの中に置けるよう span で作る)
   const ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>`;
-  function button(text, label, extraClass) {
+  // follow:読み上げに合わせて色を付ける英文のCSSセレクタ(追いかけ表示)
+  function button(text, label, extraClass, follow) {
     if (!supported) return "";
-    const attr = String(text).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
-    return `<span class="spk ${extraClass || ""}" role="button" tabindex="0" data-say="${attr}" data-label="${label || "読み上げ"}" aria-label="${label || "読み上げ"}">${ICON}${label ? `<span>${label}</span>` : ""}</span>`;
+    const enc = (x) => String(x).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+    const attr = enc(text);
+    return `<span class="spk ${extraClass || ""}" role="button" tabindex="0" data-say="${attr}"${follow ? ` data-follow="${enc(follow)}"` : ""} data-label="${label || "読み上げ"}" aria-label="${label || "読み上げ"}">${ICON}${label ? `<span>${label}</span>` : ""}</span>`;
   }
 
   // キャプチャ段階で処理し、カードの裏返しや選択肢の回答が同時に起きないようにする
@@ -193,5 +334,5 @@ const Speech = (() => {
   document.addEventListener("keydown", onActivate, true);
   window.addEventListener("hashchange", stop);
 
-  return { supported, speak, stop, button, refresh };
+  return { supported, speak, stop, button, refresh, rateChanged };
 })();

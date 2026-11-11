@@ -799,6 +799,15 @@ const App = (() => {
     });
   }
 
+  // 読み上げの速さ(設定画面と問題画面の「速さ」ボタンで共通)
+  const RATES = [
+    [0.6, "とてもゆっくり"],
+    [0.75, "ゆっくり"],
+    [0.95, "ふつう"],
+    [1.15, "速め"],
+  ];
+  const rateLabel = () => (RATES.find((r) => r[0] === (Store.get().prefs.speechRate || 0.95)) || RATES[2])[1];
+
   function questionHtml(q, i, total, opts) {
     const r = Store.qRec(q.id);
     const showJa = Store.get().prefs.showJa;
@@ -819,7 +828,12 @@ const App = (() => {
         <p class="q-en" data-qid="${q.id}">${clauses
           .map((t, n) => `<span class="cl ${sc.has(n) ? "on" : ""}" data-cl="${n}">${esc(t)}</span>${sc.has(n) ? `<span class="cl-ja" data-clja="${n}">${esc(jaCache.get(t) || "…")}</span>` : ""}`)
           .join(" ")}</p>
-        ${Speech.button(q.q, "問題文", "inline")} ${Speech.button(q.q + " " + q.c.map((c, k) => letters[k] + ". " + c + ".").join(" "), "選択肢まで", "inline")}
+        ${Speech.button(q.q, "問題文", "inline", `.q-en[data-qid="${q.id}"]`)} ${Speech.button(
+          q.q + " " + q.c.map((c, k) => letters[k] + ". " + c + ".").join(" "),
+          "選択肢まで",
+          "inline",
+          `.q-en[data-qid="${q.id}"], .choices[data-qid="${q.id}"] .cen`
+        )}${Speech.supported ? `<button class="rate-chip" data-act="rate" title="読み上げの速さ(押すたびに切り替え)">速さ:${rateLabel()}</button>` : ""}
         <button class="ja-toggle" data-act="ja">${showJa ? "全文の和訳を隠す" : "全文の和訳"}</button>
         <span class="ja-hint">わからない部分をタップするとそこだけ和訳します(もう一度タップで隠す)。選択肢は「訳」ボタンで。</span>
         <p class="q-ja ${showJa ? "" : "hidden"}">${esc(q.ja)}</p>
@@ -838,7 +852,7 @@ const App = (() => {
               cc.has(k) ? `<span class="c-ja" data-cja="${k}">${esc(jaCache.get(c) || "…")}</span>` : ""
             }</span><span class="c-tools">${
               /[A-Za-z]{3,}/.test(c) ? `<span class="cja-btn ${cc.has(k) ? "on" : ""}" role="button" tabindex="0" data-cjab="${k}" aria-label="この選択肢を和訳">訳</span>` : ""
-            }${Speech.button(c, "", "small")}</span></button>`;
+            }${Speech.button(c, "", "small", `.choices[data-qid="${q.id}"] .choice[data-k="${k}"] .cen`)}</span></button>`;
           })
           .join("")}
       </div>
@@ -939,6 +953,16 @@ const App = (() => {
 
   function bindQuestionCommon(q, rerender) {
     fillShownPieces(q);
+    // 「速さ」ボタン:押すたびに とてもゆっくり→ゆっくり→ふつう→速め と切り替える(読み上げ中なら、その位置から新しい速さで続ける)
+    const rc = $app.querySelector("[data-act=rate]");
+    if (rc)
+      rc.onclick = () => {
+        const cur = Store.get().prefs.speechRate || 0.95;
+        const k = RATES.findIndex((r) => r[0] === cur);
+        Store.setPref("speechRate", RATES[(k + 1) % RATES.length][0]);
+        rc.textContent = "速さ:" + rateLabel();
+        Speech.rateChanged();
+      };
     const ja = $app.querySelector("[data-act=ja]");
     if (ja)
       ja.onclick = () => {
@@ -1292,7 +1316,7 @@ const App = (() => {
     const g = graded ? gradeTbs(t, inputs) : null;
     return `
       <div class="tbs">
-        <div class="tbs-scenario">${Speech.button(t.scenario.replace(/<p class="ja">[\s\S]*?<\/p>/g, "").replace(/<[^>]+>/g, " ").replace(/&[a-z]+;/g, " "), "英文を読み上げ", "inline")}${t.scenario}</div>
+        <div class="tbs-scenario">${Speech.button(t.scenario.replace(/<p class="ja">[\s\S]*?<\/p>/g, "").replace(/<[^>]+>/g, " ").replace(/&[a-z]+;/g, " "), "英文を読み上げ", "inline", ".tbs-scenario")}${t.scenario}</div>
         <table class="tbs-table">
           <thead><tr><th>項目</th><th>解答</th>${graded ? "<th></th>" : ""}</tr></thead>
           <tbody>
@@ -1649,15 +1673,12 @@ const App = (() => {
         <label class="check"><input type="checkbox" id="s-ja" ${st.prefs.showJa ? "checked" : ""}> 問題の和訳を最初から表示する</label>
         ${
           Speech.supported
-            ? `<div class="field"><span>読み上げの速さ</span><div class="chips" id="s-rate">${[
-                [0.75, "ゆっくり"],
-                [0.95, "ふつう"],
-                [1.15, "速め"],
-              ]
+            ? `<div class="field"><span>読み上げの速さ</span><div class="chips" id="s-rate">${RATES
                 .map(([v, l]) => `<button data-v="${v}" class="${(st.prefs.speechRate || 0.95) === v ? "on" : ""}">${l}</button>`)
                 .join("")}</div></div>`
             : `<p class="muted small">このブラウザは英語の読み上げに対応していません。</p>`
         }
+        ${Speech.supported ? `<label class="check"><input type="checkbox" id="s-karaoke" ${st.prefs.karaoke !== false ? "checked" : ""}> 読み上げ中の英文を色で追いかける(カラオケ表示)</label>` : ""}
         <label class="check"><input type="checkbox" id="s-confirm" ${st.prefs.confirmAnswer ? "checked" : ""}> 選択肢を選んでから「解答する」で確定する(誤タップ防止)</label>
         <label class="check"><input type="checkbox" id="s-qt" ${st.prefs.autoTranslate !== false ? "checked" : ""}> 英文を選択したら自動で翻訳する</label>
       </div>
@@ -1699,6 +1720,8 @@ const App = (() => {
     $app.querySelector("#s-newcards").onchange = (e) => Store.setPref("newPerDay", Math.max(0, Math.min(200, Math.round(+e.target.value) || 0)));
     $app.querySelector("#s-daily").onchange = (e) => Store.setPlan({ dailyMin: Math.max(1, +e.target.value || 120) });
     $app.querySelector("#s-ja").onchange = (e) => Store.setPref("showJa", e.target.checked);
+    const kk = $app.querySelector("#s-karaoke");
+    if (kk) kk.onchange = (e) => Store.setPref("karaoke", e.target.checked);
     $app.querySelectorAll("#s-rate button").forEach((b) => {
       b.onclick = () => {
         Store.setPref("speechRate", +b.dataset.v);

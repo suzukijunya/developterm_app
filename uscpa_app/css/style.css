@@ -3291,3 +3291,23 @@ button.q-item {
     top: 72px;
   }
 }
+
+/* 読み上げの追いかけ表示(カラオケ)と「速さ」ボタン */
+::highlight(spk-done) {
+  color: var(--brand-2);
+}
+::highlight(spk-now) {
+  background-color: #fde68a;
+  color: #111827;
+}
+.rate-chip {
+  margin-left: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  vertical-align: middle;
+}
