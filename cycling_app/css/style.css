@@ -1403,3 +1403,45 @@ a.tab {
 .duelist-field { display: grid; gap: 6px; }
 .duelist-pick { display: flex; gap: 12px; align-items: center; }
 .duelist-prev { width: 60px; height: 72px; display: block; background: #0a1a3a; border-radius: 8px; overflow: hidden; }
+
+/* ---------- デュエル: ドライバー視点 ---------- */
+.bf.dv { position: relative; display: block; height: 330px; overflow: hidden; border-radius: 10px; background: #05070c; }
+.dv-sky { position: absolute; inset: 0 0 56% 0; background: radial-gradient(ellipse at 50% 100%, #2a3f6e 0%, #0d1730 45%, #05070c 100%); }
+.dv-sky::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: linear-gradient(90deg, transparent, #7fb4ff, transparent); box-shadow: 0 0 14px #7fb4ff; }
+.dv-road { position: absolute; left: 0; right: 0; top: 44%; bottom: 0; perspective: 150px; perspective-origin: 50% 0; overflow: hidden; }
+.dv-plane { position: absolute; left: -60%; width: 220%; bottom: 0; height: 3200px; transform-origin: 50% 100%; transform: rotateX(78deg); background: linear-gradient(0deg, #1a1d24, #0c0e13); }
+.dv-edge { position: absolute; top: 0; bottom: 0; width: 1.6%; }
+.dv-edge.l { left: 36%; background: #3db8ff; box-shadow: 0 0 22px 6px #3db8ff; }
+.dv-edge.r { right: 36%; background: #ff3d6a; box-shadow: 0 0 22px 6px #ff3d6a; }
+.dv-center { position: absolute; top: 0; bottom: 0; left: 49.4%; width: 1.2%; background: repeating-linear-gradient(0deg, #e8edf3 0 70px, transparent 70px 170px); animation: dv-run 0.45s linear infinite; }
+@keyframes dv-run { from { background-position: 0 0; } to { background-position: 0 170px; } }
+.dv-streaks i { position: absolute; top: 46%; width: 2px; height: 0; background: linear-gradient(180deg, transparent, #cfe6ff); animation: dv-streak 0.7s linear infinite; opacity: 0.7; }
+.dv-streaks i:nth-child(1) { left: 12%; } .dv-streaks i:nth-child(2) { left: 30%; animation-delay: 0.25s; } .dv-streaks i:nth-child(3) { left: 70%; animation-delay: 0.4s; } .dv-streaks i:nth-child(4) { left: 88%; animation-delay: 0.1s; }
+@keyframes dv-streak { 0% { height: 0; transform: translateY(0); opacity: 0; } 40% { opacity: 0.8; } 100% { height: 70px; transform: translateY(150px); opacity: 0; } }
+.dv-ghost { position: absolute; left: 54%; top: 36%; width: 44px; text-align: center; animation: dv-bob 1.2s ease-in-out infinite; }
+.dv-ghost span { display: block; width: 44px; height: 55px; filter: drop-shadow(0 0 10px #ff3d6a); }
+.dv-ghost small, .dv-mirror small { display: block; margin: 0; font-size: 0.6rem; font-weight: 800; color: #ffb3c2; white-space: nowrap; line-height: 1.2; }
+@keyframes dv-bob { 50% { transform: translateY(-3px); } }
+.dv-mirror { position: absolute; right: 8px; top: 30px; display: flex; gap: 4px; align-items: center; padding: 3px 6px; border: 2px solid #4a5260; border-radius: 10px; background: rgba(10, 14, 22, 0.85); }
+.dv-mirror span { width: 26px; height: 32px; display: block; transform: scaleX(-1); }
+.dv .bf-lp.opp { position: absolute; left: 8px; right: 8px; top: 6px; }
+.dv .bf-row { position: absolute; display: grid; grid-template-columns: repeat(3, 1fr); }
+.dv .bf-row.opp { left: 22%; right: 22%; top: 60px; gap: 4px; }
+.dv .bf-row.opp .bf-zone, .dv .bf-row.opp .bf-mon { height: 40px; }
+.dv .bf-row.opp .bf-icon { font-size: 1.05rem; } .dv .bf-row.opp .bf-name { font-size: 0.45rem; } .dv .bf-row.opp .bf-mon b { font-size: 0.6rem; }
+.dv .bf-row.you { left: 6%; right: 6%; bottom: 84px; gap: 8px; }
+.dv .bf-row.you .bf-zone, .dv .bf-row.you .bf-mon { height: 62px; }
+.dv .bf-zone { border-style: dashed; background: rgba(0, 0, 0, 0.15); }
+.dv .bf-mon { box-shadow: 0 0 12px rgba(120, 180, 255, 0.35); animation: dv-bob 2s ease-in-out infinite; }
+.dv .bf-row.opp .bf-mon { box-shadow: 0 0 12px rgba(255, 61, 106, 0.45); }
+.dv .bf-mid { position: absolute; left: 50%; top: 122px; transform: translateX(-50%); border: 0; padding: 1px 10px; background: rgba(0, 0, 0, 0.55); border-radius: 10px; }
+.dv-bars { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 92px; pointer-events: none; }
+.dv-dash { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); width: 62%; padding: 4px 8px; background: rgba(8, 10, 14, 0.92); border: 1px solid #3db8ff66; border-radius: 8px; box-shadow: 0 0 10px #3db8ff44; z-index: 1; }
+/* スタートの演出(全画面) */
+.bf.dv.dv-full { position: absolute; inset: 0; height: auto; border-radius: 0; }
+.dv-full .dv-bars { height: 22vh; }
+.dv-full .dv-ghost { top: 37%; width: 70px; } .dv-full .dv-ghost span { width: 70px; height: 88px; }
+.dvs-top { position: absolute; left: 0; right: 0; top: 9%; text-align: center; }
+.dvs-hand { position: absolute; left: 0; right: 0; bottom: 15vh; text-align: center; z-index: 2; }
+.dvs-hand .df-draw { margin: 0 0 4px; }
+@media (prefers-reduced-motion: reduce) { .dv-center, .dv-streaks i, .dv .bf-mon, .dv-ghost { animation: none !important; } }

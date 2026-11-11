@@ -1846,7 +1846,7 @@
              <small>${g.diff >= 0 ? "ゴーストより前を走っています" : "ゴーストに遅れています"}</small></div>`
           : `<div class="lp"><span>GHOST</span><small>目的地に何回か着くと、いつもの自分(ゴースト)と勝負できます</small></div>`
       }</div>
-      ${DuelFx.fieldHtml(Battle.state(ride), names)}
+      ${DuelFx.fieldHtml(Battle.state(ride), names, null, { diff: g ? g.diff : null })}
       <small class="duel-next">次のターンまで ${Math.max(0, Math.ceil((1000 - (ride.distance % 1000)) / 10) * 10)}m</small>
       <div class="duel-hand">${(d.hand || [])
         .map(Duel.byId)
@@ -2185,7 +2185,7 @@
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2026.11.24";
+  const APP_VERSION = "2026.11.25";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });

@@ -44,20 +44,24 @@ const DuelFx = (() => {
 
   // 開始: レーン → 「RIDING DUEL / ACCELERATION!」→ LP 4000 → 5枚ドロー
   function start({ hand, ghost }) {
+    // ドライバー視点: ハンドル越しに道が流れ、相手が前を走る。手札は手元に配られる
     const el = overlay(
-      `${lanes}
-      <div class="df-center">
-        <div class="df-duelists"><div class="df-av you">${avatarHtml("you", "shout")}</div><div class="df-av opp">${ghost ? avatarHtml("opp", "shout") : ""}</div></div>
-        <div class="df-title">RIDING DUEL</div>
-        <div class="df-accel">ACCELERATION!</div>
-        <div class="df-lps">
-          <div class="df-lp you"><small>YOU</small><b id="df-lp-you">0</b></div>
-          <div class="df-vs">VS</div>
-          <div class="df-lp ghost"><small>GHOST</small><b id="df-lp-ghost">${ghost ? "0" : "—"}</b></div>
+      scene(
+        `<div class="dvs-top">
+          <div class="df-title">RIDING DUEL</div>
+          <div class="df-accel">ACCELERATION!</div>
+          <div class="df-lps">
+            <div class="df-lp you"><small>YOU</small><b id="df-lp-you">0</b></div>
+            <div class="df-vs">VS</div>
+            <div class="df-lp ghost"><small>GHOST</small><b id="df-lp-ghost">${ghost ? "0" : "—"}</b></div>
+          </div>
         </div>
-        <div class="df-draw">DRAW!</div>
-        <div class="df-hand">${hand.map((c, i) => cardHtml(c, "deal").replace('class="df-card', `style="--i:${i};--r:${(i - (hand.length - 1) / 2) * 6}deg;--y:${Math.abs(i - (hand.length - 1) / 2) * 6}px" class="df-card`)).join("")}</div>
-      </div>`,
+        <div class="dvs-hand">
+          <div class="df-draw">DRAW!</div>
+          <div class="df-hand">${hand.map((c, i) => cardHtml(c, "deal").replace('class="df-card', `style="--i:${i};--r:${(i - (hand.length - 1) / 2) * 6}deg;--y:${Math.abs(i - (hand.length - 1) / 2) * 6}px" class="df-card`)).join("")}</div>
+        </div>`,
+        { ghost, cls: "dv-full" }
+      ),
       6500
     );
     setTimeout(() => {
@@ -117,7 +121,7 @@ const DuelFx = (() => {
     for (let i = 0; i < 3; i++) cells.push(list[i] ? monHtml(list[i], marks.get(list[i])) : `<div class="bf-zone"></div>`);
     return cells.join("");
   }
-  function fieldHtml(b, names, ev) {
+  function fieldHtml(b, names, ev, extra) {
     const marks = new Map();
     const dead = { you: [], opp: [] };
     if (ev) {
@@ -131,12 +135,39 @@ const DuelFx = (() => {
       }
     }
     const lpBar = (side, lp) => `<div class="bf-lp ${side}"><small>${esc(names[side])}</small><div class="bf-lpbar"><i style="width:${(lp / 4000) * 100}%"></i></div><b>${lp.toLocaleString()}</b></div>`;
-    return `<div class="bf">
-      ${lpBar("opp", b.opp.lp)}
+    // ドライバー視点: ハンドル越しに前の道を見る。相手は道の先(自分が前にいるときはミラーの中)、
+    // 相手のモンスターは奥、自分のモンスターは手前に浮かぶ
+    return scene(
+      `${lpBar("opp", b.opp.lp)}
       <div class="bf-row opp">${rowHtml(b.opp.field, dead.opp, marks)}</div>
       <div class="bf-mid">TURN ${b.turn}</div>
       <div class="bf-row you">${rowHtml(b.you.field, dead.you, marks)}</div>
-      ${lpBar("you", b.you.lp)}
+      <div class="dv-dash">${lpBar("you", b.you.lp)}</div>`,
+      { diff: extra && extra.diff, ghost: true, name: names.opp }
+    );
+  }
+
+  // ドライバー視点の景色(夜の道・流れる車線・前を走る相手・手前のハンドル)。inner をその上に重ねる
+  function scene(inner, o = {}) {
+    const behind = o.diff != null && o.diff > 0; // 自分が前 → 相手は後ろ(ミラーに映す)
+    const dist = o.diff == null ? "" : `${Math.round(Math.abs(o.diff)).toLocaleString()}m`;
+    const ghost = !o.ghost
+      ? ""
+      : behind
+        ? `<div class="dv-mirror"><span>${avatarHtml("opp", "normal", true)}</span><small>${esc(o.name || "GHOST")}<br />${dist} 後ろ</small></div>`
+        : `<div class="dv-ghost"><span>${avatarHtml("opp", "normal", true)}</span>${dist ? `<small>${dist} 先</small>` : ""}</div>`;
+    return `<div class="bf dv ${o.cls || ""}">
+      <div class="dv-sky"></div>
+      <div class="dv-road"><div class="dv-plane"><i class="dv-edge l"></i><i class="dv-edge r"></i><i class="dv-center"></i></div></div>
+      <div class="dv-streaks"><i></i><i></i><i></i><i></i></div>
+      ${ghost}
+      ${inner}
+      <svg class="dv-bars" viewBox="0 0 400 110" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M-10 118 C10 70 40 44 78 40 L322 40 C360 44 390 70 410 118" fill="none" stroke="#0b0d10" stroke-width="26" stroke-linecap="round"/>
+        <path d="M-10 118 C10 70 40 44 78 40 L322 40 C360 44 390 70 410 118" fill="none" stroke="#2b3038" stroke-width="3" transform="translate(0 -9)"/>
+        <path d="M34 62 C30 36 40 16 54 12 C66 10 72 26 70 44Z M366 62 C370 36 360 16 346 12 C334 10 328 26 330 44Z" fill="#15181d" stroke="#2b3038" stroke-width="2"/>
+        <rect x="176" y="34" width="48" height="80" rx="8" fill="#0b0d10" stroke="#2b3038" stroke-width="2"/>
+      </svg>
     </div>`;
   }
 
