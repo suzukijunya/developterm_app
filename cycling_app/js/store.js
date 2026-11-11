@@ -26,6 +26,7 @@ const Store = (() => {
         eveningTime: "17:30",
         duel: false, // デュエルモード(スピードカウンター・ゴーストとのLP勝負・シンクロ演出)
         duelVoice: "", // デュエルモードで使う声の名前(空ならおまかせ)
+        duelist: 1, // デュエリストの姿(1〜5: 人体モデルの写真風 / 0: イラスト)
       },
       profileSet: false,
       rides: [], // 保存したライド(新しい順)

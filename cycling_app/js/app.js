@@ -1738,7 +1738,9 @@
           <span>🃏 デュエルモード(5D's風)<small>走り出しの「アクセラレーション!」、1kmごとにたまるスピードカウンター、いつもの自分(ゴースト)とのLP勝負、ガレージのシンクロ召喚の演出</small></span></label>
         <label class="field"><span>デュエルの声</span><select name="duelVoice" id="duel-voice"><option value="">おまかせ(男性の声を探す)</option></select></label>
         <button class="link" type="button" id="duel-voice-test">🔊 声を試す</button>
-        <div class="field duelist-field"><span>デュエリストの画像<small>ふだんはオリジナルのキャラクターが出ます。自分の写真など、使ってよい画像に替えられます(この端末の中だけに保存)</small></span>
+        <div class="field duelist-field"><span>デュエリスト<small>本物の人体モデルから撮った5人と、イラストから選べます。相手のゴーストは、同じ人の青く透けた姿です</small></span>
+          <div class="duelist-choices" id="duelist-choices">${DuelFx.DUELISTS.map((d) => `<button type="button" class="duelist-opt ${DuelFx.duelistId() === d.id ? "on" : ""}" data-duelist="${d.id}"><img src="${DuelFx.duelistSrc(d.id)}" alt="" loading="lazy" /><small>${d.name}</small></button>`).join("")}<button type="button" class="duelist-opt ${DuelFx.duelistId() === 0 ? "on" : ""}" data-duelist="0"><span class="duelist-ill" id="duelist-ill"></span><small>イラスト</small></button></div></div>
+        <div class="field duelist-field"><span>自分の画像を使う<small>自分の写真など、使ってよい画像を選ぶと、上のデュエリストの代わりに出ます(この端末の中だけに保存)</small></span>
           <div class="duelist-pick"><span class="duelist-prev" id="duelist-prev"></span>
             <label class="link">画像を選ぶ<input type="file" accept="image/*" id="duelist-file" hidden /></label>
             <button class="link" type="button" id="duelist-reset">元に戻す</button></div></div>
@@ -1970,6 +1972,25 @@
     });
     on("register-end", () => registerEnd(lastResult));
     fillVoices();
+    app.querySelectorAll("[data-duelist]").forEach((b) =>
+      b.addEventListener("click", () => {
+        Store.setPrefs({ duelist: +b.dataset.duelist });
+        render();
+      })
+    );
+    const ill = document.getElementById("duelist-ill");
+    if (ill) {
+      const keep = Store.prefs.duelist;
+      Store.prefs.duelist = 0;
+      let img = "";
+      try {
+        img = localStorage.getItem(DuelFx.IMG_KEY);
+        if (img) localStorage.removeItem(DuelFx.IMG_KEY);
+        ill.innerHTML = DuelFx.avatarHtml("you");
+        if (img) localStorage.setItem(DuelFx.IMG_KEY, img);
+      } catch (e) {}
+      Store.prefs.duelist = keep;
+    }
     const prev = document.getElementById("duelist-prev");
     if (prev) prev.innerHTML = DuelFx.avatarHtml("you");
     on("duelist-reset", () => {
@@ -2185,7 +2206,7 @@
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2026.11.25";
+  const APP_VERSION = "2026.11.26";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });

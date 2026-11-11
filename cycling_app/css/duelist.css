@@ -24,3 +24,8 @@
 .dl-cut.photo .dl-face::after { content: ""; position: absolute; inset: 0; background: linear-gradient(200deg, rgba(61, 184, 255, 0.45), transparent 35%), linear-gradient(20deg, rgba(255, 106, 26, 0.35), transparent 40%); mix-blend-mode: screen; }
 .dl-cut.photo .dl-line { font-size: 1.15rem; }
 .df-av .dl-img, .bt-face .dl-img { filter: contrast(1.15) saturate(1.15); }
+/* 本物の人体モデルから撮ったデュエリスト */
+.dl-img.real { object-fit: cover; object-position: 50% 0; }
+.dl-img.real.ghost { filter: grayscale(1) sepia(1) hue-rotate(175deg) saturate(3) brightness(1.15) drop-shadow(0 0 8px #5fa8ff); opacity: 0.8; }
+.dl-img.real.chibi { object-position: 62% 6%; }
+.dl-cut .dl-face:has(.dl-img.real) { width: 92px; flex-basis: 92px; }

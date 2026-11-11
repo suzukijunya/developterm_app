@@ -314,9 +314,26 @@ const DuelFx = (() => {
   </svg>`;
   }
 
+  // デュエリストの姿: 自分で選んだ画像 > 本物の人体モデルから撮った写真風の5人(設定で選ぶ)> イラスト(0)
+  // 相手のゴーストは、同じ人を青く透かした姿
+  const DUELISTS = [
+    { id: 1, name: "レッド" },
+    { id: 2, name: "ロード" },
+    { id: 3, name: "ストリート" },
+    { id: 4, name: "クリムゾン" },
+    { id: 5, name: "ブルー" },
+  ];
+  function duelistId() {
+    const v = typeof Store !== "undefined" && Store.prefs ? Store.prefs.duelist : 1;
+    return v === 0 ? 0 : DUELISTS.some((d) => d.id === v) ? v : 1;
+  }
+  const duelistSrc = (id) => `assets/duelists/duelist${id}.webp`;
   function avatarHtml(side, face, chibi) {
     const img = side === "you" ? customImg() : "";
-    return img ? `<img class="dl-img ${chibi ? "chibi" : ""}" src="${img}" alt="" />` : charaSvg({ ghost: side === "opp", face, chibi });
+    if (img) return `<img class="dl-img ${chibi ? "chibi" : ""}" src="${img}" alt="" />`;
+    const id = duelistId();
+    if (!id) return charaSvg({ ghost: side === "opp", face, chibi });
+    return `<img class="dl-img real ${chibi ? "chibi" : ""} ${side === "opp" ? "ghost" : ""}" src="${duelistSrc(id)}" alt="" />`;
   }
 
   // カットイン: 話すセリフと一緒に、キャラクターが斜めの帯で出てくる(順番に1.7秒ずつ)
@@ -340,5 +357,5 @@ const DuelFx = (() => {
     setTimeout(nextCut, Math.max(1700, c.text.length * 120));
   }
 
-  return { start, end, pop, close, cardHtml, fieldHtml, turn, cutIn, avatarHtml, IMG_KEY };
+  return { start, end, pop, close, cardHtml, fieldHtml, turn, cutIn, avatarHtml, IMG_KEY, DUELISTS, duelistSrc, duelistId };
 })();
