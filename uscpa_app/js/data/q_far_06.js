@@ -455,7 +455,7 @@ CPA.extend("FAR-05", {
     },
     {
       q: "A company reported net income of $300,000 and had 75,000 weighted-average common shares for the year ended December 31. On February 10 of the following year, before the financial statements were issued, it effected a 2-for-1 stock split. There is no preferred stock. What basic EPS should be reported for the year ended December 31?",
-      ja: "12月31日に終了する年度の純利益は$300,000、加重平均普通株式数は75,000株であった。翌年2月10日、財務諸表の発行前に1対2の株式分割を実施した。優先株式はない。12月31日終了年度に報告すべき基本的EPSはいくらか。",
+      ja: "12月31日に終了する年度の純利益は$300,000、加重平均普通株式数は75,000株であった。翌年2月10日、財務諸表の発行前に2対1の株式分割(1株を2株に分割)を実施した。優先株式はない。12月31日終了年度に報告すべき基本的EPSはいくらか。",
       c: ["$2.00", "$4.00", "$3.00", "$1.00"],
       a: 0,
       ex: "期末後・財務諸表発行前の株式分割や株式配当は、表示される全期間のEPSに遡及して反映する。300,000 ÷ 150,000 = 2.00。分割を無視した$4.00は誤り。",
