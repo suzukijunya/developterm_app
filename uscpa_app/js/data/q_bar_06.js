@@ -72,8 +72,8 @@ CPA.extend("BAR-03", {
       ex: "政府全体(発生主義)では賦課年度に回収可能額を収益認識する:4,000,000 × 99% = 3,960,000。$3,700,000は政府資金(期末後60日以内の利用可能額まで)の金額である。",
     },
     {
-      q: "A city has $4,000,000 of general obligation bonds outstanding bearing 6% interest, payable semiannually on April 1 and October 1. The city's fiscal year ends December 31, and it has no policy of accumulating resources for the January payment. What accrued interest payable should be reported at December 31 in the debt service fund and in the government-wide statement of net position, respectively?",
-      ja: "市は利率6%、利払日4月1日・10月1日(半年ごと)の一般財源保証債$4,000,000を発行済みである。会計年度は12月31日終了で、翌期の支払いのため資源を積み立てる方針はない。12月31日の未払利息は、債務返済基金と政府全体の純ポジション計算書でそれぞれいくらか。",
+      q: "A city has $4,000,000 of general obligation bonds outstanding bearing 6% interest, payable semiannually on April 1 and October 1. The city's fiscal year ends December 31, and it has no policy of accumulating resources in advance for the April 1 payment. What accrued interest payable should be reported at December 31 in the debt service fund and in the government-wide statement of net position, respectively?",
+      ja: "市は利率6%、利払日4月1日・10月1日(半年ごと)の一般財源保証債$4,000,000を発行済みである。会計年度は12月31日終了で、4月1日の支払いに備えて事前に資源を積み立てる方針はない。12月31日の未払利息は、債務返済基金と政府全体の純ポジション計算書でそれぞれいくらか。",
       c: ["$60,000 and $60,000", "$120,000 and $60,000", "$0 and $0", "$0 and $60,000"],
       a: 3,
       ex: "債務返済基金(修正発生主義)では利息は支払期日に支出認識するため期末未払利息は$0。政府全体では発生主義により10/1〜12/31の3か月分 4,000,000 × 6% × 3/12 = 60,000 を計上する。",
