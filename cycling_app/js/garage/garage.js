@@ -69,10 +69,55 @@
   function calc(k = G.active) {
     return calcBuild(B(k));
   }
+  // ---------- 実測の重さ ----------
+  // はかりで量った重さを入れると、パーツの合計との差(G.measured.offset)を覚えて、どの構成にも同じ差を足す。
+  // パーツを替えれば、そのぶんだけ実測ベースの重さも動く
+  const accGrams = (b) => (b.parts.accessories && b.parts.accessories.mounted !== false ? +b.parts.accessories.g || 0 : 0);
+  function bikeGrams(b) {
+    return Math.max(0, Parts.totalGrams(b.parts) + ((G.measured && G.measured.offset) || 0));
+  }
+  function setMeasured(kg, exclAcc) {
+    const cur = G.builds.current;
+    const sum = Parts.totalGrams(cur.parts) - (exclAcc ? accGrams(cur) : 0);
+    G.measured = { kg, exclAcc: !!exclAcc, offset: Math.round(kg * 1000 - sum), at: Date.now() };
+  }
+  // 重さが「目安」のままの部位(マイパーツでもカタログのパーツでもない)
+  function roughSlots(b) {
+    return Parts.SLOTS.filter((sl) => {
+      const p = b.parts[sl.id];
+      if (!p || p.mounted === false || (sl.id === "stem" && barIntegrated(b))) return false;
+      return !p.libId && !p.shop && !(p.components || []).some((c) => c.libId);
+    });
+  }
+  function measuredHtml() {
+    const cur = G.builds.current;
+    const sum = Parts.totalGrams(cur.parts);
+    const m = G.measured;
+    const rough = roughSlots(cur);
+    const sign = (g) => (g > 0 ? "+" : g < 0 ? "−" : "±") + Math.abs(g).toLocaleString() + "g";
+    return `<section class="card g-measured">
+      <h2>⚖️ 実測の重さ</h2>
+      ${
+        m
+          ? `<p class="g-meas-main">実測 <b>${m.kg.toFixed(2)}kg</b>${m.exclAcc ? "(ライト・サイコンなし)" : ""} / パーツの合計 ${(sum / 1000).toFixed(2)}kg <em class="${Math.abs(m.offset) > 300 ? "warn" : ""}">差 ${sign(m.offset)}</em></p>
+             <p class="small">性能の計算・ランク・比較には、実測に合わせた重さ(装着済み ${(bikeGrams(cur) / 1000).toFixed(2)}kg・NEW ${(bikeGrams(G.builds.next) / 1000).toFixed(2)}kg)を使っています。パーツを替えると、そのぶんだけ動きます。</p>
+             ${Math.abs(m.offset) > 300 && rough.length ? `<p class="notice warn small">差が大きめです。重さが「目安」のままの部位: ${rough.map((sl) => esc(sl.name)).join("・")}。実物の重さを入れると合ってきます。</p>` : ""}`
+          : `<p class="small">はかりで量った重さを入れると、パーツの合計とのずれを直して、性能の計算やランクに実測の重さを使います。</p>`
+      }
+      <div class="g-meas-form">
+        <label class="g-in"><input type="number" inputmode="decimal" id="meas-kg" step="0.01" min="3" max="30" value="${m ? m.kg : ""}" placeholder="8.60" /><em>kg</em></label>
+        <button class="btn sub" data-meas="save">${m ? "更新" : "入れる"}</button>
+        ${m ? `<button class="link danger" data-meas="clear">消す</button>` : ""}
+      </div>
+      <label class="check"><input type="checkbox" id="meas-noacc" ${!m || m.exclAcc ? "checked" : ""} /><span>ライト・サイコンなど(「その他」の部位)を外して量った</span></label>
+      <p class="muted small">「装着済み」のバイクの重さとして扱います。体重計なら、自転車を持って乗った重さから自分の体重を引くと量れます。</p>
+    </section>`;
+  }
+
   // 好きな構成(付けたらどうなるかの試算など)の計算
   function calcBuild(b) {
     const fit = Fit.compute(inputOf(b), G.body);
-    const bikeKg = Parts.totalGrams(b.parts) / 1000;
+    const bikeKg = bikeGrams(b) / 1000;
     const rot = Parts.rotatingKg(b.parts);
     const perf = Fit.performance(fit.cda.total, G.body.weight + bikeKg, rot);
     return { fit, bikeKg, rot, perf };
@@ -427,7 +472,7 @@
   }
 
   function matrixHtml() {
-    const kg = (k) => kgTxt(Parts.totalGrams(G.builds[k].parts) / 1000);
+    const kg = (k) => kgTxt(bikeGrams(G.builds[k]) / 1000);
     return `
       <section class="card g-mx">
         <h2>アセンブル表</h2>
@@ -657,6 +702,7 @@
       ${libForm ? libFormHtml() : ""}
       ${importRev ? importHtml() : ""}
       ${matrixHtml()}
+      ${measuredHtml()}
       ${cell ? sheetHtml() : ""}
       ${scanHtml()}
       ${libraryHtml()}`;
@@ -1849,7 +1895,7 @@
       torso: k.fit.angles.torso,
       integrated: barIntegrated(cur),
       bikeKg: k.bikeKg,
-      nextKg: Parts.totalGrams(G.builds.next.parts) / 1000,
+      nextKg: bikeGrams(G.builds.next) / 1000,
     };
   }
 
@@ -1987,7 +2033,7 @@
     const usedOk = !h || h.usedOk !== false;
     const scoreOf = (b) => {
       const st = statsOf(b);
-      return { total: st.total, rank: st.rank, kg: Parts.totalGrams(b.parts) / 1000 };
+      return { total: st.total, rank: st.rank, kg: bikeGrams(b) / 1000 };
     };
     return Object.assign(Clerk.ladder(G.builds.current, usedOk, scoreOf), { usedOk });
   }
@@ -2093,8 +2139,8 @@
     const d = new Date();
     return {
       title,
-      sub: `${G.active === "current" ? "いまのバイク" : "NEWの構成"} ・ ${(Parts.totalGrams(b.parts) / 1000).toFixed(2)}kg ・ ${st.rank}ランク`,
-      kg: Parts.totalGrams(b.parts) / 1000,
+      sub: `${G.active === "current" ? "いまのバイク" : "NEWの構成"} ・ ${(bikeGrams(b) / 1000).toFixed(2)}kg ・ ${st.rank}ランク`,
+      kg: bikeGrams(b) / 1000,
       rank: st.rank,
       total: st.total,
       rows: Stats.ROWS.map((r) => ({ en: r.en, ja: r.ja, bar: Math.round(st.v[r.k].bar) })),
@@ -2385,6 +2431,16 @@
         changed(false);
       }
       return renderPanel();
+    }
+    if (t.dataset.meas) {
+      if (t.dataset.meas === "clear") G.measured = null;
+      else {
+        const kg = parseFloat(document.getElementById("meas-kg").value);
+        if (!(kg >= 3 && kg <= 30)) return alert("重さを kg で入れてください(例: 8.6)");
+        setMeasured(kg, document.getElementById("meas-noacc").checked);
+      }
+      changed(false);
+      return renderAll();
     }
     if (t.dataset.scan) {
       const a = t.dataset.scan;
