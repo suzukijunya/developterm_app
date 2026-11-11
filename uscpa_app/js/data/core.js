@@ -9,6 +9,10 @@
 const CPA = (() => {
   const sections = [];
   const tbsList = [];
+  // 問題の図解(問題ID → 図のデータ)。js/data/fig_*.js が CPA.figs() で登録する
+  const figMap = {};
+  const figs = (map) => Object.assign(figMap, map);
+  const getFig = (qid) => figMap[qid] || null;
 
   // 正解の位置が偏らないよう、問題IDから決まる位置へ正解の選択肢を入れ替える
   // (毎回同じ並びになるので、復習時に位置が変わって混乱することはない)
@@ -80,5 +84,5 @@ const CPA = (() => {
   const getTbs = (id) => tbsList.find((t) => t.id === id);
   const tbsFor = (filter) => tbsList.filter((t) => (filter.section ? t.section === filter.section : true) && (filter.chapter ? t.chapter === filter.chapter : true));
 
-  return { section, extend, tbs, sections, tbsList, getSection, allChapters, getChapter, allMcq, getMcq, allCards, getTbs, tbsFor };
+  return { figs, getFig, section, extend, tbs, sections, tbsList, getSection, allChapters, getChapter, allMcq, getMcq, allCards, getTbs, tbsFor };
 })();

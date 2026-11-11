@@ -807,11 +807,14 @@ const App = (() => {
     const sc = shownClauses.get(q.id) || new Set();
     const cc = shownChoices.get(q.id) || new Set();
     const clauses = splitClauses(q.q);
+    // 問題の図解(模試では出さない。設定で消せる)
+    const figHtml = !opts.noFig && Store.get().prefs.showFig !== false && typeof Figure !== "undefined" ? Figure.render(CPA.getFig(q.id)) : "";
     return `
       <div class="q-head">
         <span>${tag(q.section)} 問題 ${i + 1} / ${total}</span>
         <button class="flag ${r && r.flag ? "on" : ""}" data-act="flag" title="要復習に追加">⚑ 要復習</button>
       </div>
+      <div class="q-wrap ${figHtml ? "has-fig" : ""}">
       <div class="q-box">
         <p class="q-en" data-qid="${q.id}">${clauses
           .map((t, n) => `<span class="cl ${sc.has(n) ? "on" : ""}" data-cl="${n}">${esc(t)}</span>${sc.has(n) ? `<span class="cl-ja" data-clja="${n}">${esc(jaCache.get(t) || "…")}</span>` : ""}`)
@@ -820,6 +823,8 @@ const App = (() => {
         <button class="ja-toggle" data-act="ja">${showJa ? "全文の和訳を隠す" : "全文の和訳"}</button>
         <span class="ja-hint">わからない部分をタップするとそこだけ和訳します(もう一度タップで隠す)。選択肢は「訳」ボタンで。</span>
         <p class="q-ja ${showJa ? "" : "hidden"}">${esc(q.ja)}</p>
+      </div>
+      ${figHtml}
       </div>
       <div class="choices" data-qid="${q.id}">
         ${q.c
@@ -1131,7 +1136,7 @@ const App = (() => {
       .join("");
     let main;
     if (it.type === "mcq") {
-      main = questionHtml(it.q, sx.idx, sx.items.length, { picked: sx.picks[it.q.id], reveal: false });
+      main = questionHtml(it.q, sx.idx, sx.items.length, { picked: sx.picks[it.q.id], reveal: false, noFig: true });
     } else {
       main = tbsHtml(it.t, sx.tbsInputs[it.t.id] || {}, false);
     }
@@ -1640,6 +1645,7 @@ const App = (() => {
         <label class="field"><span>目標の総学習時間(時間)</span><input type="number" id="s-target" min="100" step="50" value="${plan.targetHours}"></label>
         <label class="field"><span>1日の目標(分)</span><input type="number" id="s-daily" min="10" step="10" value="${plan.dailyMin}"></label>
         <label class="field"><span>新しい単語カード(1日の枚数)</span><input type="number" id="s-newcards" min="0" max="200" step="5" value="${st.prefs.newPerDay ?? 20}"></label>
+        <label class="check"><input type="checkbox" id="s-fig" ${st.prefs.showFig !== false ? "checked" : ""}> 問題の図解を表示する(模試では表示しません)</label>
         <label class="check"><input type="checkbox" id="s-ja" ${st.prefs.showJa ? "checked" : ""}> 問題の和訳を最初から表示する</label>
         ${
           Speech.supported
@@ -1689,6 +1695,7 @@ const App = (() => {
       };
     });
     $app.querySelector("#s-target").onchange = (e) => Store.setPlan({ targetHours: Math.max(1, +e.target.value || 1200) });
+    $app.querySelector("#s-fig").onchange = (e) => Store.setPref("showFig", e.target.checked);
     $app.querySelector("#s-newcards").onchange = (e) => Store.setPref("newPerDay", Math.max(0, Math.min(200, Math.round(+e.target.value) || 0)));
     $app.querySelector("#s-daily").onchange = (e) => Store.setPlan({ dailyMin: Math.max(1, +e.target.value || 120) });
     $app.querySelector("#s-ja").onchange = (e) => Store.setPref("showJa", e.target.checked);
