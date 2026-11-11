@@ -270,11 +270,11 @@ const App = (() => {
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
         </a>
       </header>
-      <main class="main">${body}</main>
+      <main class="main view-${tab || "solo"}">${body}</main>
       ${
         tab === null
           ? ""
-          : `<nav class="tabs">${tabs
+          : `<nav class="tabs"><span class="side-logo logo">US<b>CPA</b></span>${tabs
               .map(([id, label, d]) => `<a href="#/${id}" class="${tab === id ? "on" : ""}"><svg viewBox="0 0 24 24"><path d="${d}"/></svg><span>${label}</span></a>`)
               .join("")}</nav>`
       }`;
@@ -319,11 +319,13 @@ const App = (() => {
     }
 
     const body = `
+      <div class="home-top">
       ${countdown}
       <div class="stat-row">
         <div class="stat"><div class="stat-num">${fmtMin(todaySec)}<small>/${plan.dailyMin}分</small></div><div class="stat-label">今日の学習</div>${bar(todaySec / 60 / plan.dailyMin)}</div>
         <div class="stat"><div class="stat-num">${Store.streak()}<small>日</small></div><div class="stat-label">連続学習</div></div>
         <div class="stat"><div class="stat-num">${fmtHours(totalSec)}<small>/${plan.targetHours}h</small></div><div class="stat-label">累計時間</div>${bar(totalSec / 3600 / plan.targetHours)}</div>
+      </div>
       </div>
       ${pace}
 
@@ -383,10 +385,12 @@ const App = (() => {
           })
           .join("")}
       </div>
+      <div class="link-grid">
       <a class="link-card" href="#/planner"><b>受験日プランナー</b><span>単位・手続き・勉強時間から受験日を逆算。希望日に間に合う締切もわかる ›</span></a>
       <a class="link-card" href="#/eligibility"><b>受験資格チェック</b><span>学歴と単位から、出願できる州と次にやることを判定 ›</span></a>
       <a class="link-card" href="#/compare"><b>講座の料金比較</b><span>アビタス・CPA会計学院の受講料を、給付金・キャッシュバック込みで比較 ›</span></a>
-      <a class="link-card" href="#/guide"><b>USCPA試験ガイド</b><span>試験制度・科目の選び方・おすすめの学習の流れ ›</span></a>`;
+      <a class="link-card" href="#/guide"><b>USCPA試験ガイド</b><span>試験制度・科目の選び方・おすすめの学習の流れ ›</span></a>
+      </div>`;
     page({ title: "ホーム", body, tab: "home" });
     const hn = $app.querySelector("[data-act=hide-sync]");
     if (hn)
@@ -593,6 +597,7 @@ const App = (() => {
     const resume = resumeCard();
     const body = `
       ${resume ? `<div class="actions">${resume}</div>` : ""}
+      <div class="pr-grid"><div class="pr-left">
       <div class="panel">
         <h2 class="h2 first">問題演習(MC)</h2>
         <label class="field"><span>科目</span><select id="p-sec"><option value="">すべての科目</option>${opts}</select></label>
@@ -615,7 +620,8 @@ const App = (() => {
         <a class="action ${weak.length ? "" : "dim"}" href="#/review"><span class="ai">↻</span><span><b>苦手復習</b><small>${weak.length}問</small></span></a>
       </div>
 
-      <h2 class="h2">TBS(Task-Based Simulation)</h2>
+      </div><div class="pr-right">
+      <h2 class="h2 pr-first">TBS(Task-Based Simulation)</h2>
       ${CPA.sections
         .map((s) => {
           const ts = CPA.tbsFor({ section: s.id });
@@ -628,7 +634,8 @@ const App = (() => {
               })
               .join("")}</div></details>`;
         })
-        .join("")}`;
+        .join("")}
+      </div></div>`;
     page({ title: "演習", body, tab: "practice" });
 
     const $sec = $app.querySelector("#p-sec");
@@ -1364,8 +1371,10 @@ const App = (() => {
       .join("");
     const tc = todayCards(CPA.allCards().filter((c) => mine.includes(c.section)));
     const body = `
+      <div class="cards-top">
       <a class="action wide" href="#/cards/run/due"><span class="ai">🗂</span><span><b>今日の復習を始める</b><small>${cardsLine(tc)} ・ 新しいカードは1日${Store.get().prefs.newPerDay ?? 20}枚まで</small></span></a>
       <a class="action wide" href="#/listen"><span class="ai">🎧</span><span><b>聞き流し(通勤・ジム)</b><small>画面を見ずに単語を音声で。○✕クイズも</small></span></a>
+      </div>
       <h2 class="h2">科目別</h2>
       <div class="sec-list">${rows}</div>
       <h2 class="h2">用語集</h2>
