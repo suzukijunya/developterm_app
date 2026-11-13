@@ -10,10 +10,28 @@ const Voices = (() => {
     ja: /Kyoko|O-ren|Otoya|Hattori|Google 日本語|Nanami|Keita|Aoi|Daichi|Mayu|Naoki|Shiori/i,
     en: /Samantha|Ava|Allison|Evan|Zoe|Nathan|Google US English|Aria|Jenny|Guy|Michelle|Andrew|Emma|Brian/i,
   };
+  // iPhone の Safari は「標準」と「拡張」の声が同じ名前(例:Kyoko)で届くので、
+  // 内部ID(voiceURI。例:com.apple.voice.enhanced.ja-JP.Kyoko)で品質を見分ける
+  const tier = (v) => {
+    const t = (v.name || "") + " " + (v.voiceURI || "");
+    if (/premium|プレミアム/i.test(t)) return "premium";
+    if (/enhanced|拡張|Natural|Neural|Online/i.test(t)) return "enhanced";
+    if (/compact/i.test(t)) return "compact";
+    return "";
+  };
+  const key = (v) => v.voiceURI || v.name;
+  function label(v) {
+    const t = tier(v);
+    const suffix = { premium: "(プレミアム)", enhanced: /Natural|Neural|Online/i.test(v.name) ? "" : "(拡張)", compact: "(標準)" }[t] || "";
+    // 名前に品質がすでに書かれていれば付け足さない(例:O-ren (Premium))
+    return v.name + (/Premium|Enhanced|プレミアム|拡張|Compact/i.test(v.name) ? "" : suffix);
+  }
   function score(v, lang) {
     let s = 0;
-    if (/Premium|プレミアム/i.test(v.name)) s += 100;
-    if (/Enhanced|拡張|Natural|Neural|Online/i.test(v.name)) s += 80;
+    const t = tier(v);
+    if (t === "premium") s += 100;
+    if (t === "enhanced") s += 80;
+    if (t === "compact") s -= 20;
     if (GOOD[lang].test(v.name)) s += 40;
     // 機械っぽさが強いことが多い声は下げる
     if (/Compact|eSpeak|espeak|Fred|Albert|Bad News|Bells|Boing|Bubbles|Cellos|Jester|Organ|Trinoids|Whisper|Zarvox|Superstar|Grandma|Grandpa|Rocko|Shelley|Flo|Eddy|Reed|Sandy/i.test(v.name)) s -= 60;
@@ -27,12 +45,12 @@ const Voices = (() => {
       .filter((v) => LANG[lang].test(v.lang))
       .sort((a, b) => score(b, lang) - score(a, lang));
   }
-  const natural = (v) => /Premium|プレミアム|Enhanced|拡張|Natural|Neural|Online/i.test(v.name);
+  const natural = (v) => tier(v) === "premium" || tier(v) === "enhanced";
   // 設定で選んだ声があればそれ、なければいちばん自然そうな声
   function get(lang) {
     const vs = list(lang);
     const want = typeof Store !== "undefined" ? Store.get().prefs[lang === "ja" ? "voiceJa" : "voiceEn"] : null;
-    return (want && vs.find((v) => v.name === want)) || vs[0] || (lang === "en" && ok ? speechSynthesis.getVoices().find((v) => /^en/i.test(v.lang)) : null) || null;
+    return (want && (vs.find((v) => key(v) === want) || vs.find((v) => v.name === want))) || vs[0] || (lang === "en" && ok ? speechSynthesis.getVoices().find((v) => /^en/i.test(v.lang)) : null) || null;
   }
   // 試しに読む
   function sample(lang, name) {
@@ -40,12 +58,12 @@ const Voices = (() => {
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(lang === "ja" ? "こんにちは。今日も5分だけ、USCPAの勉強をしましょう。" : "Revenue is recognized when control of the goods transfers to the customer.");
     u.lang = lang === "ja" ? "ja-JP" : "en-US";
-    const v = list(lang).find((x) => x.name === name) || get(lang);
+    const v = list(lang).find((x) => key(x) === name) || get(lang);
     if (v) u.voice = v;
     u.rate = (typeof Store !== "undefined" && Store.get().prefs.speechRate) || 0.95;
     speechSynthesis.speak(u);
   }
-  return { list, get, natural, sample };
+  return { list, get, natural, sample, key, label };
 })();
 
 const Speech = (() => {

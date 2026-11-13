@@ -1660,8 +1660,8 @@ const App = (() => {
       const cur = Store.get().prefs[lang === "ja" ? "voiceJa" : "voiceEn"] || "";
       const best = Voices.get(lang);
       return `<div class="field"><span>${label}</span><div class="voice-row"><select data-voice="${lang}">
-          <option value="">おまかせ(いちばん自然な声${best && !cur ? ":" + esc(best.name) : ""})</option>
-          ${vs.map((v) => `<option value="${esc(v.name)}" ${cur === v.name ? "selected" : ""}>${Voices.natural(v) ? "★ " : ""}${esc(v.name)}${v.localService ? "" : "(オンライン)"}</option>`).join("")}
+          <option value="">おまかせ(いちばん自然な声${best && !cur ? ":" + esc(Voices.label(best)) : ""})</option>
+          ${vs.map((v) => `<option value="${esc(Voices.key(v))}" ${cur === Voices.key(v) || cur === v.name ? "selected" : ""}>${Voices.natural(v) ? "★ " : ""}${esc(Voices.label(v))}${v.localService ? "" : "(オンライン)"}</option>`).join("")}
         </select><button class="btn small" data-try="${lang}">試す</button></div>
         ${vs.length ? "" : `<small class="muted">この端末には${lang === "ja" ? "日本語" : "英語"}の声が見つかりません</small>`}</div>`;
     };
