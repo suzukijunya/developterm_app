@@ -1668,6 +1668,13 @@ const App = (() => {
     const ja = Voices.list("ja");
     const hasNaturalJa = ja.some((v) => Voices.natural(v));
     return `${sel("ja", "日本語の声(聞き流し・単語の説明)")}${sel("en", "英語の声")}
+      <details class="voice-tips"><summary>声の詳細(うまく選べないときの確認用)</summary>
+        <p class="muted small">このブラウザがアプリに渡している声の一覧です。</p>
+        <ul class="voice-debug">${["ja", "en"]
+          .flatMap((l) => Voices.list(l))
+          .map((v) => `<li><b>${esc(v.name)}</b> ${esc(v.lang)} ${v.localService ? "端末内" : "オンライン"}<br><code>${esc(v.voiceURI || "")}</code></li>`)
+          .join("") || "<li>声が見つかりません</li>"}</ul>
+      </details>
       <details class="voice-tips" ${hasNaturalJa ? "" : "open"}><summary>もっと自然な声にするには(★が自然な声)</summary>
         <ul>
           <li><b>iPhone・iPad</b>:設定 → アクセシビリティ → 読み上げコンテンツ → 声 → 日本語 で「Kyoko」「O-ren」などの<b>拡張</b>または<b>プレミアム</b>の声をダウンロード → このアプリを開き直して、上で選ぶ(Siriの声はブラウザからは使えません)</li>
