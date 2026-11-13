@@ -1,20 +1,60 @@
 // 英語の読み上げ(ブラウザ内蔵の音声合成)。APIキーや通信は不要。
 // data-say 属性を持つ要素をタップすると、その英語を読み上げる。
 
+// 声の選び方(英語・日本語で共通)。端末に入っている声のうち、自然に聞こえるものを優先する。
+// 「プレミアム」「拡張」「Natural(ニューラル)」の声は機械っぽさが少ない。設定画面で手動でも選べる。
+const Voices = (() => {
+  const ok = typeof window !== "undefined" && "speechSynthesis" in window;
+  const LANG = { ja: /^ja[-_]JP/i, en: /^en[-_]US/i };
+  const GOOD = {
+    ja: /Kyoko|O-ren|Otoya|Hattori|Google 日本語|Nanami|Keita|Aoi|Daichi|Mayu|Naoki|Shiori/i,
+    en: /Samantha|Ava|Allison|Evan|Zoe|Nathan|Google US English|Aria|Jenny|Guy|Michelle|Andrew|Emma|Brian/i,
+  };
+  function score(v, lang) {
+    let s = 0;
+    if (/Premium|プレミアム/i.test(v.name)) s += 100;
+    if (/Enhanced|拡張|Natural|Neural|Online/i.test(v.name)) s += 80;
+    if (GOOD[lang].test(v.name)) s += 40;
+    // 機械っぽさが強いことが多い声は下げる
+    if (/Compact|eSpeak|espeak|Fred|Albert|Bad News|Bells|Boing|Bubbles|Cellos|Jester|Organ|Trinoids|Whisper|Zarvox|Superstar|Grandma|Grandpa|Rocko|Shelley|Flo|Eddy|Reed|Sandy/i.test(v.name)) s -= 60;
+    if (v.localService) s += 5;
+    return s;
+  }
+  function list(lang) {
+    if (!ok) return [];
+    return speechSynthesis
+      .getVoices()
+      .filter((v) => LANG[lang].test(v.lang))
+      .sort((a, b) => score(b, lang) - score(a, lang));
+  }
+  const natural = (v) => /Premium|プレミアム|Enhanced|拡張|Natural|Neural|Online/i.test(v.name);
+  // 設定で選んだ声があればそれ、なければいちばん自然そうな声
+  function get(lang) {
+    const vs = list(lang);
+    const want = typeof Store !== "undefined" ? Store.get().prefs[lang === "ja" ? "voiceJa" : "voiceEn"] : null;
+    return (want && vs.find((v) => v.name === want)) || vs[0] || (lang === "en" && ok ? speechSynthesis.getVoices().find((v) => /^en/i.test(v.lang)) : null) || null;
+  }
+  // 試しに読む
+  function sample(lang, name) {
+    if (!ok) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(lang === "ja" ? "こんにちは。今日も5分だけ、USCPAの勉強をしましょう。" : "Revenue is recognized when control of the goods transfers to the customer.");
+    u.lang = lang === "ja" ? "ja-JP" : "en-US";
+    const v = list(lang).find((x) => x.name === name) || get(lang);
+    if (v) u.voice = v;
+    u.rate = (typeof Store !== "undefined" && Store.get().prefs.speechRate) || 0.95;
+    speechSynthesis.speak(u);
+  }
+  return { list, get, natural, sample };
+})();
+
 const Speech = (() => {
   const supported = typeof window !== "undefined" && "speechSynthesis" in window && typeof SpeechSynthesisUtterance !== "undefined";
   let voice = null;
 
   // 自然に聞こえる米国英語の声を優先して選ぶ
   function pickVoice() {
-    const voices = speechSynthesis.getVoices();
-    const us = voices.filter((v) => /^en[-_]US/i.test(v.lang));
-    voice =
-      us.find((v) => /Samantha|Ava|Allison|Google US English|Microsoft (Aria|Jenny|Guy)/i.test(v.name)) ||
-      us.find((v) => v.localService) ||
-      us[0] ||
-      voices.find((v) => /^en/i.test(v.lang)) ||
-      null;
+    voice = Voices.get("en");
   }
 
   if (supported) {
@@ -334,5 +374,5 @@ const Speech = (() => {
   document.addEventListener("keydown", onActivate, true);
   window.addEventListener("hashchange", stop);
 
-  return { supported, speak, stop, button, refresh, rateChanged };
+  return { supported, speak, stop, button, refresh, rateChanged, pickVoice };
 })();

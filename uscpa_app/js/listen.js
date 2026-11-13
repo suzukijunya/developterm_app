@@ -7,12 +7,10 @@ const Listen = (() => {
   let jaVoice = null;
   let enVoice = null;
 
+  // 声は Voices(speech.js)で選ぶ。設定で選んだ声、なければいちばん自然そうな声
   function pickVoices() {
-    const vs = speechSynthesis.getVoices();
-    const ja = vs.filter((v) => /^ja[-_]JP/i.test(v.lang));
-    jaVoice = ja.find((v) => /Kyoko|O-ren|Google 日本語|Nanami|Haruka/i.test(v.name)) || ja.find((v) => v.localService) || ja[0] || null;
-    const us = vs.filter((v) => /^en[-_]US/i.test(v.lang));
-    enVoice = us.find((v) => /Samantha|Ava|Allison|Google US English|Microsoft (Aria|Jenny|Guy)/i.test(v.name)) || us.find((v) => v.localService) || us[0] || null;
+    jaVoice = Voices.get("ja");
+    enVoice = Voices.get("en");
   }
   if (supported) {
     pickVoices();
@@ -189,5 +187,5 @@ const Listen = (() => {
   const next = () => jump(1);
   const prev = () => jump(-1);
 
-  return { supported, load, play, pause, stop, next, prev, state, hasJa: () => !!jaVoice };
+  return { supported, load, play, pause, stop, next, prev, state, pickVoices, hasJa: () => !!jaVoice };
 })();

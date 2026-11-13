@@ -1653,6 +1653,31 @@ const App = (() => {
       }`;
   }
 
+  // 読み上げの声の選択(設定画面)。端末に入っている声だけが選べる
+  function voiceSettingsHtml() {
+    const sel = (lang, label) => {
+      const vs = Voices.list(lang);
+      const cur = Store.get().prefs[lang === "ja" ? "voiceJa" : "voiceEn"] || "";
+      const best = Voices.get(lang);
+      return `<div class="field"><span>${label}</span><div class="voice-row"><select data-voice="${lang}">
+          <option value="">おまかせ(いちばん自然な声${best && !cur ? ":" + esc(best.name) : ""})</option>
+          ${vs.map((v) => `<option value="${esc(v.name)}" ${cur === v.name ? "selected" : ""}>${Voices.natural(v) ? "★ " : ""}${esc(v.name)}${v.localService ? "" : "(オンライン)"}</option>`).join("")}
+        </select><button class="btn small" data-try="${lang}">試す</button></div>
+        ${vs.length ? "" : `<small class="muted">この端末には${lang === "ja" ? "日本語" : "英語"}の声が見つかりません</small>`}</div>`;
+    };
+    const ja = Voices.list("ja");
+    const hasNaturalJa = ja.some((v) => Voices.natural(v));
+    return `${sel("ja", "日本語の声(聞き流し・単語の説明)")}${sel("en", "英語の声")}
+      <details class="voice-tips" ${hasNaturalJa ? "" : "open"}><summary>もっと自然な声にするには(★が自然な声)</summary>
+        <ul>
+          <li><b>iPhone・iPad</b>:設定 → アクセシビリティ → 読み上げコンテンツ → 声 → 日本語 で「Kyoko」「O-ren」などの<b>拡張</b>または<b>プレミアム</b>の声をダウンロード → このアプリを開き直して、上で選ぶ(Siriの声はブラウザからは使えません)</li>
+          <li><b>Mac</b>:システム設定 → アクセシビリティ → 読み上げコンテンツ → システムの声 → 声を管理 で日本語の「プレミアム」「拡張」の声を追加 → ブラウザを開き直す</li>
+          <li><b>Windows のPC</b>:<b>Microsoft Edge</b> でこのアプリを開くと「Nanami Online (Natural)」などの自然な声(無料)が使えます。Chrome なら「Google 日本語」がおすすめ</li>
+          <li><b>Android</b>:設定 → テキスト読み上げの出力 で「Google の音声サービス」の日本語の声をダウンロード</li>
+        </ul>
+      </details>`;
+  }
+
   function viewSettings() {
     current.section = null;
     const st = Store.get();
@@ -1678,6 +1703,7 @@ const App = (() => {
                 .join("")}</div></div>`
             : `<p class="muted small">このブラウザは英語の読み上げに対応していません。</p>`
         }
+        ${Speech.supported ? voiceSettingsHtml() : ""}
         ${Speech.supported ? `<label class="check"><input type="checkbox" id="s-karaoke" ${st.prefs.karaoke !== false ? "checked" : ""}> 読み上げ中の英文を色で追いかける(カラオケ表示)</label>` : ""}
         <label class="check"><input type="checkbox" id="s-confirm" ${st.prefs.confirmAnswer ? "checked" : ""}> 選択肢を選んでから「解答する」で確定する(誤タップ防止)</label>
         <label class="check"><input type="checkbox" id="s-qt" ${st.prefs.autoTranslate !== false ? "checked" : ""}> 英文を選択したら自動で翻訳する</label>
@@ -1720,6 +1746,17 @@ const App = (() => {
     $app.querySelector("#s-newcards").onchange = (e) => Store.setPref("newPerDay", Math.max(0, Math.min(200, Math.round(+e.target.value) || 0)));
     $app.querySelector("#s-daily").onchange = (e) => Store.setPlan({ dailyMin: Math.max(1, +e.target.value || 120) });
     $app.querySelector("#s-ja").onchange = (e) => Store.setPref("showJa", e.target.checked);
+    $app.querySelectorAll("[data-voice]").forEach((el) => {
+      el.onchange = () => {
+        Store.setPref(el.dataset.voice === "ja" ? "voiceJa" : "voiceEn", el.value || null);
+        Speech.pickVoice();
+        if (typeof Listen !== "undefined") Listen.pickVoices();
+        Voices.sample(el.dataset.voice, el.value);
+      };
+    });
+    $app.querySelectorAll("[data-try]").forEach((b) => {
+      b.onclick = () => Voices.sample(b.dataset.try, $app.querySelector(`[data-voice="${b.dataset.try}"]`).value);
+    });
     const kk = $app.querySelector("#s-karaoke");
     if (kk) kk.onchange = (e) => Store.setPref("karaoke", e.target.checked);
     $app.querySelectorAll("#s-rate button").forEach((b) => {
@@ -2809,6 +2846,11 @@ const App = (() => {
     window.addEventListener("keydown", onKey);
     window.addEventListener("hashchange", route);
     timerId = setInterval(tick, 5000);
+    // 声の一覧はあとから読み込まれるので、設定画面を開いていたら描き直す
+    if (window.speechSynthesis && speechSynthesis.addEventListener)
+      speechSynthesis.addEventListener("voiceschanged", () => {
+        if (location.hash === "#/settings") viewSettings();
+      });
     // 以前のオフライン対応(Service Worker)は廃止。入っている端末からは取り除き、保存したファイルも消す
     if ("serviceWorker" in navigator && navigator.serviceWorker.getRegistrations)
       navigator.serviceWorker
