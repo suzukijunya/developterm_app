@@ -4,9 +4,12 @@
 const DuelFx = (() => {
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   let timer = null;
+  const LP0 = () => (typeof Battle !== "undefined" ? Battle.LP0 : 4000);
 
   function cardHtml(c, cls = "") {
-    return `<div class="df-card ${c.kind} ${cls}"><div class="df-card-name">${esc(c.name)}</div><div class="df-card-art">${c.kind === "trap" ? "⚡" : "🌀"}</div><div class="df-card-type">${c.kind === "trap" ? "TRAP" : "SPEED SPELL"}</div><div class="df-card-text">${esc(c.text)}</div></div>`;
+    const type = c.kind === "trap" ? "TRAP" : c.kind === "monster" ? `${c.tuner ? "TUNER " : ""}Lv${c.lv} ATK${c.atk}` : "SPEED SPELL";
+    const art = c.icon || (c.kind === "trap" ? "⚡" : "🌀");
+    return `<div class="df-card ${c.kind} ${cls}"><div class="df-card-name">${esc(c.name)}</div><div class="df-card-art">${art}</div><div class="df-card-type">${type}</div><div class="df-card-text">${esc(c.text || "")}</div></div>`;
   }
 
   function overlay(html, ms, onClose) {
@@ -43,7 +46,7 @@ const DuelFx = (() => {
   const lanes = `<div class="df-lane left"></div><div class="df-lane right"></div>`;
 
   // 開始: レーン → 「RIDING DUEL / ACCELERATION!」→ LP 4000 → 5枚ドロー
-  function start({ hand, ghost }) {
+  function start({ hand, ghost, foe }) {
     // ドライバー視点: ハンドル越しに道が流れ、相手が前を走る。手札は手元に配られる
     const el = overlay(
       scene(
@@ -53,8 +56,9 @@ const DuelFx = (() => {
           <div class="df-lps">
             <div class="df-lp you"><small>YOU</small><b id="df-lp-you">0</b></div>
             <div class="df-vs">VS</div>
-            <div class="df-lp ghost"><small>GHOST</small><b id="df-lp-ghost">${ghost ? "0" : "—"}</b></div>
+            <div class="df-lp ghost"><small>${foe ? esc(foe.name) : "GHOST"}</small><b id="df-lp-ghost">${ghost || foe ? "0" : "—"}</b></div>
           </div>
+          ${foe ? `<div class="df-foe">${foe.icon} デッキ「${esc(foe.deckName)}」<small>${esc(foe.style)}</small></div>` : ""}
         </div>
         <div class="dvs-hand">
           <div class="df-draw">DRAW!</div>
@@ -65,8 +69,8 @@ const DuelFx = (() => {
       6500
     );
     setTimeout(() => {
-      count(el.querySelector("#df-lp-you"), 0, 4000, 900);
-      if (ghost) count(el.querySelector("#df-lp-ghost"), 0, 4000, 900);
+      count(el.querySelector("#df-lp-you"), 0, LP0(), 900);
+      if (ghost || foe) count(el.querySelector("#df-lp-ghost"), 0, LP0(), 900);
     }, 1300);
   }
 
@@ -80,8 +84,8 @@ const DuelFx = (() => {
         <div class="df-duelists end"><div class="df-av you">${avatarHtml("you")}</div></div>
         <div class="df-title">TURBO DUEL END</div>
         <div class="df-lps">
-          <div class="df-lp you"><small>YOU</small><b id="df-lp-end">4,000</b></div>
-          ${res && !res.first ? `<div class="df-vs">VS</div><div class="df-lp ghost"><small>GHOST</small><b>${res.battle ? res.battle.opp.toLocaleString() : res.win ? "0" : "4,000"}</b></div>` : ""}
+          <div class="df-lp you"><small>YOU</small><b id="df-lp-end">${LP0().toLocaleString()}</b></div>
+          ${res && !res.first ? `<div class="df-vs">VS</div><div class="df-lp ghost"><small>${res.battle && res.battle.foe ? esc(res.battle.foe) : "GHOST"}</small><b>${res.battle ? res.battle.opp.toLocaleString() : res.win ? "0" : LP0().toLocaleString()}</b></div>` : ""}
         </div>
         <div class="df-summon">
           <div class="df-rings"><i></i><i></i><i></i></div>
@@ -93,12 +97,13 @@ const DuelFx = (() => {
             <div class="df-m-stat">ATK/${monster.atk.toLocaleString()}　DEF/${monster.def.toLocaleString()}</div>
           </div>
         </div>
-        ${used && used.length ? `<div class="df-used">発動したカード: ${used.map((c) => esc(c.name)).join("・")}</div>` : ""}
+        ${res && res.battle && res.battle.wins + res.battle.losses ? `<div class="df-record">ライバル戦 ${res.battle.wins}勝 ${res.battle.losses}敗</div>` : ""}
+        ${used && used.length ? `<div class="df-used">発動したカード: ${Object.entries(used.reduce((o, c) => ((o[c.name] = (o[c.name] || 0) + 1), o), {})).map(([n, k]) => esc(n) + (k > 1 ? `×${k}` : "")).join("・")}</div>` : ""}
         <div class="df-verdict ${res && !res.first ? (res.win ? "win" : "lose") : ""}">${verdict}</div>
       </div>`,
       8000
     );
-    if (lp != null) setTimeout(() => count(el.querySelector("#df-lp-end"), 4000, lp, 1200), 900);
+    if (lp != null) setTimeout(() => count(el.querySelector("#df-lp-end"), LP0(), lp, 1200), 900);
   }
 
   // 走行中: ドローしたカード・発動したカードを画面の下に少しだけ出す(操作は不要)
@@ -126,7 +131,8 @@ const DuelFx = (() => {
     const dead = { you: [], opp: [] };
     if (ev) {
       for (const st of ev.steps) {
-        if (st.t === "summon") marks.set(st.mon, st.synchro ? "new syn-new" : "new");
+        if (st.t === "summon") marks.set(st.mon, st.how === "synchro" ? "new syn-new" : "new");
+        if (st.t === "destroy" && st.why && !(b[st.side].field || []).includes(st.mon)) dead[st.side].push(st.mon), marks.set(st.mon, "dead");
         if (st.t === "attack") {
           if (st.result === "destroy" || st.result === "both") st.target && (dead[st.side === "you" ? "opp" : "you"].push(st.target), marks.set(st.target, "dead"));
           if (st.result === "repel" || st.result === "both") (dead[st.side].push(st.mon), marks.set(st.mon, "dead"));
@@ -134,16 +140,16 @@ const DuelFx = (() => {
         }
       }
     }
-    const lpBar = (side, lp) => `<div class="bf-lp ${side}"><small>${esc(names[side])}</small><div class="bf-lpbar"><i style="width:${(lp / 4000) * 100}%"></i></div><b>${lp.toLocaleString()}</b></div>`;
+    const lpBar = (side, lp) => `<div class="bf-lp ${side}"><small>${esc(names[side])}</small><div class="bf-lpbar"><i style="width:${Math.min(100, (lp / LP0()) * 100)}%"></i></div><b>${lp.toLocaleString()}</b></div>`;
     // ドライバー視点: ハンドル越しに前の道を見る。相手は道の先(自分が前にいるときはミラーの中)、
     // 相手のモンスターは奥、自分のモンスターは手前に浮かぶ
     return scene(
       `${lpBar("opp", b.opp.lp)}
       <div class="bf-row opp">${rowHtml(b.opp.field, dead.opp, marks)}</div>
-      <div class="bf-mid">TURN ${b.turn}</div>
+      <div class="bf-mid">TURN ${b.turn}${b.you.sets ? `<span class="bf-sets">伏せ ${b.you.sets.length} | ${b.opp.sets.length}</span>` : ""}</div>
       <div class="bf-row you">${rowHtml(b.you.field, dead.you, marks)}</div>
       <div class="dv-dash">${lpBar("you", b.you.lp)}</div>`,
-      { diff: extra && extra.diff, ghost: true, name: names.opp }
+      { diff: extra && extra.diff, ghost: true, name: "ゴースト" }
     );
   }
 
@@ -171,47 +177,72 @@ const DuelFx = (() => {
     </div>`;
   }
 
-  // 1ターンの演出(画面の上に4〜5秒。触らなくてよい)
+  // 1ターンの演出(画面の上に重ねる。触らなくてよい)。ドロー→召喚→魔法→チェーン→攻撃…を
+  // テンポよく次々に出す(1つ0.5秒前後)。チェーンは「CHAIN 1・2・3…」と積み上がってから、上から順に解決する
   let turnTimer = null;
   function turn(ev, b, names) {
     clearTimeout(turnTimer);
     let el = document.getElementById("bt");
     if (el) el.remove();
     const yours = ev.side === "you";
+    const who = (s) => (s === "you" ? "you" : "opp");
     const seq = [];
-    let t = 0.5, tSum = 1.4, tAtk = null;
+    let t = 0.45, tSum = null, tAtk = null;
+    const add = (html, len) => {
+      seq.push(html.replace(/--d:X/, `--d:${t.toFixed(2)}s;--len:${len}s`));
+      t += len * 0.78;
+    };
     for (const st of ev.steps) {
-      if (st.t === "draw") {
-        seq.push(`<div class="bt-step bt-draw" style="--d:${t}s">${yours && st.card ? cardHtml(st.card, "mini-card") : `<div class="bt-back"></div>`}<span>DRAW!</span></div>`);
-        t += 0.9;
+      if (st.t === "newfoe") {
+        add(`<div class="bt-call foe" style="--d:X">NEW RIVAL!<b>${esc(st.foe.icon)} ${esc(st.foe.name)}</b><small>デッキ「${esc(st.foe.deckName)}」 ${esc(st.foe.style)}</small></div>`, 1.8);
+      } else if (st.t === "draw") {
+        add(`<div class="bt-step bt-draw" style="--d:X">${st.card ? cardHtml(st.card, "mini-card") : `<div class="bt-back"></div>`}<span>${st.why ? "+1 DRAW" : "DRAW!"}</span></div>`, 0.7);
       } else if (st.t === "summon") {
-        tSum = t;
-        seq.push(`<div class="bt-call" style="--d:${t}s">${st.synchro ? `✦ SYNCHRO SUMMON ✦<small>${esc(st.from.join(" + "))}</small>` : "SUMMON!"}<b>${st.mon.icon} ${esc(st.mon.name)} ATK ${st.mon.atk}</b></div>`);
-        t += 0.9;
-      } else if (st.t === "trap") {
-        seq.push(`<div class="bt-step bt-trap" style="--d:${t}s">${cardHtml(Object.assign({ kind: "trap" }, st.card), "mini-card")}<span>TRAP OPEN!</span></div>`);
-        t += 0.9;
+        if (tSum == null) tSum = t;
+        const how = st.how === "synchro" ? "✦ SYNCHRO SUMMON ✦" : st.how === "special" ? "SPECIAL SUMMON!" : "SUMMON!";
+        add(`<div class="bt-call ${st.how === "synchro" ? "syn" : ""}" style="--d:X">${how}<b>${st.mon.icon} ${esc(st.mon.name)} ATK ${st.mon.atk}</b></div>`, st.how === "synchro" ? 1.2 : 0.75);
+      } else if (st.t === "tune") {
+        add(`<div class="bt-call tune" style="--d:X">TUNING!<small>${esc(st.from.join(" + "))} = Lv${st.lv}</small></div>`, 0.9);
+      } else if (st.t === "spell") {
+        add(`<div class="bt-step bt-spell ${who(st.side)}" style="--d:X">${cardHtml(st.card, "mini-card")}<span>SPEED SPELL!</span></div>`, 0.75);
+      } else if (st.t === "set") {
+        add(`<div class="bt-step bt-set" style="--d:X">${'<div class="bt-back set"></div>'.repeat(Math.min(3, st.n))}<span>${st.n}枚セット</span></div>`, 0.6);
+      } else if (st.t === "chain") {
+        const per = 0.42;
+        const links = st.links
+          .map((l, i) => `<div class="bt-link ${who(l.side)} ${l.kind}" style="--ld:${(t + i * per).toFixed(2)}s;--i:${i}"><em>CHAIN ${l.n}</em>${l.icon} ${esc(l.name)}</div>`)
+          .join("");
+        const len = 0.6 + st.links.length * per + 0.5;
+        add(`<div class="bt-chain" style="--d:X">${links}${st.links.length >= 3 ? `<div class="bt-chainx" style="--ld:${(t + st.links.length * per).toFixed(2)}s">${st.links.length} CHAIN!!</div>` : ""}</div>`, len / 0.78);
+      } else if (st.t === "resolve" || st.t === "effect" || st.t === "info") {
+        add(`<div class="bt-call note ${who(st.side)}" style="--d:X"><b>${esc(st.text)}</b></div>`, 0.75);
+      } else if (st.t === "burn") {
+        add(`<div class="bt-call dmg burn ${who(st.side)}" style="--d:X">🔥 ${esc(st.why || "")}<b>${st.side === "you" ? "相手に" : "自分に"} ${st.dmg}ダメージ!</b></div>`, 0.8);
+      } else if (st.t === "destroy") {
+        if (st.why) add(`<div class="bt-call note" style="--d:X"><b>${st.mon.icon} ${esc(st.mon.name)} 破壊!</b></div>`, 0.65);
       } else if (st.t === "attack") {
-        tAtk = t + 0.3;
-        const txt = st.result === "negated" ? "無効化!" : st.result === "direct" ? `ダイレクトアタック! −${st.dmg}` : st.result === "destroy" ? `撃破! −${st.dmg}` : st.result === "repel" ? `返り討ち… −${st.dmg}` : "相打ち!";
-        seq.push(`<div class="bt-beam ${st.side}" style="--d:${t}s"></div><div class="bt-call dmg ${st.side}" style="--d:${t + 0.25}s">${st.mon.icon} ${esc(st.mon.name)}の攻撃 (${st.power})<b>${txt}</b></div>`);
-        t += 1.1;
+        if (tAtk == null) tAtk = t + 0.3;
+        const txt = st.result === "negated" ? "無効化!" : st.result === "direct" ? `ダイレクトアタック! −${st.dmg}` : st.result === "destroy" ? `撃破! −${st.dmg}` : st.result === "guard" ? `耐えた! −${st.dmg}` : st.result === "repel" ? `返り討ち… −${st.dmg}` : "相打ち!";
+        seq.push(`<div class="bt-beam ${st.side}" style="--d:${t.toFixed(2)}s"></div>`);
+        add(`<div class="bt-call dmg ${st.side}" style="--d:X">${st.mon.icon} ${esc(st.mon.name)}の攻撃 (${st.power})<b>${txt}</b></div>`, 0.9);
       } else if (st.t === "win") {
-        seq.push(`<div class="bt-call win ${st.side}" style="--d:${t}s"><b>${st.side === "you" ? "DUEL WIN!" : "DUEL LOSE…"}</b></div>`);
-        t += 1.2;
+        add(`<div class="bt-call win ${st.side}" style="--d:X"><b>${st.side === "you" ? "DUEL WIN!" : "DUEL LOSE…"}</b><small>${st.side === "you" ? `${esc(st.foe)}を倒した! 次のライバルが来る` : "LPが尽きた…次の相手で取り返せ"}</small></div>`, 1.6);
       }
     }
+    const combo = ev.acts >= 5 ? `<div class="bt-combo" style="--d:${t.toFixed(2)}s">${ev.acts} COMBO!</div>` : "";
+    if (combo) t += 0.9;
+    const foe = ev.foe ? `${ev.foe.icon} ${esc(ev.foe.name)}` : esc(names.opp);
     document.body.insertAdjacentHTML(
       "beforeend",
-      `<div class="bt" id="bt" style="--dsum:${tSum}s;--dead:${tAtk || t}s">
+      `<div class="bt" id="bt" style="--dsum:${(tSum || 0.4).toFixed(2)}s;--dead:${(tAtk || t).toFixed(2)}s">
         <div class="bt-face ${ev.side}">${avatarHtml(ev.side)}</div>
-        <div class="bt-banner ${ev.side}">TURN ${ev.turn}・${yours ? "YOUR TURN" : `${esc(names.opp)}のターン`}<small>この1km ${ev.ratio >= 1 ? "ゴーストより速い" : "ゴーストより遅い"}(×${ev.ratio.toFixed(2)})</small></div>
+        <div class="bt-banner ${ev.side}">TURN ${ev.turn}・${yours ? "YOUR TURN" : `${foe}のターン`}<small>${yours ? `山札 ${ev.deckLeft}枚・SPC ${ev.you.spc}・ペース×${ev.ratio.toFixed(2)}` : `デッキ「${esc(ev.foe ? ev.foe.deckName : "")}」`}</small></div>
         ${fieldHtml(b, names, ev)}
-        <div class="bt-seq">${seq.join("")}</div>
+        <div class="bt-seq">${seq.join("")}${combo}</div>
       </div>`
     );
     el = document.getElementById("bt");
-    turnTimer = setTimeout(() => el && el.remove(), (t + 1.4) * 1000);
+    turnTimer = setTimeout(() => el && el.remove(), (t + 1) * 1000);
   }
 
   // ---------- デュエリスト(オリジナルのキャラクター。設定で自分の画像に替えられる) ----------

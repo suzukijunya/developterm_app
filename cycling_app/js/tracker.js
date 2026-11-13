@@ -211,7 +211,7 @@ const Tracker = (() => {
       arrival: ride.arrival || null,
       // デュエルモードのスピードカウンター・使ったカード・カードで増えたLP
       vehicleDist: ride.vehicleDist || 0, // 電車・車と判断して数えなかった距離
-      duel: ride.duel ? { spc: ride.duel.spc, used: ride.duel.used || [], lpBonus: ride.duel.lpBonus || 0, b: ride.duel.b ? { turn: ride.duel.b.turn, winner: ride.duel.b.winner, you: { lp: ride.duel.b.you.lp }, opp: { lp: ride.duel.b.opp.lp } } : null } : null,
+      duel: ride.duel ? { spc: ride.duel.b && ride.duel.b.you ? ride.duel.b.you.spc : ride.duel.spc, used: ride.duel.used || [], lpBonus: ride.duel.lpBonus || 0, b: ride.duel.b && ride.duel.b.v === 2 && typeof Battle !== "undefined" ? Battle.summary(ride.duel.b) : ride.duel.b ? { turn: ride.duel.b.turn, winner: ride.duel.b.winner, you: { lp: ride.duel.b.you.lp }, opp: { lp: ride.duel.b.opp.lp } } : null } : null,
     };
   }
 

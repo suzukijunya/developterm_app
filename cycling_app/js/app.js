@@ -416,21 +416,14 @@
     const wind = currentWind();
     const extra = { remainM: ride.eta && !ride.eta.arrived ? ride.eta.remainM : null, headwind: wind && ride.heading != null ? Physics.headwind(wind.speed, wind.from, ride.heading) : null };
     for (const e of Duel.step(ride, extra)) {
-      if (e.type === "up" && (e.spc % 4 === 0 || e.spc === Duel.MAX_SPC)) duelSay(`スピードカウンター、${e.spc}!`, false, true);
-      if (e.type === "down") duelSay("止まりすぎた…スピードカウンター、マイナス1", false, true);
-      if (e.type === "draw") {
-        DuelFx.pop(e.card, "DRAW!");
-        duelSay("俺のターン、ドロー!", false, true);
-      }
-      if (e.type === "activate") {
-        DuelFx.pop(e.card, e.card.kind === "trap" ? "TRAP OPEN!" : "SPEED SPELL!");
-        duelSay(e.card.kind === "trap" ? `トラップ発動、${e.card.name}!` : `スピード・スペル、${e.card.name}、発動!`, false, true);
-      }
+      // ゴーストとの距離の読み上げだけ使う(カードは Battle のデッキで動く)
+      if (e.type === "down") duelSay("止まりすぎた…", false, true);
     }
-    // バトル: 1kmごとに1ターン
+    // バトル: 110mごとに1ターン(自分のターンは220mごと)
     const L = placeById(ride.placeId) ? Eta.learned(placeById(ride.placeId)) : null;
-    const names = { you: "YOU", opp: L ? "ゴースト" : "練習相手" };
-    const bev = Battle.step(ride, (L && L.speed) || 15 / 3.6, Duel.state(ride).spc);
+    const bs = Battle.state(ride);
+    const names = { you: "YOU", opp: Battle.foeOf(bs).name };
+    const bev = Battle.step(ride, (L && L.speed) || 18 / 3.6);
     if (bev) {
       DuelFx.turn(bev, Battle.state(ride), names);
       battleVoice(bev, names);
@@ -447,19 +440,34 @@
     if (typeof DuelFx !== "undefined" && document.visibilityState === "visible") DuelFx.cutIn(text, side);
   }
 
+  // 1ターンに何枚も動くので、全部は読まない。そのターンのいちばんの見せ場を1〜2言だけ話す
   function battleVoice(ev, names) {
     const mine = ev.side === "you";
-    for (const st of ev.steps) {
-      if (st.t === "draw") duelSay(mine ? `俺のターン! ドロー!` : `${names.opp}のターン`, false, true, mine ? "you" : "opp");
-      if (st.t === "summon")
-        duelSay(st.synchro ? `${st.from[0]}に、${st.from[1]}をチューニング! シンクロ召喚! 来い、${st.mon.name}!` : mine ? `${st.mon.name}を召喚!` : `${names.opp}は${st.mon.name}を召喚した`, false, true, mine ? "you" : "opp");
-      if (st.t === "trap") duelSay(st.side === "you" ? `罠カード発動! ${st.card.name}!` : `${names.opp}の罠、${st.card.name}!`, false, true, st.side);
-      if (st.t === "attack") {
-        const res = st.result === "negated" ? "攻撃は無効になった" : st.result === "direct" ? `ダイレクトアタック! ${st.dmg}のダメージ` : st.result === "destroy" ? `撃破! ${st.dmg}のダメージ` : st.result === "repel" ? `返り討ちだ…${st.dmg}のダメージ` : "相打ちだ";
-        duelSay(mine ? `バトル! ${st.mon.name}で攻撃! ${res}` : `${st.mon.name}の攻撃。${res}`, false, true, mine ? "you" : "opp");
-      }
-      if (st.t === "win") duelSay(st.side === "you" ? "これで終わりだ! 俺の勝ちだ!" : "ライフがゼロに…だが、まだ走れる!", false, true);
+    const foe = ev.foe ? ev.foe.name : names.opp;
+    const lines = [];
+    const pick = (t) => ev.steps.filter((x) => x.t === t);
+    const nf = pick("newfoe")[0];
+    if (nf) lines.push([9, `新たなライバル、${nf.foe.name}! デッキは${nf.foe.deckName}か…`, "opp"]);
+    const win = pick("win")[0];
+    if (win) lines.push([10, win.side === "you" ? `これで終わりだ! ${foe}、撃破!` : "ライフがゼロに…だが、まだ走れる!", "you"]);
+    const chain = pick("chain").sort((a, b) => b.links.length - a.links.length)[0];
+    if (chain && chain.links.length >= 3) lines.push([8, `チェーン${chain.links.length}まで重なった! 逆順に解決だ!`, mine ? "you" : "opp"]);
+    else if (chain) {
+      const l = chain.links[chain.links.length - 1];
+      lines.push([5, l.side === "you" ? `罠発動! ${l.name}!` : `${foe}の罠、${l.name}!`, l.side]);
     }
+    const syn = pick("summon").find((x) => x.how === "synchro");
+    if (syn) lines.push([7, mine ? `チューニング! シンクロ召喚! 来い、${syn.mon.name}!` : `${foe}がシンクロ召喚、${syn.mon.name}!`, mine ? "you" : "opp"]);
+    if (ev.acts >= 6) lines.push([6, mine ? `${ev.acts}連続コンボ! まだまだ行くぜ!` : `${foe}の${ev.acts}連続コンボ…!`, mine ? "you" : "opp"]);
+    const big = pick("attack").find((x) => x.result === "direct" && x.dmg >= 1500);
+    if (big) lines.push([6, mine ? `ダイレクトアタック! ${big.dmg}のダメージ!` : `ダイレクトアタックを受けた…${big.dmg}のダメージ`, mine ? "you" : "opp"]);
+    const burn = pick("burn").reduce((a, x) => a + x.dmg, 0);
+    if (burn >= 1000) lines.push([5, mine ? `効果ダメージ、合計${burn}!` : `${foe}のバーンで${burn}のダメージ…`, mine ? "you" : "opp"]);
+    if (!lines.length && mine && ev.turn % 4 === 1) lines.push([1, "俺のターン、ドロー!", "you"]);
+    const deckOut = pick("info")[0];
+    if (deckOut) lines.push([4, "デッキが尽きた! ここからは手札だけで勝負だ!", "you"]);
+    lines.sort((a, b) => b[0] - a[0]);
+    lines.slice(0, 2).forEach(([, text, side], i) => duelSay(text, false, i > 0, side));
   }
 
   function onGpsError(err) {
@@ -500,10 +508,13 @@
     updateWake();
     render();
     if (Store.prefs.duel) {
-      const hand = Duel.deal(ride);
+      Duel.state(ride);
+      const hand = Battle.deal(ride);
+      const foe = Battle.foeOf(Battle.state(ride));
       Store.setActive(ride);
       const place = placeById(ride.placeId);
-      DuelFx.start({ hand, ghost: !!(place && Eta.learned(place)) });
+      DuelFx.start({ hand, ghost: !!(place && Eta.learned(place)), foe });
+      duelSay(`相手は${foe.name}。デッキは${foe.deckName}!`, true, true, "opp");
     }
   }
 
@@ -552,7 +563,7 @@
       atk: Math.min(5000, Math.round((so.kmh * 100) / 50) * 50),
       def: Math.min(5000, Math.round((avgPower * 12 + r.elevGain * 5) / 50) * 50),
     };
-    const used = ((r.duel && r.duel.used) || []).map(Duel.byId).filter(Boolean);
+    const used = (r.duel && r.duel.b && r.duel.b.used ? r.duel.b.used.map((name) => ({ name })) : ((r.duel && r.duel.used) || []).map(Duel.byId)).filter(Boolean);
     DuelFx.end({ res, monster, used });
     duelSay(`限界を超えろ! 俺の相棒、${name}、シンクロ召喚!`, true);
     if (res && !res.first) duelSay(res.win ? "俺の勝ちだ。いいライディングだったぜ" : "負けたか…次は必ず追い抜く。もう一度、走り出すだけだ", true, true);
@@ -1389,7 +1400,7 @@
     if (res && res.battle) {
       const b = res.battle;
       return `<div class="duel-res ${b.winner === "you" ? "win" : b.winner === "opp" ? "lose" : ""}"><b>${b.winner === "you" ? "DUEL WIN!" : b.winner === "opp" ? "DUEL LOSE…" : "DRAW"}</b>
-        <small>${b.turns}ターン・LP ${b.you.toLocaleString()} 対 ${b.opp.toLocaleString()}・SPC ${spc}${res.diffSec != null ? `・ゴーストより${Math.abs(Math.round(res.diffSec))}秒${res.diffSec > 0 ? "速い" : "遅い"}` : ""}</small></div>`;
+        <small>${b.turns}ターン${b.wins + b.losses ? `・ライバル戦 ${b.wins}勝${b.losses}敗` : ""}・LP ${b.you.toLocaleString()} 対 ${b.opp.toLocaleString()}${b.foe ? `(${esc(b.foe)})` : ""}${res.diffSec != null ? `・ゴーストより${Math.abs(Math.round(res.diffSec))}秒${res.diffSec > 0 ? "速い" : "遅い"}` : ""}</small></div>`;
     }
     if (!res) return `<div class="duel-res"><b>RIDING DUEL</b><small>SPC ${spc}・目的地に着くと、ゴーストとの勝負になります</small></div>`;
     if (res.first) return `<div class="duel-res"><b>FIRST DUEL</b><small>SPC ${spc}・次からは今日の自分がゴーストになります</small></div>`;
@@ -1834,26 +1845,24 @@
   function renderDuel() {
     const el = document.getElementById("duelbar");
     if (!el || !ride) return;
-    const d = Duel.state(ride);
+    const b = Battle.state(ride);
+    const foe = Battle.foeOf(b);
     const g = Duel.ghost(ride, placeById(ride.placeId));
-    const pips = Array.from({ length: Duel.MAX_SPC }, (_, i) => `<i class="${i < d.spc ? "on" : ""}"></i>`).join("");
-    const pl = placeById(ride.placeId);
-    const names = { you: "YOU", opp: pl && Eta.learned(pl) ? "ゴースト" : "練習相手" };
+    const spc = b.you.spc;
+    const pips = Array.from({ length: 12 }, (_, i) => `<i class="${i < spc ? "on" : ""}"></i>`).join("");
+    const names = { you: "YOU", opp: foe.name };
+    const left = Math.max(0, Math.ceil((b.nextAt - ride.distance) / 10) * 10);
+    const nextMine = (b.turn + 1) % 2 === 1;
     el.className = "duel-bar field";
     el.innerHTML = `
-      <div class="duel-top"><div class="spc"><span>SPC</span><b>${d.spc}</b><div class="spc-pips">${pips}</div></div>
-      ${
-        g
-          ? `<div class="lp"><span>GHOST</span><b class="gh ${g.diff >= 0 ? "ahead" : "behind"}">${g.diff >= 0 ? "+" : "−"}${Math.round(Math.abs(g.diff)).toLocaleString()}m</b>
-             <small>${g.diff >= 0 ? "ゴーストより前を走っています" : "ゴーストに遅れています"}</small></div>`
-          : `<div class="lp"><span>GHOST</span><small>目的地に何回か着くと、いつもの自分(ゴースト)と勝負できます</small></div>`
-      }</div>
-      ${DuelFx.fieldHtml(Battle.state(ride), names, null, { diff: g ? g.diff : null })}
-      <small class="duel-next">次のターンまで ${Math.max(0, Math.ceil((1000 - (ride.distance % 1000)) / 10) * 10)}m</small>
-      <div class="duel-hand">${(d.hand || [])
-        .map(Duel.byId)
-        .filter(Boolean)
-        .map((c) => `<span class="mini ${c.kind}" title="${esc(c.text)}">${c.kind === "trap" ? "⚡" : "🌀"} ${esc(c.name)}</span>`)
+      <div class="duel-top"><div class="spc"><span>SPC</span><b>${spc}</b><div class="spc-pips">${pips}</div></div>
+      <div class="lp"><span>${foe.icon} ${esc(foe.name)}</span><b class="foe-deck">${esc(foe.deckName)}</b>
+        <small>山札 ${b.you.deck.length}/40・${b.wins || 0}勝${b.losses || 0}敗${g ? `・ゴースト ${g.diff >= 0 ? "+" : "−"}${Math.round(Math.abs(g.diff))}m` : ""}</small></div></div>
+      ${DuelFx.fieldHtml(b, names, null, { diff: g ? g.diff : null })}
+      <small class="duel-next">${nextMine ? "自分" : esc(foe.name) + "の"}ターンまで ${left}m</small>
+      <div class="duel-hand">${b.you.hand
+        .map(Battle.cardOf)
+        .map((c) => `<span class="mini ${c.kind}" title="${esc(c.text || "")}">${c.icon} ${esc(c.name)}</span>`)
         .join("") || `<small>手札なし</small>`}</div>`;
   }
 
@@ -2206,7 +2215,7 @@
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2026.11.26";
+  const APP_VERSION = "2026.11.27";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });
