@@ -2086,6 +2086,16 @@ const App = (() => {
     return Object.assign({ kind: "word", scope: "mine", order: "weak", gap: 3000, count: 50 }, Store.get().prefs.listen || {});
   }
 
+  // 聞き流しの決まり文句。日本語は文単位で区切り、事前に作った自然な声の音声ファイル
+  // (tools/make_audio.py が LISTEN_PHRASES と単語カードの ja・desc・詳しい説明から作る)をそのまま使えるようにする
+  const LP = {
+    meaning: "の意味は、",
+    ask: "まるか、ばつか?",
+    yes: "正解は、まる。",
+    no: "正解は、ばつ。正しくは、",
+    jp: "日本でいうと。",
+  };
+
   function listenItems(lp) {
     let cards = CPA.allCards();
     if (lp.scope === "mine") cards = cards.filter((c) => mySections().includes(c.section));
@@ -2112,9 +2122,11 @@ const App = (() => {
           quiz: { shown, truth },
           segs: [
             { t: c.en, lang: "en" },
-            { t: `の意味は、${shown}。○か✕か?`, lang: "ja" },
+            { t: LP.meaning, lang: "ja" },
+            { t: shown, lang: "ja" },
+            { t: LP.ask, lang: "ja" },
             { wait: g + 1000 },
-            { t: truth ? "正解は、まる。" : `正解は、ばつ。正しくは、${c.ja}。`, lang: "ja" },
+            ...(truth ? [{ t: LP.yes, lang: "ja" }] : [{ t: LP.no, lang: "ja" }, { t: c.ja, lang: "ja" }]),
             { t: c.desc, lang: "ja" },
             { wait: Math.round(g / 2) },
           ],
@@ -2125,9 +2137,11 @@ const App = (() => {
         return Object.assign(base, {
           segs: [
             { t: c.en, lang: "en" },
-            { t: `${c.ja}。${c.desc}`, lang: "ja" },
+            { t: c.ja, lang: "ja" },
+            { t: c.desc, lang: "ja" },
             { t: x[0], lang: "ja" },
-            { t: `日本でいうと。${x[1]}`, lang: "ja" },
+            { t: LP.jp, lang: "ja" },
+            { t: x[1], lang: "ja" },
             { wait: g },
           ],
         });
@@ -2136,7 +2150,8 @@ const App = (() => {
         segs: [
           { t: c.en, lang: "en" },
           { wait: g },
-          { t: `${c.ja}。${c.desc}`, lang: "ja" },
+          { t: c.ja, lang: "ja" },
+          { t: c.desc, lang: "ja" },
           { wait: Math.round(g / 3) },
           { t: c.en, lang: "en" },
           { wait: Math.round(g / 2) },
