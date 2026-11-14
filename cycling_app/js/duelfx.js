@@ -199,7 +199,7 @@ const DuelFx = (() => {
         add(`<div class="bt-step bt-draw" style="--d:X">${st.card ? cardHtml(st.card, "mini-card") : `<div class="bt-back"></div>`}<span>${st.why ? "+1 DRAW" : "DRAW!"}</span></div>`, 0.7);
       } else if (st.t === "summon") {
         if (tSum == null) tSum = t;
-        const how = st.how === "synchro" ? "✦ SYNCHRO SUMMON ✦" : st.how === "special" ? "SPECIAL SUMMON!" : "SUMMON!";
+        const how = st.how === "synchro" ? "✦ SYNCHRO SUMMON ✦" : st.how === "special" || st.how === "revive" ? "SPECIAL SUMMON!" : "SUMMON!";
         add(`<div class="bt-call ${st.how === "synchro" ? "syn" : ""}" style="--d:X">${how}<b>${st.mon.icon} ${esc(st.mon.name)} ATK ${st.mon.atk}</b></div>`, st.how === "synchro" ? 1.2 : 0.75);
       } else if (st.t === "tune") {
         add(`<div class="bt-call tune" style="--d:X">TUNING!<small>${esc(st.from.join(" + "))} = Lv${st.lv}</small></div>`, 0.9);

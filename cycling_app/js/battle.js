@@ -207,13 +207,13 @@ const Battle = (() => {
         const k = P.sets.splice(i, 1)[0];
         P.grave.push(k);
         if (responder === "you") b.used.push(POOL[k].name);
-        links.push({ side: responder, card: card(k) });
+        links.push({ side: responder, card: card(k), key: k });
         passes = 0;
       } else passes++;
       responder = responder === "you" ? "opp" : "you";
     }
     if (links.length === 1) return { negated: false, links };
-    steps.push({ t: "chain", links: links.map((l, i) => ({ side: l.side, name: l.card ? l.card.name : trigger.attacker ? `${trigger.attacker.name}の攻撃` : "", icon: l.card ? l.card.icon : "⚔️", n: i + 1, kind: l.card ? l.card.kind : "attack" })) });
+    steps.push({ t: "chain", links: links.map((l, i) => ({ side: l.side, key: l.key, name: l.card ? l.card.name : trigger.attacker ? `${trigger.attacker.name}の攻撃` : "", icon: l.card ? l.card.icon : "⚔️", n: i + 1, kind: l.card ? l.card.kind : "attack" })) });
     // 後ろから解決
     const negated = new Set();
     const out = { negated: false, killAtk: false, reflect: false, guardUp: 0, links };
@@ -282,7 +282,7 @@ const Battle = (() => {
       if (gk && P.field.length < ZONES) {
         P.grave.splice(P.grave.indexOf(gk), 1);
         steps.push({ t: "effect", side: s, text: `墓地から${POOL[gk].name}がよみがえる!` });
-        summon(b, s, steps, mon(gk), "special");
+        summon(b, s, steps, mon(gk), "revive");
       }
     }
     return true;
@@ -317,7 +317,7 @@ const Battle = (() => {
     if (!best) return false;
     for (const m of best.mats) destroy(b, s, m, [], "");
     const sm = Object.assign({ uid: Math.random().toString(36).slice(2, 8) }, best.sy);
-    steps.push({ t: "tune", side: s, from: best.mats.map((m) => `${m.name}(Lv${m.lv})`), lv: best.sy.lv });
+    steps.push({ t: "tune", side: s, from: best.mats.map((m) => `${m.name}(Lv${m.lv})`), mats: best.mats.map((m) => m.uid), lv: best.sy.lv });
     summon(b, s, steps, sm, "synchro");
     if (sm.fx === "draw1") draw(b, s, steps, 1, sm.name);
     return true;
@@ -357,9 +357,9 @@ const Battle = (() => {
     // バーン: 相手のLPが減っていたら、または余っていたら撃つ
     for (const fx of ["burn1500", "burn1000", "burn800"]) if ((i = hasSpell(fx)) >= 0 && (O.lp <= 3000 || rnd(b) < 0.6)) castSpell(b, s, steps, i);
     // 罠を伏せる
-    let set = 0;
-    for (let j = P.hand.length - 1; j >= 0 && P.sets.length < SETS; j--) if (POOL[P.hand[j]].kind === "trap") P.sets.push(P.hand.splice(j, 1)[0]), set++;
-    if (set) steps.push({ t: "set", side: s, n: set });
+    const keys = [];
+    for (let j = P.hand.length - 1; j >= 0 && P.sets.length < SETS; j--) if (POOL[P.hand[j]].kind === "trap") P.sets.push(P.hand[j]), keys.push(P.hand.splice(j, 1)[0]);
+    if (keys.length) steps.push({ t: "set", side: s, n: keys.length, keys });
   }
 
   // バトルフェイズ: 強い順に攻撃。勝てる相手を選び、勝てなければ強化スペルを使ってから殴る
@@ -459,6 +459,9 @@ const Battle = (() => {
       steps.push({ t: "newfoe", foe: { name: foeNew.name, deckName: foeNew.deckName, style: foeNew.style, icon: foeNew.icon } });
     }
     const lp0 = { you: b.you.lp, opp: b.opp.lp };
+    // ターンが始まる前の盤面(画面で1手ずつ再生するため)
+    const snap = (Q) => ({ lp: Q.lp, spc: Q.spc, hand: Q.hand.slice(), field: Q.field.map((m) => Object.assign({}, m)), sets: Q.sets.slice(), deck: Q.deck.length, grave: Q.grave.length });
+    const before = { you: snap(b.you), opp: snap(b.opp) };
     P.spc = Math.min(SPC_MAX, P.spc + 1);
     // 運命のドロー: ピンチ(LP3000以下で負けている)のとき、前の区間をゴーストと同じかそれより速く走れていたら、
     // デッキの一番上が運命のカードになる(ライバル1人につき1回)
@@ -492,7 +495,7 @@ const Battle = (() => {
     const drama = judge(b, side, steps, lp0, destiny);
     // ピンチになったら、次の区間で全力を出せば運命のドローがあることを知らせる
     drama.hint = side === "opp" && b.you.lp <= 3000 && b.you.lp < b.opp.lp && b.destinyFoe !== b.foe && !b.pendingFoe;
-    return { turn: b.turn, side, ratio, steps, acts, drama, lp0, you: b.you, opp: b.opp, foe: foeOf(b), deckLeft: b.you.deck.length };
+    return { turn: b.turn, side, ratio, steps, acts, drama, lp0, before, you: b.you, opp: b.opp, foe: foeOf(b), deckLeft: b.you.deck.length };
   }
 
   // このターンの「熱さ」: 逆転・ピンチ・運命のドロー・エースやシンクロ・長いチェーン・大ダメージ・決着

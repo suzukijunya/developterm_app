@@ -432,7 +432,9 @@
       const cine = typeof Cinema !== "undefined" && document.visibilityState === "visible" && (sc >= 8 || (sc >= 5 && gap >= 8));
       if (cine && Cinema.play(bev, (c) => speak(c.line, false, false, c.tone))) ride.duel.cineTurn = bev.turn;
       else if (!(typeof Cinema !== "undefined" && Cinema.busy())) {
-        DuelFx.turn(bev, Battle.state(ride), names);
+        // ふつうのターンは、盤面の上で1手ずつ動かして見せる(ゲームの画面のように)
+        if (typeof Board !== "undefined" && bev.before && document.visibilityState === "visible") Board.play(bev, names);
+        else DuelFx.turn(bev, Battle.state(ride), names);
         battleVoice(bev, names);
       }
       persist(true);
@@ -2243,7 +2245,7 @@
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2026.11.29";
+  const APP_VERSION = "2026.11.30";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });

@@ -6,7 +6,7 @@
 
 const Cinema = (() => {
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-  const DUR = { duel: 2.2, glare: 1.8, draw: 1.5, hold: 1.6, cardup: 1.4, low: 1.9, two: 1.7, synchro: 2.0, chain: 2.1, attack: 1.9, pinch: 2.4, reversal: 2.2, finish: 2.6, rival: 2.2 };
+  const DUR = { manga: 2.6, duel: 2.2, glare: 1.8, draw: 1.5, hold: 1.6, cardup: 1.4, low: 1.9, two: 1.7, synchro: 2.0, chain: 2.1, attack: 1.9, pinch: 2.4, reversal: 2.2, finish: 2.6, rival: 2.2 };
 
   // ---------- 効果音(Web Audio で合成) ----------
   let ac = null;
@@ -137,9 +137,11 @@ const Cinema = (() => {
       if (s.how === "synchro") {
         const tune = st[st.indexOf(s) - 1];
         push(7, { shot: "synchro", side: who, from: tune && tune.t === "tune" ? tune.from : [], lv: s.mon.lv, line: who === "you" ? "光を束ねて、道を切り拓け! シンクロ召喚!" : `${foe}「闇を束ねろ…シンクロ召喚!」`, tone: "shout" });
-        push(7, { shot: "low", side: who, mon: s.mon, line: who === "you" ? `走れ、${s.mon.name}!!` : `現れたのは…${s.mon.name}!`, tone: who === "you" ? "shout" : "low" });
+        push(7, { shot: "manga", side: who, line: typeof Board !== "undefined" ? Board.chant(s.mon, who) : `現れろ! ${s.mon.name}!`, tone: "shout" });
+        push(6, { shot: "low", side: who, mon: s.mon, line: who === "you" ? `走れ、${s.mon.name}!!` : `現れたのは…${s.mon.name}!`, tone: who === "you" ? "shout" : "low" });
         summons++;
       } else if (s.how === "ace" || s.mon.atk >= 2500) {
+        if (s.how === "ace") push(9, { shot: "manga", side: who, line: typeof Board !== "undefined" ? Board.chant(s.mon, who) : `来い! ${s.mon.name}!`, tone: "shout" });
         push(s.how === "ace" ? 10 : 5, { shot: s.how === "ace" ? "low" : "two", side: who, mon: s.mon, line: who === "you" ? `来い! ${s.mon.name}!!` : `${foe}が${s.mon.name}を呼んだ…!`, tone: "shout" });
         summons++;
       }
@@ -207,6 +209,8 @@ const Cinema = (() => {
         return `${speed(c.win ? "gold" : "opp")}${av(c.win ? "you" : "opp", "finish")}<div class="cn-flash"></div><div class="cn-kt big ${c.win ? "win" : "lose"}">${c.win ? "DUEL WIN!!" : "DUEL LOSE…"}</div>`;
       case "duel":
         return duelHtml();
+      case "manga":
+        return `<div class="bmanga ${s}"><div class="bm-lines"></div><div class="bm-av">${DuelFx.avatarHtml(s)}</div><div class="bm-dodo"><b>ド</b><b>ド</b><b>ド</b><b>ド</b></div></div>`;
       case "glare":
         return eyeSvg(s);
       case "rival":
@@ -334,6 +338,7 @@ const Cinema = (() => {
       finish: () => (sfx("hit"), sfx("stab", 0.25, !c.win)),
       rival: () => sfx("stab", 0, true),
       duel: () => (sfx("whoosh"), sfx("hit", 0.25), sfx("stab", 0.3)),
+      manga: () => (sfx("stab", 0.05, c.side === "opp"), sfx("hit", 0.4)),
       glare: () => (sfx("heart"), sfx("shine", 0.9)),
     };
     if (m[c.shot]) m[c.shot]();
