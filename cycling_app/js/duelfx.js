@@ -359,9 +359,19 @@ const DuelFx = (() => {
     return v === 0 ? 0 : DUELISTS.some((d) => d.id === v) ? v : 1;
   }
   const duelistSrc = (id) => `assets/duelists/duelist${id}.webp`;
+  // ライバルの顔: 自分が選んでいない4人から、ライバルごとに決まった1人(ゴーストは自分を青く透かした姿のまま)
+  let rivalIdx = -1;
+  function setRival(i) {
+    rivalIdx = i;
+  }
+  function rivalId() {
+    const others = DUELISTS.map((d) => d.id).filter((x) => x !== duelistId());
+    return rivalIdx < 0 ? 0 : others[rivalIdx % others.length];
+  }
   function avatarHtml(side, face, chibi) {
     const img = side === "you" ? customImg() : "";
     if (img) return `<img class="dl-img ${chibi ? "chibi" : ""}" src="${img}" alt="" />`;
+    if (side === "opp" && !chibi && rivalId()) return `<img class="dl-img real rival" src="${duelistSrc(rivalId())}" alt="" />`;
     const id = duelistId();
     if (!id) return charaSvg({ ghost: side === "opp", face, chibi });
     return `<img class="dl-img real ${chibi ? "chibi" : ""} ${side === "opp" ? "ghost" : ""}" src="${duelistSrc(id)}" alt="" />`;
@@ -388,5 +398,5 @@ const DuelFx = (() => {
     setTimeout(nextCut, Math.max(1700, c.text.length * 120));
   }
 
-  return { start, end, pop, close, cardHtml, fieldHtml, turn, cutIn, avatarHtml, IMG_KEY, DUELISTS, duelistSrc, duelistId };
+  return { start, end, pop, close, cardHtml, fieldHtml, turn, cutIn, avatarHtml, setRival, IMG_KEY, DUELISTS, duelistSrc, duelistId };
 })();

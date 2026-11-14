@@ -425,8 +425,16 @@
     const names = { you: "YOU", opp: Battle.foeOf(bs).name };
     const bev = Battle.step(ride, (L && L.speed) || 18 / 3.6);
     if (bev) {
-      DuelFx.turn(bev, Battle.state(ride), names);
-      battleVoice(bev, names);
+      DuelFx.setRival(Battle.FOES.indexOf(bev.foe));
+      // 見せ場(サビ)だけ、カメラの画角を切り替える全画面の演出。ふつうのターンは小さな盤面でさっと流す
+      const sc = bev.drama ? bev.drama.score : 0;
+      const gap = bev.turn - (ride.duel.cineTurn || -99);
+      const cine = typeof Cinema !== "undefined" && document.visibilityState === "visible" && (sc >= 8 || (sc >= 5 && gap >= 8));
+      if (cine && Cinema.play(bev, (c) => speak(c.line, false, false, c.tone))) ride.duel.cineTurn = bev.turn;
+      else if (!(typeof Cinema !== "undefined" && Cinema.busy())) {
+        DuelFx.turn(bev, Battle.state(ride), names);
+        battleVoice(bev, names);
+      }
       persist(true);
     }
     const g = Duel.ghost(ride, placeById(ride.placeId));
@@ -464,6 +472,11 @@
     const burn = pick("burn").reduce((a, x) => a + x.dmg, 0);
     if (burn >= 1000) lines.push([5, mine ? `効果ダメージ、合計${burn}!` : `${foe}のバーンで${burn}のダメージ…`, mine ? "you" : "opp"]);
     if (!lines.length && mine && ev.turn % 4 === 1) lines.push([1, "俺のターン、ドロー!", "you"]);
+    const tags = (ev.drama && ev.drama.tags) || [];
+    if (tags.includes("destiny")) lines.push([11, "運命の…ドロー!! 来い、ソニック・ストリーム・ドラゴン!", "you"]);
+    if (tags.includes("reversal")) lines.push([10, "逆転だ!! ここからが本当の勝負だ!", "you"]);
+    if (tags.includes("reversed")) lines.push([8, `${foe}に逆転された…!`, "you"]);
+    if (tags.includes("pinch") || (ev.drama && ev.drama.hint && ev.turn % 4 === 0)) lines.push([9, "LPが残りわずか…次の区間、全力で踏めば、運命のドローだ!", "you"]);
     const deckOut = pick("info")[0];
     if (deckOut) lines.push([4, "デッキが尽きた! ここからは手札だけで勝負だ!", "you"]);
     lines.sort((a, b) => b[0] - a[0]);
@@ -509,8 +522,10 @@
     render();
     if (Store.prefs.duel) {
       Duel.state(ride);
+      if (typeof Cinema !== "undefined") Cinema.unlock(); // 効果音はボタンを押したときにしか鳴らせるようにならない
       const hand = Battle.deal(ride);
       const foe = Battle.foeOf(Battle.state(ride));
+      DuelFx.setRival(Battle.FOES.indexOf(foe));
       Store.setActive(ride);
       const place = placeById(ride.placeId);
       DuelFx.start({ hand, ghost: !!(place && Eta.learned(place)), foe });
@@ -640,7 +655,8 @@
     }
   }
 
-  function speak(text, force, queue) {
+  // tone: "shout"(叫ぶ: 高く速く)/ "low"(溜め: 低くゆっくり)/ なし
+  function speak(text, force, queue, tone) {
     if (!Store.prefs.voice || !("speechSynthesis" in window)) return;
     if (!force && document.visibilityState !== "visible") return;
     // 音声で失敗しても、計測やナビは止めない
@@ -653,6 +669,8 @@
         if (v) u.voice = v;
         u.pitch = 0.75;
         u.rate = 1.12;
+        if (tone === "shout") (u.pitch = 0.95), (u.rate = 1.28), (u.volume = 1);
+        if (tone === "low") (u.pitch = 0.55), (u.rate = 0.86);
       }
       if (!queue) speechSynthesis.cancel();
       speechSynthesis.speak(u);
@@ -1847,6 +1865,7 @@
     if (!el || !ride) return;
     const b = Battle.state(ride);
     const foe = Battle.foeOf(b);
+    DuelFx.setRival(Battle.FOES.indexOf(foe));
     const g = Duel.ghost(ride, placeById(ride.placeId));
     const spc = b.you.spc;
     const pips = Array.from({ length: 12 }, (_, i) => `<i class="${i < spc ? "on" : ""}"></i>`).join("");
@@ -2215,7 +2234,7 @@
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2026.11.27";
+  const APP_VERSION = "2026.11.28";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });
