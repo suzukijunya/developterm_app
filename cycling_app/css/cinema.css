@@ -1,5 +1,5 @@
 /* デュエルの見せ場(カメラの画角を切り替える全画面の演出) */
-.cine { position: fixed; inset: 0; z-index: 1800; background: #02060c; overflow: hidden; color: #fff; animation: cn-in 0.18s ease-out; }
+.cine { position: fixed; inset: 0; z-index: 2100; background: #02060c; overflow: hidden; color: #fff; animation: cn-in 0.18s ease-out; }
 @keyframes cn-in { from { opacity: 0; } }
 .cn-stage { position: absolute; inset: 0; overflow: hidden; }
 .cn-stage > * { position: absolute; }
@@ -157,3 +157,36 @@
 .dl-img.real.rival { filter: contrast(1.15) saturate(1.1) drop-shadow(0 0 8px #ff3d6a); }
 
 @media (prefers-reduced-motion: reduce) { .cine *, .cine { animation-duration: 0.01s !important; animation-iteration-count: 1 !important; } }
+
+/* ドローの白い波 */
+.cn-wave { left: -10vw; right: -10vw; bottom: 6vh; width: 120vw; height: 30vh; z-index: 2; animation: cn-wave 1s 0.15s cubic-bezier(0.2, 1, 0.3, 1) both; filter: drop-shadow(0 0 16px #bfe6ff); }
+@keyframes cn-wave { from { transform: translateX(-90vw) skewX(-20deg); opacity: 0; } 30% { opacity: 1; } to { transform: none; } }
+
+/* 対峙: 斜めに裂いた画面と、構えた手札 */
+.cn-vs { inset: 0; overflow: hidden; }
+.cn-vs.opp { background: linear-gradient(200deg, #1a6cff, #0b2a6e 60%); clip-path: polygon(0 0, 100% 0, 100% 34%, 0 66%); animation: cn-vs-o 0.45s cubic-bezier(0.2, 1, 0.3, 1) both; }
+.cn-vs.you { background: linear-gradient(20deg, #ff8a1f, #b8500a 60%); clip-path: polygon(0 66%, 100% 34%, 100% 100%, 0 100%); animation: cn-vs-y 0.45s cubic-bezier(0.2, 1, 0.3, 1) both; }
+@keyframes cn-vs-o { from { transform: translate(-40vw, -20vh); } } @keyframes cn-vs-y { from { transform: translate(40vw, 20vh); } }
+.cn-av.vs { position: absolute; width: 74vw; height: 56vh; }
+.cn-vs.opp .cn-av.vs { left: -10vw; top: 6vh; }
+.cn-vs.you .cn-av.vs { right: -12vw; bottom: 6vh; transform: scaleX(-1); }
+.cn-vs b { position: absolute; font-family: "Anton", sans-serif; font-style: italic; font-size: 2rem; color: #fff; text-shadow: 0 0 12px #000, 3px 3px 0 #000; animation: cn-kt 0.4s 0.5s both; }
+.cn-vs.opp b { left: 52vw; top: 16vh; } .cn-vs.you b { left: 22vw; top: 70vh; }
+.cn-fan { position: absolute; width: 0; height: 0; }
+.cn-fan.top { right: 16vw; top: 34vh; } .cn-fan.bot { left: 24vw; bottom: 14vh; }
+.cn-fan i { position: absolute; left: -36px; top: -100px; width: 72px; height: 104px; border-radius: 5px; transform-origin: 50% 160%; transform: rotate(calc(var(--k) * 12deg)); background: radial-gradient(circle at 50% 50%, #ffcf3d 0 9px, #8a5a00 10px 14px, transparent 15px), repeating-conic-gradient(from 0deg at 50% 50%, #2a1206 0 10deg, #5a2a10 10deg 20deg); border: 3px solid #c9a24a; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6); animation: cn-fan 0.5s 0.3s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+@keyframes cn-fan { from { transform: rotate(0deg) scale(0.6); opacity: 0; } }
+.cn-slash { left: -20vw; right: -20vw; top: 50%; height: 6px; background: #fff; box-shadow: 0 0 12px #fff, 0 0 30px #bfe6ff, 0 0 60px #fff; transform: rotate(-26deg); z-index: 3; animation: cn-slash 0.5s ease-out both; }
+@keyframes cn-slash { from { transform: rotate(-26deg) scaleX(0); } to { transform: rotate(-26deg) scaleX(1); } }
+
+/* 片目の極端なアップ */
+.shot-glare { background: #000; }
+.cn-eye { inset: 0; width: 100%; height: 100%; }
+.cn-eye .cn-lid { transform-origin: 50% 50%; transform-box: fill-box; animation: cn-lid 0.5s 0.15s cubic-bezier(0.2, 1, 0.3, 1) both; }
+@keyframes cn-lid { from { transform: scaleY(0); } }
+.cn-eye .cn-eyeg { transform-origin: 54% 50%; transform-box: view-box; animation: cn-eyez 1.8s ease-out both; }
+@keyframes cn-eyez { from { transform: scale(1.25); } to { transform: scale(1.02); } }
+.cn-eye .cn-pupil { transform-origin: 215px 152px; transform-box: view-box; animation: cn-pupil 1.2s 0.6s ease-in-out both; }
+@keyframes cn-pupil { 0% { transform: scale(1); } 40% { transform: scale(0.45); } 100% { transform: scale(0.55); } }
+.cn-eye .cn-glint { opacity: 0; animation: cn-glint 0.4s 1s ease-out both; }
+@keyframes cn-glint { 0% { opacity: 0; transform: translateX(-60px); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateX(40px); } }

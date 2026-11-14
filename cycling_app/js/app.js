@@ -512,9 +512,7 @@
     resetNav();
     const navMsg = Store.prefs.nav && ride.placeId !== null ? (ride.placeId ? `${placeById(ride.placeId).name}へのナビを開始します` : "ナビを開始します") : "";
     if (Store.prefs.duel) {
-      duelSay("ライディング・デュエル、アクセラレーション!", true);
-      duelSay("俺の先攻だ。ドロー!", true, true);
-      if (navMsg) speak(navMsg, true, true);
+      if (navMsg) speak(navMsg, true);
     } else if (navMsg) speak(navMsg, true);
     Store.setActive(ride);
     startGps();
@@ -528,8 +526,19 @@
       DuelFx.setRival(Battle.FOES.indexOf(foe));
       Store.setActive(ride);
       const place = placeById(ride.placeId);
-      DuelFx.start({ hand, ghost: !!(place && Eta.learned(place)), foe });
-      duelSay(`相手は${foe.name}。デッキは${foe.deckName}!`, true, true, "opp");
+      const opening = () => {
+        DuelFx.start({ hand, ghost: !!(place && Eta.learned(place)), foe });
+        duelSay("ライディング・デュエル、アクセラレーション!", true, !!navMsg);
+        duelSay(`相手は${foe.name}。デッキは${foe.deckName}!`, true, true, "opp");
+        duelSay("俺の先攻だ。ドロー!", true, true);
+      };
+      // 始まりは、斜めに裂いた対峙のショット → 目のアップ → いつものスタート画面
+      const cuts = [
+        { shot: "duel", side: "you", line: "デュエル!!", tone: "shout" },
+        { shot: "glare", side: "you", line: `${foe.name}…勝負だ!`, tone: "low" },
+      ];
+      if (typeof Cinema !== "undefined") Cinema.play({ cuts, foe }, (c) => speak(c.line, true, false, c.tone), opening);
+      else opening();
     }
   }
 
@@ -2234,7 +2243,7 @@
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2026.11.28";
+  const APP_VERSION = "2026.11.29";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });

@@ -6,7 +6,7 @@
 
 const Cinema = (() => {
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-  const DUR = { draw: 1.5, hold: 1.6, cardup: 1.4, low: 1.9, two: 1.7, synchro: 2.0, chain: 2.1, attack: 1.9, pinch: 2.4, reversal: 2.2, finish: 2.6, rival: 2.2 };
+  const DUR = { duel: 2.2, glare: 1.8, draw: 1.5, hold: 1.6, cardup: 1.4, low: 1.9, two: 1.7, synchro: 2.0, chain: 2.1, attack: 1.9, pinch: 2.4, reversal: 2.2, finish: 2.6, rival: 2.2 };
 
   // ---------- 効果音(Web Audio で合成) ----------
   let ac = null;
@@ -115,7 +115,10 @@ const Cinema = (() => {
     const push = (pri, cut) => cand.push([pri, cand.length, cut]);
     const st = ev.steps;
     const nf = st.find((x) => x.t === "newfoe");
-    if (nf) push(6, { shot: "rival", side: "opp", line: `${nf.foe.name}、参上! デッキは${nf.foe.deckName}!`, tone: "shout", foe: nf.foe });
+    if (nf) {
+      push(6, { shot: "rival", side: "opp", line: `${nf.foe.name}、参上! デッキは${nf.foe.deckName}!`, tone: "shout", foe: nf.foe });
+      push(6, { shot: "duel", side: "you", line: "デュエル!!", tone: "shout" });
+    }
     const draw = st.find((x) => x.t === "draw" && !x.why);
     if (tags.has("destiny")) {
       push(9, { shot: "pinch", side: "you", line: `ここで…終わるわけには、いかない…!`, tone: "low", lp: ev.lp0.you });
@@ -147,6 +150,8 @@ const Cinema = (() => {
     // 攻撃: 決着の一撃か、いちばん大きいダメージ
     const atks = st.filter((x) => x.t === "attack" && x.dmg > 0 && (x.result === "direct" || x.result === "destroy" || x.result === "guard"));
     const big = atks.sort((a, b) => (b.mon.ace ? 1e5 : 0) + b.dmg - (a.mon.ace ? 1e5 : 0) - a.dmg)[0];
+    // 決着の一撃の前に、目のアップで溜める
+    if (big && big.side === "you" && tags.has("win")) push(8, { shot: "glare", side: "you", line: "この一撃で…決める!", tone: "low" });
     if (big && (tags.has("win") || tags.has("lose") || tags.has("reversal") || tags.has("reversed") || tags.has("pinch") || big.dmg >= 1200))
       push(tags.has("win") || tags.has("lose") || tags.has("reversal") ? 9 : 6, { shot: "attack", side: big.side, mon: big.mon, dmg: big.dmg, direct: big.result === "direct", line: big.side === "you" ? `行け、${big.mon.name}! ${big.result === "direct" ? "ダイレクトアタック!" : "攻撃!"}` : `${big.mon.name}の攻撃…!`, tone: "shout" });
     // ピンチ・逆転・決着
@@ -178,7 +183,7 @@ const Cinema = (() => {
     const s = c.side;
     switch (c.shot) {
       case "draw":
-        return `${speed(c.gold ? "gold" : s)}<div class="cn-swing">${av(s, "swing")}<div class="cn-trail ${c.gold ? "gold" : ""}"></div></div><div class="cn-kt">${c.gold ? "DESTINY DRAW!!" : "DRAW!!"}</div>`;
+        return `${speed(c.gold ? "gold" : s)}<div class="cn-swing">${av(s, "swing")}<div class="cn-trail ${c.gold ? "gold" : ""}"></div></div><svg class="cn-wave" viewBox="0 0 400 200" preserveAspectRatio="none" aria-hidden="true"><path d="M-20 200 L-20 120 C60 60 140 150 220 110 C290 75 340 40 420 60 L420 200Z" fill="#fff"/><path d="M-20 150 C70 100 150 170 230 135 C300 105 350 85 420 95" stroke="#bfe6ff" stroke-width="6" fill="none"/></svg><div class="cn-kt">${c.gold ? "DESTINY DRAW!!" : "DRAW!!"}</div>`;
       case "hold":
         return `${speed(s)}${av(s, "hold")}<div class="cn-card hold">${DuelFx.cardHtml(c.card)}</div>`;
       case "cardup":
@@ -200,11 +205,66 @@ const Cinema = (() => {
         return `<div class="cn-rev ${s}"><div class="cn-kt big">${s === "you" ? "逆転!!" : "逆転…!?"}</div><div class="cn-lps"><span class="you">YOU ${c.lp[0].toLocaleString()}</span><span class="opp">${esc(ev.foe ? ev.foe.name : "")} ${c.lp[1].toLocaleString()}</span></div></div>`;
       case "finish":
         return `${speed(c.win ? "gold" : "opp")}${av(c.win ? "you" : "opp", "finish")}<div class="cn-flash"></div><div class="cn-kt big ${c.win ? "win" : "lose"}">${c.win ? "DUEL WIN!!" : "DUEL LOSE…"}</div>`;
+      case "duel":
+        return duelHtml();
+      case "glare":
+        return eyeSvg(s);
       case "rival":
         return `${speed("opp")}${av("opp", "rival")}<div class="cn-rname"><small>NEW RIVAL</small>${esc(c.foe.icon)} ${esc(c.foe.name)}<i>デッキ「${esc(c.foe.deckName)}」</i></div>`;
     }
     return "";
   }
+  // 斜めに裂いた対峙ショット: 左上に相手、右下に自分。光る斜線で画面を割り、手札を構える
+  function duelHtml() {
+    const fan = (n) => Array.from({ length: n }, (_, i) => `<i style="--k:${i - (n - 1) / 2}"></i>`).join("");
+    return `<div class="cn-vs opp">${av("opp", "vs")}<div class="cn-fan top">${fan(5)}</div><b>DUEL!!</b></div>
+      <div class="cn-vs you">${av("you", "vs")}<div class="cn-fan bot">${fan(5)}</div><b>DUEL!!</b></div>
+      <div class="cn-slash"></div>`;
+  }
+
+  // 片目の極端なアップ(アニメ調のオリジナルの目)。自分は青緑、相手は赤の瞳
+  function eyeSvg(side) {
+    const opp = side === "opp";
+    const H = opp ? ["#2a0a14", "#5a1428", "#8a2440", "#c04060"] : ["#0b1a2e", "#173a5e", "#2a5f8a", "#5fa0c8"];
+    const I = opp ? ["#ff8aa0", "#e0284f", "#5a0618"] : ["#9ff5e0", "#1fc7a0", "#0a3f4a"];
+    const hair = [
+      `M-20 -20 L120 -20 L60 150 Z`,
+      `M80 -20 L200 -20 L110 120 Z`,
+      `M170 -20 L260 -20 L200 90 Z`,
+      `M240 -20 L420 -20 L420 60 L330 40 Z`,
+      `M-20 60 L40 -20 L10 200 L-20 220 Z`,
+    ];
+    return `<svg class="cn-eye" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs>
+        <radialGradient id="cnI" cx="50%" cy="45%" r="55%"><stop offset="0" stop-color="${I[0]}"/><stop offset=".45" stop-color="${I[1]}"/><stop offset="1" stop-color="${I[2]}"/></radialGradient>
+        <clipPath id="cnE"><path d="M70 170 C120 95 260 80 345 120 C330 175 250 220 160 215 C120 212 90 195 70 170Z"/></clipPath>
+        <clipPath id="cnLid"><rect class="cn-lid" x="0" y="60" width="400" height="200"/></clipPath>
+      </defs>
+      <rect width="400" height="300" fill="#e7c3a6"/>
+      <path d="M0 230 C120 250 260 250 400 215 L400 300 L0 300Z" fill="#d6a98a"/>
+      <g class="cn-eyeg">
+        <g clip-path="url(#cnLid)">
+          <path d="M70 170 C120 95 260 80 345 120 C330 175 250 220 160 215 C120 212 90 195 70 170Z" fill="#f4f6f8"/>
+          <g clip-path="url(#cnE)">
+            <path d="M70 170 C120 95 260 80 345 120 L345 135 C250 105 140 115 70 180Z" fill="#b9c4cf" opacity=".8"/>
+            <g class="cn-iris"><circle cx="215" cy="152" r="66" fill="url(#cnI)"/>
+              <circle cx="215" cy="152" r="66" fill="none" stroke="${I[2]}" stroke-width="6"/>
+              <circle cx="215" cy="152" r="44" fill="none" stroke="${I[0]}" stroke-width="2" opacity=".6"/>
+              <circle class="cn-pupil" cx="215" cy="152" r="20" fill="#0a0508"/>
+              <path d="M250 112 L290 104 L262 124Z" fill="#fff"/><path d="M175 186 L205 178 L186 194Z" fill="#fff" opacity=".85"/></g>
+          </g>
+        </g>
+        <path d="M60 172 C115 88 265 72 352 116" fill="none" stroke="#120a0a" stroke-width="12" stroke-linecap="round"/>
+        <path d="M335 112 L372 100 L350 124Z" fill="#120a0a"/>
+        <path d="M95 200 C150 222 250 220 320 168" fill="none" stroke="#5a3a30" stroke-width="3" opacity=".7"/>
+        <path d="M40 70 L330 30 L345 52 L60 92Z" fill="${H[0]}"/>
+      </g>
+      ${hair.map((d, i) => `<path d="${d}" fill="${H[i % 4]}" stroke="${H[3]}" stroke-width="2"/>`).join("")}
+      <path d="M150 -20 L175 -20 L120 110Z" fill="${H[3]}" opacity=".7"/>
+      <path class="cn-glint" d="M240 60 L420 20 L420 32 L246 70Z" fill="#fff"/>
+    </svg>`;
+  }
+
   // 目元のアップに使う画像
   function eyeSrc() {
     const html = DuelFx.avatarHtml("you");
@@ -273,6 +333,8 @@ const Cinema = (() => {
       reversal: () => (sfx("hit"), sfx("stab", 0.1, c.side === "opp")),
       finish: () => (sfx("hit"), sfx("stab", 0.25, !c.win)),
       rival: () => sfx("stab", 0, true),
+      duel: () => (sfx("whoosh"), sfx("hit", 0.25), sfx("stab", 0.3)),
+      glare: () => (sfx("heart"), sfx("shine", 0.9)),
     };
     if (m[c.shot]) m[c.shot]();
   }
