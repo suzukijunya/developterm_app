@@ -14,6 +14,7 @@ const Battle = (() => {
   const STEP_M = 110; // この距離ごとに1ターン(自分と相手が交互)
   const HAND0 = 5;
   const SPC_MAX = 12;
+  const DMG = 0.55; // 戦闘ダメージの倍率(1人のライバルと長く競り合うように)
 
   // ---------- カード ----------
   // kind: monster / spell(スピード・スペル。SPCが cost 以上で使える)/ trap(伏せてから相手の行動に割り込む)
@@ -37,6 +38,8 @@ const Battle = (() => {
     counter: C({ kind: "trap", name: "カウンター・ドラフト", icon: "🔁", fx: "counter", text: "カウンター罠。相手の魔法・罠の発動を無効にする" }),
     discbrake: C({ kind: "trap", name: "ディスク・ブレーキ", icon: "🛑", fx: "killAtk", text: "攻撃してきたモンスターを破壊" }),
     chainreact: C({ kind: "trap", name: "チェーン・リアクション", icon: "⛓️", fx: "chainBurn", text: "チェーン2以降で発動。チェーンの数×400ダメージ" }),
+    // 運命のドロー(ピンチのときに、ゴーストより速く走ると引ける。デッキの40枚とは別)
+    destiny: C({ kind: "spell", name: "リミット・オーバー・ドライブ", icon: "🌠", cost: 0, fx: "destiny", noChain: true, text: "運命のカード。相手のいちばん強いモンスターを破壊し、エースを呼ぶ。この発動は無効にされない" }),
     tailwind: C({ kind: "trap", name: "テイルウィンド", icon: "🍃", fx: "guardUp", text: "攻撃された自分のモンスターの攻撃力+800" }),
     // --- ライバルたちのカード ---
     sprinter: C({ kind: "monster", name: "ゼロヨン・スプリンター", icon: "🏎️", lv: 4, atk: 1900, text: "スタートダッシュの鬼" }),
@@ -72,6 +75,7 @@ const Battle = (() => {
       { name: "ファントム・ホイール", icon: "🌀", lv: 5, atk: 2200, synchro: true, fx: "draw1" },
     ],
   };
+  const ACE = { name: "ソニック・ストリーム・ドラゴン", icon: "🐲", lv: 10, atk: 3500, synchro: true, ace: true, fx: "pierce", text: "運命が呼ぶエース。攻撃した後、相手に500ダメージ" };
   const list = (o) => Object.entries(o).flatMap(([k, n]) => Array(n).fill(k));
   const YOU_DECK = list({ sprocket: 4, chainwolf: 3, spoke: 2, falcon: 4, cadence: 2, carbon: 2, rabbit: 2, slip: 2, boost: 3, puncture: 2, downhill: 2, rerun: 2, reflect: 3, counter: 2, discbrake: 2, chainreact: 2, tailwind: 1 });
   // ライバル(デッキの特徴ごと)。どのデッキも40枚
@@ -203,13 +207,13 @@ const Battle = (() => {
         const k = P.sets.splice(i, 1)[0];
         P.grave.push(k);
         if (responder === "you") b.used.push(POOL[k].name);
-        links.push({ side: responder, card: card(k) });
+        links.push({ side: responder, card: card(k), key: k });
         passes = 0;
       } else passes++;
       responder = responder === "you" ? "opp" : "you";
     }
     if (links.length === 1) return { negated: false, links };
-    steps.push({ t: "chain", links: links.map((l, i) => ({ side: l.side, name: l.card ? l.card.name : trigger.attacker ? `${trigger.attacker.name}の攻撃` : "", icon: l.card ? l.card.icon : "⚔️", n: i + 1, kind: l.card ? l.card.kind : "attack" })) });
+    steps.push({ t: "chain", links: links.map((l, i) => ({ side: l.side, key: l.key, name: l.card ? l.card.name : trigger.attacker ? `${trigger.attacker.name}の攻撃` : "", icon: l.card ? l.card.icon : "⚔️", n: i + 1, kind: l.card ? l.card.kind : "attack" })) });
     // 後ろから解決
     const negated = new Set();
     const out = { negated: false, killAtk: false, reflect: false, guardUp: 0, links };
@@ -250,9 +254,19 @@ const Battle = (() => {
     P.grave.push(k);
     if (s === "you") b.used.push(c.name);
     steps.push({ t: "spell", side: s, card: c });
-    const ch = runChain(b, steps, { kind: "spell", side: s, card: c });
+    const ch = c.noChain ? { negated: false } : runChain(b, steps, { kind: "spell", side: s, card: c });
     if (ch.negated) return steps.push({ t: "resolve", side: s, text: `${c.name}は無効になった…` }), false;
     if (c.fx === "draw2") draw(b, s, steps, 2, c.name);
+    if (c.fx === "destiny") {
+      const t = O.field.slice().sort((x, y) => y.atk - x.atk)[0];
+      if (t) destroy(b, s === "you" ? "opp" : "you", t, steps, `${c.name}で`);
+      if (P.field.length >= ZONES) {
+        const weak = P.field.slice().sort((x, y) => x.atk - y.atk)[0];
+        P.field = P.field.filter((x) => x !== weak);
+        if (weak.key) P.grave.push(weak.key);
+      }
+      summon(b, s, steps, Object.assign({ uid: Math.random().toString(36).slice(2, 8) }, ACE), "ace");
+    }
     if (c.fx === "atk1000" && target) (target.boost = (target.boost || 0) + 1000), steps.push({ t: "effect", side: s, text: `${target.name}の攻撃力+1000!` });
     if (c.fx === "allAtk500") P.field.forEach((m) => (m.boost = (m.boost || 0) + 500)), steps.push({ t: "effect", side: s, text: "全員の攻撃力+500!" });
     if (c.fx === "destroy") {
@@ -268,7 +282,7 @@ const Battle = (() => {
       if (gk && P.field.length < ZONES) {
         P.grave.splice(P.grave.indexOf(gk), 1);
         steps.push({ t: "effect", side: s, text: `墓地から${POOL[gk].name}がよみがえる!` });
-        summon(b, s, steps, mon(gk), "special");
+        summon(b, s, steps, mon(gk), "revive");
       }
     }
     return true;
@@ -303,7 +317,7 @@ const Battle = (() => {
     if (!best) return false;
     for (const m of best.mats) destroy(b, s, m, [], "");
     const sm = Object.assign({ uid: Math.random().toString(36).slice(2, 8) }, best.sy);
-    steps.push({ t: "tune", side: s, from: best.mats.map((m) => `${m.name}(Lv${m.lv})`), lv: best.sy.lv });
+    steps.push({ t: "tune", side: s, from: best.mats.map((m) => `${m.name}(Lv${m.lv})`), mats: best.mats.map((m) => m.uid), lv: best.sy.lv });
     summon(b, s, steps, sm, "synchro");
     if (sm.fx === "draw1") draw(b, s, steps, 1, sm.name);
     return true;
@@ -314,6 +328,8 @@ const Battle = (() => {
     const P = b[s], O = b[s === "you" ? "opp" : "you"];
     const hasSpell = (fx) => P.hand.findIndex((k) => POOL[k].kind === "spell" && POOL[k].fx === fx && P.spc >= POOL[k].cost);
     let i;
+    // 運命のカードは最優先
+    if ((i = P.hand.indexOf("destiny")) >= 0) castSpell(b, s, steps, i);
     // ドロー系スペル
     while ((i = hasSpell("draw2")) >= 0) castSpell(b, s, steps, i);
     // 通常召喚(1回)。シンクロにつながる組み合わせを優先
@@ -341,9 +357,9 @@ const Battle = (() => {
     // バーン: 相手のLPが減っていたら、または余っていたら撃つ
     for (const fx of ["burn1500", "burn1000", "burn800"]) if ((i = hasSpell(fx)) >= 0 && (O.lp <= 3000 || rnd(b) < 0.6)) castSpell(b, s, steps, i);
     // 罠を伏せる
-    let set = 0;
-    for (let j = P.hand.length - 1; j >= 0 && P.sets.length < SETS; j--) if (POOL[P.hand[j]].kind === "trap") P.sets.push(P.hand.splice(j, 1)[0]), set++;
-    if (set) steps.push({ t: "set", side: s, n: set });
+    const keys = [];
+    for (let j = P.hand.length - 1; j >= 0 && P.sets.length < SETS; j--) if (POOL[P.hand[j]].kind === "trap") P.sets.push(P.hand[j]), keys.push(P.hand.splice(j, 1)[0]);
+    if (keys.length) steps.push({ t: "set", side: s, n: keys.length, keys });
   }
 
   // バトルフェイズ: 強い順に攻撃。勝てる相手を選び、勝てなければ強化スペルを使ってから殴る
@@ -385,16 +401,16 @@ const Battle = (() => {
           if (target.fx === "guard" && !target.guarded) {
             target.guarded = true;
             step.result = "guard";
-            step.dmg = r50(power - ta);
+            step.dmg = r50((power - ta) * DMG);
           } else {
             destroy(b, ds, target, [], "");
             step.result = "destroy";
-            step.dmg = r50(power - ta);
+            step.dmg = r50((power - ta) * DMG);
           }
         } else if (power < ta) {
           destroy(b, s, m, [], "");
           step.result = "repel";
-          step.dmg = r50(ta - power);
+          step.dmg = r50((ta - power) * DMG);
           P.lp = Math.max(0, P.lp - step.dmg);
           steps.push(step);
           continue;
@@ -406,7 +422,7 @@ const Battle = (() => {
         }
       } else {
         step.result = "direct";
-        step.dmg = power;
+        step.dmg = r50(power * DMG);
       }
       O.lp = Math.max(0, O.lp - (step.dmg || 0));
       steps.push(step);
@@ -442,8 +458,28 @@ const Battle = (() => {
       b.pendingFoe = false;
       steps.push({ t: "newfoe", foe: { name: foeNew.name, deckName: foeNew.deckName, style: foeNew.style, icon: foeNew.icon } });
     }
+    const lp0 = { you: b.you.lp, opp: b.opp.lp };
+    // ターンが始まる前の盤面(画面で1手ずつ再生するため)
+    const snap = (Q) => ({ lp: Q.lp, spc: Q.spc, hand: Q.hand.slice(), field: Q.field.map((m) => Object.assign({}, m)), sets: Q.sets.slice(), deck: Q.deck.length, grave: Q.grave.length });
+    const before = { you: snap(b.you), opp: snap(b.opp) };
     P.spc = Math.min(SPC_MAX, P.spc + 1);
+    // 運命のドロー: ピンチ(LP3000以下で負けている)のとき、前の区間をゴーストと同じかそれより速く走れていたら、
+    // デッキの一番上が運命のカードになる(ライバル1人につき1回)
+    let destiny = false;
+    if (side === "you" && b.you.lp <= 3000 && b.you.lp < b.opp.lp && ratio >= 1 && b.destinyFoe !== b.foe) {
+      b.destinyFoe = b.foe;
+      b.you.deck.push("destiny");
+      P.spc = Math.min(SPC_MAX, P.spc + 3);
+      destiny = true;
+    }
+    // 背水の陣: 大きく負けている側は、1枚多く引いてSPCも増える(逆転の逆転が起きるように)
+    if (b[side].lp <= b[other].lp - 2500 && b.turn > 2) {
+      P.spc = Math.min(SPC_MAX, P.spc + 2);
+      steps.push({ t: "effect", side, rally: true, text: side === "you" ? "背水の陣! 1枚多くドロー・SPC+2" : `${foeOf(b).name}の背水の陣! 1枚多くドロー・SPC+2` });
+      draw(b, side, steps, 1, "背水の陣");
+    }
     draw(b, side, steps, 1);
+    if (destiny) steps[steps.length - 1].destiny = true;
     mainPhase(b, side, steps);
     if (b.turn > 1) battlePhase(b, side, steps, side === "you" ? ratio : 1 / ratio);
     // コンボの数(このターンに発動・召喚した回数)
@@ -456,7 +492,30 @@ const Battle = (() => {
       b.pendingFoe = true; // 次のターンに次のライバル
       b.you.lp = Math.max(b.you.lp, 1);
     }
-    return { turn: b.turn, side, ratio, steps, acts, you: b.you, opp: b.opp, foe: foeOf(b), deckLeft: b.you.deck.length };
+    const drama = judge(b, side, steps, lp0, destiny);
+    // ピンチになったら、次の区間で全力を出せば運命のドローがあることを知らせる
+    drama.hint = side === "opp" && b.you.lp <= 3000 && b.you.lp < b.opp.lp && b.destinyFoe !== b.foe && !b.pendingFoe;
+    return { turn: b.turn, side, ratio, steps, acts, drama, lp0, before, you: b.you, opp: b.opp, foe: foeOf(b), deckLeft: b.you.deck.length };
+  }
+
+  // このターンの「熱さ」: 逆転・ピンチ・運命のドロー・エースやシンクロ・長いチェーン・大ダメージ・決着
+  function judge(b, side, steps, lp0, destiny) {
+    const tags = [];
+    const lead0 = lp0.you - lp0.opp, lead1 = b.you.lp - b.opp.lp;
+    const win = steps.find((x) => x.t === "win");
+    if (win) tags.push(win.side === "you" ? "win" : "lose");
+    if (lead0 <= -500 && lead1 > 0) tags.push("reversal");
+    if (lead0 >= 500 && lead1 < 0) tags.push("reversed");
+    if (destiny) tags.push("destiny");
+    if (lp0.you > 3000 && b.you.lp <= 3000 && b.you.lp > 0) tags.push("pinch");
+    if (steps.some((x) => x.t === "summon" && x.how === "synchro")) tags.push("synchro");
+    if (steps.some((x) => x.t === "summon" && (x.mon.atk >= 2500 || x.how === "ace") && x.how !== "synchro")) tags.push("ace");
+    if (steps.some((x) => x.t === "chain" && x.links.length >= 3)) tags.push("bigchain");
+    const dmg = Math.max(lp0.you - b.you.lp, lp0.opp - b.opp.lp);
+    if (dmg >= 2000) tags.push("bigdmg");
+    const W = { win: 10, lose: 8, reversal: 9, reversed: 7, destiny: 9, pinch: 6, synchro: 5, ace: 4, bigchain: 5, bigdmg: 3 };
+    const score = tags.reduce((a, t) => a + W[t], 0);
+    return { tags, score, dmg, side };
   }
 
   // 終わったときの成績(勝ち越し > いまのLP)

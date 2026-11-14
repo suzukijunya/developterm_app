@@ -154,6 +154,7 @@
       View3D.create(stage);
       View3D.onClerk(() => openClerk());
       setTimeout(scanInit, 800);
+      if (typeof MonsterArt !== "undefined") MonsterArt.load().then(() => renderPanel());
     } catch (e) {
       console.error("3D init failed", e);
       stage.insertAdjacentHTML("afterbegin", `<p class="g-no3d">この端末では3D表示を使えません。数値の計算はこのまま使えます。</p>`);
@@ -677,6 +678,82 @@
     </section>`;
   }
 
+  // ---------- デュエルのモンスター(3Dモデル) ----------
+  // GLB を読み込むと、その場で1枚の絵に焼いて端末に保存する。走行中のデュエルの盤面・演出でモンスターの姿になる
+  const monUi = { busy: "", status: "", open: false };
+  const monTf = (id) => Object.assign({ rotY: 0, flip: false }, (G.monsters && G.monsters[id]) || {});
+  async function monLoadFile(id, file) {
+    if (!file || typeof MonsterArt === "undefined") return;
+    if (!/\.glb$/i.test(file.name) && file.type !== "model/gltf-binary") {
+      monUi.status = "GLB形式(.glb)のファイルを選んでください";
+      return renderPanel();
+    }
+    if (!has3D) {
+      monUi.status = "この端末では3D表示が使えないため、モデルを読み込めません";
+      return renderPanel();
+    }
+    monUi.busy = id;
+    monUi.status = "";
+    renderPanel();
+    try {
+      const tf = { rotY: 0, flip: false };
+      await MonsterArt.assign(id, file, tf);
+      G.monsters = Object.assign({}, G.monsters, { [id]: Object.assign(tf, { file: file.name, size: file.size, at: Date.now() }) });
+      save();
+    } catch (e) {
+      monUi.status = "読み込めませんでした: " + (e.message || e);
+    }
+    monUi.busy = "";
+    renderPanel();
+  }
+  async function monAction(id, a) {
+    if (a === "del") {
+      if (!confirm(`「${id.replace(/^\*/, "")}」のモデルを消しますか?`)) return;
+      await MonsterArt.remove(id).catch(() => {});
+      const m = Object.assign({}, G.monsters);
+      delete m[id];
+      G.monsters = m;
+      save();
+      return renderPanel();
+    }
+    const tf = monTf(id);
+    if (a === "rot") tf.rotY = (tf.rotY + Math.PI / 2) % (Math.PI * 2);
+    if (a === "flip") tf.flip = !tf.flip;
+    monUi.busy = id;
+    renderPanel();
+    try {
+      await MonsterArt.rerender(id, tf);
+      G.monsters[id] = Object.assign(G.monsters[id] || {}, { rotY: tf.rotY, flip: tf.flip });
+      save();
+    } catch (e) {
+      monUi.status = e.message || String(e);
+    }
+    monUi.busy = "";
+    renderPanel();
+  }
+  function monstersHtml() {
+    if (typeof MonsterArt === "undefined") return "";
+    const n = Object.keys(G.monsters || {}).length;
+    const rows = MonsterArt.SLOTS.map((sl) => {
+      const meta = (G.monsters || {})[sl.id];
+      const has = MonsterArt.has(sl.id);
+      const name = sl.id === "*you" ? "自分(共通)" : sl.id === "*opp" ? "相手(共通)" : sl.id;
+      return `<div class="g-mon">
+        <div class="g-mon-img">${has ? `<img src="${MonsterArt.url(sl.id)}" alt="" />` : `<span>${sl.icon}</span>`}${monUi.busy === sl.id ? `<i class="g-mon-busy">焼いています…</i>` : ""}</div>
+        <div class="g-mon-text"><b>${esc(name)}</b><small>${esc(sl.note)}${meta && !has ? "・この端末にはファイルがありません" : ""}</small>
+          ${sl.prompt ? `<details><summary>作るときの例(英語)</summary><code>${esc(sl.prompt)}</code></details>` : ""}
+          <div class="g-mon-btns"><label class="g-chip2 g-file">📂 GLB<input type="file" accept=".glb,model/gltf-binary" data-mon-file="${esc(sl.id)}" hidden /></label>
+          ${has ? `<button class="g-chip2" data-mon="rot" data-mon-id="${esc(sl.id)}">↻ 90°</button><button class="g-chip2 ${meta && meta.flip ? "on" : ""}" data-mon="flip" data-mon-id="${esc(sl.id)}">上下</button><button class="link danger" data-mon="del" data-mon-id="${esc(sl.id)}">消す</button>` : ""}</div>
+        </div></div>`;
+    }).join("");
+    return `<section class="card g-mons"><h2>🐉 デュエルのモンスター(3Dモデル)</h2>
+      <p class="small">meshy.ai などで作った<b>GLB</b>を読み込むと、ライディングデュエルの盤面や演出で、モンスターがそのモデルの姿で出てきます。読み込んだときに1枚の絵にして保存するので、走行中の電池は食いません。</p>
+      <p class="muted small">決めていない自分のモンスターは「自分(共通)」、相手のモンスターは「相手(共通)」の姿になります(どちらもなければ絵文字)。ファイルはこの端末の中だけに置き、同期しません。いま ${n}体。</p>
+      ${monUi.status ? `<p class="notice warn small">${esc(monUi.status)}</p>` : ""}
+      <details class="g-mon-list" ${monUi.open || n ? "open" : ""}><summary>モンスターの一覧(${MonsterArt.SLOTS.length})</summary>${rows}</details>
+    </section>`;
+  }
+
   function partsPanel() {
     const b = B();
     const rows = Parts.SLOTS.map((sl) => {
@@ -705,6 +782,7 @@
       ${measuredHtml()}
       ${cell ? sheetHtml() : ""}
       ${scanHtml()}
+      ${monstersHtml()}
       ${libraryHtml()}`;
   }
 
@@ -2442,6 +2520,7 @@
       changed(false);
       return renderAll();
     }
+    if (t.dataset.mon) return monAction(t.dataset.monId, t.dataset.mon);
     if (t.dataset.scan) {
       const a = t.dataset.scan;
       if (a === "toggle") {
@@ -2793,6 +2872,11 @@
 
   el.addEventListener("change", async (e) => {
     const t = e.target;
+    if (t.dataset.monFile) {
+      const f = t.files && t.files[0];
+      t.value = "";
+      return monLoadFile(t.dataset.monFile, f);
+    }
     if (t.id === "scan-file") {
       const f = t.files && t.files[0];
       t.value = "";

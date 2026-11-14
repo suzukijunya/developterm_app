@@ -117,13 +117,14 @@ const DuelFx = (() => {
 
   // ---------- バトルの盤面 ----------
   // b: Battle の状態。names: { you, opp }。marks: { 新しいモンスター/やられたモンスター → class }
-  function monHtml(m, cls) {
-    return `<div class="bf-mon ${m.synchro ? "syn" : ""} ${cls || ""}"><span class="bf-icon">${m.icon}</span><span class="bf-name">${esc(m.name)}</span><b>${m.atk}</b></div>`;
+  function monHtml(m, cls, side) {
+    const art = typeof MonsterArt !== "undefined" && MonsterArt.src(m, side) ? MonsterArt.icon(m, side, "bf-icon bf-img") : `<span class="bf-icon">${m.icon}</span>`;
+    return `<div class="bf-mon ${m.synchro ? "syn" : ""} ${cls || ""}">${art}<span class="bf-name">${esc(m.name)}</span><b>${m.atk}</b></div>`;
   }
-  function rowHtml(field, extra, marks) {
+  function rowHtml(field, extra, marks, side) {
     const list = field.concat(extra || []);
     const cells = [];
-    for (let i = 0; i < 3; i++) cells.push(list[i] ? monHtml(list[i], marks.get(list[i])) : `<div class="bf-zone"></div>`);
+    for (let i = 0; i < 3; i++) cells.push(list[i] ? monHtml(list[i], marks.get(list[i]), side) : `<div class="bf-zone"></div>`);
     return cells.join("");
   }
   function fieldHtml(b, names, ev, extra) {
@@ -145,9 +146,9 @@ const DuelFx = (() => {
     // 相手のモンスターは奥、自分のモンスターは手前に浮かぶ
     return scene(
       `${lpBar("opp", b.opp.lp)}
-      <div class="bf-row opp">${rowHtml(b.opp.field, dead.opp, marks)}</div>
+      <div class="bf-row opp">${rowHtml(b.opp.field, dead.opp, marks, "opp")}</div>
       <div class="bf-mid">TURN ${b.turn}${b.you.sets ? `<span class="bf-sets">伏せ ${b.you.sets.length} | ${b.opp.sets.length}</span>` : ""}</div>
-      <div class="bf-row you">${rowHtml(b.you.field, dead.you, marks)}</div>
+      <div class="bf-row you">${rowHtml(b.you.field, dead.you, marks, "you")}</div>
       <div class="dv-dash">${lpBar("you", b.you.lp)}</div>`,
       { diff: extra && extra.diff, ghost: true, name: "ゴースト" }
     );
@@ -199,7 +200,7 @@ const DuelFx = (() => {
         add(`<div class="bt-step bt-draw" style="--d:X">${st.card ? cardHtml(st.card, "mini-card") : `<div class="bt-back"></div>`}<span>${st.why ? "+1 DRAW" : "DRAW!"}</span></div>`, 0.7);
       } else if (st.t === "summon") {
         if (tSum == null) tSum = t;
-        const how = st.how === "synchro" ? "✦ SYNCHRO SUMMON ✦" : st.how === "special" ? "SPECIAL SUMMON!" : "SUMMON!";
+        const how = st.how === "synchro" ? "✦ SYNCHRO SUMMON ✦" : st.how === "special" || st.how === "revive" ? "SPECIAL SUMMON!" : "SUMMON!";
         add(`<div class="bt-call ${st.how === "synchro" ? "syn" : ""}" style="--d:X">${how}<b>${st.mon.icon} ${esc(st.mon.name)} ATK ${st.mon.atk}</b></div>`, st.how === "synchro" ? 1.2 : 0.75);
       } else if (st.t === "tune") {
         add(`<div class="bt-call tune" style="--d:X">TUNING!<small>${esc(st.from.join(" + "))} = Lv${st.lv}</small></div>`, 0.9);
@@ -359,9 +360,19 @@ const DuelFx = (() => {
     return v === 0 ? 0 : DUELISTS.some((d) => d.id === v) ? v : 1;
   }
   const duelistSrc = (id) => `assets/duelists/duelist${id}.webp`;
+  // ライバルの顔: 自分が選んでいない4人から、ライバルごとに決まった1人(ゴーストは自分を青く透かした姿のまま)
+  let rivalIdx = -1;
+  function setRival(i) {
+    rivalIdx = i;
+  }
+  function rivalId() {
+    const others = DUELISTS.map((d) => d.id).filter((x) => x !== duelistId());
+    return rivalIdx < 0 ? 0 : others[rivalIdx % others.length];
+  }
   function avatarHtml(side, face, chibi) {
     const img = side === "you" ? customImg() : "";
     if (img) return `<img class="dl-img ${chibi ? "chibi" : ""}" src="${img}" alt="" />`;
+    if (side === "opp" && !chibi && rivalId()) return `<img class="dl-img real rival" src="${duelistSrc(rivalId())}" alt="" />`;
     const id = duelistId();
     if (!id) return charaSvg({ ghost: side === "opp", face, chibi });
     return `<img class="dl-img real ${chibi ? "chibi" : ""} ${side === "opp" ? "ghost" : ""}" src="${duelistSrc(id)}" alt="" />`;
@@ -388,5 +399,5 @@ const DuelFx = (() => {
     setTimeout(nextCut, Math.max(1700, c.text.length * 120));
   }
 
-  return { start, end, pop, close, cardHtml, fieldHtml, turn, cutIn, avatarHtml, IMG_KEY, DUELISTS, duelistSrc, duelistId };
+  return { start, end, pop, close, cardHtml, fieldHtml, turn, cutIn, avatarHtml, setRival, IMG_KEY, DUELISTS, duelistSrc, duelistId };
 })();

@@ -1,0 +1,147 @@
+/* デュエルの盤面(ゲーム画面のように1手ずつ再生する) */
+.bd { position: fixed; inset: 0; z-index: 1650; overflow: hidden; color: #fff; background: #050a14; font-family: "Rajdhani", "Hiragino Sans", "Noto Sans JP", sans-serif; animation: bd-in 0.25s ease-out; }
+.bd.out { animation: bd-out 0.3s ease-in both; }
+@keyframes bd-in { from { opacity: 0; transform: scale(1.04); } }
+@keyframes bd-out { to { opacity: 0; } }
+
+/* 背景: 夜の道(ライディングデュエルらしく、盤面の下を道が流れる) */
+.bd-bg { position: absolute; inset: 0; background: linear-gradient(180deg, #0b1630 0%, #1a2c5a 26%, #2a2140 31%, #0a0f1c 32%, #070b14 100%); }
+.bd-road { position: absolute; left: -30%; right: -30%; top: 31%; bottom: -10%; background: linear-gradient(180deg, #151a24, #232a36); clip-path: polygon(46% 0, 54% 0, 100% 100%, 0 100%); }
+.bd-road i { position: absolute; top: 0; bottom: 0; width: 3px; left: 50%; background: repeating-linear-gradient(180deg, #fff 0 22px, transparent 22px 54px); opacity: 0.35; animation: bd-lane 0.5s linear infinite; }
+.bd-road i:nth-child(2) { left: 30%; width: 4px; background: #3db8ff; opacity: 0.55; transform: skewX(-38deg); animation: none; box-shadow: 0 0 10px #3db8ff; }
+.bd-road i:nth-child(3) { left: 70%; width: 4px; background: #ff3d6a; opacity: 0.55; transform: skewX(38deg); animation: none; box-shadow: 0 0 10px #ff3d6a; }
+@keyframes bd-lane { to { background-position: 0 54px; } }
+
+/* 顔とLP(左上が相手、右下が自分) */
+.bh { position: absolute; z-index: 4; display: flex; align-items: flex-end; gap: 4px; pointer-events: none; }
+.bh.opp { left: 0; top: calc(env(safe-area-inset-top, 0px) + 6px); }
+.bh.you { right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 6px); flex-direction: row-reverse; }
+.bh-face { width: 74px; height: 86px; overflow: hidden; clip-path: polygon(0 0, 100% 0, 86% 100%, 0 100%); background: linear-gradient(160deg, #7a0a24, #2a0610); }
+.bh.you .bh-face { clip-path: polygon(14% 0, 100% 0, 100% 100%, 0 100%); background: linear-gradient(160deg, #0b3fae, #021030); }
+.bh-face .dl-img, .bh-face .dl-svg { width: 230%; height: auto; margin-left: -65%; margin-top: -6%; border: 0 !important; border-radius: 0 !important; object-fit: cover; }
+.bh-lp { transform: skewX(-12deg); padding: 2px 12px; margin-bottom: 8px; background: linear-gradient(90deg, rgba(160, 10, 40, 0.92), rgba(160, 10, 40, 0.2)); }
+.bh.you .bh-lp { background: linear-gradient(270deg, rgba(10, 60, 170, 0.92), rgba(10, 60, 170, 0.2)); }
+.bh-lp small { font-weight: 800; font-size: 0.85rem; font-style: italic; margin-right: 2px; }
+.bh-lp b { font-family: "Anton", sans-serif; font-style: italic; font-size: 2rem; letter-spacing: 0.02em; text-shadow: 2px 2px 0 #000, 0 0 10px rgba(0, 0, 0, 0.7); font-variant-numeric: tabular-nums; }
+.bh-name { position: absolute; font-size: 0.7rem; font-weight: 800; color: #ffd0da; white-space: nowrap; }
+.bh.opp .bh-name { left: 78px; top: 2px; } .bh.you .bh-name { right: 78px; bottom: 2px; color: #bfe6ff; }
+
+/* ターンとフェイズ */
+.bd-turn { position: absolute; right: 8px; top: calc(env(safe-area-inset-top, 0px) + 8px); z-index: 4; text-align: right; }
+.bd-turn b { display: block; font-family: "Anton", sans-serif; font-style: italic; font-size: 1.3rem; text-shadow: 2px 2px 0 #000; }
+.bd-phase { display: inline-block; padding: 2px 10px; border-radius: 99px; font-weight: 800; font-size: 0.72rem; background: #0b3fae; border: 1px solid #6cc8ff; }
+.bd-phase.opp { background: #8a0a24; border-color: #ff7b93; }
+.bd-phase em { font-style: italic; margin-left: 4px; color: #fff7a8; display: inline-block; }
+
+/* 手札 */
+.bhand { position: absolute; left: 0; right: 0; z-index: 3; height: 0; display: flex; justify-content: center; pointer-events: none; }
+.bhand.opp { top: calc(env(safe-area-inset-top, 0px) + 58px); }
+.bhand.you { bottom: calc(env(safe-area-inset-bottom, 0px) + 92px); }
+.bhand .bc.h { position: absolute; width: 44px; height: 62px; margin-left: -22px; left: calc(50% + var(--i, 0) * 34px); transform: rotate(calc(var(--i, 0) * 5deg)); transform-origin: 50% 200%; transition: left 0.25s, transform 0.25s; }
+.bhand.opp .bc.h { width: 30px; height: 42px; margin-left: -15px; left: calc(50% + var(--i, 0) * 22px); }
+.bhand.you .bc.h { box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6); }
+
+/* カード */
+.bc { position: relative; width: 52px; height: 74px; border-radius: 4px; border: 2px solid #c9a24a; background: linear-gradient(160deg, #2bd1b4, #128a7b); display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; color: #06201a; box-sizing: border-box; }
+.bc i { font-style: normal; font-size: 1.4rem; line-height: 1; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.4)); }
+.bc b { font-size: 0.42rem; font-weight: 900; line-height: 1.15; text-align: center; padding: 2px; max-height: 2.4em; overflow: hidden; }
+.bc.trap { background: linear-gradient(160deg, #e05ab4, #8d2a72); color: #fff; }
+.bc.monster { background: linear-gradient(160deg, #e0a050, #8a5418); color: #1e1004; }
+.bc.synchro { background: linear-gradient(160deg, #f4f6f8, #aab4c0); color: #111; }
+.bc.attack { background: linear-gradient(160deg, #3a4a6a, #1a2440); color: #fff; }
+.bc.back { background: radial-gradient(circle at 50% 50%, #ffcf3d 0 5px, #8a5a00 6px 8px, transparent 9px), repeating-conic-gradient(from 0deg at 50% 50%, #2a1206 0 10deg, #5a2a10 10deg 20deg); }
+.bc.grave { background: linear-gradient(160deg, #3a3f4a, #1a1d24); border-color: #6a7080; }
+
+/* フィールド(奥へ傾けた板) */
+.bd-stage { position: absolute; left: 0; right: 0; top: calc(env(safe-area-inset-top, 0px) + 84px); bottom: calc(env(safe-area-inset-bottom, 0px) + 150px); perspective: 900px; perspective-origin: 50% 0%; z-index: 2; }
+.bd-plane { position: relative; width: min(100vw, 440px); height: 100%; margin: 0 auto; transform: rotateX(28deg); transform-origin: 50% 100%; transform-style: preserve-3d; display: flex; flex-direction: column; justify-content: center; gap: 8px; padding-bottom: 28px; }
+.bside { display: flex; flex-direction: column; gap: 4px; transform-style: preserve-3d; }
+.brow { display: flex; justify-content: center; align-items: center; gap: 5px; transform-style: preserve-3d; }
+.bz { position: relative; width: 22%; aspect-ratio: 0.72; border: 1.5px solid rgba(160, 210, 255, 0.45); border-radius: 4px; background: rgba(40, 80, 140, 0.18); box-shadow: inset 0 0 12px rgba(100, 180, 255, 0.25); transform-style: preserve-3d; }
+.bside.opp .bz { border-color: rgba(255, 140, 160, 0.45); background: rgba(140, 30, 60, 0.18); box-shadow: inset 0 0 12px rgba(255, 80, 120, 0.25); }
+.brow.st .bz { width: 14%; }
+.bz > .bc { position: absolute; inset: 0; width: 100%; height: 100%; }
+.bz > .bc.set { transform: rotate(90deg) scale(0.78); }
+.bz > .bc.in { animation: bd-set 0.3s ease-out both; }
+@keyframes bd-set { from { transform: rotate(90deg) scale(1.4); opacity: 0; } }
+.bz > .bc.open { animation: bd-open 0.35s ease-out both; box-shadow: 0 0 16px #ff7be0; }
+@keyframes bd-open { from { transform: rotateY(90deg) scale(1.3); } }
+.bz > .bc.gone { animation: bd-gone 0.3s ease-in both; }
+@keyframes bd-gone { to { opacity: 0; transform: translateY(-20px) scale(0.6); } }
+.bchain { position: absolute; left: 50%; top: -14px; transform: translateX(-50%); font-style: normal; font-family: "Anton", sans-serif; font-size: 1rem; color: #ffd23d; background: #1a0a2a; border: 2px solid #ffd23d; border-radius: 50%; width: 24px; height: 24px; line-height: 20px; text-align: center; box-shadow: 0 0 10px #ffd23d; z-index: 2; }
+.bp { position: relative; width: 12%; display: flex; flex-direction: column; align-items: center; }
+.bp .bc { width: 100%; height: auto; aspect-ratio: 0.72; }
+.bp b { position: absolute; top: 30%; font-family: "Anton", sans-serif; font-size: 0.95rem; text-shadow: 1px 1px 0 #000, 0 0 6px #000; }
+.bp small { font-size: 0.5rem; color: #b8c2cf; }
+.bmid { height: 6px; margin: 2px 4%; background: linear-gradient(90deg, transparent, #6cc8ff, #fff, #ff7b93, transparent); opacity: 0.6; border-radius: 3px; }
+
+/* モンスター: ゾーンにカードが置かれ、その上に立ち上がる */
+.bm { position: absolute; inset: 0; transform-style: preserve-3d; }
+.bm > .bc.flat { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.9; }
+.bm-up { position: absolute; left: 50%; bottom: 26%; transform: translateX(-50%) rotateX(-28deg); transform-origin: 50% 100%; display: flex; flex-direction: column; align-items: center; pointer-events: none; }
+.bm-ic { font-size: 3.4rem; line-height: 1; filter: drop-shadow(0 0 2px #fff) drop-shadow(0 6px 6px rgba(0, 0, 0, 0.6)); }
+.bm.syn .bm-ic { filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 14px #fff7a8) drop-shadow(0 0 22px #3dff8a); }
+.bm.ace .bm-ic { font-size: 4.2rem; filter: drop-shadow(0 0 3px #fff) drop-shadow(0 0 18px #ffcf3d) drop-shadow(0 0 30px #ff8a1f); }
+.bside.opp .bm-ic { filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 10px #ff3d6a); }
+.bm-atk { order: -1; white-space: nowrap; font-family: "Anton", sans-serif; font-size: 1.05rem; line-height: 1; color: #fff; text-shadow: 1px 1px 0 #000, 0 0 4px #000; padding: 1px 4px; background: rgba(0, 0, 0, 0.45); border-radius: 3px; }
+.bm-atk small { font-family: "Rajdhani", sans-serif; font-size: 0.55rem; margin-right: 2px; color: #ffd23d; }
+.bm-atk i { font-style: normal; font-size: 0.55rem; color: #ffd23d; margin-left: 3px; }
+.bm.in .bm-up { animation: bd-rise 0.5s cubic-bezier(0.2, 1.5, 0.4, 1) both; }
+@keyframes bd-rise { from { transform: translateX(-50%) rotateX(-28deg) translateY(30px) scale(0.2); opacity: 0; filter: brightness(4); } }
+.bm.tuning .bm-up { animation: bd-tune 0.8s ease-in both; }
+@keyframes bd-tune { to { transform: translateX(-50%) rotateX(-28deg) translateY(-60px) scale(0.3); opacity: 0; filter: brightness(4) hue-rotate(90deg); } }
+.bm.dead { animation: bd-dead 0.6s ease-in both; }
+@keyframes bd-dead { 0% { filter: brightness(3); } 30% { transform: translateX(-4px) rotate(-4deg); } 100% { opacity: 0; transform: scale(0.4) rotate(25deg); } }
+
+/* 飛ぶカード・エフェクト */
+.bd-fx { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
+.bfly { position: absolute; transform: translate(-50%, -50%); filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6)); }
+.bfire { font-size: 2rem; filter: drop-shadow(0 0 10px #ff6a00); }
+.bpop { position: absolute; transform: translate(-50%, -50%); font-family: "Anton", sans-serif; font-style: italic; font-size: 2rem; white-space: nowrap; color: #fff; -webkit-text-stroke: 1px #7a0a24; text-shadow: 0 0 14px #ff3d6a, 3px 3px 0 #000; animation: bd-pop 1.3s ease-out both; }
+.bpop.heal { color: #b9ffcf; -webkit-text-stroke-color: #0b5a2a; text-shadow: 0 0 14px #3dff8a, 3px 3px 0 #000; }
+.bpop.info { font-size: 1.3rem; color: #fff7a8; -webkit-text-stroke: 0; text-shadow: 0 0 10px #000, 2px 2px 0 #000; }
+.bpop.chainx { font-size: 2.6rem; color: #ffd23d; -webkit-text-stroke: 1px #6a3a00; text-shadow: 0 0 20px #ff6a00, 3px 3px 0 #000; }
+@keyframes bd-pop { 0% { opacity: 0; transform: translate(-50%, -20%) scale(2.2); } 15% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -110%); } }
+.bburst { position: absolute; width: 140px; height: 140px; margin: -70px 0 0 -70px; border-radius: 50%; background: radial-gradient(circle, #fff 0, #fff7a8 18%, rgba(255, 140, 40, 0.7) 38%, transparent 66%); animation: bd-burst 0.6s ease-out both; }
+.bburst.syn { background: radial-gradient(circle, #fff 0, #c8ffe0 20%, rgba(61, 255, 138, 0.6) 42%, transparent 68%); width: 220px; height: 220px; margin: -110px 0 0 -110px; }
+.bburst.shield { background: radial-gradient(circle, transparent 40%, rgba(120, 200, 255, 0.9) 52%, transparent 62%); }
+@keyframes bd-burst { from { transform: scale(0.2); opacity: 1; } to { transform: scale(1.4); opacity: 0; } }
+.bact { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); text-align: center; animation: bd-act 0.6s ease-out both; }
+.bact .bc.big { width: 120px; height: 170px; margin: 0 auto; box-shadow: 0 0 30px #3dffb5; }
+.bact .bc.big i { font-size: 3rem; } .bact .bc.big b { font-size: 0.8rem; }
+.bact em { display: block; margin-top: 4px; font-style: italic; font-weight: 900; color: #3dffb5; text-shadow: 0 0 10px #18c48a, 2px 2px 0 #000; }
+@keyframes bd-act { from { transform: translate(-50%, -50%) rotateY(90deg) scale(0.6); } }
+
+/* ギザギザの吹き出し */
+.bsay { position: absolute; z-index: 6; max-width: 76vw; padding: 16px 22px; color: #111; font-weight: 900; font-size: 0.95rem; line-height: 1.45; pointer-events: none; animation: bd-say 0.25s cubic-bezier(0.2, 1.6, 0.4, 1) both; filter: drop-shadow(0 0 0 #111) drop-shadow(2px 3px 0 rgba(0, 0, 0, 0.6)); }
+.bsay::before { content: ""; position: absolute; inset: 0; z-index: -1; background: #fff; clip-path: polygon(0% 12%, 6% 0%, 14% 8%, 24% 0%, 34% 7%, 44% 0%, 54% 6%, 64% 0%, 74% 7%, 84% 0%, 92% 8%, 100% 2%, 96% 22%, 100% 40%, 95% 58%, 100% 78%, 94% 92%, 100% 100%, 86% 95%, 74% 100%, 62% 94%, 50% 100%, 38% 94%, 26% 100%, 14% 93%, 2% 100%, 5% 82%, 0% 64%, 5% 46%, 0% 28%); }
+.bsay span { display: block; }
+.bsay.you { right: 10px; bottom: calc(env(safe-area-inset-bottom, 0px) + 168px); }
+.bsay.opp { left: 10px; top: calc(env(safe-area-inset-top, 0px) + 110px); }
+@keyframes bd-say { from { opacity: 0; transform: scale(0.6); } }
+.bsay.big { font-size: 1.05rem; }
+
+/* 漫画風のカットイン(ドドドド) */
+.bmanga { position: absolute; inset: 0; z-index: 7; overflow: hidden; background: #0b3fae; animation: bd-in 0.2s ease-out; }
+.bmanga.opp { background: #7a0a24; }
+.bm-lines { position: absolute; inset: 0; background: repeating-linear-gradient(180deg, #fff 0 3px, transparent 3px 14px, rgba(255, 255, 255, 0.5) 14px 15px, transparent 15px 30px), linear-gradient(90deg, #1a6cff, #0b3fae 40%, #0a2f88); background-size: 100% 100%; animation: bd-lines 0.25s linear infinite; }
+.bmanga.opp .bm-lines { background: repeating-linear-gradient(180deg, #fff 0 3px, transparent 3px 14px, rgba(255, 255, 255, 0.5) 14px 15px, transparent 15px 30px), linear-gradient(90deg, #d81f4a, #7a0a24 40%, #5a0618); }
+@keyframes bd-lines { from { transform: translateX(-30px); } to { transform: translateX(0); } }
+.bm-av { position: absolute; left: -6vw; right: -6vw; top: 12vh; height: 74vh; animation: bd-mav 2.3s cubic-bezier(0.2, 1.1, 0.3, 1) both; }
+.bm-av .dl-img, .bm-av .dl-svg { width: 100%; height: 100%; object-fit: contain; border: 0 !important; border-radius: 0 !important; filter: contrast(1.2) saturate(1.25) drop-shadow(0 0 16px rgba(255, 255, 255, 0.6)); }
+@keyframes bd-mav { from { transform: translateY(20vh) scale(1.3); } to { transform: scale(1.18); } }
+.bm-dodo { position: absolute; left: 0; right: 0; top: 10vh; display: flex; justify-content: center; gap: 2px; transform: rotate(-12deg); }
+.bm-dodo b { font-family: "Anton", "Hiragino Sans", sans-serif; font-weight: 900; font-size: clamp(3.4rem, 18vw, 6rem); line-height: 1; color: transparent; background: radial-gradient(circle, #ffd23d 34%, transparent 36%) 0 0 / 7px 7px, #ff9a1f; -webkit-background-clip: text; background-clip: text; -webkit-text-stroke: 3px #1a0a00; animation: bd-dodo 0.4s cubic-bezier(0.2, 1.8, 0.4, 1) both; }
+.bm-dodo b:nth-child(2) { animation-delay: 0.12s; transform: translateY(14px) scale(1.1); } .bm-dodo b:nth-child(3) { animation-delay: 0.24s; } .bm-dodo b:nth-child(4) { animation-delay: 0.36s; transform: translateY(-10px) scale(1.2); }
+@keyframes bd-dodo { from { opacity: 0; transform: scale(2.4); } }
+.bmanga .bsay { left: 6vw; right: 6vw; max-width: none; bottom: calc(env(safe-area-inset-bottom, 0px) + 9vh); top: auto; text-align: center; animation-delay: 0.3s; }
+
+.bwin { position: absolute; left: 0; right: 0; top: 38%; z-index: 8; text-align: center; font-family: "Anton", sans-serif; font-style: italic; font-size: clamp(3.4rem, 22vw, 7rem); color: #eaffef; -webkit-text-stroke: 2px #0b5a2a; text-shadow: 0 0 30px #3dff8a, 6px 6px 0 #0b5a2a; animation: bd-say 0.5s cubic-bezier(0.2, 1.8, 0.4, 1) both; }
+.bwin.opp { color: #ffe0e6; -webkit-text-stroke-color: #5a0618; text-shadow: 0 0 30px #ff3d6a, 6px 6px 0 #5a0618; }
+
+@media (prefers-reduced-motion: reduce) { .bd *, .bd { animation-duration: 0.01s !important; } }
+
+/* 3Dモデルから焼いたモンスターの絵 */
+.bm-img { display: block; width: auto; height: 92px; max-width: 130px; object-fit: contain; }
+.bm.ace .bm-img { height: 118px; max-width: 160px; }
+.bside.opp .bm-img { height: 74px; max-width: 104px; }
