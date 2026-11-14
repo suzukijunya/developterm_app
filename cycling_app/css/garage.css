@@ -1281,3 +1281,16 @@ body.ms-open {
 .g-meas-main em.warn { border-color: #e0a100; color: #e0a100; }
 .g-meas-form { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
 .g-meas-form .btn { width: auto; margin: 0; }
+
+/* デュエルのモンスター(3Dモデル) */
+.g-mon { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px solid rgba(127, 127, 127, 0.18); }
+.g-mon-img { position: relative; flex: 0 0 76px; height: 76px; border-radius: 8px; background: radial-gradient(circle at 50% 60%, #1f3a5a, #0a1424); display: grid; place-items: center; overflow: hidden; }
+.g-mon-img img { width: 100%; height: 100%; object-fit: contain; }
+.g-mon-img span { font-size: 2.2rem; }
+.g-mon-busy { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, 0.6); color: #fff; font-style: normal; font-size: 0.7rem; }
+.g-mon-text { flex: 1; min-width: 0; }
+.g-mon-text b { display: block; font-size: 0.9rem; }
+.g-mon-text small { display: block; opacity: 0.7; font-size: 0.72rem; }
+.g-mon-text details { font-size: 0.7rem; margin-top: 2px; }
+.g-mon-text code { display: block; white-space: normal; word-break: break-word; font-size: 0.68rem; padding: 4px 6px; margin-top: 2px; border-radius: 4px; background: rgba(127, 127, 127, 0.12); user-select: all; }
+.g-mon-btns { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }

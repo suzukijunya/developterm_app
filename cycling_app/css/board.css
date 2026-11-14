@@ -140,3 +140,8 @@
 .bwin.opp { color: #ffe0e6; -webkit-text-stroke-color: #5a0618; text-shadow: 0 0 30px #ff3d6a, 6px 6px 0 #5a0618; }
 
 @media (prefers-reduced-motion: reduce) { .bd *, .bd { animation-duration: 0.01s !important; } }
+
+/* 3Dモデルから焼いたモンスターの絵 */
+.bm-img { display: block; width: auto; height: 92px; max-width: 130px; object-fit: contain; }
+.bm.ace .bm-img { height: 118px; max-width: 160px; }
+.bside.opp .bm-img { height: 74px; max-width: 104px; }

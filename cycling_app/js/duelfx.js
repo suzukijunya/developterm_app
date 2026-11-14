@@ -117,13 +117,14 @@ const DuelFx = (() => {
 
   // ---------- バトルの盤面 ----------
   // b: Battle の状態。names: { you, opp }。marks: { 新しいモンスター/やられたモンスター → class }
-  function monHtml(m, cls) {
-    return `<div class="bf-mon ${m.synchro ? "syn" : ""} ${cls || ""}"><span class="bf-icon">${m.icon}</span><span class="bf-name">${esc(m.name)}</span><b>${m.atk}</b></div>`;
+  function monHtml(m, cls, side) {
+    const art = typeof MonsterArt !== "undefined" && MonsterArt.src(m, side) ? MonsterArt.icon(m, side, "bf-icon bf-img") : `<span class="bf-icon">${m.icon}</span>`;
+    return `<div class="bf-mon ${m.synchro ? "syn" : ""} ${cls || ""}">${art}<span class="bf-name">${esc(m.name)}</span><b>${m.atk}</b></div>`;
   }
-  function rowHtml(field, extra, marks) {
+  function rowHtml(field, extra, marks, side) {
     const list = field.concat(extra || []);
     const cells = [];
-    for (let i = 0; i < 3; i++) cells.push(list[i] ? monHtml(list[i], marks.get(list[i])) : `<div class="bf-zone"></div>`);
+    for (let i = 0; i < 3; i++) cells.push(list[i] ? monHtml(list[i], marks.get(list[i]), side) : `<div class="bf-zone"></div>`);
     return cells.join("");
   }
   function fieldHtml(b, names, ev, extra) {
@@ -145,9 +146,9 @@ const DuelFx = (() => {
     // 相手のモンスターは奥、自分のモンスターは手前に浮かぶ
     return scene(
       `${lpBar("opp", b.opp.lp)}
-      <div class="bf-row opp">${rowHtml(b.opp.field, dead.opp, marks)}</div>
+      <div class="bf-row opp">${rowHtml(b.opp.field, dead.opp, marks, "opp")}</div>
       <div class="bf-mid">TURN ${b.turn}${b.you.sets ? `<span class="bf-sets">伏せ ${b.you.sets.length} | ${b.opp.sets.length}</span>` : ""}</div>
-      <div class="bf-row you">${rowHtml(b.you.field, dead.you, marks)}</div>
+      <div class="bf-row you">${rowHtml(b.you.field, dead.you, marks, "you")}</div>
       <div class="dv-dash">${lpBar("you", b.you.lp)}</div>`,
       { diff: extra && extra.diff, ghost: true, name: "ゴースト" }
     );

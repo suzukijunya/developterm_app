@@ -26,14 +26,14 @@ const Board = (() => {
   // ---------- 盤面のHTML ----------
   const faceHtml = (c, cls = "") => `<div class="bc ${c.kind || ""} ${cls}"><i>${c.icon || "❔"}</i><b>${esc(c.name)}</b></div>`;
   const backHtml = (cls = "") => `<div class="bc back ${cls}"></div>`;
-  function monHtml(m) {
+  function monHtml(m, side) {
     return `<div class="bm ${m.synchro ? "syn" : ""} ${m.ace ? "ace" : ""}" data-uid="${esc(m.uid)}">
       ${faceHtml({ kind: m.synchro ? "synchro" : "monster", icon: m.icon, name: m.name }, "flat")}
-      <div class="bm-up"><span class="bm-ic">${m.icon}</span><div class="bm-atk"><small>ATK</small>${m.atk}<i>★${m.lv || ""}</i></div></div>
+      <div class="bm-up">${typeof MonsterArt !== "undefined" && MonsterArt.src(m, side) ? MonsterArt.icon(m, side, "bm-ic bm-img") : `<span class="bm-ic">${m.icon}</span>`}<div class="bm-atk"><small>ATK</small>${m.atk}<i>★${m.lv || ""}</i></div></div>
     </div>`;
   }
   function sideHtml(side, P) {
-    const mz = [0, 1, 2].map((i) => `<div class="bz mz" data-i="${i}">${P.field[i] ? monHtml(P.field[i]) : ""}</div>`).join("");
+    const mz = [0, 1, 2].map((i) => `<div class="bz mz" data-i="${i}">${P.field[i] ? monHtml(P.field[i], side) : ""}</div>`).join("");
     const st = [0, 1, 2, 3].map((i) => `<div class="bz st" data-i="${i}">${P.sets[i] ? backHtml("set") : ""}</div>`).join("");
     const pile = (cls, n, label) => `<div class="bp ${cls}"><div class="bc ${cls === "deck" ? "back" : "grave"}"></div><b>${n}</b><small>${label}</small></div>`;
     const stRow = `<div class="brow st ${side}">${pile("deck", P.deck, "デッキ")}${st}${pile("grave", P.grave, "墓地")}</div>`;
@@ -211,7 +211,7 @@ const Board = (() => {
     function placeMon(side, m) {
       const z = freeZone(side, "mz");
       if (!z) return null;
-      z.innerHTML = monHtml(m);
+      z.innerHTML = monHtml(m, side);
       M[side].field.push(m);
       const e = z.firstElementChild;
       e.classList.add("in");

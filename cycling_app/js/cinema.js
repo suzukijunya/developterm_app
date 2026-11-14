@@ -179,7 +179,7 @@ const Cinema = (() => {
   // ---------- 画角 ----------
   const av = (side, cls = "") => `<div class="cn-av ${side} ${cls}">${DuelFx.avatarHtml(side)}</div>`;
   const badge = (m) => `<div class="cn-badge"><small>ATK</small><b>${m.atk}</b><i>LV ${"★".repeat(Math.min(10, m.lv || 4))}</i></div>`;
-  const monster = (m, cls = "") => `<div class="cn-mon ${m.synchro ? "syn" : ""} ${m.ace ? "ace" : ""} ${cls}"><span>${m.icon}</span></div>`;
+  const monster = (m, cls = "", side = "you") => `<div class="cn-mon ${m.synchro ? "syn" : ""} ${m.ace ? "ace" : ""} ${cls}">${typeof MonsterArt !== "undefined" && MonsterArt.src(m, side) ? MonsterArt.icon(m, side, "cn-img") : `<span>${m.icon}</span>`}</div>`;
   const speed = (cls = "") => `<div class="cn-speed ${cls}"></div>`;
   function shotHtml(c, ev) {
     const s = c.side;
@@ -191,16 +191,16 @@ const Cinema = (() => {
       case "cardup":
         return `<div class="cn-glow ${c.card.fx === "destiny" ? "gold" : ""}"></div><div class="cn-card up">${DuelFx.cardHtml(c.card)}<i class="cn-shine"></i></div>`;
       case "low":
-        return `<div class="cn-burst ${s}"></div>${monster(c.mon, "low")}${badge(c.mon)}<div class="cn-name">${esc(c.mon.name)}</div>`;
+        return `<div class="cn-burst ${s}"></div>${monster(c.mon, "low", s)}${badge(c.mon)}<div class="cn-name">${esc(c.mon.name)}</div>`;
       case "two":
-        return `${speed(s)}${monster(c.mon, "two")}${av(s, "two")}${badge(c.mon)}`;
+        return `${speed(s)}${monster(c.mon, "two", s)}${av(s, "two")}${badge(c.mon)}`;
       case "synchro":
         return `<div class="cn-sync"><i></i><i></i><i></i><i></i></div><div class="cn-stars">${"★".repeat(Math.min(10, c.lv))}</div><div class="cn-mats">${(c.from || []).map(esc).join("<br>+ ")}<b>= Lv${c.lv}</b></div><div class="cn-flash"></div>`;
       case "chain":
         return `<div class="cn-split you">${av("you", "split")}</div><div class="cn-split opp">${av("opp", "split")}</div>
           <div class="cn-links">${c.links.map((l, i) => `<div class="cn-link ${l.side}" style="--i:${i}"><em>CHAIN ${l.n}</em>${l.icon} ${esc(l.name)}</div>`).join("")}</div>`;
       case "attack":
-        return `${speed("h " + s)}${monster(c.mon, "dash " + s)}<div class="cn-impact"></div><div class="cn-dmg ${s}">−${c.dmg.toLocaleString()}</div>`;
+        return `${speed("h " + s)}${monster(c.mon, "dash " + s, s)}<div class="cn-impact"></div><div class="cn-dmg ${s}">−${c.dmg.toLocaleString()}</div>`;
       case "pinch":
         return `<div class="cn-red"></div><div class="cn-eyes" style="background-image:url('${eyeSrc()}')"></div><div class="cn-lp">LP <b>${(c.lp || 0).toLocaleString()}</b></div>`;
       case "reversal":
