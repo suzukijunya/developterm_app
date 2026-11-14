@@ -1484,3 +1484,9 @@ a.tab {
 .bf-row.opp .bf-mon.syn { background: linear-gradient(160deg, #ffe3ea, #c99aa8); color: #2a0610; box-shadow: 0 0 10px #ff3d6a; }
 .bf-img { width: 34px; height: 34px; object-fit: contain; filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.5)); }
 .dv .bf-row.opp .bf-img { width: 26px; height: 26px; }
+
+/* 設定: 声優っぽい声(OpenAI) */
+.ai-voice { display: flex; flex-direction: column; gap: 6px; padding: 10px; border-radius: 10px; background: rgba(127, 127, 127, 0.08); }
+.ai-voice input[type="password"] { width: 100%; box-sizing: border-box; }
+.ai-voice-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.ai-voice-row select { margin-left: 6px; }

@@ -430,7 +430,7 @@
       const sc = bev.drama ? bev.drama.score : 0;
       const gap = bev.turn - (ride.duel.cineTurn || -99);
       const cine = typeof Cinema !== "undefined" && document.visibilityState === "visible" && (sc >= 8 || (sc >= 5 && gap >= 8));
-      if (cine && Cinema.play(bev, (c) => speak(c.line, false, false, c.tone))) ride.duel.cineTurn = bev.turn;
+      if (cine && Cinema.play(bev, (c) => speak(c.line, false, false, c.tone, c.side))) ride.duel.cineTurn = bev.turn;
       else if (!(typeof Cinema !== "undefined" && Cinema.busy())) {
         // ふつうのターンは、盤面の上で1手ずつ動かして見せる(ゲームの画面のように)
         if (typeof Board !== "undefined" && bev.before && document.visibilityState === "visible") Board.play(bev, names);
@@ -446,7 +446,7 @@
 
   // デュエル中のセリフ: 声で話して、キャラクターのカットインも出す
   function duelSay(text, force, queue, side = "you") {
-    speak(text, force, queue);
+    speak(text, force, queue, undefined, side);
     if (typeof DuelFx !== "undefined" && document.visibilityState === "visible") DuelFx.cutIn(text, side);
   }
 
@@ -523,6 +523,20 @@
     if (Store.prefs.duel) {
       Duel.state(ride);
       if (typeof Cinema !== "undefined") Cinema.unlock(); // 効果音はボタンを押したときにしか鳴らせるようにならない
+      if (typeof AIVoice !== "undefined" && AIVoice.enabled()) {
+        AIVoice.unlock();
+        // よく使うセリフを先に作っておく(2回目からは保存した声をすぐ鳴らす)
+        AIVoice.prefetch([
+          ["俺のターン! ドロー!!", "you", "shout"],
+          ["運命の…ドロー!!", "you", "shout"],
+          ["ここで…終わるわけには、いかない…!", "you", "low"],
+          ["このカードは…!", "you", "low"],
+          ["逆転だ!! ここからが、本当の勝負だ!", "you", "shout"],
+          ["この一撃で…決める!", "you", "low"],
+          ["光を束ねて、道を切り拓け! シンクロ召喚!", "you", "shout"],
+          ["デュエル!!", "you", "shout"],
+        ]);
+      }
       const hand = Battle.deal(ride);
       const foe = Battle.foeOf(Battle.state(ride));
       DuelFx.setRival(Battle.FOES.indexOf(foe));
@@ -539,7 +553,7 @@
         { shot: "duel", side: "you", line: "デュエル!!", tone: "shout" },
         { shot: "glare", side: "you", line: `${foe.name}…勝負だ!`, tone: "low" },
       ];
-      if (typeof Cinema !== "undefined") Cinema.play({ cuts, foe }, (c) => speak(c.line, true, false, c.tone), opening);
+      if (typeof Cinema !== "undefined") Cinema.play({ cuts, foe }, (c) => speak(c.line, true, false, c.tone, c.side), opening);
       else opening();
     }
   }
@@ -667,9 +681,19 @@
   }
 
   // tone: "shout"(叫ぶ: 高く速く)/ "low"(溜め: 低くゆっくり)/ なし
-  function speak(text, force, queue, tone) {
-    if (!Store.prefs.voice || !("speechSynthesis" in window)) return;
+  // side: デュエルのセリフなら "you" / "opp"。声優っぽい声(AIVoice)が使えれば、そちらで話す
+  function speak(text, force, queue, tone, side) {
+    if (!Store.prefs.voice) return;
     if (!force && document.visibilityState !== "visible") return;
+    if (side && Store.prefs.duel && typeof AIVoice !== "undefined" && AIVoice.enabled()) {
+      if (!queue && "speechSynthesis" in window) speechSynthesis.cancel();
+      AIVoice.say(text, { side, tone, queue, fallback: () => browserSpeak(text, queue, tone) });
+      return;
+    }
+    browserSpeak(text, queue, tone);
+  }
+  function browserSpeak(text, queue, tone) {
+    if (!("speechSynthesis" in window)) return;
     // 音声で失敗しても、計測やナビは止めない
     try {
       const u = new SpeechSynthesisUtterance(text);
@@ -1305,6 +1329,60 @@
     return list.map((f) => `${f.name} ${(kcal / f.kcal).toFixed(1)}${f.unit}分`).join(" / ");
   }
 
+  // 設定: 声優っぽい声(OpenAI の音声AI)。キーと声の選択はこの端末だけに保存し、同期しない
+  function aiVoiceHtml() {
+    if (typeof AIVoice === "undefined") return "";
+    const o = AIVoice.opts();
+    const sel = (id, v) => `<select id="${id}">${AIVoice.VOICES.map((x) => `<option value="${x}" ${x === v ? "selected" : ""}>${x}</option>`).join("")}</select>`;
+    return `<div class="field ai-voice"><span>🎙️ 声優っぽい声(OpenAI)<small>OpenAIの音声AIで、セリフごとに「叫ぶ」「溜める」の演技をつけ、自分(熱血の主人公)とライバル(クールな敵)で声を分けます。作った声はこの端末に保存して使い回すので、同じセリフの2回目からは料金も通信もかかりません。間に合わないときや圏外では、いつもの読み上げになります。APIキーはこの端末の中だけに保存し、同期しません</small></span>
+      <label class="check"><input type="checkbox" id="tts-on" ${o.on ? "checked" : ""} /><span>使う</span></label>
+      <input type="password" id="tts-key" placeholder="OpenAIのAPIキー(sk-…)" autocomplete="off" value="${AIVoice.key() ? "••••••••" : ""}" />
+      <div class="ai-voice-row"><label>自分 ${sel("tts-you", o.you)}</label><button class="link" type="button" data-tts-test="you">🔊 試す</button></div>
+      <div class="ai-voice-row"><label>ライバル ${sel("tts-opp", o.opp)}</label><button class="link" type="button" data-tts-test="opp">🔊 試す</button></div>
+      <div class="ai-voice-row"><small id="tts-count"></small><button class="link" type="button" id="tts-clear">保存した声を消す</button></div>
+      <p class="small" id="tts-status"></p></div>`;
+  }
+  function bindAiVoice() {
+    if (typeof AIVoice === "undefined") return;
+    const $ = (id) => document.getElementById(id);
+    const status = (t) => $("tts-status") && ($("tts-status").textContent = t);
+    const count = () => AIVoice.cacheCount().then((n) => $("tts-count") && ($("tts-count").textContent = `保存した声 ${n}件`));
+    count();
+    const on = $("tts-on"), key = $("tts-key");
+    if (on) on.addEventListener("change", () => AIVoice.setOpts({ on: on.checked }));
+    if (key)
+      key.addEventListener("change", () => {
+        if (/^•+$/.test(key.value)) return;
+        AIVoice.setKey(key.value.trim());
+        key.value = AIVoice.key() ? "••••••••" : "";
+        status(AIVoice.key() ? "キーを保存しました(この端末だけ)" : "キーを消しました");
+      });
+    for (const side of ["you", "opp"]) {
+      const s = $("tts-" + side);
+      if (s) s.addEventListener("change", () => AIVoice.setOpts({ [side]: s.value }));
+    }
+    app.querySelectorAll("[data-tts-test]").forEach((b) =>
+      b.addEventListener("click", async () => {
+        if (!AIVoice.key()) return status("先にAPIキーを入れてください");
+        status("声を作っています…");
+        try {
+          await AIVoice.test(b.dataset.ttsTest);
+          status("");
+          count();
+        } catch (e) {
+          status("作れませんでした: " + (e.message || e) + (/401/.test(e.message) ? "(キーが正しいか確かめてください)" : ""));
+        }
+      })
+    );
+    const clr = $("tts-clear");
+    if (clr)
+      clr.addEventListener("click", async () => {
+        if (!confirm("保存した声を全部消しますか?(次に使うとき、また作り直します)")) return;
+        await AIVoice.cacheClear();
+        count();
+      });
+  }
+
   // 設定の「デュエルの声」に、端末にある日本語の声を並べる
   function fillVoices() {
     const sel = document.getElementById("duel-voice");
@@ -1778,6 +1856,7 @@
           <span>🃏 デュエルモード(5D's風)<small>走り出しの「アクセラレーション!」、1kmごとにたまるスピードカウンター、いつもの自分(ゴースト)とのLP勝負、ガレージのシンクロ召喚の演出</small></span></label>
         <label class="field"><span>デュエルの声</span><select name="duelVoice" id="duel-voice"><option value="">おまかせ(男性の声を探す)</option></select></label>
         <button class="link" type="button" id="duel-voice-test">🔊 声を試す</button>
+        ${aiVoiceHtml()}
         <div class="field duelist-field"><span>デュエリスト<small>本物の人体モデルから撮った5人と、イラストから選べます。相手のゴーストは、同じ人の青く透けた姿です</small></span>
           <div class="duelist-choices" id="duelist-choices">${DuelFx.DUELISTS.map((d) => `<button type="button" class="duelist-opt ${DuelFx.duelistId() === d.id ? "on" : ""}" data-duelist="${d.id}"><img src="${DuelFx.duelistSrc(d.id)}" alt="" loading="lazy" /><small>${d.name}</small></button>`).join("")}<button type="button" class="duelist-opt ${DuelFx.duelistId() === 0 ? "on" : ""}" data-duelist="0"><span class="duelist-ill" id="duelist-ill"></span><small>イラスト</small></button></div></div>
         <div class="field duelist-field"><span>自分の画像を使う<small>自分の写真など、使ってよい画像を選ぶと、上のデュエリストの代わりに出ます(この端末の中だけに保存)</small></span>
@@ -2057,6 +2136,7 @@
           alert("画像を読み込めませんでした");
         }
       });
+    bindAiVoice();
     on("duel-voice-test", () => {
       const sel = document.getElementById("duel-voice");
       const keep = { duel: Store.prefs.duel, duelVoice: Store.prefs.duelVoice, voice: Store.prefs.voice };
@@ -2245,7 +2325,7 @@
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2026.11.31";
+  const APP_VERSION = "2026.11.32";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });
