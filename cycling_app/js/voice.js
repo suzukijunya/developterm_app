@@ -51,7 +51,18 @@ const AIVoice = (() => {
       // 続ける
     }
   }
-  const enabled = () => opts().on && !!key();
+  const openaiOn = () => opts().on && !!key();
+  // AivisSpeech などで作った音声パック(Mac で作ってスマホに読み込む)
+  const PACK = "cycling_voicepack";
+  function packMeta() {
+    try {
+      return JSON.parse(localStorage.getItem(PACK)) || null;
+    } catch (e) {
+      return null;
+    }
+  }
+  const enabled = () => openaiOn() || !!packMeta();
+  const packKey = (side, text) => "pack|" + (side || "you") + "|" + text;
 
   // ---------- 保存(IndexedDB) ----------
   let dbp = null;
@@ -204,11 +215,24 @@ const AIVoice = (() => {
     if (audio) audio.pause();
   }
 
-  // セリフを話す。o: { side, tone, queue, fallback }。間に合わなければ fallback(ブラウザの読み上げ)を呼ぶ
+  // セリフを話す。o: { side, tone, queue, fallback }。
+  // 音声パックにあればそれを鳴らす → なければ OpenAI で作る → 間に合わなければ fallback(ブラウザの読み上げ)
   function say(text, o = {}) {
     if (!enabled()) return false;
     const my = o.queue ? gen : ++gen;
     if (!o.queue) queue = [];
+    if (packMeta()) {
+      cacheGet(packKey(o.side, text)).then((blob) => {
+        if (my !== gen && !o.queue) return;
+        if (blob) return playBlob(blob, o.queue);
+        if (openaiOn()) return sayAI(text, o, my);
+        if (o.fallback) o.fallback();
+      });
+      return true;
+    }
+    return sayAI(text, o, my);
+  }
+  function sayAI(text, o, my) {
     let done = false;
     const timer = setTimeout(() => {
       if (done) return;
@@ -234,7 +258,7 @@ const AIVoice = (() => {
 
   // よく使うセリフを前もって作っておく(ライド開始時)。lines: [[text, side, tone], ...]
   async function prefetch(lines) {
-    if (!enabled()) return;
+    if (!openaiOn()) return;
     for (const [t, s, tone] of lines) {
       try {
         await clip(t, s, tone);
@@ -245,6 +269,68 @@ const AIVoice = (() => {
     }
   }
 
+  // ---------- 音声パック(zip・無圧縮)を読み込む ----------
+  // 中身: manifest.json { version, voices: { you, opp }, lines: [{ side, text, file }] } と音声ファイル
+  function unzipStored(buf) {
+    const dv = new DataView(buf);
+    const td = new TextDecoder();
+    const out = {};
+    let p = 0;
+    while (p + 30 <= buf.byteLength && dv.getUint32(p, true) === 0x04034b50) {
+      const flags = dv.getUint16(p + 6, true);
+      const method = dv.getUint16(p + 8, true);
+      const size = dv.getUint32(p + 18, true);
+      const nlen = dv.getUint16(p + 26, true);
+      const elen = dv.getUint16(p + 28, true);
+      const name = td.decode(new Uint8Array(buf, p + 30, nlen));
+      const start = p + 30 + nlen + elen;
+      if (method !== 0 || flags & 8) throw new Error("この音声パックは読めない形式です(作成スクリプトで作り直してください)");
+      out[name] = buf.slice(start, start + size);
+      p = start + size;
+    }
+    return out;
+  }
+  async function importPack(file, onProgress) {
+    const files = unzipStored(await file.arrayBuffer());
+    if (!files["manifest.json"]) throw new Error("音声パックではないようです(manifest.json がありません)");
+    const man = JSON.parse(new TextDecoder().decode(files["manifest.json"]));
+    await clearPack(true);
+    let n = 0;
+    for (const l of man.lines || []) {
+      const data = files[l.file];
+      if (!data) continue;
+      await cachePut(packKey(l.side, l.text), new Blob([data], { type: /\.mp3$/i.test(l.file) ? "audio/mpeg" : "audio/wav" }));
+      n++;
+      if (onProgress && n % 20 === 0) onProgress(n, man.lines.length);
+    }
+    localStorage.setItem(PACK, JSON.stringify({ count: n, voices: man.voices || {}, engine: man.engine || "", at: Date.now() }));
+    return n;
+  }
+  async function clearPack(keepMeta) {
+    const d = await db();
+    await new Promise((resolve) => {
+      const tx = d.transaction("clips", "readwrite");
+      const st = tx.objectStore("clips");
+      const r = st.openCursor();
+      r.onsuccess = () => {
+        const c = r.result;
+        if (!c) return;
+        if (String(c.key).startsWith("pack|")) c.delete();
+        c.continue();
+      };
+      tx.oncomplete = resolve;
+      tx.onerror = resolve;
+    });
+    if (!keepMeta) localStorage.removeItem(PACK);
+  }
+  // パックのセリフを鳴らす(設定の「試す」)
+  async function testPack(side, text) {
+    unlock();
+    const b = await cacheGet(packKey(side, text));
+    if (!b) throw new Error("このセリフはパックに入っていません");
+    playBlob(b, false);
+  }
+
   // 設定画面の「試す」: 作って鳴らし、結果を返す
   async function test(side = "you") {
     const line = side === "opp" ? ["フン…その程度か。来い、相手になってやる。", "low"] : ["俺のターン! ドロー!!", "shout"];
@@ -253,7 +339,7 @@ const AIVoice = (() => {
     playBlob(blob, false);
   }
 
-  return { VOICES, opts, setOpts, key, setKey, enabled, say, prefetch, stop, unlock, test, cacheCount, cacheClear, lastError: () => lastError };
+  return { VOICES, opts, setOpts, key, setKey, enabled, openaiOn, packMeta, importPack, clearPack, testPack, say, prefetch, stop, unlock, test, cacheCount, cacheClear, lastError: () => lastError };
 })();
 
 if (typeof module !== "undefined") module.exports = AIVoice;

@@ -417,7 +417,7 @@
     const extra = { remainM: ride.eta && !ride.eta.arrived ? ride.eta.remainM : null, headwind: wind && ride.heading != null ? Physics.headwind(wind.speed, wind.from, ride.heading) : null };
     for (const e of Duel.step(ride, extra)) {
       // ゴーストとの距離の読み上げだけ使う(カードは Battle のデッキで動く)
-      if (e.type === "down") duelSay("止まりすぎた…", false, true);
+      if (e.type === "down") duelLine(DuelLines.stopped(), false, true);
     }
     // バトル: 110mごとに1ターン(自分のターンは220mごと)
     const L = placeById(ride.placeId) ? Eta.learned(placeById(ride.placeId)) : null;
@@ -430,7 +430,7 @@
       const sc = bev.drama ? bev.drama.score : 0;
       const gap = bev.turn - (ride.duel.cineTurn || -99);
       const cine = typeof Cinema !== "undefined" && document.visibilityState === "visible" && (sc >= 8 || (sc >= 5 && gap >= 8));
-      if (cine && Cinema.play(bev, (c) => speak(c.line, false, false, c.tone, c.side))) ride.duel.cineTurn = bev.turn;
+      if (cine && Cinema.play(bev, (c) => speak(c.line, false, false, c.tone, c.vside || c.side))) ride.duel.cineTurn = bev.turn;
       else if (!(typeof Cinema !== "undefined" && Cinema.busy())) {
         // ふつうのターンは、盤面の上で1手ずつ動かして見せる(ゲームの画面のように)
         if (typeof Board !== "undefined" && bev.before && document.visibilityState === "visible") Board.play(bev, names);
@@ -440,49 +440,51 @@
       persist(true);
     }
     const g = Duel.ghost(ride, placeById(ride.placeId));
-    if (g && g.ev === "pass") duelSay("ゴーストを抜いた! このまま突っ切るぜ!", false, true);
-    if (g && g.ev === "passed") duelSay("抜かれたか…まだだ、ここからだ!", false, true);
+    if (g && g.ev === "pass") duelLine(DuelLines.ghostPass(), false, true);
+    if (g && g.ev === "passed") duelLine(DuelLines.ghostPassed(), false, true);
   }
 
   // デュエル中のセリフ: 声で話して、キャラクターのカットインも出す
-  function duelSay(text, force, queue, side = "you") {
-    speak(text, force, queue, undefined, side);
+  function duelSay(text, force, queue, side = "you", tone) {
+    speak(text, force, queue, tone, side);
     if (typeof DuelFx !== "undefined" && document.visibilityState === "visible") DuelFx.cutIn(text, side);
   }
+  // DuelLines のセリフ([文, 話す側, 演技])を話す
+  const duelLine = (l, force, queue) => duelSay(l[0], force, queue, l[1], l[2]);
 
   // 1ターンに何枚も動くので、全部は読まない。そのターンのいちばんの見せ場を1〜2言だけ話す
   function battleVoice(ev, names) {
+    const DL = DuelLines;
     const mine = ev.side === "you";
     const foe = ev.foe ? ev.foe.name : names.opp;
-    const lines = [];
+    const lines = []; // [優先度, セリフ]
     const pick = (t) => ev.steps.filter((x) => x.t === t);
     const nf = pick("newfoe")[0];
-    if (nf) lines.push([9, `新たなライバル、${nf.foe.name}! デッキは${nf.foe.deckName}か…`, "opp"]);
+    if (nf) lines.push([9, DL.newRival(nf.foe)]);
     const win = pick("win")[0];
-    if (win) lines.push([10, win.side === "you" ? `これで終わりだ! ${foe}、撃破!` : "ライフがゼロに…だが、まだ走れる!", "you"]);
+    if (win) lines.push([10, win.side === "you" ? DL.ko(foe) : DL.lifeZero()]);
     const chain = pick("chain").sort((a, b) => b.links.length - a.links.length)[0];
-    if (chain && chain.links.length >= 3) lines.push([8, `チェーン${chain.links.length}まで重なった! 逆順に解決だ!`, mine ? "you" : "opp"]);
+    if (chain && chain.links.length >= 3) lines.push([8, DL.chain(chain.links.length, mine ? "you" : "opp")]);
     else if (chain) {
       const l = chain.links[chain.links.length - 1];
-      lines.push([5, l.side === "you" ? `罠発動! ${l.name}!` : `${foe}の罠、${l.name}!`, l.side]);
+      lines.push([5, DL.trap(l.name, l.side)]);
     }
     const syn = pick("summon").find((x) => x.how === "synchro");
-    if (syn) lines.push([7, mine ? `チューニング! シンクロ召喚! 来い、${syn.mon.name}!` : `${foe}がシンクロ召喚、${syn.mon.name}!`, mine ? "you" : "opp"]);
-    if (ev.acts >= 6) lines.push([6, mine ? `${ev.acts}連続コンボ! まだまだ行くぜ!` : `${foe}の${ev.acts}連続コンボ…!`, mine ? "you" : "opp"]);
+    if (syn) lines.push([7, DL.synchroCall(syn.mon.name, mine ? "you" : "opp")]);
+    if (ev.acts >= 6) lines.push([6, DL.combo(Math.min(20, ev.acts), mine ? "you" : "opp")]);
     const big = pick("attack").find((x) => x.result === "direct" && x.dmg >= 1500);
-    if (big) lines.push([6, mine ? `ダイレクトアタック! ${big.dmg}のダメージ!` : `ダイレクトアタックを受けた…${big.dmg}のダメージ`, mine ? "you" : "opp"]);
+    if (big) lines.push([6, DL.direct(mine ? "you" : "opp")]);
     const burn = pick("burn").reduce((a, x) => a + x.dmg, 0);
-    if (burn >= 1000) lines.push([5, mine ? `効果ダメージ、合計${burn}!` : `${foe}のバーンで${burn}のダメージ…`, mine ? "you" : "opp"]);
-    if (!lines.length && mine && ev.turn % 4 === 1) lines.push([1, "俺のターン、ドロー!", "you"]);
+    if (burn >= 1000) lines.push([5, DL.burn(mine ? "you" : "opp")]);
+    if (!lines.length && mine && ev.turn % 4 === 1) lines.push([1, DL.myDraw()]);
     const tags = (ev.drama && ev.drama.tags) || [];
-    if (tags.includes("destiny")) lines.push([11, "運命の…ドロー!! 来い、ソニック・ストリーム・ドラゴン!", "you"]);
-    if (tags.includes("reversal")) lines.push([10, "逆転だ!! ここからが本当の勝負だ!", "you"]);
-    if (tags.includes("reversed")) lines.push([8, `${foe}に逆転された…!`, "you"]);
-    if (tags.includes("pinch") || (ev.drama && ev.drama.hint && ev.turn % 4 === 0)) lines.push([9, "LPが残りわずか…次の区間、全力で踏めば、運命のドローだ!", "you"]);
-    const deckOut = pick("info")[0];
-    if (deckOut) lines.push([4, "デッキが尽きた! ここからは手札だけで勝負だ!", "you"]);
+    if (tags.includes("destiny")) lines.push([11, DL.destinyFull()]);
+    if (tags.includes("reversal")) lines.push([10, DL.reversal()]);
+    if (tags.includes("reversed")) lines.push([8, DL.reversed(foe)]);
+    if (tags.includes("pinch") || (ev.drama && ev.drama.hint && ev.turn % 4 === 0)) lines.push([9, DL.pinchHint()]);
+    if (pick("info")[0]) lines.push([4, DL.deckOut()]);
     lines.sort((a, b) => b[0] - a[0]);
-    lines.slice(0, 2).forEach(([, text, side], i) => duelSay(text, false, i > 0, side));
+    lines.slice(0, 2).forEach(([, l], i) => duelLine(l, false, i > 0));
   }
 
   function onGpsError(err) {
@@ -526,16 +528,8 @@
       if (typeof AIVoice !== "undefined" && AIVoice.enabled()) {
         AIVoice.unlock();
         // よく使うセリフを先に作っておく(2回目からは保存した声をすぐ鳴らす)
-        AIVoice.prefetch([
-          ["俺のターン! ドロー!!", "you", "shout"],
-          ["運命の…ドロー!!", "you", "shout"],
-          ["ここで…終わるわけには、いかない…!", "you", "low"],
-          ["このカードは…!", "you", "low"],
-          ["逆転だ!! ここからが、本当の勝負だ!", "you", "shout"],
-          ["この一撃で…決める!", "you", "low"],
-          ["光を束ねて、道を切り拓け! シンクロ召喚!", "you", "shout"],
-          ["デュエル!!", "you", "shout"],
-        ]);
+        const DL = DuelLines;
+        AIVoice.prefetch([DL.myDraw(), DL.destinyDraw(), DL.notHere(), DL.thisCard(), DL.reversal(), DL.glare(), DL.synchroChant("you"), DL.duel()]);
       }
       const hand = Battle.deal(ride);
       const foe = Battle.foeOf(Battle.state(ride));
@@ -544,16 +538,16 @@
       const place = placeById(ride.placeId);
       const opening = () => {
         DuelFx.start({ hand, ghost: !!(place && Eta.learned(place)), foe });
-        duelSay("ライディング・デュエル、アクセラレーション!", true, !!navMsg);
-        duelSay(`相手は${foe.name}。デッキは${foe.deckName}!`, true, true, "opp");
-        duelSay("俺の先攻だ。ドロー!", true, true);
+        duelLine(DuelLines.accel(), true, !!navMsg);
+        duelLine(DuelLines.foeIntro(foe), true, true);
+        duelLine(DuelLines.firstDraw(), true, true);
       };
       // 始まりは、斜めに裂いた対峙のショット → 目のアップ → いつものスタート画面
       const cuts = [
-        { shot: "duel", side: "you", line: "デュエル!!", tone: "shout" },
-        { shot: "glare", side: "you", line: `${foe.name}…勝負だ!`, tone: "low" },
+        { shot: "duel", side: "you", line: DuelLines.duel()[0], tone: "shout" },
+        { shot: "glare", side: "you", line: DuelLines.glareStart(foe.name)[0], tone: "low" },
       ];
-      if (typeof Cinema !== "undefined") Cinema.play({ cuts, foe }, (c) => speak(c.line, true, false, c.tone, c.side), opening);
+      if (typeof Cinema !== "undefined") Cinema.play({ cuts, foe }, (c) => speak(c.line, true, false, c.tone, c.vside || c.side), opening);
       else opening();
     }
   }
@@ -588,13 +582,18 @@
     if (Store.prefs.duel && lastResult) duelEnd(lastResult);
   }
 
+  // 相棒(いまのバイク)の名前
+  function partnerName() {
+    const g = Store.garage && Store.garage.builds && Store.garage.builds.current;
+    const frame = g && g.parts && g.parts.frame && g.parts.frame.name;
+    return frame && !/^(カーボン|アルミ|クロモリ)/.test(frame) ? frame : g && g.name && !/^(いまのバイク|NEW)$/.test(g.name) ? g.name : "ロードバイク";
+  }
+
   // デュエルの終わり: 相棒(バイク)をモンスターとして召喚して、勝敗を出す
   function duelEnd(r) {
     const res = duelOutcome(r);
     const so = sortieOf(r);
-    const g = Store.garage && Store.garage.builds && Store.garage.builds.current;
-    const frame = g && g.parts && g.parts.frame && g.parts.frame.name;
-    const name = frame && !/^(カーボン|アルミ|クロモリ)/.test(frame) ? frame : g && g.name && !/^(いまのバイク|NEW)$/.test(g.name) ? g.name : "ロードバイク";
+    const name = partnerName();
     const stars = { S: 8, A: 7, B: 6, C: 5, D: 4 }[so.rank] || 4;
     const avgPower = r.movingSec > 0 ? r.workJ / r.movingSec : 0;
     const monster = {
@@ -605,9 +604,9 @@
     };
     const used = (r.duel && r.duel.b && r.duel.b.used ? r.duel.b.used.map((name) => ({ name })) : ((r.duel && r.duel.used) || []).map(Duel.byId)).filter(Boolean);
     DuelFx.end({ res, monster, used });
-    duelSay(`限界を超えろ! 俺の相棒、${name}、シンクロ召喚!`, true);
-    if (res && !res.first) duelSay(res.win ? "俺の勝ちだ。いいライディングだったぜ" : "負けたか…次は必ず追い抜く。もう一度、走り出すだけだ", true, true);
-    else duelSay("デュエル終了。次はこの走りがゴーストになる", true, true);
+    duelLine(DuelLines.partner(name), true);
+    if (res && !res.first) duelLine(res.win ? DuelLines.endWin() : DuelLines.endLose(), true, true);
+    else duelLine(DuelLines.endFirst(), true, true);
   }
 
   // 目的地に着いたライドなら、その目的地の所要時間の学習に加える
@@ -1334,7 +1333,14 @@
     if (typeof AIVoice === "undefined") return "";
     const o = AIVoice.opts();
     const sel = (id, v) => `<select id="${id}">${AIVoice.VOICES.map((x) => `<option value="${x}" ${x === v ? "selected" : ""}>${x}</option>`).join("")}</select>`;
-    return `<div class="field ai-voice"><span>🎙️ 声優っぽい声(OpenAI)<small>OpenAIの音声AIで、セリフごとに「叫ぶ」「溜める」の演技をつけ、自分(熱血の主人公)とライバル(クールな敵)で声を分けます。作った声はこの端末に保存して使い回すので、同じセリフの2回目からは料金も通信もかかりません。間に合わないときや圏外では、いつもの読み上げになります。APIキーはこの端末の中だけに保存し、同期しません</small></span>
+    const pm = AIVoice.packMeta();
+    const pack = `<div class="field ai-voice"><span>🎤 アニメ声の音声パック(AivisSpeech・無料)<small>Mac で AivisSpeech(無料のアニメ調AI音声)を使って、デュエルのセリフを全部まとめて作り、スマホに読み込みます。叫ぶセリフはテンション高めの声、溜めるセリフは落ち着いた声で作ります。読み込んだ声はオフラインでも鳴ります</small></span>
+      <p class="small" id="pack-meta">${pm ? `読み込み済み: ${pm.count}セリフ(自分: ${esc(pm.voices.you || "?")} / ライバル: ${esc(pm.voices.opp || "?")})` : "まだ読み込んでいません"}</p>
+      <ol class="small pack-steps"><li>Mac で AivisSpeech を起動する(声は AivisHub で「男性」「少年」などで探して入れる)</li><li>このアプリを Mac のブラウザで開き、下のボタンで作成スクリプトをダウンロード</li><li>ターミナルで <code>python3 ~/Downloads/make_voicepack.py</code> を実行し、声の番号を選ぶ</li><li>できた <code>ridecalorie_voicepack.zip</code> をスマホに送り、下の「読み込む」で選ぶ</li></ol>
+      <div class="ai-voice-row"><button class="link" type="button" id="pack-script">📥 Mac用の作成スクリプト</button><label class="link">📂 音声パックを読み込む<input type="file" accept=".zip,application/zip" id="pack-file" hidden /></label></div>
+      ${pm ? `<div class="ai-voice-row"><button class="link" type="button" data-pack-test="you">🔊 自分の声</button><button class="link" type="button" data-pack-test="opp">🔊 ライバルの声</button><button class="link" type="button" id="pack-clear">パックを消す</button></div>` : ""}
+      <p class="small" id="pack-status"></p></div>`;
+    return pack + `<div class="field ai-voice"><span>🎙️ 声優っぽい声(OpenAI)<small>OpenAIの音声AIで、セリフごとに「叫ぶ」「溜める」の演技をつけ、自分(熱血の主人公)とライバル(クールな敵)で声を分けます。作った声はこの端末に保存して使い回すので、同じセリフの2回目からは料金も通信もかかりません。間に合わないときや圏外では、いつもの読み上げになります。APIキーはこの端末の中だけに保存し、同期しません</small></span>
       <label class="check"><input type="checkbox" id="tts-on" ${o.on ? "checked" : ""} /><span>使う</span></label>
       <input type="password" id="tts-key" placeholder="OpenAIのAPIキー(sk-…)" autocomplete="off" value="${AIVoice.key() ? "••••••••" : ""}" />
       <div class="ai-voice-row"><label>自分 ${sel("tts-you", o.you)}</label><button class="link" type="button" data-tts-test="you">🔊 試す</button></div>
@@ -1342,9 +1348,150 @@
       <div class="ai-voice-row"><small id="tts-count"></small><button class="link" type="button" id="tts-clear">保存した声を消す</button></div>
       <p class="small" id="tts-status"></p></div>`;
   }
+  // AivisSpeech で音声パックを作る Python スクリプト(セリフの一覧を中に入れて渡す)
+  function voicepackScript() {
+    const lines = DuelLines.all({ partner: partnerName() });
+    const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(lines))));
+    return `#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""ライドカロリー: デュエルの音声パックを AivisSpeech で作る(${lines.length}セリフ)
+使い方:
+  1. Mac で AivisSpeech を起動しておく(声のモデルは AivisHub から入れておく)
+  2. ターミナルで: python3 ~/Downloads/make_voicepack.py
+  3. できた ridecalorie_voicepack.zip をスマホに送り、アプリの設定 → 音声パックを読み込む
+"""
+import base64, json, os, re, sys, urllib.parse, urllib.request, zipfile
+
+ENGINE = os.environ.get("AIVIS_URL", "http://127.0.0.1:10101")
+LINES = json.loads(base64.b64decode("${b64}").decode("utf-8"))
+
+def call(path, params=None, body=None, method="POST"):
+    url = ENGINE + path + ("?" + urllib.parse.urlencode(params) if params else "")
+    data = json.dumps(body).encode("utf-8") if body is not None else (b"" if method == "POST" else None)
+    req = urllib.request.Request(url, data=data, method=method, headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=180) as r:
+        return r.read()
+
+try:
+    speakers = json.loads(call("/speakers", method="GET"))
+except Exception as e:
+    print("AivisSpeech につながりません。AivisSpeech を起動してから、もう一度実行してください。(%s)" % e)
+    sys.exit(1)
+
+styles = []
+for sp in speakers:
+    for st in sp.get("styles", []):
+        styles.append((sp["name"], st["name"], st["id"], sp))
+if not styles:
+    print("声のモデルが入っていません。AivisHub から声を入れてください。")
+    sys.exit(1)
+print("インストールされている声:")
+for i, (n, s, _id, _sp) in enumerate(styles, 1):
+    print("  %3d. %s / %s" % (i, n, s))
+
+def ask(label):
+    while True:
+        v = input("%sの番号: " % label).strip()
+        if v.isdigit() and 1 <= int(v) <= len(styles):
+            return styles[int(v) - 1]
+        print("一覧の番号で選んでください")
+
+you = ask("自分(熱血の主人公)の声")
+opp = ask("ライバル(クールな敵)の声")
+
+SHOUT = re.compile(r"(怒|熱|叫|元気|テンション|喜|楽|ハイ|強|興奮)")
+LOW = re.compile(r"(悲|ささや|囁|落ち着|クール|静|低|シリアス|真剣|ダウナー)")
+def style_for(choice, tone):
+    sid, sp = choice[2], choice[3]
+    rx = SHOUT if tone == "shout" else LOW if tone == "low" else None
+    if rx:
+        for st in sp.get("styles", []):
+            if rx.search(st["name"]):
+                return st["id"]
+    return sid
+
+PARAMS = {
+    "shout": {"speedScale": 1.08, "intonationScale": 1.6, "tempoDynamicsScale": 1.3, "volumeScale": 1.15, "prePhonemeLength": 0.05},
+    "low": {"speedScale": 0.9, "intonationScale": 1.15, "tempoDynamicsScale": 1.1, "prePhonemeLength": 0.25},
+    "": {"speedScale": 1.0, "intonationScale": 1.3, "tempoDynamicsScale": 1.2},
+}
+
+out_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ridecalorie_voicepack.zip")
+manifest = {"version": 1, "engine": "AivisSpeech", "voices": {"you": "%s / %s" % (you[0], you[1]), "opp": "%s / %s" % (opp[0], opp[1])}, "lines": []}
+ok = 0
+with zipfile.ZipFile(out_path, "w", zipfile.ZIP_STORED) as z:
+    for i, (text, side, tone) in enumerate(LINES, 1):
+        sid = style_for(you if side == "you" else opp, tone or "")
+        try:
+            q = json.loads(call("/audio_query", {"text": text, "speaker": sid}))
+            for k, v in PARAMS.get(tone or "", PARAMS[""]).items():
+                if k in q:
+                    q[k] = v
+            if "outputSamplingRate" in q:
+                q["outputSamplingRate"] = 24000
+            if "outputStereo" in q:
+                q["outputStereo"] = False
+            wav = call("/synthesis", {"speaker": sid}, q)
+        except Exception as e:
+            print("  x %s (%s)" % (text, e))
+            continue
+        name = "%04d.wav" % i
+        z.writestr(name, wav)
+        manifest["lines"].append({"side": side, "text": text, "file": name})
+        ok += 1
+        print("  [%d/%d] %s" % (i, len(LINES), text))
+    z.writestr("manifest.json", json.dumps(manifest, ensure_ascii=False))
+print("")
+print("できました: %s (%dセリフ)" % (out_path, ok))
+print("このファイルをスマホに送って(AirDrop など)、アプリの 設定 → 音声パックを読み込む で選んでください。")
+`;
+  }
+
   function bindAiVoice() {
     if (typeof AIVoice === "undefined") return;
     const $ = (id) => document.getElementById(id);
+    const pstatus = (t) => $("pack-status") && ($("pack-status").textContent = t);
+    const ps = $("pack-script");
+    if (ps)
+      ps.addEventListener("click", () => {
+        const blob = new Blob([voicepackScript()], { type: "text/x-python" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "make_voicepack.py";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+        pstatus("ダウンロードしました。Mac のターミナルで python3 ~/Downloads/make_voicepack.py を実行してください");
+      });
+    const pf = $("pack-file");
+    if (pf)
+      pf.addEventListener("change", async () => {
+        const f = pf.files && pf.files[0];
+        pf.value = "";
+        if (!f) return;
+        pstatus("読み込んでいます…");
+        try {
+          const n = await AIVoice.importPack(f, (i, all) => pstatus(`読み込んでいます… ${i}/${all}`));
+          pstatus(`${n}セリフを読み込みました`);
+          render();
+        } catch (e) {
+          pstatus("読み込めませんでした: " + (e.message || e));
+        }
+      });
+    app.querySelectorAll("[data-pack-test]").forEach((b) =>
+      b.addEventListener("click", () => {
+        const l = b.dataset.packTest === "opp" ? DuelLines.aceCall(Battle.SYNCHROS.opp[0].name, "opp") : DuelLines.myDraw();
+        AIVoice.testPack(l[1], l[0]).catch((e) => pstatus(e.message || String(e)));
+      })
+    );
+    const pc = $("pack-clear");
+    if (pc)
+      pc.addEventListener("click", async () => {
+        if (!confirm("読み込んだ音声パックを消しますか?")) return;
+        await AIVoice.clearPack();
+        render();
+      });
     const status = (t) => $("tts-status") && ($("tts-status").textContent = t);
     const count = () => AIVoice.cacheCount().then((n) => $("tts-count") && ($("tts-count").textContent = `保存した声 ${n}件`));
     count();
@@ -2325,7 +2472,7 @@
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2026.11.32";
+  const APP_VERSION = "2026.11.33";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });

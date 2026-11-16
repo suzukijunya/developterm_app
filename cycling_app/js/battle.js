@@ -534,7 +534,7 @@ const Battle = (() => {
   }
 
   const cardOf = (k) => card(k);
-  return { LP0, ZONES, STEP_M, FOES, POOL, YOU_DECK, state, deal, step, verdict, summary, foeOf, cardOf };
+  return { LP0, ZONES, STEP_M, FOES, POOL, YOU_DECK, SYNCHROS, ACE, state, deal, step, verdict, summary, foeOf, cardOf };
 })();
 
 if (typeof module !== "undefined") module.exports = Battle;

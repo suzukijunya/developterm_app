@@ -114,60 +114,64 @@ const Cinema = (() => {
     const cand = []; // [優先度, カット]
     const push = (pri, cut) => cand.push([pri, cand.length, cut]);
     const st = ev.steps;
+    const DL = DuelLines;
+    // セリフ(DuelLines の [文, 話す側, 演技])をカットにつける。side は画面の側、vside は声の側
+    const ln = (t, cut) => Object.assign(cut, { line: t[0], vside: t[1], tone: t[2] });
     const nf = st.find((x) => x.t === "newfoe");
     if (nf) {
-      push(6, { shot: "rival", side: "opp", line: `${nf.foe.name}、参上! デッキは${nf.foe.deckName}!`, tone: "shout", foe: nf.foe });
-      push(6, { shot: "duel", side: "you", line: "デュエル!!", tone: "shout" });
+      push(6, ln(DL.rivalEnter(nf.foe), { shot: "rival", side: "opp", foe: nf.foe }));
+      push(6, ln(DL.duel(), { shot: "duel", side: "you" }));
     }
     const draw = st.find((x) => x.t === "draw" && !x.why);
     if (tags.has("destiny")) {
-      push(9, { shot: "pinch", side: "you", line: `ここで…終わるわけには、いかない…!`, tone: "low", lp: ev.lp0.you });
-      push(10, { shot: "draw", side: "you", line: "運命の…ドロー!!", tone: "shout", gold: true });
+      push(9, ln(DL.notHere(), { shot: "pinch", side: "you", lp: ev.lp0.you }));
+      push(10, ln(DL.destinyDraw(), { shot: "draw", side: "you", gold: true }));
       const dc = st.find((x) => x.t === "spell" && x.card.fx === "destiny");
       if (dc) {
-        push(5, { shot: "cardup", side: "you", card: dc.card, line: `このカードは…!`, tone: "low" });
-        push(9, { shot: "hold", side: "you", card: dc.card, line: `${dc.card.name}、発動!!`, tone: "shout" });
+        push(5, ln(DL.thisCard(), { shot: "cardup", side: "you", card: dc.card }));
+        push(9, ln(DL.activate(dc.card.name), { shot: "hold", side: "you", card: dc.card }));
       }
-    } else if (mine && draw && d.score >= 5) push(3, { shot: "draw", side: "you", line: "俺のターン! ドロー!!", tone: "shout" });
+    } else if (mine && draw && d.score >= 5) push(3, ln(DL.myDraw(), { shot: "draw", side: "you" }));
     // 召喚(シンクロ・エース)
     let summons = 0;
     for (const s of st) {
       if (s.t !== "summon" || summons >= 2) continue;
       const who = s.side;
+      const chant = typeof Board !== "undefined" ? DL.chant(Board.chant(s.mon, who), who) : DL.aceCall(s.mon.name, who);
       if (s.how === "synchro") {
         const tune = st[st.indexOf(s) - 1];
-        push(7, { shot: "synchro", side: who, from: tune && tune.t === "tune" ? tune.from : [], lv: s.mon.lv, line: who === "you" ? "光を束ねて、道を切り拓け! シンクロ召喚!" : `${foe}「闇を束ねろ…シンクロ召喚!」`, tone: "shout" });
-        push(7, { shot: "manga", side: who, line: typeof Board !== "undefined" ? Board.chant(s.mon, who) : `現れろ! ${s.mon.name}!`, tone: "shout" });
-        push(6, { shot: "low", side: who, mon: s.mon, line: who === "you" ? `走れ、${s.mon.name}!!` : `現れたのは…${s.mon.name}!`, tone: who === "you" ? "shout" : "low" });
+        push(7, ln(DL.synchroChant(who), { shot: "synchro", side: who, from: tune && tune.t === "tune" ? tune.from : [], lv: s.mon.lv }));
+        push(7, ln(chant, { shot: "manga", side: who }));
+        push(6, ln(DL.summonCry(s.mon.name, who), { shot: "low", side: who, mon: s.mon }));
         summons++;
       } else if (s.how === "ace" || s.mon.atk >= 2500) {
-        if (s.how === "ace") push(9, { shot: "manga", side: who, line: typeof Board !== "undefined" ? Board.chant(s.mon, who) : `来い! ${s.mon.name}!`, tone: "shout" });
-        push(s.how === "ace" ? 10 : 5, { shot: s.how === "ace" ? "low" : "two", side: who, mon: s.mon, line: who === "you" ? `来い! ${s.mon.name}!!` : `${foe}が${s.mon.name}を呼んだ…!`, tone: "shout" });
+        if (s.how === "ace") push(9, ln(chant, { shot: "manga", side: who }));
+        push(s.how === "ace" ? 10 : 5, ln(DL.aceCall(s.mon.name, who), { shot: s.how === "ace" ? "low" : "two", side: who, mon: s.mon }));
         summons++;
       }
     }
     // 長いチェーン
     const ch = st.filter((x) => x.t === "chain").sort((a, b) => b.links.length - a.links.length)[0];
-    if (ch && ch.links.length >= 3) push(6, { shot: "chain", side: ev.side, links: ch.links, line: `チェーン${ch.links.length}! 最後に重ねたカードから解決だ!`, tone: "shout" });
+    if (ch && ch.links.length >= 3) push(6, ln(DL.chain(ch.links.length, ev.side), { shot: "chain", side: ev.side, links: ch.links }));
     // 攻撃: 決着の一撃か、いちばん大きいダメージ
     const atks = st.filter((x) => x.t === "attack" && x.dmg > 0 && (x.result === "direct" || x.result === "destroy" || x.result === "guard"));
     const big = atks.sort((a, b) => (b.mon.ace ? 1e5 : 0) + b.dmg - (a.mon.ace ? 1e5 : 0) - a.dmg)[0];
     // 決着の一撃の前に、目のアップで溜める
-    if (big && big.side === "you" && tags.has("win")) push(8, { shot: "glare", side: "you", line: "この一撃で…決める!", tone: "low" });
+    if (big && big.side === "you" && tags.has("win")) push(8, ln(DL.glare(), { shot: "glare", side: "you" }));
     if (big && (tags.has("win") || tags.has("lose") || tags.has("reversal") || tags.has("reversed") || tags.has("pinch") || big.dmg >= 1200))
-      push(tags.has("win") || tags.has("lose") || tags.has("reversal") ? 9 : 6, { shot: "attack", side: big.side, mon: big.mon, dmg: big.dmg, direct: big.result === "direct", line: big.side === "you" ? `行け、${big.mon.name}! ${big.result === "direct" ? "ダイレクトアタック!" : "攻撃!"}` : `${big.mon.name}の攻撃…!`, tone: "shout" });
+      push(tags.has("win") || tags.has("lose") || tags.has("reversal") ? 9 : 6, ln(DL.attack(big.mon.name, big.side, big.result === "direct"), { shot: "attack", side: big.side, mon: big.mon, dmg: big.dmg, direct: big.result === "direct" }));
     // ピンチ・逆転・決着
-    if (tags.has("pinch") && !tags.has("destiny")) push(8, { shot: "pinch", side: "you", lp: ev.you.lp, line: d.hint ? `LP${ev.you.lp}…まだだ。次の区間、全力で踏めば…!` : `くっ…LP、残り${ev.you.lp}…!`, tone: "low" });
-    if (tags.has("reversal")) push(9, { shot: "reversal", side: "you", lp: [ev.you.lp, ev.opp.lp], line: "逆転だ!! ここからが、本当の勝負だ!", tone: "shout" });
-    if (tags.has("reversed")) push(8, { shot: "reversal", side: "opp", lp: [ev.you.lp, ev.opp.lp], line: `${foe}に逆転された…!?`, tone: "low" });
-    if (tags.has("win")) push(10, { shot: "finish", side: "you", win: true, line: `これで終わりだ! ${foe}、撃破!`, tone: "shout" });
-    if (tags.has("lose")) push(10, { shot: "finish", side: "opp", win: false, line: "ライフが…ゼロに…。だが、まだ走れる!", tone: "low" });
+    if (tags.has("pinch") && !tags.has("destiny")) push(8, ln(d.hint ? DL.pinchShort() : DL.pinch(), { shot: "pinch", side: "you", lp: ev.you.lp }));
+    if (tags.has("reversal")) push(9, ln(DL.reversal(), { shot: "reversal", side: "you", lp: [ev.you.lp, ev.opp.lp] }));
+    if (tags.has("reversed")) push(8, ln(DL.reversed(foe), { shot: "reversal", side: "opp", lp: [ev.you.lp, ev.opp.lp] }));
+    if (tags.has("win")) push(10, ln(DL.ko(foe), { shot: "finish", side: "you", win: true }));
+    if (tags.has("lose")) push(10, ln(DL.lifeZero(), { shot: "finish", side: "opp", win: false }));
     // 多すぎたら優先度の低いものから削る(順番は起きた順のまま)
     const keep = cand.slice().sort((a, b) => b[0] - a[0]).slice(0, 6);
     const cuts = cand.filter((c) => keep.includes(c)).map((c) => c[2]);
     // 決着とピンチは最後に置く
     const last = (shot) => {
-      const i = cuts.findIndex((c) => c.shot === shot && c.line && !/運命|ここで/.test(c.line));
+      const i = cuts.findIndex((c) => c.shot === shot);
       if (i >= 0) cuts.push(cuts.splice(i, 1)[0]);
     };
     if (!tags.has("destiny")) last("pinch");

@@ -1490,3 +1490,5 @@ a.tab {
 .ai-voice input[type="password"] { width: 100%; box-sizing: border-box; }
 .ai-voice-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .ai-voice-row select { margin-left: 6px; }
+.pack-steps { margin: 4px 0 4px 1.2em; padding: 0; line-height: 1.6; }
+.pack-steps code, .ai-voice code { font-size: 0.75em; padding: 1px 4px; border-radius: 4px; background: rgba(127, 127, 127, 0.15); user-select: all; }
