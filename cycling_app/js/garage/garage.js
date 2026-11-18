@@ -786,6 +786,26 @@
     </button>`;
   }
 
+  // フレームとフォークは、表ではセット(フレームセット)で1行にする。データ・3Dでは別のまま
+  const setName = (n) => (/フレーム/.test(n) ? n.replace(/フレーム(?!セット)/, "フレームセット") : n + " フレームセット");
+  function frameSetCell(k, alt) {
+    const b = G.builds[k], f = b.parts.frame || { name: "(なし)", g: 0 }, fk = b.parts.fork || { g: 0 };
+    const gOf = (p) => (p && p.mounted !== false ? +p.g || 0 : 0);
+    const g = gOf(f) + gOf(fk);
+    const ob = G.builds[alt ? "current" : k === "current" ? "next" : "current"];
+    const og = gOf(ob.parts.frame) + gOf(ob.parts.fork);
+    const same = (ob.parts.frame || {}).name === f.name && (ob.parts.fork || {}).name === fk.name && og === g;
+    const show = alt || k === "next";
+    const dg = g - og;
+    const c1 = upCost(k, "frame"), c2 = upCost(k, "fork");
+    const cost = c1 || c2 ? { yen: ((c1 && c1.yen) || 0) + ((c2 && c2.yen) || 0), isNew: (!c1 || c1.isNew) && (!c2 || c2.isNew) } : null;
+    const sel = cell ? (cell.slot === "frame" || cell.slot === "fork") && cell.k === k : (selected === "frame" || selected === "fork") && G.active === k;
+    return `<button class="mx-cell nothumb ${alt ? "mx-alt " + (same ? "same" : "diff") : show && !same ? "diff" : ""} ${sel ? "sel" : ""}" data-cell="frame" data-k="${k}">
+      <span class="mx-name">${alt && same ? "(今のまま)" : esc(setName(f.name))}</span>
+      <span class="mx-g">${g.toLocaleString()} g${show && dg ? `<em class="${dg < 0 ? "up" : "down"}">${dg < 0 ? "−" : "+"}${Math.abs(dg)}g</em>` : ""}</span>${yenHtml(cost)}
+    </button>`;
+  }
+
   function matrixHtml() {
     const kg = (k) => kgTxt(bikeGrams(G.builds[k]) / 1000);
     const alts = altKeys();
@@ -806,7 +826,13 @@
           <span class="mx-col ${G.active === "current" ? "on" : ""}">装着済み<small>${kg("current")}</small></span>
           <span class="mx-col ${G.active === "next" ? "on" : ""}">NEW<small>${kg("next")}</small></span>
           ${alts.map((k) => `<span class="mx-col mx-alt ${G.active === k ? "on" : ""}">${esc(ALT_PLANS.find((x) => x.key === k).short)}<small>${kg(k)}</small></span>`).join("")}
-          ${Parts.SLOTS.map((sl) => `<span class="mx-slot">${sl.icon}<small>${sl.name}</small></span>${cellHtml(sl.id, "current")}${cellHtml(sl.id, "next")}${alts.map((k) => altCell(sl.id, k)).join("")}`).join("")}
+          ${Parts.SLOTS.filter((sl) => sl.id !== "fork")
+            .map((sl) =>
+              sl.id === "frame"
+                ? `<span class="mx-slot">${sl.icon}<small>フレームセット</small></span>${frameSetCell("current")}${frameSetCell("next")}${alts.map((k) => frameSetCell(k, true)).join("")}`
+                : `<span class="mx-slot">${sl.icon}<small>${sl.name}</small></span>${cellHtml(sl.id, "current")}${cellHtml(sl.id, "next")}${alts.map((k) => altCell(sl.id, k)).join("")}`
+            )
+            .join("")}
           <span class="mx-slot mx-sum-l">💴<small>追加費用</small></span>
           <div class="mx-cell nothumb mx-sum"><span class="mx-name">—</span></div>
           ${["next", ...alts].map((k) => `<div class="mx-cell nothumb mx-sum ${k === "next" ? "" : "mx-alt"} ${G.active === k ? "on" : ""}"><span class="mx-name">${Catalog.yen(upTotal(k))}</span><span class="mx-g">装着済みから替える分</span></div>`).join("")}
@@ -843,6 +869,12 @@
       .replace(/\s+/g, " ")
       .trim();
   // マスを開いたときに出す: そのパーツのスペックと、メルカリの相場を見に行くボタン
+  // フレームの画面に、セットのフォークを出す(フォークだけ替えたいときは、ここから開く)
+  function forkInSet(k) {
+    const fk = G.builds[k].parts.fork;
+    if (!fk) return "";
+    return `<div class="mx-forkset"><small>セットのフォーク</small><span>${esc(fk.name)}</span><b>${(+fk.g || 0).toLocaleString()} g</b><button class="link" type="button" data-cell="fork" data-k="${k}">フォークだけ替える</button></div>`;
+  }
   function partInfoHtml(k, slot) {
     const p = G.builds[k].parts[slot];
     if (!p || !p.name) return "";
@@ -892,6 +924,7 @@
               <div class="g-plan-btns">${inBar ? "" : `<button class="btn sub" data-mount="${slot}">${off ? "取り付ける" : "外す"}</button>`}${it ? `<button class="link" data-lib-edit="${it.id}">マイパーツを編集</button>` : ""}</div></div>
           </div>
           ${inBar || off ? "" : partInfoHtml(k, slot)}
+          ${slot === "frame" ? forkInSet(k) : slot === "fork" ? `<p class="muted small">フレームセットの一部です。<button class="link" type="button" data-cell="frame" data-k="${k}">フレームセットに戻る</button></p>` : ""}
           ${wrong
             .map(
               (w) => `<div class="notice warn mx-misfit">⚠️ 「${esc(w.name)}」は${esc(w.what)}っぽいです${w.code ? `(型番 ${esc(w.code)})` : ""}。${esc(Parts.slotName(w.to))}のパーツではありませんか?

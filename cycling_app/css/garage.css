@@ -1570,3 +1570,5 @@ button.mx-cell.mx-alt { cursor: pointer; text-align: left; font: inherit; color:
 .yt-tx small { display: block; color: #9aa3b2; font-size: 0.74rem; margin-top: 2px; }
 .yt-st { display: block; font-size: 0.74rem; color: #c8ced8; margin-top: 2px; font-variant-numeric: tabular-nums; }
 .yt-st b { color: #ffb36b; }
+.mx-forkset { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--line, #2a3140); font-size: 0.85rem; }
+.mx-forkset small { width: 100%; color: var(--muted, #9aa3b2); }
