@@ -730,6 +730,68 @@ const City = (() => {
     }
     pump();
   }
+  // ---------- 地面の航空写真(国土地理院の地図タイル) ----------
+  // 近くだけ細かい写真(ズーム18・1枚 約120m)。早送りのときは粗い写真にして、取りに行く枚数を減らす
+  let photos = new Map(), photoOn = true;
+  function photoStyle() {
+    // 写真があるときは、描いた道をうすくして写真の道を見せる。公園などの色ぬりは消す
+    mats.road.transparent = true;
+    mats.road.opacity = photoOn ? 0.28 : 1;
+    mats.road.depthWrite = !photoOn;
+    mats.area.visible = !photoOn;
+  }
+  function wantPhotos(along) {
+    const THREE = T();
+    const need = new Set();
+    if (photoOn) {
+      const z = sim.speedX >= 10 ? 16 : sim.speedX >= 5 ? 17 : 18, n = 2 ** z;
+      const R = z === 18 ? 240 : z === 17 ? 430 : 820;
+      for (const d of [0, R * 0.8]) {
+        const p = at(along + d);
+        const lat = route.lat0 - p.z / route.kz, lon = route.lon0 + p.x / route.kx;
+        const size = (40075016 * Math.cos((lat * Math.PI) / 180)) / n, k = Math.ceil(R / size);
+        const cx = Math.floor(((lon + 180) / 360) * n), cy = Math.floor(((1 - Math.asinh(Math.tan((lat * Math.PI) / 180)) / Math.PI) / 2) * n);
+        for (let dx = -k; dx <= k; dx++) for (let dy = -k; dy <= k; dy++) if (Math.hypot(dx, dy) * size < R + size * 0.75) need.add(`${z}/${cx + dx}/${cy + dy}`);
+      }
+    }
+    for (const key of need) {
+      if (photos.has(key)) continue;
+      const [z, x, y] = key.split("/").map(Number), n = 2 ** z;
+      const lonOf = (v) => (v / n) * 360 - 180, latOf = (v) => (Math.atan(Math.sinh(Math.PI * (1 - (2 * v) / n))) * 180) / Math.PI;
+      const a = project(latOf(y), lonOf(x)), b = project(latOf(y), lonOf(x + 1)), c = project(latOf(y + 1), lonOf(x + 1)), d = project(latOf(y + 1), lonOf(x));
+      const h = z === 18 ? 0.014 : z === 17 ? 0.01 : 0.006;
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.Float32BufferAttribute([a[0], h, a[1], d[0], h, d[1], c[0], h, c[1], a[0], h, a[1], c[0], h, c[1], b[0], h, b[1]], 3));
+      geo.setAttribute("uv", new THREE.Float32BufferAttribute([0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1], 2));
+      const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xa9aec4 }));
+      mesh.visible = false;
+      photos.set(key, mesh);
+      scene.add(mesh);
+      const ld = new THREE.TextureLoader();
+      ld.setCrossOrigin("anonymous");
+      ld.load(
+        `https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/${key}.jpg`,
+        (tex) => {
+          tex.encoding = THREE.sRGBEncoding;
+          tex.anisotropy = 8;
+          mesh.material.map = tex;
+          mesh.material.needsUpdate = true;
+          mesh.visible = true;
+        },
+        undefined,
+        () => {}
+      );
+    }
+    for (const [key, mesh] of photos) {
+      if (need.has(key)) continue;
+      scene.remove(mesh);
+      mesh.geometry.dispose();
+      if (mesh.material.map) mesh.material.map.dispose();
+      mesh.material.dispose();
+      photos.delete(key);
+    }
+  }
+
   async function pump() {
     if (loading) return;
     if (!queue.length) return prefetch();
@@ -984,6 +1046,8 @@ const City = (() => {
     Battle.deal(sim.ride);
     buildRouteStrip();
     wantTiles(0);
+    photoStyle();
+    wantPhotos(0);
     hudDuel();
     // 最初の街が出るまで待つ(長くても40秒。出なければ道の線だけで走り出す)
     sim.paused = true;
@@ -999,6 +1063,7 @@ const City = (() => {
         wait.hidden = true;
         sim.paused = false;
         ticker(`ライディング・デュエル、アクセラレーション! 相手は${foe.name}`, "you");
+        if (typeof DuelLines !== "undefined") sayLine(DuelLines.accel());
         if (!ok) ticker("街を読めていません。道の線だけで走ります", "opp");
       }
     }, 300);
@@ -1042,6 +1107,7 @@ const City = (() => {
     for (const line of turnLines(ev, names)) ticker(line[0], line[1]);
     hudDuel(ev);
     // 早送り(×5以上)のときは、演出を出さずに文だけ流す
+    Bgm.heat(Battle.state(s.ride).you.lp <= 3000 || route.length - s.along < 1000);
     if (s.speedX > 2) return;
     // ふつうのターンは、画面の右上に小さな盤面を出して、1手ずつ動かして見せる
     const sc = ev.drama ? ev.drama.score : 0;
@@ -1051,10 +1117,11 @@ const City = (() => {
         Board.play(ev, names);
       } catch (e) {}
     }
+    if (!big) duelVoice(ev);
     // 見せ場だけ、走りを止めて全画面の演出を入れる
     if (big) {
       try {
-        const ok = Cinema.play(ev, (c) => say(c.line), () => (s.paused = false));
+        const ok = Cinema.play(ev, (c) => say(c.line, c.vside || c.side, c.tone), () => (s.paused = false));
         if (ok) (s.paused = true), (s.cineT = s.t), setTimeout(() => (s.paused = false), 16000);
       } catch (e) {
         s.paused = false;
@@ -1085,15 +1152,132 @@ const City = (() => {
     el.insertAdjacentHTML("beforeend", `<div class="ct-line ${side || ""}">${esc(text)}</div>`);
     while (el.children.length > 5) el.firstElementChild.remove();
   }
-  function say(text) {
-    if (!text || !$("ct-voice") || !$("ct-voice").checked || !window.speechSynthesis) return;
+  // 声: 設定してあればAIの声(アプリ本体と同じ音声パック)、なければ端末の読み上げ
+  function say(text, side = "you", tone = "") {
+    if (!text || !$("ct-voice") || !$("ct-voice").checked) return;
+    const tts = () => {
+      if (!window.speechSynthesis) return;
+      try {
+        speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = "ja-JP";
+        u.rate = 1.15;
+        u.pitch = side === "opp" ? 0.7 : 0.9;
+        speechSynthesis.speak(u);
+      } catch (e) {}
+    };
     try {
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = "ja-JP";
-      u.rate = 1.15;
-      speechSynthesis.speak(u);
+      if (typeof AIVoice !== "undefined" && AIVoice.enabled() && AIVoice.say(text, { side, tone, fallback: tts })) return;
     } catch (e) {}
+    tts();
   }
+  const sayLine = (l) => l && say(l[0], l[1], l[2]);
+  const sfx = (name, delay) => typeof Cinema !== "undefined" && $("ct-bgm") && $("ct-bgm").checked && Cinema.sfx(name, delay);
+  // 1ターンで、いちばんの見せ場を一言だけ話す。効果音も鳴らす
+  function duelVoice(ev) {
+    if (typeof DuelLines === "undefined") return;
+    const DL = DuelLines;
+    let best = null, pri = 0;
+    const put = (p, l) => p > pri && ((pri = p), (best = l));
+    for (const st of ev.steps) {
+      const sd = st.side || ev.side;
+      if (st.t === "win") put(9, st.side === "you" ? DL.ko(st.foe) : DL.lifeZero()), sfx("shine");
+      else if (st.t === "summon" && (st.how === "synchro" || st.how === "ace")) put(8, st.how === "ace" ? DL.aceCall(st.mon.name, sd) : DL.synchroCall(st.mon.name, sd)), sfx("riser"), sfx("shine", 0.5);
+      else if (st.t === "chain" && st.links.length >= 2) put(6, DL.chain(st.links.length, sd)), sfx("clink");
+      else if (st.t === "attack") put(st.target ? 4 : 5, DL.attack(st.mon.name, sd, !st.target)), sfx("hit", 0.2);
+      else if (st.t === "burn") put(4, DL.burn(sd)), sfx("stab");
+      else if (st.t === "spell" && sd === "you") put(3, DL.activate(st.card.name)), sfx("whoosh");
+      else if (st.t === "summon") put(2, DL.summonCry(st.mon.name, sd)), sfx("whoosh");
+    }
+    if (!best && ev.side === "you") best = DL.myDraw();
+    sayLine(best);
+  }
+
+  // ---------- バトルBGM(その場で音を作って鳴らす。オリジナルの曲) ----------
+  const Bgm = (() => {
+    let ac = null, gain = null, timer = 0, step = 0, nextT = 0, on = false, hot = false;
+    const BPM = 148, S16 = 60 / BPM / 4;
+    // Eマイナーの進行: Em → C → D → Bm(1小節ずつ)
+    const ROOT = [40, 36, 38, 35];
+    const ARP = [[0, 7, 12, 15, 19, 15, 12, 7], [0, 7, 12, 16, 19, 16, 12, 7], [0, 7, 12, 16, 19, 16, 12, 7], [0, 7, 12, 15, 19, 15, 12, 7]];
+    const LEAD = [76, 0, 79, 0, 83, 81, 79, 0, 76, 0, 74, 76, 0, 0, 71, 0, 72, 0, 76, 0, 79, 0, 84, 83, 0, 79, 0, 76, 74, 0, 0, 0, 74, 0, 78, 0, 81, 0, 86, 0, 85, 81, 0, 78, 0, 74, 0, 0, 71, 0, 74, 0, 78, 0, 83, 0, 81, 78, 0, 74, 71, 0, 0, 0];
+    const hz = (m) => 440 * 2 ** ((m - 69) / 12);
+    const tone = (t, m, dur, type, vol, cut) => {
+      const o = ac.createOscillator(), g = ac.createGain(), f = ac.createBiquadFilter();
+      o.type = type;
+      o.frequency.value = hz(m);
+      f.type = "lowpass";
+      f.frequency.value = cut;
+      g.gain.setValueAtTime(vol, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      o.connect(f).connect(g).connect(gain);
+      o.start(t);
+      o.stop(t + dur + 0.02);
+    };
+    const drum = (t, kind) => {
+      if (kind === "kick") {
+        const o = ac.createOscillator(), g = ac.createGain();
+        o.frequency.setValueAtTime(150, t);
+        o.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+        g.gain.setValueAtTime(0.9, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+        o.connect(g).connect(gain);
+        o.start(t);
+        o.stop(t + 0.18);
+        return;
+      }
+      const len = kind === "snare" ? 0.14 : 0.04;
+      const buf = ac.createBuffer(1, Math.ceil(ac.sampleRate * len), ac.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+      const src = ac.createBufferSource(), g = ac.createGain(), f = ac.createBiquadFilter();
+      src.buffer = buf;
+      f.type = "highpass";
+      f.frequency.value = kind === "snare" ? 1400 : 7000;
+      g.gain.value = kind === "snare" ? 0.45 : 0.16;
+      src.connect(f).connect(g).connect(gain);
+      src.start(t);
+    };
+    const tick = () => {
+      while (nextT < ac.currentTime + 0.18) {
+        const bar = Math.floor(step / 16) % 4, i = step % 16, t = nextT;
+        if (i % 4 === 0) drum(t, "kick");
+        if (hot && i % 4 === 2 && i > 8) drum(t, "kick");
+        if (i === 4 || i === 12) drum(t, "snare");
+        if (i % 2 === 0) drum(t, "hat");
+        if (i % 2 === 0) tone(t, ROOT[bar] + (i % 8 === 6 ? 12 : 0), S16 * 1.8, "sawtooth", 0.3, 520);
+        tone(t, ROOT[bar] + 24 + ARP[bar][i % 8], S16 * 0.9, "square", 0.07, 2400);
+        const n = LEAD[(Math.floor(step / 16) % 4) * 16 + i];
+        if (n && Math.floor(step / 64) % 2 === 1) tone(t, n, S16 * 2.6, "triangle", 0.2, 3600);
+        step++;
+        nextT += S16;
+      }
+    };
+    return {
+      start() {
+        try {
+          if (!ac) {
+            ac = new (window.AudioContext || window.webkitAudioContext)();
+            gain = ac.createGain();
+            gain.gain.value = 0.16;
+            gain.connect(ac.destination);
+          }
+          if (ac.state === "suspended") ac.resume();
+          if (on) return;
+          on = true;
+          nextT = ac.currentTime + 0.1;
+          timer = setInterval(tick, 60);
+        } catch (e) {}
+      },
+      stop() {
+        on = false;
+        clearInterval(timer);
+      },
+      // ピンチ・終盤は、ドラムを増やして盛り上げる
+      heat(v) {
+        hot = v;
+      },
+    };
+  })();
   function hudDuel() {
     const b = Battle.state(sim.ride);
     const foe = Battle.foeOf(b);
@@ -1184,7 +1368,7 @@ const City = (() => {
         if (s.paused) break;
       }
       if (s.along >= route.length - 0.5) finish();
-      if ((s.tileT = (s.tileT || 0) + real) > 1.5) (s.tileT = 0), wantTiles(s.along);
+      if ((s.tileT = (s.tileT || 0) + real) > 1.5) (s.tileT = 0), wantTiles(s.along), wantPhotos(s.along);
     }
     const p = placeBiker(me, s.along, 0, real * s.speedX, s.v, (s.auto || s.pedal) && !s.brake && !s.paused);
     placeBiker(rival, s.rAlong, 1.3, real * s.speedX, s.rV, !s.paused);
@@ -1216,6 +1400,7 @@ const City = (() => {
       <p>LP ${v.you} − ${v.opp}(${v.wins}勝 ${v.losses}敗 / ${v.turns}ターン)</p>
       <button class="btn start" id="ct-again">もう一度</button> <a class="btn sub" href="index.html">アプリに戻る</a></div>`;
     $("ct-again").onclick = () => location.reload();
+    Bgm.stop();
     say(v.winner === "you" ? "俺の勝ちだ。いいライディングだったぜ" : "次は必ず追い抜く");
   }
 
@@ -1251,6 +1436,12 @@ const City = (() => {
       $("ct-go").disabled = false;
       return (msg.textContent = "ルートを取れませんでした。通信を確かめて、もう一度お試しください");
     }
+    // 音は、押したとき(ここ)に準備しないと鳴らせない
+    try {
+      if (typeof Cinema !== "undefined") Cinema.unlock();
+      if (typeof AIVoice !== "undefined") AIVoice.unlock();
+    } catch (e) {}
+    if ($("ct-bgm").checked) Bgm.start();
     $("ct-setup").hidden = true;
     $("ct-hud").hidden = false;
     init3D();
@@ -1277,6 +1468,11 @@ const City = (() => {
     $("ct-sprint").addEventListener("pointerup", () => sim && (sim.pedal = false));
     $("ct-auto").onchange = (e) => sim && (sim.auto = e.target.checked);
     $("ct-x").onchange = (e) => sim && (sim.speedX = +e.target.value);
+    $("ct-bgm").onchange = (e) => (e.target.checked ? Bgm.start() : Bgm.stop());
+    $("ct-photo").onchange = (e) => {
+      photoOn = e.target.checked;
+      if (sim) photoStyle(), wantPhotos(sim.along);
+    };
     const keys = { " ": "pedal", ArrowUp: "pedal", ArrowDown: "brake", Shift: "sprint" };
     window.addEventListener("keydown", (e) => {
       if (sim && keys[e.key]) (sim[keys[e.key]] = true), e.key === "Shift" && (sim.pedal = true), e.preventDefault();
