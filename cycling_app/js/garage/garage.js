@@ -820,45 +820,44 @@
   }
 
   // 次にカスタムすべきパーツ: NEW で替える部位のうち、1つだけ替えたときの「総合点の上がり ÷ 値段」がいちばん大きいもの
-  // カスタムする順番(上位3つ): NEW で替える部位を1つずつ付けて「総合点の上がり ÷ 中古の値段」が大きい順。
-  // NEW の変更が3つに足りなければ、図鑑のパーツから同じ基準で足す(その部位の NEW のマスに「候補」として出す)
+  // カスタムする順番(3つ): 1つ付けたら、それを付けた状態から次を選ぶ(積み上げ)。
+  // 選び方は「総合点の上がり ÷ 中古の値段」。候補は NEW で替える部位。3つに足りなければ図鑑から足す
   function pickRank() {
     const cur = G.builds.current, nx = G.builds.next;
     if (!cur || !nx) return [];
-    const base = statsOf(cur).total;
-    const out = [];
-    const score = (t, yen) => {
-      const gain = statsOf(t).total - base, w = (bikeGrams(cur) - bikeGrams(t)) / 1000;
-      return { gain, w, yen, val: (gain + w * 2) / Math.max(1000, yen) };
-    };
+    const hid = new Set(G.catalogHidden || []);
+    // 候補: { slot, apply(t), yen, item? }
+    const cands = [];
     for (const sl of Parts.SLOTS) {
       if (sl.id === "fork") continue;
       const ids = sl.id === "frame" ? ["frame", "fork"] : [sl.id];
       if (ids.every((k) => JSON.stringify(cur.parts[k] || {}) === JSON.stringify(nx.parts[k] || {}))) continue;
-      const t = JSON.parse(JSON.stringify(cur));
-      for (const k of ids) t.parts[k] = JSON.parse(JSON.stringify(nx.parts[k]));
-      const r = score(t, ids.reduce((a, k) => a + ((upCost("next", k) || {}).yen || 0), 0));
-      if (r.gain > 0 || r.w > 0) out.push(Object.assign({ slot: sl.id }, r));
+      cands.push({ slot: sl.id, yen: ids.reduce((a, k) => a + ((upCost("next", k) || {}).yen || 0), 0), apply: (t) => ids.forEach((k) => (t.parts[k] = JSON.parse(JSON.stringify(nx.parts[k])))) });
     }
-    out.sort((a, b) => b.val - a.val);
-    if (out.length < 3) {
-      const hid = new Set(G.catalogHidden || []), used = new Set(out.map((x) => x.slot));
-      const cand = [];
-      for (const it of Catalog.ITEMS) {
-        if (hid.has(it.id) || used.has(it.slot) || Catalog.installed(cur, it) || Catalog.installed(nx, it)) continue;
-        const t = JSON.parse(JSON.stringify(cur));
-        Catalog.apply(t, it);
-        const r = score(t, Catalog.cost(it));
-        if (r.gain > 0 || r.w > 0) cand.push(Object.assign({ slot: it.slot, item: it }, r));
-      }
-      cand.sort((a, b) => b.val - a.val);
-      for (const c of cand) {
-        if (out.length >= 3) break;
-        if (out.some((x) => x.slot === c.slot)) continue;
-        out.push(c);
-      }
+    for (const it of Catalog.ITEMS) {
+      if (hid.has(it.id) || cands.some((c) => c.slot === it.slot) || Catalog.installed(cur, it) || Catalog.installed(nx, it)) continue;
+      cands.push({ slot: it.slot, yen: Catalog.cost(it), item: it, apply: (t) => Catalog.apply(t, it) });
     }
-    return out.slice(0, 3);
+    const out = [];
+    let t = JSON.parse(JSON.stringify(cur));
+    while (out.length < 3) {
+      const base = statsOf(t).total, g0 = bikeGrams(t);
+      let best = null;
+      for (const c of cands) {
+        if (out.some((o) => o.slot === c.slot)) continue;
+        if (c.item && out.length + cands.filter((x) => !x.item && !out.includes(x)).length >= 3 && cands.some((x) => !x.item && !out.includes(x))) continue; // NEW の分を先に
+        const u = JSON.parse(JSON.stringify(t));
+        c.apply(u);
+        const gain = statsOf(u).total - base, w = (g0 - bikeGrams(u)) / 1000;
+        if (gain <= 0 && w <= 0) continue;
+        const val = (gain + w * 2) / Math.max(1000, c.yen);
+        if (!best || val > best.val) best = { c, u, gain, w, val };
+      }
+      if (!best) break;
+      out.push(Object.assign(best.c, { gain: best.gain, w: best.w }));
+      t = best.u;
+    }
+    return out;
   }
   const nextPick = () => pickRank()[0] || null;
 
@@ -866,7 +865,7 @@
     const kg = (k) => kgTxt(bikeGrams(G.builds[k]) / 1000);
     const alts = altKeys();
     const ranks = pickRank();
-    const RK = [["mx-pick", "次はこれ"], ["mx-pick2", "その次"], ["mx-pick3", "3番目"]];
+    const RK = [["mx-pick", "① 次にカスタム"], ["mx-pick2", "② その次"], ["mx-pick3", "③ その次の次"]];
     // 乗り換えプランの列(見るだけ。装着済みとの重さの差を出す)
     const altCell = (slotId, k) => {
       const p = G.builds[k].parts[slotId] || { name: "(なし)", g: 0 };
@@ -894,7 +893,7 @@
               const mark = pk
                 ? nextCell
                     .replace('class="mx-cell', `class="mx-cell mx-pick ${RK[ri][0]}`)
-                    .replace("</button>", `<i class="mx-pick-tag" title="お金あたりの上がり方の順">${RK[ri][1]}${pk.item ? ": " + esc(pk.item.short || pk.item.name) : ""} +${pk.gain}点</i></button>`)
+                    .replace("</button>", `<i class="mx-pick-tag" title="カスタムする順番(1つ付けたら、その状態から次を選ぶ)">${RK[ri][1]}${pk.item ? ": " + esc(pk.item.short || pk.item.name) : ""}</i></button>`)
                 : nextCell;
               return sl.id === "frame"
                 ? `<span class="mx-slot">${sl.icon}<small>フレームセット</small></span>${frameSetCell("current")}${mark}${alts.map((k) => frameSetCell(k, true)).join("")}`
