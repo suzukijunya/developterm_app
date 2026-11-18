@@ -135,3 +135,12 @@ body.city { margin: 0; overflow: hidden; background: #050608; color: #fff; font-
 .ct-left .ct-lane.warn { border-left-color: #ff7a2e; }
 .ct-next { top: calc(86px + env(safe-area-inset-top)) !important; border-radius: 8px; }
 .ct-map-state { top: calc(110px + env(safe-area-inset-top)) !important; }
+/* 信号 */
+.ct-sig { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 700; }
+.ct-sig:empty { display: none; }
+.ct-sig small { font-weight: 500; color: #cfd5df; }
+.ct-sig .sig { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
+.ct-sig .sig.g { background: #19e8a8; color: #19e8a8; }
+.ct-sig .sig.y { background: #ffb21a; color: #ffb21a; }
+.ct-sig .sig.r { background: #ff2a2a; color: #ff2a2a; }
+.ct-left .ct-sig small { font-size: 0.75rem; }

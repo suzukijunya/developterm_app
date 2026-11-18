@@ -1756,6 +1756,17 @@ const City = (() => {
       want,
       update,
       ride,
+      // ルート上の交差点の区間 [始まり, 終わり](m)
+      crossings() {
+        const out = [];
+        let a = null;
+        for (let i = 0; i < raw.length; i++) {
+          const c = raw[i] && raw[i].cross;
+          if (c && a == null) a = i * STEP;
+          if (!c && a != null) out.push([a, i * STEP]), (a = null);
+        }
+        return out;
+      },
       left: () => queue.length + busy,
       fails: () => fails,
       setVisible(v) {
@@ -1970,6 +1981,187 @@ const City = (() => {
       return Math.min(1.2, Math.max(0, d));
     }
     return { update, dodge, score: () => score, passed: () => passed };
+  })();
+
+  // ---------- 信号と交差点 ----------
+  // OpenStreetMap の信号の点(日本では交差点名が付いていることが多い)を、走り出す前にルートのまわりだけ取る。
+  // 取れなかったときは、PLATEAU の道路データの「交差点」から、広い道どうしの交差点に信号があるとみなす(推定)。
+  // 信号は 60秒の周期(青35・黄3・赤22)で変わり、赤と黄では自分もライバルも停止線で止まる。
+  const Signals = (() => {
+    let list = []; // { along, name, phase, est, mesh, lamps }
+    let source = "";
+    const CYCLE = 60, G = 35, Y = 3;
+    const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter", "https://overpass.private.coffee/api/interpreter"];
+    function stateAt(sg, t) {
+      const x = (((t + sg.phase) % CYCLE) + CYCLE) % CYCLE;
+      return x < G ? "g" : x < G + Y ? "y" : "r";
+    }
+    function left(sg, t) {
+      const x = (((t + sg.phase) % CYCLE) + CYCLE) % CYCLE;
+      return x < G ? G - x : x < G + Y ? G + Y - x : CYCLE - x;
+    }
+    // 点をルートに投影(ルートから18m以内のものだけ)
+    function onRoute(lat, lon) {
+      const [x, z] = project(lat, lon);
+      let best = 18, along = null;
+      const { xy, cum } = route;
+      for (let i = 0; i < xy.length - 1; i++) {
+        const a = xy[i], b = xy[i + 1], vx = b[0] - a[0], vz = b[1] - a[1], L2 = vx * vx + vz * vz;
+        if (!L2) continue;
+        const t = Math.max(0, Math.min(1, ((x - a[0]) * vx + (z - a[1]) * vz) / L2));
+        const d = Math.hypot(x - a[0] - vx * t, z - a[1] - vz * t);
+        if (d < best) (best = d), (along = cum[i] + Math.sqrt(L2) * t);
+      }
+      return along;
+    }
+    async function prepare() {
+      const key = "city_sig:" + route.points.length + ":" + route.length.toFixed(0) + ":" + route.points[0].join(",");
+      try {
+        const c = JSON.parse(localStorage.getItem(key) || "null");
+        if (c && Date.now() - c.t < 14 * 864e5) return use(c.nodes, "OpenStreetMap");
+      } catch (e) {}
+      let la0 = 90, la1 = -90, lo0 = 180, lo1 = -180;
+      for (const [la, lo] of route.points) (la0 = Math.min(la0, la)), (la1 = Math.max(la1, la)), (lo0 = Math.min(lo0, lo)), (lo1 = Math.max(lo1, lo));
+      const m = 0.0015, box = `${(la0 - m).toFixed(5)},${(lo0 - m).toFixed(5)},${(la1 + m).toFixed(5)},${(lo1 + m).toFixed(5)}`;
+      const q = `[out:json][timeout:20];(node["highway"="traffic_signals"](${box});node["crossing"="traffic_signals"](${box}););out;`;
+      for (const url of OVERPASS) {
+        try {
+          const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 15000);
+          const res = await fetch(url, { method: "POST", body: "data=" + encodeURIComponent(q), headers: { "Content-Type": "application/x-www-form-urlencoded" }, signal: ctl.signal });
+          clearTimeout(to);
+          if (!res.ok) continue;
+          const j = await res.json();
+          const nodes = (j.elements || []).map((e) => [e.lat, e.lon, (e.tags && (e.tags.name || e.tags["name:ja"])) || ""]);
+          try {
+            localStorage.setItem(key, JSON.stringify({ t: Date.now(), nodes }));
+          } catch (e) {}
+          return use(nodes, "OpenStreetMap");
+        } catch (e) {}
+      }
+      source = "";
+    }
+    function use(nodes, src) {
+      const pts = [];
+      for (const [la, lo, name] of nodes) {
+        const a = onRoute(la, lo);
+        if (a != null) pts.push({ along: a, name });
+      }
+      pts.sort((a, b) => a.along - b.along);
+      // ひとつの交差点の信号(四隅・歩行者用)を、まとめる
+      list = [];
+      for (const p of pts) {
+        const last = list[list.length - 1];
+        if (last && p.along - last.along < 35) {
+          if (!last.name && p.name) last.name = p.name;
+          continue;
+        }
+        list.push({ along: p.along, name: p.name, phase: hash(Math.round(p.along)) * CYCLE, est: false });
+      }
+      list = list.filter((s) => s.along > 25 && s.along < route.length - 15);
+      source = src;
+    }
+    // データがないときの推定: 道路の交差点のうち、走っている道が広い(5.5m以上)ところ
+    function infer() {
+      if (source) return;
+      const xs = Roads.crossings();
+      const have = new Set(list.map((s) => Math.round(s.along / 30)));
+      for (const [a0, a1] of xs) {
+        const c = (a0 + a1) / 2, r = Roads.ride(a0 - 10) || Roads.ride(a1 + 10);
+        if (!r || r.W < 5.5 || have.has(Math.round(c / 30)) || c < 25 || c > route.length - 15) continue;
+        if (list.some((s) => Math.abs(s.along - c) < 40)) continue;
+        list.push({ along: c, name: "", phase: hash(Math.round(c)) * CYCLE, est: true });
+        have.add(Math.round(c / 30));
+      }
+      list.sort((a, b) => a.along - b.along);
+    }
+    // 次の信号(along より先)
+    const next = (along) => list.find((s) => s.along > along - 2);
+    // 止まるべきなら、その場所で出せる最高速度(m/s)を返す(止まらなくてよければ 99)
+    function limit(along, t, v) {
+      const sg = next(along);
+      if (!sg) return 99;
+      const stop = sg.along - 6, d = stop - along; // 停止線は信号の6m手前
+      if (d < -1) return 99;
+      const st = stateAt(sg, t);
+      // 黄色: 止まれる距離なら止まる。止まれなければそのまま行く
+      if (st === "g") return 99;
+      if (st === "y" && d < (v * v) / (2 * 3) - 1) return 99;
+      return d <= 0.3 ? 0 : Math.sqrt(2 * 2.5 * Math.max(0, d));
+    }
+    // ---- 3D: 停止線の向こう側(左)に、横向きの信号機(左から青・黄・赤) ----
+    let M = null;
+    function build(sg) {
+      const THREE = T();
+      if (!M) M = { pole: new THREE.MeshLambertMaterial({ color: 0x8e9196 }), box: new THREE.MeshLambertMaterial({ color: 0x2b2d31 }), off: new THREE.MeshLambertMaterial({ color: 0x1a1c1f }), g: new THREE.MeshBasicMaterial({ color: 0x19e8a8 }), y: new THREE.MeshBasicMaterial({ color: 0xffb21a }), r: new THREE.MeshBasicMaterial({ color: 0xff2a2a }), line: new THREE.MeshBasicMaterial({ color: 0xf2f2ee }) };
+      const g = new THREE.Group();
+      const p = at(sg.along + 4), r = Roads.ride(sg.along + 4) || Roads.ride(sg.along - 12);
+      const Lft = r ? r.off + 1.6 : 4; // 道の左端の外
+      const x = p.x + p.tz * Lft, z = p.z - p.tx * Lft, y = H(x, z);
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.13, 6.2, 8), M.pole);
+      pole.position.set(0, 3.1, 0);
+      g.add(pole);
+      const reach = Math.min(6, (r ? r.W : 5) * 0.55); // 腕が道の上へ伸びる
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, reach), M.pole);
+      arm.position.set(0, 5.9, reach / 2);
+      g.add(arm);
+      const head = new THREE.Group();
+      head.position.set(-0.2, 5.6, reach - 0.4);
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.42, 1.25), M.box);
+      head.add(body);
+      const lamps = {};
+      [["g", -0.4], ["y", 0], ["r", 0.4]].forEach(([k, zz]) => {
+        const l = new THREE.Mesh(new THREE.CircleGeometry(0.14, 16), M.off);
+        l.rotation.y = -Math.PI / 2;
+        l.position.set(-0.15, 0, zz);
+        head.add(l);
+        lamps[k] = l;
+      });
+      g.add(head);
+      g.position.set(x, y, z);
+      // 腕(+z)が道の中央(右)へ、ランプ(−x)が自分(手前)を向くように
+      g.rotation.y = -Math.atan2(p.tz, p.tx);
+      // 停止線
+      const s0 = at(sg.along - 6), rr = Roads.ride(sg.along - 6);
+      if (rr) {
+        const a = rr.off + 0.9, b = rr.off + 0.9 - Math.min(rr.W / 2, 4);
+        const ax = s0.x + s0.tz * a, az = s0.z - s0.tx * a, bx = s0.x + s0.tz * b, bz = s0.z - s0.tx * b;
+        const line = new THREE.Mesh(new THREE.PlaneGeometry(Math.hypot(bx - ax, bz - az), 0.45), M.line);
+        line.rotation.x = -Math.PI / 2;
+        line.rotation.z = Math.atan2(-(bz - az), bx - ax);
+        line.position.set((ax + bx) / 2, H((ax + bx) / 2, (az + bz) / 2) + 0.085, (az + bz) / 2);
+        sg.line = line;
+        scene.add(line);
+      }
+      g.traverse((o) => o.isMesh && (o.castShadow = true));
+      scene.add(g);
+      sg.mesh = g;
+      sg.lamps = lamps;
+    }
+    function update(along, t) {
+      infer();
+      for (const sg of list) {
+        const d = sg.along - along;
+        if (d > -60 && d < 450) {
+          if (!sg.mesh) build(sg);
+          const st = stateAt(sg, t);
+          for (const k of ["g", "y", "r"]) sg.lamps[k].material = k === st ? M[k] : M.off;
+        } else if (sg.mesh) {
+          scene.remove(sg.mesh);
+          if (sg.line) scene.remove(sg.line);
+          sg.mesh = sg.line = null;
+        }
+      }
+      // 次の信号: 上の「次:」と、左下の表示
+      const sg = next(along), el = $("ct-sig");
+      if (!sg || sg.along - along > 600) {
+        el.textContent = "";
+        return null;
+      }
+      const st = stateAt(sg, t), sec = Math.ceil(left(sg, t));
+      el.innerHTML = `<i class="sig ${st}"></i>${sg.name ? esc(sg.name) : "交差点"}${sg.est ? "(推定)" : ""} ${Math.max(0, Math.round(sg.along - along))}m <small>${st === "g" ? "青" : st === "y" ? "黄" : "赤"} あと${sec}秒</small>`;
+      return sg;
+    }
+    return { prepare, update, limit, next, stateAt, list: () => list, source: () => source };
   })();
 
   // ---------- 大きな見出し(町名・目印・ラスト1km・ゴール) ----------
@@ -2887,9 +3079,12 @@ const City = (() => {
     if (s.brake) F -= s.mass * 4;
     // 曲がり角では、曲がれる速さまで自動で落とす
     const turn = turnAhead(s.along);
-    const vmax = turn > 75 ? 16 / KMH : turn > 50 ? 23 / KMH : turn > 28 ? 31 / KMH : 99;
+    // 赤信号・黄色: 停止線までに止まれる速さまで落とす(止まったら青まで待つ)
+    const vsig = Signals.limit(s.along, s.t, s.v);
+    const vmax = Math.min(turn > 75 ? 16 / KMH : turn > 50 ? 23 / KMH : turn > 28 ? 31 / KMH : 99, vsig);
     s.v = Math.max(0, s.v + (F / s.mass) * dt);
-    if (s.v > vmax) s.v = Math.max(vmax, s.v - 6 * dt);
+    if (s.v > vmax) s.v = Math.max(vmax, s.v - (vsig < 99 ? 4 : 6) * dt);
+    s.waiting = vsig === 0 && s.v < 0.3;
     s.along = Math.min(route.length, s.along + s.v * dt);
     s.power = P;
     // ライバル: 決めたペースを中心に、少し速くなったり遅くなったりする
@@ -2897,8 +3092,9 @@ const City = (() => {
     const rmax = rt > 75 ? 16 / KMH : rt > 50 ? 23 / KMH : rt > 28 ? 31 / KMH : 99;
     // ライバルも、上りでは遅く・下りでは速く(1%で約7%)
     const rg = Terrain.grade(s.rAlong);
-    const target = Math.min(rmax, s.rivalV * Math.max(0.45, Math.min(1.3, 1 - rg * 0.07)) * (1 + 0.09 * Math.sin(s.t / 37) + 0.05 * Math.sin(s.t / 11 + 2)));
+    const target = Math.min(rmax, Signals.limit(s.rAlong, s.t, s.rV), s.rivalV * Math.max(0.45, Math.min(1.3, 1 - rg * 0.07)) * (1 + 0.09 * Math.sin(s.t / 37) + 0.05 * Math.sin(s.t / 11 + 2)));
     s.rV += Math.max(-4, Math.min(0.55, target - s.rV)) * Math.min(1, dt * 1.2);
+    if (target === 0 && s.rV < 0.3) s.rV = 0;
     s.rAlong = Math.min(route.length, s.rAlong + s.rV * dt);
     s.t += dt;
   }
@@ -3285,6 +3481,10 @@ const City = (() => {
     if (GB) GB.update(real * s.speedX, myPed, s.paused ? 0 : s.v, !s.paused && !s.done, s.paused ? 0 : s.rV, mySp, rvSp);
     Mons.update(real * Math.min(4, s.speedX));
     Traffic.update(real * s.speedX);
+    const sg = Signals.update(s.along, s.t);
+    if (sg && sg.name && sg.along - s.along < 70 && sg.along - s.along > 40 && sg.bannered !== true) (sg.bannered = true), banner(sg.name.replace(/交差点$/, "") + " 交差点", 2.2);
+    if (s.waiting && !s.wasWaiting) banner("信号待ち", 1.6);
+    s.wasWaiting = s.waiting;
     // 追いかけるカメラ(後ろ上から。速いほど少し引いて、視野を広げる)
     const back = 6.5 + s.v * 0.18, up = 2.9 + s.v * 0.05;
     const want = new THREE.Vector3(p.x - p.tx * back, p.y + up, p.z - p.tz * back);
@@ -3370,6 +3570,8 @@ const City = (() => {
       msg.textContent = "坂(標高)を調べています…";
       try {
         await Terrain.prepare();
+        msg.textContent = "信号を調べています…";
+        await Signals.prepare();
       } catch (e) {}
     } catch (e) {
       $("ct-go").disabled = false;
@@ -3513,5 +3715,5 @@ const City = (() => {
   }
 
   if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", bind);
-  return { at, turnAhead, readTile, _state: () => ({ sim, route, tiles, failed, camera, Plateau, Roads, scene, me, Traffic }), ride: (a) => Roads.ride(a) };
+  return { at, turnAhead, readTile, _state: () => ({ sim, route, tiles, failed, camera, Plateau, Roads, scene, me, Traffic, Signals }), ride: (a) => Roads.ride(a) };
 })();
