@@ -1591,7 +1591,29 @@ const View3D = (() => {
       set(sd + "_Calf", K, rd("Calf", "Foot"), rig.right, A.clone().sub(K), Z);
       set(sd + "_Foot", A, rd("Foot", "Toe0"), rig.right, To.clone().sub(A), Z);
       const a = pose.arms[sd];
-      const S = V(a.shoulder), E = V(a.elbow), Hd = V(a.hand);
+      const S = V(a.shoulder), G0 = V(a.hand);
+      let E = V(a.elbow), Hd = G0;
+      // a.hand は握る位置(手のひらの中心)。手首はそこから手のひらの長さだけ手前に置き、ひじを解き直す
+      const grip = (state.build && state.build.pos && state.build.pos.hands) || "hoods";
+      const f0 = G0.clone().sub(E).normalize();
+      const zs = sd === "R" ? 1 : -1;
+      const hDir = (grip === "drops" ? f0.clone().multiplyScalar(0.55).add(new THREE.Vector3(0.45, -0.1, 0)) : f0.clone()).normalize();
+      {
+        const palm = 0.085 * (sc * rig.height / 1.72);
+        const W = G0.clone().addScaledVector(hDir, -palm).add(new THREE.Vector3(0, grip === "drops" ? 0.012 : 0.02, zs * (grip === "drops" ? 0.012 : 0)));
+        const L1 = E.distanceTo(S), L2 = G0.distanceTo(E);
+        const d = W.clone().sub(S);
+        const dist = Math.min(d.length(), L1 + L2 - 0.002);
+        const dn = d.clone().normalize();
+        const al = (L1 * L1 - L2 * L2 + dist * dist) / (2 * dist);
+        const hgt = Math.sqrt(Math.max(0, L1 * L1 - al * al));
+        const es = E.clone().sub(S);
+        const n = es.addScaledVector(dn, -es.dot(dn));
+        if (n.lengthSq() < 1e-6) n.set(0, -1, 0);
+        n.normalize();
+        E = S.clone().addScaledVector(dn, al).addScaledVector(n, hgt);
+        Hd = S.clone().addScaledVector(dn, dist);
+      }
       const u = E.clone().sub(S).normalize(), f = Hd.clone().sub(E).normalize();
       // ひじの曲がる側を目印にする(腕がねじれないように)。まっすぐに近いときは上向きを使う
       let hu = f.clone().addScaledVector(u, -u.dot(f)), hf = u.clone().addScaledVector(f, -f.dot(u)).negate();
@@ -1599,7 +1621,16 @@ const View3D = (() => {
       set(sd + "_UpperArm", S, rd("UpperArm", "Forearm"), rig.fwd, u, hu);
       set(sd + "_Forearm", E, rd("Forearm", "Hand"), rig.fwd, f, hf);
       // 手: ブラケットを握る向き(前腕の続きで、手のひらを内側に)
-      set(sd + "_Hand", Hd, rd("Forearm", "Hand"), rig.fwd, f.clone().applyAxisAngle(Z, -0.25), hf);
+      set(sd + "_Hand", Hd, rd("Forearm", "Hand"), rig.fwd, grip === "tops" ? f.clone().applyAxisAngle(Z, -0.25) : hDir, hf);
+      // 指を曲げて、ハンドルを握らせる
+      for (let i = 0; i <= 4; i++)
+        for (const j of ["", "1", "2"]) {
+          const fb = rig.model.getObjectByName(`Bip01_${sd}_Finger${i}${j}`);
+          if (!fb) continue;
+          if (!fb.userData.restQ) fb.userData.restQ = fb.quaternion.clone();
+          const amt = i === 0 ? 0.35 : j === "" ? 0.9 : 1.0;
+          fb.quaternion.copy(fb.userData.restQ).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, -1), amt));
+        }
     }
     return true;
   }

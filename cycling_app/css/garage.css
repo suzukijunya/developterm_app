@@ -1506,3 +1506,19 @@ div.mx-cell.mx-alt.same { opacity: 0.45; }
 .mx-top .p-ico { width: 1.8em; height: 1.8em; margin-right: 4px; }
 .mx-thumb.big .p-ico { width: 72px; height: 72px; }
 .g-part-icon .p-ico { width: 34px; height: 34px; }
+
+/* マスを開いた画面: スペックとメルカリのボタン */
+.mx-info { padding: 8px 0 10px; border-bottom: 1px solid var(--line); }
+.mx-info .g-pc-spec { font-size: 0.82rem; }
+.mx-info a.btn { text-decoration: none; display: inline-block; }
+button.mx-cell.mx-alt { cursor: pointer; text-align: left; font: inherit; color: inherit; }
+
+/* 構成ごとの設計思想 */
+.ac-phil { margin: 8px 6px 4px; padding: 10px 12px; border: 1px solid var(--line); border-left: 3px solid var(--brand); background: rgba(255, 255, 255, 0.03); }
+.ac-phil small { display: block; color: var(--muted); font-size: 0.7rem; }
+.ac-phil strong { display: block; margin: 2px 0 4px; font-size: 0.95rem; }
+.ac-phil ul { margin: 0; padding-left: 1.1em; font-size: 0.8rem; line-height: 1.55; }
+.g-summary > .ac-phil { display: block; }
+.g-summary > .ac-phil { padding: 10px 14px; }
+.g-summary > .ac-phil ul { padding-left: 1.3em; }
+.g-summary > .ac-phil strong { font-style: normal; }

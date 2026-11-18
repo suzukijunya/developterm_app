@@ -190,6 +190,7 @@
       key: "rankA",
       id: "rankA-2026-11-19",
       chip: "ランクA",
+      aim: "A",
       short: "RANK A",
       fixed: true,
       title: "ランクA構成: TCR SL+チューブレス28C",
@@ -212,8 +213,9 @@
     {
       key: "rankS",
       id: "rankS-2026-11-19",
-      chip: "ランクS",
-      short: "RANK S",
+      chip: "ランクS狙い",
+      aim: "S",
+      short: "S狙い",
       fixed: true,
       title: "ランクS構成: S-WORKS Aethos 6.5kg",
       price: [1800000, 2300000],
@@ -253,6 +255,35 @@
   }
   const upTotal = (k) => Parts.SLOTS.reduce((s, sl) => s + ((upCost(k, sl.id) || {}).yen || 0), 0);
   const yenHtml = (c) => (c ? `<span class="mx-yen">${c.isNew ? "新品" : "中古"} ${Catalog.yen(c.yen)}</span>` : "");
+  // 構成ごとの設計思想(一覧で構成を押すと下に出す)
+  const PHILOSOPHY = {
+    current: ["毎日の通勤で使える丈夫さを優先", ["エスケープR3をドロップハンドルにして、消耗品とポジションを整えた状態", "お金をかける前に、腰の張りはまずポジションで減らす", "ここが比べるときの基準(差はすべてこの構成との差)"]],
+    next: ["R3を延命する。回る部分だけ軽くする", ["リムブレーキのまま、中古で安くなった上級パーツを使う", "主役はホイール。外周が軽くなると、信号からの加速がいちばん変わる", "弱点: リムブレーキ用のパーツは、次のバイクに持っていけない"]],
+    alt: ["乗り換えの入り口。フレームとブレーキを新しい世代に", ["カーボンフレーム+油圧ディスクで、重さと雨の日のブレーキが大きく変わる", "変速は機械式の105。こわれにくく、直すのも安い", "R3に同じ金額をかけるより、伸びが大きい"]],
+    alt2: ["軽さを最優先にした乗り換え", ["最上位のカーボンフレーム+カーボンスポークのホイール+電動変速", "登りと加速がいちばん伸びる", "弱点: タイヤが25Cのままなので、乗り心地と丈夫さの点は伸びない"]],
+    rankA: ["軽さだけでなく、乗り心地と丈夫さで点を取る", ["乗り換えSLに、28Cチューブレス・幅広サドル・厚手バーテープを足す", "約560g重くなるが、総合点は上がる(点は7項目の合計なので)", "乗った後の腰の張りにも合う方向。乗り換えSLからの追加は少額"]],
+    rankS: ["実在するパーツで出せる上限", ["超軽量の丸パイプフレーム+約1,200gのホイール+最上位コンポで6.5kg", "それでも今の体重ではAランク。点の大半は「体重+バイク」で決まるため", "Sランクはパーツだけでは届かず、体重とセットで目指す構成"]],
+  };
+  // その構成でランク target に届く体重(kg)。届かなければ null
+  const rankWMemo = new Map();
+  function rankWeight(k, target) {
+    const b = G.builds[k];
+    const key = k + "|" + target + "|" + G.body.weight + "|" + JSON.stringify([b.parts, b.pos, b.geo]).length + "|" + bikeGrams(b);
+    if (rankWMemo.has(key)) return rankWMemo.get(key);
+    const need = target === "S" ? 800 : 680;
+    const tire = (b.parts.tires && b.parts.tires.attrs && b.parts.tires.attrs.width) || 28;
+    const aero = Parts.aeroOf(b.parts);
+    const bikeKg = bikeGrams(b) / 1000;
+    const minW = Math.round(20 * G.body.height * G.body.height);
+    let out = null;
+    for (let w = Math.floor(G.body.weight); w >= minW; w--) {
+      const fit = Fit.compute({ geo: b.geo, pos: b.pos, aero, wheelRadius: 0.311 + tire / 1000 }, Object.assign({}, G.body, { weight: w }), { coarse: true });
+      const perf = Fit.performance(fit.cda.total, w + bikeKg, Parts.rotatingKg(b.parts));
+      if (Stats.compute(b, { fit, bikeKg, perf }).total >= need) { out = w; break; }
+    }
+    rankWMemo.set(key, out);
+    return out;
+  }
   const altKeys = () => ALT_PLANS.map((x) => x.key).filter((k) => G.builds[k]);
   function ensureAlt() {
     if (!G.builds || !G.builds.current) return;
@@ -553,13 +584,26 @@
           <small class="ac-side-h">構成のランク(押すと切り替え)</small>
           ${["current", "next", ...altKeys()].map((k) => {
             const st = k === G.active ? a : statsOf(G.builds[k]);
+            const aimNote = (kk, s2) => {
+              const pl2 = ALT_PLANS.find((x) => x.key === kk);
+              if (!pl2 || !pl2.aim || s2.rank === pl2.aim || (pl2.aim === "A" && s2.rank === "S")) return "";
+              const w = rankWeight(kk, pl2.aim);
+              return w ? `いまの体重ではランク${s2.rank}。${w}kgで${pl2.aim}` : `いまの体重ではランク${s2.rank}`;
+            };
             const pl = ALT_PLANS.find((x) => x.key === k);
             const label = k === "current" ? "装着済み" : k === "next" ? "NEW" : pl.chip;
-            return `<button class="ac-b ${k === G.active ? "on" : ""}" data-build="${k}"><i class="rank-${st.rank}">${st.rank}</i><span>${label}<small>${esc(G.builds[k].name)}</small></span><b>${st.total}</b><em>${(bikeGrams(G.builds[k]) / 1000).toFixed(2)}kg</em></button>`;
+            return `<button class="ac-b ${k === G.active ? "on" : ""}" data-build="${k}"><i class="rank-${st.rank}">${st.rank}</i><span>${label}<small>${esc(aimNote(k, st) || G.builds[k].name)}</small></span><b>${st.total}</b><em>${(bikeGrams(G.builds[k]) / 1000).toFixed(2)}kg</em></button>`;
           }).join("")}
           <p class="ac-side-n">${a.total >= 800 ? "ランクSです" : a.total >= 680 ? `ランクSまで あと${800 - a.total}点` : `ランクAまで あと${680 - a.total}点・Sまで あと${800 - a.total}点`}<br />体重${G.body.weight}kgで計算。A: 680点〜 / S: 800点〜</p>
         </div>
       </div>
+      ${(() => {
+        const ph = PHILOSOPHY[G.active];
+        if (!ph) return "";
+        const pl = ALT_PLANS.find((x) => x.key === G.active);
+        const cost = G.active === "current" ? 0 : upTotal(G.active);
+        return `<div class="ac-phil"><small>この構成の設計思想 ・ ${G.active === "current" ? "装着済み" : G.active === "next" ? "NEW" : esc(pl.chip)}</small><strong>${esc(ph[0])}</strong><ul>${ph[1].map((x) => `<li>${esc(x)}</li>`).join("")}${cost ? `<li>追加費用の目安: ${Catalog.yen(cost)}(中古の想定・工賃別)</li>` : ""}</ul></div>`;
+      })()}
       <p class="g-vs"><i class="rd-key me"></i>選んでいる構成 <i class="rd-key other"></i>${name}(差はこれと比べた値)</p>`;
   }
 
@@ -749,7 +793,7 @@
       const o = G.builds.current.parts[slotId] || {};
       const same = o.name === p.name && o.g === p.g;
       const dg = (p.mounted === false ? 0 : +p.g || 0) - (o.mounted === false ? 0 : +o.g || 0);
-      return `<div class="mx-cell nothumb mx-alt ${same ? "same" : "diff"}"><span class="mx-name">${same ? "(今のまま)" : esc(p.name)}</span><span class="mx-g">${(+p.g || 0).toLocaleString()} g${dg ? `<em class="${dg < 0 ? "up" : "down"}">${dg < 0 ? "−" : "+"}${Math.abs(dg)}g</em>` : ""}</span>${yenHtml(upCost(k, slotId))}</div>`;
+      return `<button class="mx-cell nothumb mx-alt ${same ? "same" : "diff"} ${cell && cell.slot === slotId && cell.k === k ? "sel" : ""}" data-cell="${slotId}" data-k="${k}"><span class="mx-name">${same ? "(今のまま)" : esc(p.name)}</span><span class="mx-g">${(+p.g || 0).toLocaleString()} g${dg ? `<em class="${dg < 0 ? "up" : "down"}">${dg < 0 ? "−" : "+"}${Math.abs(dg)}g</em>` : ""}</span>${yenHtml(upCost(k, slotId))}</button>`;
     };
     return `
       <section class="card g-mx">
@@ -770,6 +814,55 @@
       </section>`;
   }
 
+  // 乗り換え・ランク構成のパーツのスペック(パーツ名 → [項目, 中身])。年式で変わるものは目安
+  const PLAN_SPEC = {
+    "GIANT TCR ADVANCED PRO DISC フレーム(カーボン)": [["素材", "カーボン(Advanced グレード)"], ["ブレーキ", "油圧ディスク(フラットマウント)"], ["車軸", "12mmスルーアクスル"]],
+    "TCR ADVANCED PRO DISC フォーク(カーボン)": [["素材", "フルカーボン"], ["車軸", "12mmスルーアクスル"]],
+    "GIANT SLR 1 42 DISC(カーボン)": [["リムの高さ", "42mm カーボン"], ["タイヤ", "チューブレス対応(フックレス)"], ["ブレーキ", "ディスク"]],
+    "105 R7020 油圧ディスク 2×11": [["変速", "機械式 2×11速"], ["ブレーキ", "油圧ディスク"]],
+    "GIANT TCR ADVANCED SL DISC フレーム(カーボン)": [["素材", "カーボン(Advanced SL グレード・最上位)"], ["ブレーキ", "油圧ディスク(フラットマウント)"], ["車軸", "12mmスルーアクスル"]],
+    "TCR ADVANCED SL DISC フォーク(カーボン)": [["素材", "フルカーボン(最上位グレード)"], ["車軸", "12mmスルーアクスル"]],
+    "CADEX 42 DISC(カーボン)": [["リムの高さ", "42mm カーボン"], ["スポーク", "カーボン"], ["タイヤ", "チューブレス対応(フックレス)"]],
+    "ULTEGRA Di2 R8170 油圧ディスク 2×12": [["変速", "電動(Di2) 2×12速"], ["ブレーキ", "油圧ディスク"]],
+    "DURA-ACE Di2 R9270 油圧ディスク 2×12": [["変速", "電動(Di2) 2×12速・シマノ最上位"], ["ブレーキ", "油圧ディスク"]],
+    "S-WORKS Aethos フレーム(カーボン)": [["素材", "カーボン(FACT 12r)"], ["特徴", "丸パイプの超軽量フレーム。乗り心地がやわらかい"], ["ブレーキ", "油圧ディスク"]],
+    "S-WORKS Aethos フォーク(カーボン)": [["素材", "フルカーボン"], ["車軸", "12mmスルーアクスル"]],
+    "Lightweight Obermayer EVO(カーボン 48mm)": [["リムの高さ", "48mm カーボン"], ["スポーク", "カーボン(リムと一体)"], ["タイヤ", "チューブレス対応"]],
+    "Panaracer AGILEST DURO TLR 28C チューブレス ×2": [["太さ", "28C"], ["種類", "チューブレスレディ(シーラントを入れて使う)"], ["特徴", "パンクに強い。空気圧を下げられて乗り心地が良い"]],
+    "RITCHEY WCS Carbon Link FlexLogic": [["太さ", "27.2mm"], ["特徴", "しなるカーボンで振動を減らす(腰にやさしい)"]],
+    "カーボン 一体型エアロハンドル": [["種類", "ハンドルとステムが一体"], ["素材", "カーボン"]],
+  };
+  const mercariKw = (name) =>
+    String(name || "")
+      .replace(/[((][^))]*[))]/g, " ")
+      .replace(/[×x]\s*\d+/g, " ")
+      .split(/\s\+\s/)[0]
+      .replace(/前後|チューブレス\s*$/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  // マスを開いたときに出す: そのパーツのスペックと、メルカリの相場を見に行くボタン
+  function partInfoHtml(k, slot) {
+    const p = G.builds[k].parts[slot];
+    if (!p || !p.name) return "";
+    const it = p.shop && p.shop.id ? Catalog.byId(p.shop.id) : null;
+    const lib = p.libId ? libItem(p.libId) : null;
+    const rows = [["重さ", (+p.g || 0).toLocaleString() + " g"]];
+    const o = G.builds.current.parts[slot] || {};
+    const dg = (+p.g || 0) - (o.mounted === false ? 0 : +o.g || 0);
+    if (k !== "current" && dg) rows.push(["装着済みとの差", (dg < 0 ? "−" : "+") + Math.abs(dg) + " g"]);
+    for (const r of (it && it.spec) || PLAN_SPEC[p.name] || []) rows.push(r);
+    if (lib) for (const t of specSummary(lib).split("・").map((x) => x.trim()).filter(Boolean)) rows.push(["仕様", t]);
+    const c = upCost(k, slot);
+    if (c) rows.push([c.isNew ? "値段(新品の想定)" : "値段(中古の想定)", Catalog.yen(c.yen)]);
+    else if (it) rows.push(["値段", Catalog.priceText(it)]);
+    const kw = mercariKw(lib ? Library.displayName(lib) : p.name);
+    const url = (st) => `https://jp.mercari.com/search?keyword=${encodeURIComponent(kw)}&status=${st}`;
+    return `<div class="mx-info">
+      <dl class="g-pc-spec">${rows.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join("")}</dl>
+      ${kw.length >= 3 ? `<div class="g-plan-btns"><a class="btn sub" href="${url("sold_out")}" target="_blank" rel="noopener">メルカリの相場(売り切れ)</a><a class="btn sub" href="${url("on_sale")}" target="_blank" rel="noopener">メルカリで販売中</a></div><small class="muted">検索ワード: ${esc(kw)}</small>` : ""}
+    </div>`;
+  }
+
   // マスを開いたときの下からの画面: いま付いているパーツ・付け替えの候補・細かい数値
   function sheetHtml() {
     const { slot, k } = cell;
@@ -788,7 +881,7 @@
     return `
       <div class="mx-sheet" id="mxsheet">
         <div class="mx-panel">
-          <div class="mx-top"><strong>${sl.icon} ${sl.name} <small>・ ${k === "current" ? "装着済み" : "NEW"}</small></strong><button class="mx-x" data-cell-close aria-label="閉じる">×</button></div>
+          <div class="mx-top"><strong>${sl.icon} ${sl.name} <small>・ ${k === "current" ? "装着済み" : k === "next" ? "NEW" : esc((ALT_PLANS.find((x) => x.key === k) || {}).chip || "")}</small></strong><button class="mx-x" data-cell-close aria-label="閉じる">×</button></div>
           <div class="mx-now">
             ${it && it.photoId ? photoTag(it.photoId, "mx-thumb big") : `<span class="mx-thumb big empty">${sl.icon}</span>`}
             <div><small>いま付いているパーツ${comps ? `(${comps.length}点・合計)` : ""}</small><strong>${inBar ? "一体型ハンドルに含む" : comps ? "" : esc(p.name)}</strong>
@@ -796,6 +889,7 @@
               <small>${inBar ? "0 g" : (+p.g || 0).toLocaleString() + " g"}${off ? " ・ 外しています" : ""}</small>
               <div class="g-plan-btns">${inBar ? "" : `<button class="btn sub" data-mount="${slot}">${off ? "取り付ける" : "外す"}</button>`}${it ? `<button class="link" data-lib-edit="${it.id}">マイパーツを編集</button>` : ""}</div></div>
           </div>
+          ${inBar || off ? "" : partInfoHtml(k, slot)}
           ${wrong
             .map(
               (w) => `<div class="notice warn mx-misfit">⚠️ 「${esc(w.name)}」は${esc(w.what)}っぽいです${w.code ? `(型番 ${esc(w.code)})` : ""}。${esc(Parts.slotName(w.to))}のパーツではありませんか?
