@@ -262,7 +262,10 @@
     else if (pp && pp[0] === p.name && pp[3] != null) (yen += pp[3]), (isNew = !!pp[4]), (known = true);
     for (const id of (p.shopDeltas || []).filter((d) => !(o.shopDeltas || []).includes(d))) {
       const d = Catalog.byId(id);
-      if (d) (yen += Catalog.cost(d, true)), (known = true);
+      if (!d) continue;
+      if (!known) isNew = !d.used; // 中古の出回らないもの(チタンQRなど)は「新品」と出す
+      yen += Catalog.cost(d, true);
+      known = true;
     }
     return known && yen > 0 ? { yen, isNew } : null;
   }
@@ -354,6 +357,22 @@
   }
   // 装着済みの更新と乗り換えプランは、setMeasured・accGrams ができてから
   applyCurrentFix();
+  // チタンQRは、ホイールのクイックリリースを替えるもの(前は「その他(ライト・サイコン)」に付けていた)
+  (function moveQr() {
+    let moved = false;
+    for (const b of Object.values(G.builds || {})) {
+      const a = b.parts && b.parts.accessories;
+      if (!a || !(a.shopDeltas || []).includes("a-ti-qr")) continue;
+      a.shopDeltas = a.shopDeltas.filter((x) => x !== "a-ti-qr");
+      a.g = (+a.g || 0) + 70;
+      a.name = String(a.name || "").replace(/ \+ チタンQR$/, "");
+      if (!a.shopDeltas.length) delete a.shopDeltas;
+      const it = Catalog.byId("a-ti-qr");
+      if (it && b.parts.wheels) Catalog.apply(b, it);
+      moved = true;
+    }
+    if (moved) save();
+  })();
   ensureAlt();
 
   // 重さが「目安」のままの部位(マイパーツでもカタログのパーツでもない)

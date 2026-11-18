@@ -131,7 +131,7 @@ const Catalog = (() => {
     },
     // ---------- 小物 ----------
     {
-      id: "a-ti-qr", slot: "accessories", kind: "delta", name: "チタン クイックリリース 前後", deltaG: 70, short: "チタンQR",
+      id: "a-ti-qr", slot: "wheels", kind: "delta", name: "チタン クイックリリース 前後", deltaG: 70, short: "チタンQR",
       price: 5000, used: null,
       score: { light: 1 }, note: "鉄の付属品(前後約130g)から約70g軽くなる、手軽な軽量化",
     },
