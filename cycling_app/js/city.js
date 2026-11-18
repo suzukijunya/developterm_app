@@ -803,8 +803,11 @@ const City = (() => {
         clearTimeout(whereAmI.to);
         whereAmI.to = setTimeout(() => (el.hidden = true), 4500 / Math.min(4, sim.speedX));
         if (sim.speedX <= 2) ticker(`${lm.icon} ${lm.name} を通過`, "you");
+        if (lm.big) banner(lm.name);
       }
     }
+    townBanner(town ? town.replace(/[一二三四五六七八九十]+丁目$/, "") : "");
+    nextMark();
     $("ct-where").textContent = city || town || road ? `📍 ${[city, town].filter(Boolean).join(" ")}${road ? " ・ " + road : ""}` : "";
   }
 
@@ -1783,6 +1786,228 @@ const City = (() => {
   }
   // 地面の高さ(出発地点=0)
   const H = (x, z) => Terrain.h(x, z);
+
+  // ---------- 道の上の人と車: 後ろから来る車・対向車・歩行者・ほかの自転車 ----------
+  // 自分の前後(後ろ60m〜前250m)にだけ置く。道の幅(Roads で測った値)で、車が通れる道か・車線の位置を決める。
+  // 車に近くで抜かれたら「ヒヤリ」、人や自転車を抜いたら「抜いた人」、近くをすり抜けたら「すり抜け」。
+  const Traffic = (() => {
+    const list = [];
+    let tpl = null, score = 0, passed = 0, spawnT = 0, seed = 1;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const KM = 1 / 3.6;
+    function templates() {
+      if (tpl) return tpl;
+      const THREE = T();
+      const M = (c, o) => new THREE.MeshLambertMaterial(Object.assign({ color: c }, o || {}));
+      const glass = M(0x2a3644), tire = M(0x151515), light = new THREE.MeshBasicMaterial({ color: 0xfff3c4 }), tail = new THREE.MeshBasicMaterial({ color: 0xc81e1e });
+      const box = (w, h, d, m, x, y, z) => {
+        const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+        o.position.set(x, y, z);
+        o.castShadow = true;
+        return o;
+      };
+      // 車(前が +x): 乗用車・軽・バン・タクシー
+      const car = (color, len, wid, hgt, cabin, roof) => {
+        const g = new THREE.Group(), body = M(color);
+        g.add(box(len, hgt * 0.5, wid, body, 0, 0.32 + hgt * 0.25, 0));
+        g.add(box(len * cabin, hgt * 0.45, wid * 0.92, glass, -len * 0.05, 0.32 + hgt * 0.72, 0));
+        g.add(box(len * cabin * 0.96, 0.06, wid * 0.88, body, -len * 0.05, 0.32 + hgt * 0.95, 0));
+        if (roof) g.add(box(0.5, 0.18, 0.3, M(0xffd23d), -len * 0.05, 0.32 + hgt + 0.06, 0));
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+          const w = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.31, 0.22, 12), tire);
+          w.rotation.x = Math.PI / 2;
+          w.position.set(sx * len * 0.32, 0.31, sz * wid * 0.45);
+          g.add(w);
+        }
+        for (const sz of [-1, 1]) {
+          g.add(box(0.05, 0.12, 0.3, light, len / 2, 0.32 + hgt * 0.32, sz * wid * 0.32));
+          g.add(box(0.05, 0.12, 0.26, tail, -len / 2, 0.32 + hgt * 0.32, sz * wid * 0.34));
+        }
+        return g;
+      };
+      const person = (shirt, pants) => {
+        const g = new THREE.Group();
+        const sk = M(0xd9a27e);
+        const torso = box(0.26, 0.55, 0.36, M(shirt), 0, 1.2, 0);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), sk);
+        head.position.set(0, 1.62, 0);
+        const legL = box(0.14, 0.8, 0.14, M(pants), 0, 0.45, -0.1), legR = box(0.14, 0.8, 0.14, M(pants), 0, 0.45, 0.1);
+        legL.geometry.translate(0, -0.35, 0);
+        legR.geometry.translate(0, -0.35, 0);
+        legL.position.y = legR.position.y = 0.85;
+        g.add(torso, head, legL, legR);
+        g.userData.legs = [legL, legR];
+        return g;
+      };
+      tpl = {
+        cars: [car(0xf4f4f2, 4.5, 1.75, 1.45, 0.55), car(0x2b2f36, 4.6, 1.8, 1.45, 0.55), car(0x9aa4ad, 4.4, 1.75, 1.45, 0.55), car(0xc8d4e2, 3.4, 1.48, 1.65, 0.62), car(0x1d4f8c, 4.7, 1.7, 1.95, 0.75), car(0xe9c43a, 4.6, 1.7, 1.5, 0.55, true), car(0x7a1f26, 4.5, 1.75, 1.45, 0.55)],
+        person,
+      };
+      return tpl;
+    }
+    function spawn(kind, along, dir) {
+      const THREE = T();
+      const t = templates();
+      let obj, v, w;
+      if (kind === "car") {
+        obj = t.cars[Math.floor(rnd() * t.cars.length)].clone();
+        v = (dir > 0 ? 34 + rnd() * 12 : 30 + rnd() * 12) * KM;
+        w = 1.75;
+      } else if (kind === "ped") {
+        const shirts = [0x2f5d9a, 0xe8e2d8, 0x3a3a3a, 0x9a3a3a, 0x6a7a4a, 0xd9c08a];
+        obj = t.person(shirts[Math.floor(rnd() * shirts.length)], 0x2a2e36);
+        v = (3.6 + rnd() * 1.6) * KM;
+        w = 0.5;
+      } else {
+        const b = makeBiker([0x2b6fd6, 0x3a3a3a, 0xe8e8e8, 0x1d8a5a][Math.floor(rnd() * 4)], [0x222222, 0x6a6a6a, 0x9a3a3a][Math.floor(rnd() * 3)]);
+        obj = b.g;
+        obj.userData.pose = b.pose;
+        v = (14 + rnd() * 6) * KM;
+        w = 0.6;
+      }
+      obj.traverse((o) => o.isMesh && (o.castShadow = true));
+      scene.add(obj);
+      const e = { kind, dir, along, v, w, obj, lane: rnd(), rel0: null, seen: false };
+      list.push(e);
+      return e;
+    }
+    // 道幅から、その種類の通る位置(センターラインから左へ何m。+が左)
+    function laneOff(e, r) {
+      const W = r ? r.W : 4, L = r ? r.off + (W >= 4.5 ? 0.9 : Math.max(0.6, W * 0.22)) : 2; // 左端までの距離
+      if (e.kind === "car") {
+        if (W < 5.5) return e.dir > 0 ? L - W / 2 + 0.2 : L - W / 2 - 0.6; // 狭い道は真ん中あたりを通る
+        const lanes = Math.max(1, Math.floor(W / 2 / 3));
+        const k = Math.floor(e.lane * lanes);
+        return e.dir > 0 ? L - 1.95 - k * 3.1 : L - W + 1.9 + k * 3.1;
+      }
+      if (e.kind === "ped") return W >= 5.5 ? L + 1.4 + e.lane * 1.2 : L - 0.2 - e.lane * 0.15; // 広い道は歩道、狭い道は道の端
+      return (r ? r.off : 0) + (e.lane - 0.5) * 0.4; // ほかの自転車も左端
+    }
+    function update(dt) {
+      const s = sim;
+      if (!s || s.paused || s.done) return;
+      // 出す
+      if ((spawnT -= dt) <= 0) {
+        spawnT = 0.7 / Math.max(1, s.speedX * 0.6);
+        const r = Roads.ride(s.along + 200), W = r ? r.W : 4;
+        const n = (k) => list.filter((e) => e.kind === k).length;
+        if (W >= 5.5 && n("car") < 10 && rnd() < 0.55) {
+          // 後ろから来る車(自分より速い)と、向こうから来る車
+          if (rnd() < 0.5) spawn("car", s.along - 60, 1);
+          else spawn("car", s.along + 240, -1);
+        } else if (W < 5.5 && n("car") < 3 && rnd() < 0.18) spawn("car", rnd() < 0.5 ? s.along - 50 : s.along + 220, rnd() < 0.5 ? 1 : -1);
+        if (n("ped") < 14 && rnd() < 0.6) spawn("ped", s.along + 150 + rnd() * 100, rnd() < 0.5 ? 1 : -1);
+        if (n("bike") < 3 && rnd() < 0.12) spawn("bike", s.along + 180 + rnd() * 60, 1);
+      }
+      for (let i = list.length - 1; i >= 0; i--) {
+        const e = list[i];
+        // 進む(車は前に自分がいたら速さを合わせる)
+        let v = e.v;
+        if (e.kind === "car" && e.dir > 0) {
+          const ahead = list.find((o) => o !== e && o.kind === "car" && o.dir > 0 && o.along > e.along && o.along - e.along < 12 && Math.abs(o.lane - e.lane) < 0.3);
+          if (ahead) v = Math.min(v, ahead.v);
+        }
+        e.along += e.dir * v * dt;
+        const r = Roads.ride(e.along), off = laneOff(e, r);
+        const p = at(e.along);
+        const x = p.x + p.tz * off, z = p.z - p.tx * off;
+        e.obj.position.set(x, H(x, z) + (e.kind === "ped" && W5(r) ? 0.17 : 0), z);
+        e.obj.rotation.y = -Math.atan2(p.tz, p.tx) + (e.dir < 0 ? Math.PI : 0);
+        if (e.kind === "ped") {
+          const ph = (s.t * 6 + e.lane * 10) % (Math.PI * 2);
+          e.obj.userData.legs[0].rotation.z = Math.sin(ph) * 0.45;
+          e.obj.userData.legs[1].rotation.z = -Math.sin(ph) * 0.45;
+        } else if (e.kind === "bike") e.obj.userData.pose(dt * 7, (v * dt) / 0.34);
+        // 自分との位置関係
+        const rel = e.along - s.along;
+        const myOff = r ? r.off : 0;
+        if (e.rel0 != null && Math.sign(rel) !== Math.sign(e.rel0) && Math.abs(rel) < 20) {
+          const gap = Math.abs(off - myOff) - e.w / 2 - 0.35;
+          if (e.kind === "car" && e.dir > 0 && rel > 0 && gap < 1.1) pop("ヒヤリ!", 300, "warn");
+          else if ((e.kind === "ped" || e.kind === "bike") && rel < 0 && e.dir > 0) {
+            passed++;
+            if (gap < 0.9) pop("すり抜け", 50);
+          } else if ((e.kind === "ped" || e.kind === "bike") && rel < 0) passed += 0; // すれ違い
+        }
+        e.rel0 = rel;
+        if (rel < -80 || rel > 300) {
+          scene.remove(e.obj);
+          list.splice(i, 1);
+        }
+      }
+      // 車線の注意: 後ろから車・向こうから車(狭い道)
+      const back = list.some((e) => e.kind === "car" && e.dir > 0 && e.along < s.along && s.along - e.along < 35);
+      const r0 = Roads.ride(s.along);
+      const front = r0 && r0.W < 5.5 && list.some((e) => e.kind === "car" && e.dir < 0 && e.along > s.along && e.along - s.along < 60);
+      const el = $("ct-lane");
+      el.textContent = back ? "後ろから車 ⚠" : front ? "対向車 ⚠" : r0 ? (r0.W >= 9 ? "車道の左端" : r0.W >= 5.5 ? "車道の左端(2車線)" : "狭い道(左端)") : "";
+      el.className = "ct-lane" + (back || front ? " warn" : "");
+      $("ct-score").innerHTML = `<b>${score.toLocaleString()}</b><small>抜いた人 ${passed}</small>`;
+    }
+    const W5 = (r) => r && r.W >= 5.5;
+    // 画面の真ん中に、得点の小さな文字を浮かべる
+    function pop(text, pts, cls = "") {
+      score += pts;
+      const el = document.createElement("div");
+      el.className = "ct-pop " + cls;
+      el.textContent = `${text} +${pts}`;
+      $("ct-pops").appendChild(el);
+      setTimeout(() => el.remove(), 1400);
+      if (pts >= 300) banner(`${text}+${pts}`, 1.6);
+    }
+    // 自分の前(-2〜+8m)の道の端に人や自転車がいたら、右へよける幅(m)
+    function dodge(along) {
+      const r = Roads.ride(along), my = r ? r.off : 0;
+      let d = 0;
+      for (const e of list) {
+        if (e.kind === "car") continue;
+        const rel = e.along - along;
+        if (rel < -2 || rel > 8) continue;
+        const off = laneOff(e, Roads.ride(e.along));
+        const need = e.w / 2 + 0.55 - (my - off); // 相手の右側を、0.55m あけて通る
+        if (off > my - 1.2 && need > d) d = need;
+      }
+      return Math.min(1.2, Math.max(0, d));
+    }
+    return { update, dodge, score: () => score, passed: () => passed };
+  })();
+
+  // ---------- 大きな見出し(町名・目印・ラスト1km・ゴール) ----------
+  let bannerTo = 0, lastTown = "", lastBanner = "";
+  function banner(text, sec = 2.6) {
+    const el = $("ct-banner");
+    if (!el || (text === lastBanner && !el.hidden)) return;
+    lastBanner = text;
+    el.textContent = text;
+    el.hidden = false;
+    el.classList.remove("in");
+    void el.offsetWidth;
+    el.classList.add("in");
+    clearTimeout(bannerTo);
+    bannerTo = setTimeout(() => (el.hidden = true), (sec * 1000) / Math.min(3, Math.max(1, sim ? sim.speedX / 2 : 1)));
+  }
+  // 次の目印(この先1.5km以内の駅・施設)までの距離
+  function nextMark() {
+    let best = null;
+    for (const t of tiles.values()) {
+      const inf = t.state === "ok" && t.group && t.group.userData.info;
+      for (const lm of (inf && inf.lms) || []) {
+        const d = lm.along - sim.along;
+        if (d > 20 && d < 1500 && (!best || d < best.d || (lm.big && !best.big && d < best.d + 300))) best = { name: lm.name, icon: lm.icon, d, big: lm.big };
+      }
+    }
+    const left = route.length - sim.along;
+    $("ct-next").textContent = best && best.d < left ? `次: ${best.icon} ${best.name} ${Math.round(best.d)}m` : `ゴールまで ${left >= 1000 ? (left / 1000).toFixed(1) + "km" : Math.round(left) + "m"}`;
+  }
+  function townBanner(town) {
+    if (town && town !== lastTown) {
+      if (lastTown) banner(town.replace(/[一二三四五六七八九十]+丁目$/, ""));
+      lastTown = town;
+    }
+    const left = route.length - sim.along;
+    if (left < 1000 && left > 960) banner("ラスト1km");
+    if (left < 300 && left > 270) banner("ゴール目前!");
+  }
 
   // 実物の建物が届いた所では、地図の(仮の)建物を隠す
   function syncPlaceholders() {
@@ -3048,7 +3273,9 @@ const City = (() => {
       if (s.along >= route.length - 0.5) finish();
       if ((s.tileT = (s.tileT || 0) + real) > 1.5) (s.tileT = 0), wantTiles(s.along), Roads.want(s.along), G3.on() || (wantPhotos(s.along), Plateau.want(s.along));
     }
-    const p = placeBiker(me, s.along, 0, real * s.speedX, s.v, (s.auto || s.pedal) && !s.brake && !s.paused);
+    // 道の端の人をよける(なめらかに右へ寄って、また左へ戻る)
+    s.dodge = (s.dodge || 0) + (Traffic.dodge(s.along) - (s.dodge || 0)) * Math.min(1, real * s.speedX * 3);
+    const p = placeBiker(me, s.along, s.dodge, real * s.speedX, s.v, (s.auto || s.pedal) && !s.brake && !s.paused);
     placeBiker(rival, s.rAlong, 1.1, real * s.speedX, s.rV, !s.paused);
     if (G3.on()) rival.g.position.y = G3.rivalY();
     const myPed = (s.auto || s.pedal) && !s.brake && !s.paused && !s.done;
@@ -3057,6 +3284,7 @@ const City = (() => {
     const rvSp = !s.paused && !s.done && (route.length - s.rAlong < 500 || s.rV > s.rivalV * 1.06);
     if (GB) GB.update(real * s.speedX, myPed, s.paused ? 0 : s.v, !s.paused && !s.done, s.paused ? 0 : s.rV, mySp, rvSp);
     Mons.update(real * Math.min(4, s.speedX));
+    Traffic.update(real * s.speedX);
     // 追いかけるカメラ(後ろ上から。速いほど少し引いて、視野を広げる)
     const back = 6.5 + s.v * 0.18, up = 2.9 + s.v * 0.05;
     const want = new THREE.Vector3(p.x - p.tx * back, p.y + up, p.z - p.tz * back);
@@ -3087,12 +3315,14 @@ const City = (() => {
     const v = Battle.verdict(Battle.state(s.ride));
     const first = s.along >= s.rAlong;
     const m = Math.floor(s.t / 60), sec = Math.floor(s.t % 60);
+    banner(`ゴール ${m}分${sec}秒`, 4);
     $("ct-result").hidden = false;
     $("ct-result").innerHTML = `<div class="ct-res-box">
       <small>GOAL</small>
       <h2>${v.winner === "you" ? "デュエルに勝利" : v.winner === "opp" ? "デュエルに敗北" : "デュエルは引き分け"}</h2>
       <p>${first ? "ライバルより先にゴール" : "ライバルが先にゴール"} ・ ${m}分${sec}秒 ・ ${(route.length / 1000).toFixed(1)}km ・ 平均 ${((route.length / Math.max(1, s.t)) * KMH).toFixed(1)}km/h</p>
       <p>LP ${v.you} − ${v.opp}(${v.wins}勝 ${v.losses}敗 / ${v.turns}ターン)</p>
+      <p>ライドの得点 ${Traffic.score().toLocaleString()} ・ 抜いた人 ${Traffic.passed()}</p>
       <button class="btn start" id="ct-again">もう一度</button> <a class="btn sub" href="index.html">アプリに戻る</a></div>`;
     $("ct-again").onclick = () => location.reload();
     Bgm.stop();
@@ -3283,5 +3513,5 @@ const City = (() => {
   }
 
   if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", bind);
-  return { at, turnAhead, readTile, _state: () => ({ sim, route, tiles, failed, camera, Plateau, Roads, scene, me }), ride: (a) => Roads.ride(a) };
+  return { at, turnAhead, readTile, _state: () => ({ sim, route, tiles, failed, camera, Plateau, Roads, scene, me, Traffic }), ride: (a) => Roads.ride(a) };
 })();

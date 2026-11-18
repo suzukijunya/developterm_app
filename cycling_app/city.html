@@ -8,12 +8,12 @@
 <meta name="theme-color" content="#050608" />
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-<link rel="stylesheet" href="css/style.css?v=2026.11.75" />
-<link rel="stylesheet" href="css/duelist.css?v=2026.11.75" />
-<link rel="stylesheet" href="css/cinema.css?v=2026.11.75" />
-<link rel="stylesheet" href="css/board.css?v=2026.11.75" />
-<link rel="stylesheet" href="css/tcard.css?v=2026.11.75" />
-<link rel="stylesheet" href="css/city.css?v=2026.11.75" />
+<link rel="stylesheet" href="css/style.css?v=2026.11.76" />
+<link rel="stylesheet" href="css/duelist.css?v=2026.11.76" />
+<link rel="stylesheet" href="css/cinema.css?v=2026.11.76" />
+<link rel="stylesheet" href="css/board.css?v=2026.11.76" />
+<link rel="stylesheet" href="css/tcard.css?v=2026.11.76" />
+<link rel="stylesheet" href="css/city.css?v=2026.11.76" />
 </head>
 <body class="city">
 <div id="ct-view"></div>
@@ -48,6 +48,8 @@
     <div class="ct-speedbox"><b id="ct-speed">0</b><small>km/h</small></div>
     <div id="ct-power" class="ct-power">0 W</div>
     <div id="ct-grade" class="ct-grade"></div>
+    <div id="ct-lane" class="ct-lane"></div>
+    <div id="ct-score" class="ct-score"></div>
     <div id="ct-gap" class="ct-gap"></div>
     <div id="ct-remain" class="ct-remain"></div>
     <div class="ct-time">⏱ <span id="ct-time">0:00</span></div>
@@ -75,6 +77,9 @@
   </div>
   <div id="ct-where" class="ct-where"></div>
   <div id="ct-near" class="ct-near" hidden></div>
+  <div id="ct-next" class="ct-next"></div>
+  <div id="ct-pops" class="ct-pops"></div>
+  <div id="ct-banner" class="ct-banner" hidden></div>
   <div id="ct-map-state" class="ct-map-state"></div>
   <div class="ct-osm"><span class="long">© OpenStreetMap contributors ・ OpenFreeMap ・ 航空写真: 国土地理院 ・ 建物: PLATEAU(国土交通省)</span><span class="short">© OSM・OpenFreeMap・国土地理院・PLATEAU(国交省)</span></div>
 </div>
@@ -91,25 +96,25 @@
 } }
 </script>
 <script src="https://unpkg.com/three@0.149.0/build/three.min.js"></script>
-<script src="js/vendor/gltf-loader.js?v=2026.11.75"></script>
-<script src="js/garage/parts.js?v=2026.11.75"></script>
-<script src="js/garage/fit.js?v=2026.11.75"></script>
-<script src="js/garage/view3d.js?v=2026.11.75"></script>
-<script src="js/store.js?v=2026.11.75"></script>
-<script src="js/nav.js?v=2026.11.75"></script>
-<script src="js/physics.js?v=2026.11.75"></script>
-<script src="js/eta.js?v=2026.11.75"></script>
-<script src="js/duel.js?v=2026.11.75"></script>
-<script src="js/battle.js?v=2026.11.75"></script>
-<script src="js/tcard.js?v=2026.11.75"></script>
-<script src="js/duelfx.js?v=2026.11.75"></script>
-<script src="js/cinema.js?v=2026.11.75"></script>
-<script src="js/board.js?v=2026.11.75"></script>
-<script src="js/monart.js?v=2026.11.75"></script>
-<script src="js/voice.js?v=2026.11.75"></script>
-<script src="js/duellines.js?v=2026.11.75"></script>
-<script src="js/plateau-roads.js?v=2026.11.75"></script>
-<script src="js/plateau-index.js?v=2026.11.75"></script>
-<script src="js/city.js?v=2026.11.75"></script>
+<script src="js/vendor/gltf-loader.js?v=2026.11.76"></script>
+<script src="js/garage/parts.js?v=2026.11.76"></script>
+<script src="js/garage/fit.js?v=2026.11.76"></script>
+<script src="js/garage/view3d.js?v=2026.11.76"></script>
+<script src="js/store.js?v=2026.11.76"></script>
+<script src="js/nav.js?v=2026.11.76"></script>
+<script src="js/physics.js?v=2026.11.76"></script>
+<script src="js/eta.js?v=2026.11.76"></script>
+<script src="js/duel.js?v=2026.11.76"></script>
+<script src="js/battle.js?v=2026.11.76"></script>
+<script src="js/tcard.js?v=2026.11.76"></script>
+<script src="js/duelfx.js?v=2026.11.76"></script>
+<script src="js/cinema.js?v=2026.11.76"></script>
+<script src="js/board.js?v=2026.11.76"></script>
+<script src="js/monart.js?v=2026.11.76"></script>
+<script src="js/voice.js?v=2026.11.76"></script>
+<script src="js/duellines.js?v=2026.11.76"></script>
+<script src="js/plateau-roads.js?v=2026.11.76"></script>
+<script src="js/plateau-index.js?v=2026.11.76"></script>
+<script src="js/city.js?v=2026.11.76"></script>
 </body>
 </html>
