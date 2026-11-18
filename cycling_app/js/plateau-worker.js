@@ -14,6 +14,7 @@ const dracoP = fetch("vendor/draco/draco_decoder.wasm")
 let R = null; // 走るルート { xy, lat0, lon0, kx, kz, grid }
 let CLEAR = 3.5;
 let TEXMAX = 4096;
+let TERRAIN = false;
 
 self.onmessage = async (e) => {
   const d = e.data;
@@ -21,6 +22,7 @@ self.onmessage = async (e) => {
     R = d.route;
     CLEAR = d.clear || 3.5;
     TEXMAX = d.texMax || 4096;
+    TERRAIN = !!d.terrain;
     R.grid = new Map();
     const xy = R.xy;
     for (let i = 0; i < xy.length - 1; i++) {
@@ -33,6 +35,19 @@ self.onmessage = async (e) => {
           if (!R.grid.has(k)) R.grid.set(k, []);
           R.grid.get(k).push(i);
         }
+    }
+    return;
+  }
+  if (d.type === "mvt") {
+    // 道路のベクトルタイル(PLATEAU の交通モデル)→ アプリ座標の多角形
+    try {
+      const polys = [];
+      for (const it of d.bufs) readRoads(it.buf, it.lod, d.z, d.x, d.y, polys);
+      const tr = [];
+      for (const p of polys) for (const r of p.rings) tr.push(r.buffer);
+      self.postMessage({ id: d.id, polys }, tr);
+    } catch (err) {
+      self.postMessage({ id: d.id, error: String((err && err.message) || err) });
     }
     return;
   }
@@ -193,11 +208,12 @@ function geodetic(x, y, z) {
   const pp = Math.hypot(x, y), th = Math.atan2(z * A, pp * b);
   const lon = Math.atan2(y, x);
   const lat = Math.atan2(z + ep2 * b * Math.sin(th) ** 3, pp - E2 * A * Math.cos(th) ** 3);
-  return { lat, lon };
+  const h = pp / Math.cos(lat) - A / Math.sqrt(1 - E2 * Math.sin(lat) ** 2);
+  return { lat, lon, h };
 }
 
 function build(parts, center, bt) {
-  const { lat, lon } = geodetic(center[0], center[1], center[2]);
+  const { lat, lon, h: hc } = geodetic(center[0], center[1], center[2]);
   const sl = Math.sin(lat), cl = Math.cos(lat), so = Math.sin(lon), co = Math.cos(lon);
   const N = A / Math.sqrt(1 - E2 * sl * sl), M = (A * (1 - E2)) / Math.pow(1 - E2 * sl * sl, 1.5);
   const D = Math.PI / 180;
@@ -319,7 +335,7 @@ function build(parts, center, bt) {
       for (let j = 0; j < 3; j++) {
         const X = V[j * 3], Y = V[j * 3 + 1], Z = V[j * 3 + 2];
         pos[w * 3] = X;
-        pos[w * 3 + 1] = Y;
+        pos[w * 3 + 1] = Y + (TERRAIN ? minY[b] : 0); // 坂のあるとき: 建物の足もとの本当の高さのまま
         pos[w * 3 + 2] = Z;
         nor[w * 3] = Math.round(nx * 127);
         nor[w * 3 + 1] = Math.round(ny * 127);
@@ -357,7 +373,10 @@ function build(parts, center, bt) {
   for (let b = 0; b < NB; b++) if (names[b] && !skip[b] && pts[b].length) lm.push({ name: String(names[b]), x: (bx0[b] + bx1[b]) / 2, z: (bz0[b] + bz1[b]) / 2, h: maxY[b] - minY[b] });
   const out = [];
   for (const g of groups.values()) if (g.w) out.push({ kind: g.kind, img: g.img, style: g.style, pos: g.pos.slice(0, g.w * 3), nor: g.nor.slice(0, g.w * 3), uv: g.uv.slice(0, g.w * 2), col: g.col.slice(0, g.w * 3) });
-  return { groups: out, names: lm, n: NB - skipped, skipped };
+  // 地面の高さ合わせ用: 建物の足もと(楕円体高 = hc + minY)と場所を、いくつか返す
+  const feet = [];
+  for (let b = 0; b < NB && feet.length < 80; b += Math.max(1, Math.floor(NB / 80))) if (pts[b].length && !skip[b]) feet.push([(bx0[b] + bx1[b]) / 2, (bz0[b] + bz1[b]) / 2, hc + minY[b]]);
+  return { groups: out, names: lm, n: NB - skipped, skipped, hc, feet, terrain: TERRAIN };
 }
 
 // 外壁の模様1枚ぶんの大きさ(m)と、屋根に使う模様の中の無地の場所
@@ -425,4 +444,122 @@ function onRoute(flat, x0, x1, z0, z1) {
     for (let j = 0; j < h.length; j++) if (segDist(a, b, h[j], h[(j + 1) % h.length]) < CLEAR) return true;
   }
   return false;
+}
+
+// ---------- 道路(PLATEAU 交通モデルの MVT) ----------
+// 種類 f: 0=車道 1=交差点 2=歩道 3=島・植樹帯 4=道路の面(LOD1。歩道と車道の区別なし)
+function roadKind(lod, layer, fn) {
+  if (lod === 1) return 4;
+  fn = String(fn || "");
+  if (layer === "AuxiliaryTrafficArea") return /路肩|停車/.test(fn) ? 0 : 3;
+  if (/交差/.test(fn)) return 1;
+  if (/歩道|自転車|歩行者/.test(fn)) return 2;
+  if (/島|植樹|中央帯|分離帯/.test(fn)) return 3;
+  return 0;
+}
+function readRoads(buf, lod, z, tx, ty, out) {
+  let u8 = new Uint8Array(buf);
+  const td = new TextDecoder();
+  let pos = 0;
+  const varint = () => {
+    let r = 0, sh = 0, b;
+    do {
+      b = u8[pos++];
+      r += (b & 0x7f) * 2 ** sh;
+      sh += 7;
+    } while (b & 0x80);
+    return r;
+  };
+  const each = (end, fn) => {
+    while (pos < end) {
+      const tag = varint(), f = tag >>> 3, w = tag & 7;
+      if (w === 0) fn(f, w, varint());
+      else if (w === 2) {
+        const len = varint(), st = pos;
+        fn(f, w, st, st + len);
+        pos = st + len;
+      } else if (w === 5) (fn(f, w, pos), (pos += 4));
+      else if (w === 1) (fn(f, w, pos), (pos += 8));
+      else return;
+    }
+  };
+  const n = 2 ** z;
+  const lonOf = (v) => (v / n) * 360 - 180;
+  const latOf = (v) => (Math.atan(Math.sinh(Math.PI * (1 - (2 * v) / n))) * 180) / Math.PI;
+  each(u8.length, (f, w, a, b) => {
+    if (f !== 3 || w !== 2) return;
+    const save = pos;
+    pos = a;
+    let name = "", extent = 4096;
+    const keys = [], vals = [], feats = [];
+    each(b, (f2, w2, a2, b2) => {
+      if (f2 === 1) name = td.decode(u8.subarray(a2, b2));
+      else if (f2 === 2) feats.push([a2, b2]);
+      else if (f2 === 3) keys.push(td.decode(u8.subarray(a2, b2)));
+      else if (f2 === 4) {
+        const sv = pos;
+        pos = a2;
+        let v = null;
+        each(b2, (f3, w3, a3, b3) => {
+          if (f3 === 1) v = td.decode(u8.subarray(a3, b3));
+        });
+        vals.push(v);
+        pos = sv;
+      } else if (f2 === 5) extent = a2;
+    });
+    for (const [fa, fb] of feats) {
+      pos = fa;
+      let type = 0, tags = null, geom = null;
+      each(fb, (f3, w3, a3, b3) => {
+        if (f3 === 3) type = a3;
+        else if (f3 === 2) tags = [a3, b3];
+        else if (f3 === 4) geom = [a3, b3];
+      });
+      if (type !== 3 || !geom) continue;
+      let fn = "";
+      if (tags) {
+        pos = tags[0];
+        while (pos < tags[1]) {
+          const k = keys[varint()], v = vals[varint()];
+          if (k === "tran_function") fn = v;
+        }
+      }
+      const kind = roadKind(lod, name, fn);
+      pos = geom[0];
+      let cx = 0, cy = 0, cur = null, poly = null;
+      const rings = [];
+      while (pos < geom[1]) {
+        const cmd = varint(), id = cmd & 7, cnt = cmd >>> 3;
+        if (id === 7) {
+          if (cur && cur.length >= 6) rings.push(cur);
+          cur = null;
+          continue;
+        }
+        for (let i = 0; i < cnt; i++) {
+          const dx = varint(), dy = varint();
+          cx += dx & 1 ? -(dx + 1) / 2 : dx / 2;
+          cy += dy & 1 ? -(dy + 1) / 2 : dy / 2;
+          if (id === 1) {
+            if (cur && cur.length >= 6) rings.push(cur);
+            cur = [];
+          }
+          const lon = lonOf(tx + cx / extent), lat = latOf(ty + cy / extent);
+          cur.push((lon - R.lon0) * R.kx, -(lat - R.lat0) * R.kz);
+        }
+      }
+      if (cur && cur.length >= 6) rings.push(cur);
+      // 外側の輪(時計回り)ごとに、続く穴をまとめる
+      for (const r of rings) {
+        let area = 0;
+        for (let i = 0; i < r.length; i += 2) {
+          const j = (i + 2) % r.length;
+          area += r[i] * r[j + 1] - r[j] * r[i + 1];
+        }
+        // MVT は y が下向き。アプリの z も南向きなので、外側の輪は面積がプラス
+        if (area > 0 || !poly) out.push((poly = { f: kind, lod, rings: [new Float32Array(r)] }));
+        else poly.rings.push(new Float32Array(r));
+      }
+    }
+    pos = save;
+  });
 }

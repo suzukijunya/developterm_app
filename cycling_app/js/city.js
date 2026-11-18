@@ -543,6 +543,10 @@ const City = (() => {
         if (Math.abs(area) < 8) continue; // とても小さいものは省く
         if (area < 0) pts.reverse();
         ({ pos, nor, uv, col } = chunkOf(pts[0][0], pts[0][1]));
+        // 地面の高さ: 輪郭のいちばん低い所に建てて、少し埋める(坂で浮かないように)
+        let gb = 1e9;
+        for (const q of pts) gb = Math.min(gb, H(q[0], q[1]));
+        gb -= 0.4;
         const k = hash(id);
         // 高さがわからない建物は、広さから見当をつける(広いほど高め)
         const h = h0 || Math.min(40, 5.5 + k * 5 + Math.sqrt(Math.abs(area) / 2) * 0.22);
@@ -556,15 +560,15 @@ const City = (() => {
           const nx = dz / L, nz = -dx / L;
           const u0 = per / 28, u1 = (per + L) / 28, v1 = h / 25.6;
           per += L;
-          push(a[0], 0, a[1], nx, 0, nz, u0, 0, c);
-          push(b[0], 0, b[1], nx, 0, nz, u1, 0, c);
-          push(b[0], h, b[1], nx, 0, nz, u1, v1, c);
-          push(a[0], 0, a[1], nx, 0, nz, u0, 0, c);
-          push(b[0], h, b[1], nx, 0, nz, u1, v1, c);
-          push(a[0], h, a[1], nx, 0, nz, u0, v1, c);
+          push(a[0], gb, a[1], nx, 0, nz, u0, 0, c);
+          push(b[0], gb, b[1], nx, 0, nz, u1, 0, c);
+          push(b[0], gb + h, b[1], nx, 0, nz, u1, v1, c);
+          push(a[0], gb, a[1], nx, 0, nz, u0, 0, c);
+          push(b[0], gb + h, b[1], nx, 0, nz, u1, v1, c);
+          push(a[0], gb + h, a[1], nx, 0, nz, u0, v1, c);
         }
         const tri = THREE.ShapeUtils.triangulateShape(pts.map((p) => new THREE.Vector2(p[0], p[1])), []);
-        for (const t of tri) for (const i of [t[0], t[2], t[1]]) push(pts[i][0], h, pts[i][1], 0, 1, 0, 0.004, 0.004, cr);
+        for (const t of tri) for (const i of [t[0], t[2], t[1]]) push(pts[i][0], gb + h, pts[i][1], 0, 1, 0, 0.004, 0.004, cr);
       }
       group.userData.chunks = [];
       for (const ch of chunks.values()) {
@@ -575,6 +579,7 @@ const City = (() => {
         geo.setAttribute("uv", new THREE.Float32BufferAttribute(ch.uv, 2));
         geo.setAttribute("color", new THREE.Float32BufferAttribute(ch.col, 3));
         const m = new THREE.Mesh(geo, mats.bld);
+        m.castShadow = true;
         m.visible = !G3.on() && !(plateauOn && Plateau.hasAt(ch.cx, ch.cz));
         group.add(m);
         group.userData.chunks.push({ cx: ch.cx, cz: ch.cz, mesh: m });
@@ -589,9 +594,15 @@ const City = (() => {
         const w = rail ? 3.6 : ROAD_W[kind] || 4, big = w >= 9, walk = w <= 3 && !rail;
         const y = rail ? 0.07 : big ? 0.05 : walk ? 0.02 : 0.035;
         const c = rail ? [1.9, 1.5, 1.2] : walk ? [1.5, 1.42, 1.3] : [1, 1, 1];
-        const p = [];
-        for (let i = 0; i < ll.length; i += 2) p.push(project(ll[i], ll[i + 1]));
-        if (!isNear(p[0]) && !isNear(p[p.length - 1])) continue;
+        const p0 = [];
+        for (let i = 0; i < ll.length; i += 2) p0.push(project(ll[i], ll[i + 1]));
+        if (!isNear(p0[0]) && !isNear(p0[p0.length - 1])) continue;
+        // 坂にそわせるため、10mごとに点を足す
+        const p = [p0[0]];
+        for (let i = 1; i < p0.length; i++) {
+          const a = p0[i - 1], b = p0[i], n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 10);
+          for (let k = 1; k <= n; k++) p.push([a[0] + ((b[0] - a[0]) * k) / n, a[1] + ((b[1] - a[1]) * k) / n]);
+        }
         let run = 0;
         const side = (i) => {
           const a = p[Math.max(0, i - 1)], b = p[Math.min(p.length - 1, i + 1)];
@@ -609,7 +620,7 @@ const City = (() => {
             [a[0] - sa[0], a[1] - sa[1], u0, v0], [b[0] + sb[0], b[1] + sb[1], u1, v1], [b[0] - sb[0], b[1] - sb[1], u0, v1],
           ];
           for (const [x, z, u, v] of q) {
-            pos.push(x, y, z);
+            pos.push(x, y + H(x, z), z);
             nor.push(0, 1, 0);
             uv.push(u, v);
             col.push(c[0], c[1], c[2]);
@@ -640,7 +651,7 @@ const City = (() => {
         const tri = THREE.ShapeUtils.triangulateShape(pts.map((q) => new THREE.Vector2(q[0], q[1])), []);
         for (const t of tri)
           for (const i of t) {
-            pos.push(pts[i][0], y, pts[i][1]);
+            pos.push(pts[i][0], y + H(pts[i][0], pts[i][1]), pts[i][1]);
             col.push(c[0], c[1], c[2]);
           }
       }
@@ -674,12 +685,12 @@ const City = (() => {
       // 看板は建物の少し上。画面の上で読める大きさを保ち、近づいたときだけ出す
       const hgt = lm.big ? 24 : 15;
       const sp = signSprite(lm);
-      sp.position.set(q[0], hgt, q[1]);
+      sp.position.set(q[0], hgt + H(q[0], q[1]), q[1]);
       sp.visible = false;
       sp.userData.sign = true;
       group.add(sp);
       const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, hgt, 6), new THREE.MeshBasicMaterial({ color: lm.color, transparent: true, opacity: 0.6, depthTest: false, fog: false }));
-      beam.position.set(q[0], hgt / 2, q[1]);
+      beam.position.set(q[0], hgt / 2 + H(q[0], q[1]), q[1]);
       beam.visible = false;
       beam.userData.sign = true;
       group.add(beam);
@@ -919,7 +930,7 @@ const City = (() => {
       const me = document.querySelector('script[src*="js/city.js"]');
       const v = me && me.src.includes("?") ? "?" + me.src.split("?")[1] : "";
       worker = new Worker("js/plateau-worker.js" + v);
-      worker.postMessage({ type: "init", route: { xy: route.xy, lat0: route.lat0, lon0: route.lon0, kx: route.kx, kz: route.kz }, clear: CLEAR, texMax: innerWidth < 900 ? 2048 : 4096 });
+      worker.postMessage({ type: "init", route: { xy: route.xy, lat0: route.lat0, lon0: route.lon0, kx: route.kx, kz: route.kz }, clear: CLEAR, texMax: innerWidth < 900 ? 2048 : 4096, terrain: Terrain.ok() });
       worker.onmessage = (e) => {
         const d = e.data, w = waiting.get(d.id);
         waiting.delete(d.id);
@@ -989,7 +1000,9 @@ const City = (() => {
               geo.setAttribute("uv", new THREE.BufferAttribute(g.uv, 2));
               geo.setAttribute("color", new THREE.BufferAttribute(g.col, 3, true));
               geo.computeBoundingSphere();
-              t.mesh.add(new THREE.Mesh(geo, mats.fac[g.style] || mats.bld));
+              const fm = new THREE.Mesh(geo, mats.fac[g.style] || mats.bld);
+              fm.castShadow = fm.receiveShadow = true;
+              t.mesh.add(fm);
               continue;
             }
             const geo = new THREE.BufferGeometry();
@@ -1005,8 +1018,15 @@ const City = (() => {
               mat = tx ? new THREE.MeshBasicMaterial({ map: tx, color: photoTint }) : mats.pcol;
             } else if (g.kind === "c") mat = mats.pcol;
             const mesh = new THREE.Mesh(geo, mat);
+            mesh.castShadow = true;
             if (g.kind === "t") mesh.userData.photo = true;
             t.mesh.add(mesh);
+          }
+          // 坂: 建物の足もとの高さを、標高タイルの地面にそろえる(楕円体高とのずれ=ジオイド高 を中央値で出す)
+          if (d.terrain && d.feet && d.feet.length) {
+            const diffs = d.feet.map(([x, z, he]) => he - Terrain.abs(x, z)).sort((a, b) => a - b);
+            const off = diffs[diffs.length >> 1];
+            t.mesh.position.y = d.hc - off - Terrain.base() - 0.3;
           }
           t.state = "ok";
           t.names = d.names;
@@ -1090,6 +1110,669 @@ const City = (() => {
       broken: () => broken,
     };
   })();
+
+  // ---------- 地面の高さと勾配(国土地理院の標高タイル: 5mメッシュ、なければ10mメッシュ) ----------
+  // 走り出す前に、ルートのまわりの標高を読んでおく。高さは「出発地点=0」からの差(m)
+  const Terrain = (() => {
+    const Z = 15, NT = 2 ** Z;
+    const tiles = new Map(); // "x:y" → Float32Array(256*256) (NaN=なし)
+    let base = 0, ok = false;
+    const px = (lat, lon) => [((lon + 180) / 360) * NT * 256, ((1 - Math.asinh(Math.tan((lat * Math.PI) / 180)) / Math.PI) / 2) * NT * 256];
+    function decode(img) {
+      const cv = document.createElement("canvas");
+      cv.width = cv.height = 256;
+      const c = cv.getContext("2d", { willReadFrequently: true });
+      c.drawImage(img, 0, 0);
+      const d = c.getImageData(0, 0, 256, 256).data, out = new Float32Array(65536);
+      for (let i = 0; i < 65536; i++) {
+        const v = d[i * 4] * 65536 + d[i * 4 + 1] * 256 + d[i * 4 + 2];
+        out[i] = d[i * 4 + 3] === 0 || v === 8388608 ? NaN : v < 8388608 ? v * 0.01 : (v - 16777216) * 0.01;
+      }
+      return out;
+    }
+    const loadImg = (url) =>
+      new Promise((res) => {
+        const im = new Image();
+        im.crossOrigin = "anonymous";
+        im.onload = () => res(im);
+        im.onerror = () => res(null);
+        im.src = url;
+      });
+    async function loadTile(x, y) {
+      let im = await loadImg(`https://cyberjapandata.gsi.go.jp/xyz/dem5a_png/${Z}/${x}/${y}.png`);
+      let a = im ? decode(im) : null;
+      // 5mメッシュがない所は、10mメッシュ(ズーム14)の4分の1を拡大して使う
+      if (!a || a.every((v) => isNaN(v))) {
+        const im2 = await loadImg(`https://cyberjapandata.gsi.go.jp/xyz/dem_png/${Z - 1}/${x >> 1}/${y >> 1}.png`);
+        if (im2) {
+          const b = decode(im2), ox = (x & 1) * 128, oy = (y & 1) * 128;
+          a = new Float32Array(65536);
+          for (let j = 0; j < 256; j++) for (let i = 0; i < 256; i++) a[j * 256 + i] = b[(oy + (j >> 1)) * 256 + ox + (i >> 1)];
+        }
+      }
+      if (a) tiles.set(x + ":" + y, a);
+    }
+    function abs(lat, lon) {
+      const [fx, fy] = px(lat, lon);
+      const sx = fx - 0.5, sy = fy - 0.5;
+      const x0 = Math.floor(sx), y0 = Math.floor(sy), tx = sx - x0, ty = sy - y0;
+      const g = (X, Y) => {
+        const t = tiles.get((X >> 8) + ":" + (Y >> 8));
+        return t ? t[(Y & 255) * 256 + (X & 255)] : NaN;
+      };
+      const a = g(x0, y0), b = g(x0 + 1, y0), c = g(x0, y0 + 1), d = g(x0 + 1, y0 + 1);
+      const v = [a, b, c, d].filter((q) => !isNaN(q));
+      if (v.length < 4) return v.length ? v.reduce((p, q) => p + q, 0) / v.length : NaN;
+      return a * (1 - tx) * (1 - ty) + b * tx * (1 - ty) + c * (1 - tx) * ty + d * tx * ty;
+    }
+    // ルートのまわり(左右300m)の標高タイルを全部読む
+    async function prepare() {
+      const need = new Set();
+      for (let d = 0; d <= route.length; d += 100) {
+        const p = at(d);
+        for (const [ox, oz] of [[0, 0], [300, 0], [-300, 0], [0, 300], [0, -300]]) {
+          const lat = route.lat0 - (p.z + oz) / route.kz, lon = route.lon0 + (p.x + ox) / route.kx;
+          const [fx, fy] = px(lat, lon);
+          need.add((fx >> 8) + ":" + (fy >> 8));
+        }
+      }
+      const list = [...need];
+      for (let i = 0; i < list.length; i += 8) await Promise.all(list.slice(i, i + 8).map((k) => loadTile(...k.split(":").map(Number))));
+      const b0 = abs(route.lat0, route.lon0);
+      if (!isNaN(b0)) (base = b0), (ok = true);
+      buildProfile();
+    }
+    // 走る線にそった標高(10mごと・前後30mでならす)と勾配
+    let prof = null;
+    function buildProfile() {
+      const n = Math.ceil(route.length / 10) + 1, raw = new Float32Array(n);
+      for (let i = 0; i < n; i++) {
+        const p = at(i * 10);
+        const v = h(p.x, p.z);
+        raw[i] = v;
+      }
+      prof = new Float32Array(n);
+      for (let i = 0; i < n; i++) {
+        let sum = 0, k = 0;
+        for (let j = Math.max(0, i - 3); j <= Math.min(n - 1, i + 3); j++) (sum += raw[j]), k++;
+        prof[i] = sum / k;
+      }
+    }
+    function h(x, z) {
+      if (!ok) return 0;
+      const v = abs(route.lat0 - z / route.kz, route.lon0 + x / route.kx);
+      return isNaN(v) ? 0 : v - base;
+    }
+    // 勾配(%)。前後20mの高さの差から
+    function grade(along) {
+      if (!prof) return 0;
+      const f = (a) => {
+        const i = Math.max(0, Math.min(prof.length - 1, a / 10)), i0 = Math.floor(i), i1 = Math.min(prof.length - 1, i0 + 1);
+        return prof[i0] + (prof[i1] - prof[i0]) * (i - i0);
+      };
+      return ((f(along + 20) - f(along - 20)) / 40) * 100;
+    }
+    return { prepare, h, abs: (x, z) => (ok ? h(x, z) + base : 0), grade, ok: () => ok, base: () => base };
+  })();
+
+  // ---------- 道路(PLATEAU 交通モデル): 実際の道幅・歩道・白線、左側通行の走る位置、電柱と街路樹 ----------
+  // 道路の面(車道・交差点・歩道)を地図の区画(z16・約600m四方)ごとに読み、
+  //   車道はアスファルト、歩道は縁石の高さ(15cm)の段にして、車道のふちに白線、交差点の入口に横断歩道を引く。
+  //   走っている道の幅を左右に測って、ライダーは「車道の左端から約0.9m」を走る(日本の左側通行)。
+  //   歩道の車道側にはガードパイプと街路樹、歩道のない道の外側には電柱と電線を立てる。
+  const Roads = (() => {
+    const IDX = typeof PLATEAU_ROADS !== "undefined" ? PLATEAU_ROADS : [];
+    const Z = 16, NT = 2 ** Z, CELL = 20, STEP = 4;
+    const tl = new Map(); // "x:y" → { state, group, rect }
+    const grid = new Map(); // 20m のマス → 多角形の一覧
+    const raw = []; // ルートの STEP m ごとの { L, R, cross } (測れたところだけ)
+    let queue = [], busy = 0, worker = null, fails = 0, visible = true, stripDirty = false, stripT = 0;
+    const waiting = new Map();
+    const lonOf = (v) => (v / NT) * 360 - 180, latOf = (v) => (Math.atan(Math.sinh(Math.PI * (1 - (2 * v) / NT))) * 180) / Math.PI;
+    const tileRect = (x, y) => {
+      const a = project(latOf(y), lonOf(x)), b = project(latOf(y + 1), lonOf(x + 1));
+      return [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[0], b[0]), Math.max(a[1], b[1])];
+    };
+    // ---- 多角形の検索 ----
+    function addPoly(p) {
+      let x0 = 1e9, z0 = 1e9, x1 = -1e9, z1 = -1e9;
+      const r = p.rings[0];
+      for (let i = 0; i < r.length; i += 2) (x0 = Math.min(x0, r[i])), (x1 = Math.max(x1, r[i])), (z0 = Math.min(z0, r[i + 1])), (z1 = Math.max(z1, r[i + 1]));
+      p.box = [x0, z0, x1, z1];
+      for (let x = Math.floor(x0 / CELL); x <= Math.floor(x1 / CELL); x++)
+        for (let z = Math.floor(z0 / CELL); z <= Math.floor(z1 / CELL); z++) {
+          const k = x + ":" + z;
+          if (!grid.has(k)) grid.set(k, []);
+          grid.get(k).push(p);
+        }
+    }
+    function inPoly(p, x, z) {
+      if (x < p.box[0] || x > p.box[2] || z < p.box[1] || z > p.box[3]) return false;
+      let c = false;
+      for (const r of p.rings)
+        for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) {
+          const xi = r[i], zi = r[i + 1], xj = r[j], zj = r[j + 1];
+          if (zi > z !== zj > z && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) c = !c;
+        }
+      return c;
+    }
+    // その場所の種類: 0=車道 1=交差点 2=歩道 3=島 4=道路(区別なし) -1=道路の外
+    function kindAt(x, z) {
+      const list = grid.get(Math.floor(x / CELL) + ":" + Math.floor(z / CELL));
+      if (!list) return -1;
+      let l1 = false;
+      for (const p of list)
+        if (inPoly(p, x, z)) {
+          if (p.f !== 4) return p.f;
+          l1 = true;
+        }
+      return l1 ? 4 : -1;
+    }
+    const isCar = (k) => k === 0 || k === 1 || k === 4;
+    // (x, z) から (dx, dz) の向きに、車道が続く距離
+    function reach(x, z, dx, dz) {
+      let t = 0;
+      while (t < 16 && isCar(kindAt(x + dx * (t + 0.25), z + dz * (t + 0.25)))) t += 0.25;
+      return t;
+    }
+    // ---- ルートの道幅を測る ----
+    function measure(i) {
+      const p = at(i * STEP);
+      const k = kindAt(p.x, p.z);
+      if (!isCar(k)) return (raw[i] = raw[i] || null);
+      const lx = p.tz, lz = -p.tx; // 左
+      raw[i] = { L: reach(p.x, p.z, lx, lz), R: reach(p.x, p.z, -lx, -lz), cross: k === 1 };
+      stripDirty = true;
+    }
+    function measureRect(r) {
+      const n = Math.ceil(route.length / STEP);
+      for (let i = 0; i <= n; i++) {
+        const p = at(i * STEP);
+        if (p.x >= r[0] - 20 && p.x <= r[2] + 20 && p.z >= r[1] - 20 && p.z <= r[3] + 20) measure(i);
+      }
+    }
+    // 走る位置: センターラインから左へ何m(交差点の中や測れない所は、前後の値で埋める)
+    function ride(along) {
+      const i0 = Math.round(along / STEP);
+      for (const w of [3, 6]) {
+        const v = [];
+        for (let i = i0 - w; i <= i0 + w; i++) {
+          const s = raw[i];
+          if (s && !s.cross && s.L + s.R > 2) v.push(s);
+        }
+        if (v.length) {
+          // 中央値で、はみ出した値(バス停の切り込みなど)を外す
+          const off = v.map((s) => {
+            const W = s.L + s.R;
+            return s.L - (W >= 4.5 ? 0.9 : Math.max(0.6, W * 0.22));
+          });
+          off.sort((a, b) => a - b);
+          const W = v.map((s) => s.L + s.R).sort((a, b) => a - b);
+          return { off: off[off.length >> 1], W: W[W.length >> 1] };
+        }
+      }
+      return null;
+    }
+    // ---- メッシュを作る ----
+    let M = null;
+    function mats() {
+      if (M) return M;
+      const THREE = T();
+      const tex = (draw, rep) => {
+        const cv = document.createElement("canvas");
+        cv.width = cv.height = 256;
+        draw(cv.getContext("2d"));
+        const t = new THREE.CanvasTexture(cv);
+        t.wrapS = t.wrapT = THREE.RepeatWrapping;
+        t.encoding = THREE.sRGBEncoding;
+        t.anisotropy = 8;
+        return t;
+      };
+      const asph = tex((c) => {
+        c.fillStyle = "#5b5e62";
+        c.fillRect(0, 0, 256, 256);
+        for (let i = 0; i < 9000; i++) {
+          const v = 70 + Math.floor(hash(i) * 70);
+          c.fillStyle = `rgba(${v},${v},${v + 4},0.5)`;
+          c.fillRect(hash(i + 1e4) * 256, hash(i + 2e4) * 256, 1 + hash(i + 3e4) * 1.5, 1 + hash(i + 4e4) * 1.5);
+        }
+      });
+      const walk = tex((c) => {
+        c.fillStyle = "#b9b3a8";
+        c.fillRect(0, 0, 256, 256);
+        for (let y = 0; y < 256; y += 32)
+          for (let x = 0; x < 256; x += 64) {
+            const o = (y / 32) % 2 ? 32 : 0, v = 168 + Math.floor(hash(x * 7 + y) * 30);
+            c.fillStyle = `rgb(${v},${v - 6},${v - 14})`;
+            c.fillRect(x + o + 1, y + 1, 62, 30);
+          }
+      });
+      M = {
+        asph: new THREE.MeshLambertMaterial({ map: asph, color: 0xffffff }),
+        walk: new THREE.MeshLambertMaterial({ map: walk }),
+        curb: new THREE.MeshLambertMaterial({ color: 0xa4a39e }),
+        isl: new THREE.MeshLambertMaterial({ color: 0x6f8a5a }),
+        line: new THREE.MeshLambertMaterial({ color: 0xf2f2ee, emissive: 0x303030 }),
+        pole: new THREE.MeshLambertMaterial({ color: 0x9d9c97 }),
+        dark: new THREE.MeshLambertMaterial({ color: 0x4a4c50 }),
+        wire: new THREE.LineBasicMaterial({ color: 0x1c1c1e }),
+        trunk: new THREE.MeshLambertMaterial({ color: 0x5a4632 }),
+        leaf: new THREE.MeshLambertMaterial({ color: 0xffffff }),
+        rail: new THREE.MeshLambertMaterial({ color: 0xf4f4f0, side: THREE.DoubleSide }),
+        stripe: new THREE.MeshBasicMaterial({ color: 0x35d6ff, transparent: true, opacity: 0.42, depthWrite: false, side: THREE.DoubleSide }),
+      };
+      return M;
+    }
+    function buildTile(polys, rect) {
+      const THREE = T();
+      const m = mats();
+      const g = new THREE.Group();
+      const near = (p) => {
+        const b = p.box;
+        return isNear([b[0], b[1]]) || isNear([b[2], b[3]]) || isNear([(b[0] + b[2]) / 2, (b[1] + b[3]) / 2]) || isNear([b[0], b[3]]) || isNear([b[2], b[1]]);
+      };
+      const A = { asph: [[], []], walk: [[], []], curb: [[], []], isl: [[], []], line: [[], []] }; // [位置, uv]
+      const q = (key, pts, uvs) => (A[key][0].push(...pts), A[key][1].push(...uvs));
+      const flat = (p, y, key, sc) => {
+        const V = (r) => {
+          const a = [];
+          for (let i = 0; i < r.length; i += 2) a.push(new THREE.Vector2(r[i], r[i + 1]));
+          if (a.length > 1 && a[0].equals(a[a.length - 1])) a.pop();
+          return a;
+        };
+        const outer = V(p.rings[0]), holes = p.rings.slice(1).map(V);
+        let tri;
+        try {
+          tri = THREE.ShapeUtils.triangulateShape(outer, holes);
+        } catch (e) {
+          return;
+        }
+        const all = outer.concat(...holes);
+        for (const t of tri)
+          for (const i of [t[0], t[2], t[1]]) {
+            const v = all[i];
+            q(key, [v.x, y + H(v.x, v.y), v.y], [v.x / sc, v.y / sc]);
+          }
+      };
+      // 縁石: 多角形のふちに、低い壁
+      const walls = (p, y0, y1) => {
+        for (const r of p.rings)
+          for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) {
+            const ax = r[j], az = r[j + 1], bx = r[i], bz = r[i + 1];
+            const L = Math.hypot(bx - ax, bz - az);
+            if (L < 0.05) continue;
+            const ha = H(ax, az), hb = H(bx, bz);
+            q("curb", [ax, y0 + ha, az, bx, y0 + hb, bz, bx, y1 + hb, bz, ax, y0 + ha, az, bx, y1 + hb, bz, ax, y1 + ha, az], [0, 0, L, 0, L, 1, 0, 0, L, 1, 0, 1]);
+            q("curb", [ax, y0 + ha, az, bx, y1 + hb, bz, bx, y0 + hb, bz, ax, y0 + ha, az, ax, y1 + ha, az, bx, y1 + hb, bz], [0, 0, L, 1, L, 0, 0, 0, 0, 1, L, 1]);
+          }
+      };
+      // 細い帯(白線など): a → b を幅 w で
+      const band = (ax, az, bx, bz, w, y, key = "line") => {
+        const L = Math.hypot(bx - ax, bz - az);
+        if (L < 0.05) return;
+        const nx = (-(bz - az) / L) * (w / 2), nz = ((bx - ax) / L) * (w / 2);
+        const ha = H(ax, az) + y, hb = H(bx, bz) + y;
+        q(key, [ax - nx, ha, az - nz, bx - nx, hb, bz - nz, bx + nx, hb, bz + nz, ax - nx, ha, az - nz, bx + nx, hb, bz + nz, ax + nx, ha, az + nz], [0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1]);
+      };
+      const poles = [], trees = [], posts = [], rails = [[], []];
+      const edges = (p, fn) => {
+        for (const r of p.rings)
+          for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) {
+            const ax = r[j], az = r[j + 1], bx = r[i], bz = r[i + 1];
+            const L = Math.hypot(bx - ax, bz - az);
+            if (L < 0.4) continue;
+            const ex = (bx - ax) / L, ez = (bz - az) / L;
+            let ox = -ez, oz = ex; // 外向き(多角形の外側)
+            const mx = (ax + bx) / 2, mz = (az + bz) / 2;
+            if (inPoly(p, mx + ox * 0.05, mz + oz * 0.05)) (ox = -ox), (oz = -oz);
+            fn(ax, az, bx, bz, L, ex, ez, ox, oz, kindAt(mx + ox * 0.6, mz + oz * 0.6));
+          }
+      };
+      const hasL2 = polys.some((p) => p.f !== 4);
+      let poleRun = 0, treeRun = 0, postRun = 0, lastPole = null;
+      for (const p of polys) {
+        if (!near(p)) continue;
+        if (p.f === 4) {
+          flat(p, 0.055, "asph", 3);
+          // 歩道のない道: ふちに路側帯の白線、その外側に電柱
+          edges(p, (ax, az, bx, bz, L, ex, ez, ox, oz, out) => {
+            const mx = (ax + bx) / 2, mz = (az + bz) / 2;
+            if (out === 4 || out === 0 || out === 1) return; // となりも道路(つなぎ目)
+            if (hasL2 && kindAt(mx - ox * 0.6, mz - oz * 0.6) !== 4) return; // 詳しいデータ(歩道あり)の所
+            band(ax - ox * 0.55, az - oz * 0.55, bx - ox * 0.55, bz - oz * 0.55, 0.15, 0.07);
+            for (let t = (32 - poleRun) % 32; t < L; t += 32) {
+              const x = ax + ex * t + ox * 0.35, z = az + ez * t + oz * 0.35;
+              if (hash(Math.round(x) * 73 + Math.round(z) * 31) < 0.45) continue;
+              poles.push({ x, z, ang: Math.atan2(ez, ex), prev: lastPole && Math.hypot(lastPole.x - x, lastPole.z - z) < 48 ? lastPole : null, tr: hash(Math.round(x * 3) + Math.round(z)) < 0.3 });
+              lastPole = poles[poles.length - 1];
+            }
+            poleRun = (poleRun + L) % 32;
+          });
+        } else if (p.f === 0 || p.f === 1) {
+          flat(p, p.f === 1 ? 0.065 : 0.06, "asph", 3);
+          if (p.f === 0)
+            edges(p, (ax, az, bx, bz, L, ex, ez, ox, oz, out) => {
+              if (out === 1) {
+                // 交差点の入口: 横断歩道(しま模様。白い帯は道に沿う向き、幅0.45m・間隔0.45m、長さ4m)
+                if (L < 3 || L > 34) return;
+                for (let t = 0.6; t < L - 0.4; t += 0.9) {
+                  const x = ax + ex * t, z = az + ez * t;
+                  const ix = -ox, iz = -oz;
+                  const sx = x + ix * 0.6, sz = z + iz * 0.6;
+                  q("line", ...stripe(sx, sz, ex, ez, ix, iz));
+                }
+                return;
+              }
+              if (out === 0) return;
+              band(ax - ox * 0.2, az - oz * 0.2, bx - ox * 0.2, bz - oz * 0.2, 0.15, 0.075);
+            });
+        } else if (p.f === 2) {
+          flat(p, 0.17, "walk", 1.2);
+          walls(p, 0.0, 0.17);
+          edges(p, (ax, az, bx, bz, L, ex, ez, ox, oz, out) => {
+            if (out !== 0) return;
+            // 車道に面したふち: ガードパイプ(2.4mごとの柱と2本の横棒)と、街路樹(11mごと)
+            const ix = -ox, iz = -oz;
+            const wide = kindAt((ax + bx) / 2 + ix * 2.4, (az + bz) / 2 + iz * 2.4) === 2;
+            for (let t = (2.4 - postRun) % 2.4; t < L; t += 2.4) posts.push([ax + ex * t + ix * 0.3, az + ez * t + iz * 0.3]);
+            postRun = (postRun + L) % 2.4;
+            for (const [k, yy] of [[0, 0.78], [1, 0.45]]) rails[k].push([ax + ix * 0.3, az + iz * 0.3, bx + ix * 0.3, bz + iz * 0.3, yy]);
+            if (wide) {
+              for (let t = (11 - treeRun) % 11; t < L; t += 11) trees.push([ax + ex * t + ix * 1.0, az + ez * t + iz * 1.0]);
+              treeRun = (treeRun + L) % 11;
+            }
+          });
+        } else if (p.f === 3) {
+          flat(p, 0.2, "isl", 2);
+          walls(p, 0.0, 0.2);
+        }
+      }
+      for (const [key, mat] of [["asph", m.asph], ["walk", m.walk], ["curb", m.curb], ["isl", m.isl], ["line", m.line]]) {
+        const [pos, uv] = A[key];
+        if (!pos.length) continue;
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+        geo.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+        geo.computeVertexNormals();
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.receiveShadow = true;
+        g.add(mesh);
+      }
+      // ガードパイプ
+      if (posts.length) {
+        const im = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.03, 0.03, 0.85, 6), m.rail, posts.length);
+        const mt = new THREE.Matrix4();
+        posts.forEach(([x, z], i) => im.setMatrixAt(i, mt.makeTranslation(x, 0.17 + 0.42 + H(x, z), z)));
+        g.add(im);
+        const rp = [];
+        for (const list of rails)
+          for (const [ax, az, bx, bz, y] of list) {
+            const ha = H(ax, az) + 0.17 + y, hb = H(bx, bz) + 0.17 + y;
+            rp.push(ax, ha, az, bx, hb, bz, bx, hb + 0.05, bz, ax, ha, az, bx, hb + 0.05, bz, ax, ha + 0.05, az);
+          }
+        const rg = new THREE.BufferGeometry();
+        rg.setAttribute("position", new THREE.Float32BufferAttribute(rp, 3));
+        rg.computeVertexNormals();
+        g.add(new THREE.Mesh(rg, m.rail));
+      }
+      // 街路樹
+      if (trees.length) {
+        const trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.1, 0.14, 2.8, 6), m.trunk, trees.length);
+        const leaf = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1.5, 1), m.leaf, trees.length);
+        const mt = new THREE.Matrix4(), c = new THREE.Color();
+        trees.forEach(([x, z], i) => {
+          const s = 0.8 + hash(Math.round(x * 5) + Math.round(z * 3)) * 0.5, h = H(x, z);
+          trunk.setMatrixAt(i, mt.makeTranslation(x, h + 1.4 * s + 0.17, z).multiply(new THREE.Matrix4().makeScale(s, s, s)));
+          leaf.setMatrixAt(i, mt.makeTranslation(x, h + 3.4 * s + 0.17, z).multiply(new THREE.Matrix4().makeScale(s * 1.1, s * 1.25, s * 1.1)));
+          leaf.setColorAt(i, c.setHSL(0.26 + hash(i * 7 + Math.round(x)) * 0.06, 0.42, 0.26 + hash(i * 3) * 0.1));
+        });
+        trunk.castShadow = leaf.castShadow = true;
+        g.add(trunk, leaf);
+      }
+      // 電柱と電線
+      if (poles.length) {
+        const n = poles.length;
+        const shaft = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.13, 0.18, 10.5, 8), m.pole, n);
+        const arm = new THREE.InstancedMesh(new THREE.BoxGeometry(0.1, 0.1, 1.5), m.dark, n);
+        const trs = poles.filter((p) => p.tr);
+        const tr = trs.length ? new THREE.InstancedMesh(new THREE.CylinderGeometry(0.28, 0.28, 0.9, 10), m.pole, trs.length) : null;
+        const mt = new THREE.Matrix4(), rot = new THREE.Matrix4();
+        const wires = [];
+        poles.forEach((p, i) => {
+          const h = H(p.x, p.z);
+          shaft.setMatrixAt(i, mt.makeTranslation(p.x, h + 5.25, p.z));
+          arm.setMatrixAt(i, mt.makeTranslation(p.x, h + 9.6, p.z).multiply(rot.makeRotationY(-p.ang)));
+          p.h = h;
+        });
+        trs.forEach((p, i) => tr.setMatrixAt(i, mt.makeTranslation(p.x + Math.sin(p.ang) * 0.35, p.h + 8.2, p.z - Math.cos(p.ang) * 0.35)));
+        for (const p of poles) {
+          const a = p.prev;
+          if (!a) continue;
+          // 腕の両端と真ん中の3本、少し下に通信線。たるみをつける
+          const sa = Math.sin(a.ang), ca = Math.cos(a.ang), sb = Math.sin(p.ang), cb = Math.cos(p.ang);
+          for (const [o, y] of [[-0.65, 9.62], [0, 9.62], [0.65, 9.62], [0.2, 7.6]]) {
+            const x0 = a.x + sa * o, z0 = a.z - ca * o, y0 = a.h + y, x1 = p.x + sb * o, z1 = p.z - cb * o, y1 = p.h + y;
+            const L = Math.hypot(x1 - x0, z1 - z0), sag = L * 0.025;
+            let px = x0, py = y0, pz = z0;
+            for (let k = 1; k <= 8; k++) {
+              const t = k / 8, x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t, yy = y0 + (y1 - y0) * t - Math.sin(t * Math.PI) * sag;
+              wires.push(px, py, pz, x, yy, z);
+              (px = x), (py = yy), (pz = z);
+            }
+          }
+        }
+        shaft.castShadow = arm.castShadow = true;
+        g.add(shaft, arm);
+        if (tr) g.add(tr);
+        if (wires.length) {
+          const wg = new THREE.BufferGeometry();
+          wg.setAttribute("position", new THREE.Float32BufferAttribute(wires, 3));
+          g.add(new THREE.LineSegments(wg, m.wire));
+        }
+      }
+      return g;
+    }
+    // 横断歩道の1本ぶん(位置とuv)
+    function stripe(sx, sz, ex, ez, ix, iz) {
+      const hw = 0.225, len = 4;
+      const P = [
+        [sx - ex * hw, sz - ez * hw],
+        [sx + ex * hw, sz + ez * hw],
+        [sx + ex * hw + ix * len, sz + ez * hw + iz * len],
+        [sx - ex * hw + ix * len, sz - ez * hw + iz * len],
+      ];
+      const v = (k) => [P[k][0], H(P[k][0], P[k][1]) + 0.078, P[k][1]];
+      return [[...v(0), ...v(1), ...v(2), ...v(0), ...v(2), ...v(3)], [0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1]];
+    }
+    // ---- センターライン・車線(走っている道だけ。測った道幅から) ----
+    let marks = null;
+    function paintRoute(along) {
+      const THREE = T();
+      const pos = [];
+      const put = (ax, az, bx, bz, w) => {
+        const L = Math.hypot(bx - ax, bz - az);
+        if (L < 0.05) return;
+        const nx = (-(bz - az) / L) * (w / 2), nz = ((bx - ax) / L) * (w / 2);
+        const ha = H(ax, az) + 0.08, hb = H(bx, bz) + 0.08;
+        pos.push(ax - nx, ha, az - nz, bx - nx, hb, bz - nz, bx + nx, hb, bz + nz, ax - nx, ha, az - nz, bx + nx, hb, bz + nz, ax + nx, ha, az + nz);
+      };
+      const i0 = Math.max(0, Math.floor((along - 40) / STEP)), i1 = Math.min(raw.length - 1, Math.ceil((along + 420) / STEP));
+      for (let i = i0; i < i1; i++) {
+        const a = raw[i], b = raw[i + 1];
+        if (!a || !b || a.cross || b.cross) continue;
+        const W = (a.L + a.R + b.L + b.R) / 2;
+        if (W < 5.5) continue;
+        const pa = at(i * STEP), pb = at((i + 1) * STEP);
+        // 道の真ん中(センターラインのずれを、測った左右の幅で直す)
+        const ca = (a.L - a.R) / 2, cb = (b.L - b.R) / 2;
+        const ax = pa.x + pa.tz * ca, az = pa.z - pa.tx * ca, bx = pb.x + pb.tz * cb, bz = pb.z - pb.tx * cb;
+        const half = W / 2, lanes = Math.max(1, Math.floor(half / 3));
+        if (lanes >= 2 || i % 2 === 0) put(ax, az, bx, bz, 0.15); // 2車線以上は実線、それ以外は破線(4mおき)
+        if (lanes >= 2 && i % 3 !== 2)
+          for (let k = 1; k < lanes; k++)
+            for (const sg of [-1, 1]) {
+              const o = (sg * half * k) / lanes;
+              put(ax + pa.tz * o, az - pa.tx * o, bx + pb.tz * o, bz - pb.tx * o, 0.12);
+            }
+      }
+      if (marks) (scene.remove(marks), marks.geometry.dispose());
+      if (!pos.length) return (marks = null);
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+      geo.computeVertexNormals();
+      marks = new THREE.Mesh(geo, mats().line);
+      marks.visible = visible;
+      scene.add(marks);
+    }
+    // ---- 読み込み ----
+    function startWorker() {
+      if (worker) return;
+      const me = document.querySelector('script[src*="js/city.js"]');
+      const v = me && me.src.includes("?") ? "?" + me.src.split("?")[1] : "";
+      worker = new Worker("js/plateau-worker.js" + v);
+      worker.postMessage({ type: "init", route: { xy: route.xy, lat0: route.lat0, lon0: route.lon0, kx: route.kx, kz: route.kz }, clear: 3.5 });
+      worker.onmessage = (e) => {
+        const w = waiting.get(e.data.id);
+        waiting.delete(e.data.id);
+        if (w) w(e.data);
+      };
+    }
+    async function get(url) {
+      try {
+        const c = await caches.open("city-roads-v1");
+        const hit = await c.match(url);
+        if (hit) return hit.status === 204 ? null : hit.arrayBuffer();
+        const res = await fetch(url);
+        if (res.status === 404 || res.status === 403) {
+          c.put(url, new Response(null, { status: 204 })).catch(() => {});
+          return null;
+        }
+        if (!res.ok) throw new Error(res.status);
+        c.put(url, res.clone()).catch(() => {});
+        return res.arrayBuffer();
+      } catch (e) {
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        return res.arrayBuffer();
+      }
+    }
+    function want(along) {
+      if (!IDX.length) return;
+      const need = new Map();
+      const ahead = Math.min(2500, Math.max(500, (sim ? sim.v * sim.speedX : 7) * 18));
+      for (let d = -100; d <= ahead; d += 150) {
+        const p = at(along + d);
+        const lat = route.lat0 - p.z / route.kz, lon = route.lon0 + p.x / route.kx;
+        const cx = Math.floor(((lon + 180) / 360) * NT), cy = Math.floor(((1 - Math.asinh(Math.tan((lat * Math.PI) / 180)) / Math.PI) / 2) * NT);
+        for (let dx = -1; dx <= 1; dx++)
+          for (let dy = -1; dy <= 1; dy++) {
+            const r = tileRect(cx + dx, cy + dy);
+            const dist = Math.hypot(Math.max(r[0] - p.x, 0, p.x - r[2]), Math.max(r[1] - p.z, 0, p.z - r[3]));
+            const key = cx + dx + ":" + (cy + dy);
+            if (dist < 160 && (!need.has(key) || need.get(key) > dist + Math.max(0, d))) need.set(key, dist + Math.max(0, d));
+          }
+      }
+      for (const key of need.keys()) if (!tl.has(key)) tl.set(key, { state: "wait" }), queue.push(key);
+      queue = queue.filter((k) => need.has(k) && tl.get(k).state === "wait");
+      queue.sort((a, b) => need.get(a) - need.get(b));
+      // 通り過ぎた区画の見た目は片づける(道幅の値は残す)
+      const p0 = at(along);
+      for (const [key, t] of tl) {
+        if (!t.group || need.has(key)) continue;
+        const r = t.rect;
+        if (Math.hypot(Math.max(r[0] - p0.x, 0, p0.x - r[2]), Math.max(r[1] - p0.z, 0, p0.z - r[3])) > 700) {
+          scene.remove(t.group);
+          t.group.traverse((o) => o.geometry && o.geometry.dispose());
+          t.group = null;
+        }
+      }
+      pump();
+    }
+    async function pump() {
+      if (busy >= 2 || !queue.length) return;
+      const key = queue.shift();
+      const t = tl.get(key);
+      if (!t || t.state !== "wait") return pump();
+      t.state = "load";
+      busy++;
+      try {
+        const [x, y] = key.split(":").map(Number);
+        const lat = latOf(y + 0.5), lon = lonOf(x + 0.5);
+        const bufs = [];
+        for (const c of IDX)
+          for (const [u, b, mz, lod] of [[c[2], c[3], c[4], 2], [c[5], c[6], c[7], 1]]) {
+            if (!u || !b || lon < b[0] - 0.01 || lon > b[2] + 0.01 || lat < b[1] - 0.01 || lat > b[3] + 0.01) continue;
+            if (mz && mz < Z) continue;
+            const buf = await get(u.replace("{z}", Z).replace("{x}", x).replace("{y}", y));
+            if (buf) bufs.push({ buf, lod });
+          }
+        let polys = [];
+        if (bufs.length) {
+          startWorker();
+          const id = Math.random();
+          const d = await new Promise((res) => {
+            waiting.set(id, res);
+            worker.postMessage({ type: "mvt", id, bufs, z: Z, x, y }, bufs.map((b) => b.buf));
+          });
+          if (d.error) throw new Error(d.error);
+          polys = d.polys;
+        }
+        for (const p of polys) addPoly(p);
+        t.rect = tileRect(x, y);
+        t.polys = polys;
+        measureRect(t.rect);
+        t.group = buildTile(polys, t.rect);
+        t.group.visible = visible;
+        scene.add(t.group);
+        t.state = "ok";
+      } catch (e) {
+        fails++;
+        t.state = "fail";
+      }
+      busy--;
+      pump();
+    }
+    function update(along, dt) {
+      if ((stripT += dt) > 1.2) {
+        stripT = 0;
+        paintRoute(along);
+        if (stripDirty) (stripDirty = false), rebuildStrip();
+      }
+    }
+    return {
+      want,
+      update,
+      ride,
+      left: () => queue.length + busy,
+      fails: () => fails,
+      setVisible(v) {
+        visible = v;
+        for (const t of tl.values()) if (t.group) t.group.visible = v;
+        if (marks) marks.visible = v;
+      },
+    };
+  })();
+  // ルートの帯(走る位置にそって細く)
+  function rebuildStrip() {
+    const THREE = T();
+    const pos = [];
+    const n = Math.ceil(route.length / 3);
+    let prev = null;
+    for (let i = 0; i <= n; i++) {
+      const al = Math.min(route.length, i * 3), p = at(al), r = Roads.ride(al), o = r ? r.off : 0;
+      const x = p.x + p.tz * o, z = p.z - p.tx * o, y = H(x, z) + 0.1;
+      if (prev) {
+        const dx = x - prev[0], dz = z - prev[2], L = Math.hypot(dx, dz) || 1, nx = (-dz / L) * 0.32, nz = (dx / L) * 0.32;
+        pos.push(prev[0] - nx, prev[1], prev[2] - nz, x - nx, y, z - nz, x + nx, y, z + nz, prev[0] - nx, prev[1], prev[2] - nz, x + nx, y, z + nz, prev[0] + nx, prev[1], prev[2] + nz);
+      }
+      prev = [x, y, z];
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    if (routeStrip) routeStrip.geometry.dispose(), (routeStrip.geometry = geo);
+  }
+  // 地面の高さ(出発地点=0)
+  const H = (x, z) => Terrain.h(x, z);
 
   // 実物の建物が届いた所では、地図の(仮の)建物を隠す
   function syncPlaceholders() {
@@ -1187,13 +1870,14 @@ const City = (() => {
         ray.tick = 0;
         const p = at(s.along);
         const g = groundAt(p.x, p.z);
-        if (g != null && Math.abs(g) < 60) {
-          groundH += g * 0.6;
+        const want = H(p.x, p.z);
+        if (g != null && Math.abs(g - want) < 60) {
+          groundH += (g - want) * 0.6;
           place(s.along, true);
         }
         const r = at(s.rAlong);
         const gr = Math.hypot(r.x - p.x, r.z - p.z) < 600 ? groundAt(r.x - r.tz * 1.3, r.z + r.tx * 1.3) : null;
-        ray.rival = gr != null && Math.abs(gr) < 40 ? gr : 0;
+        ray.rival = gr != null && Math.abs(gr - H(r.x, r.z)) < 40 ? gr : H(r.x, r.z);
       }
       camera.updateMatrixWorld();
       tiles.setResolutionFromRenderer(camera, renderer);
@@ -1250,6 +1934,7 @@ const City = (() => {
     if (ground) ground.position.y = g ? -3 : 0;
     for (const [, m] of photos) m.visible = !g && !!m.material.map;
     Plateau.setVisible(!g);
+    Roads.setVisible(!g);
     $("ct-gm").hidden = !g;
   }
 
@@ -1283,9 +1968,23 @@ const City = (() => {
       const lonOf = (v) => (v / n) * 360 - 180, latOf = (v) => (Math.atan(Math.sinh(Math.PI * (1 - (2 * v) / n))) * 180) / Math.PI;
       const a = project(latOf(y), lonOf(x)), b = project(latOf(y), lonOf(x + 1)), c = project(latOf(y + 1), lonOf(x + 1)), d = project(latOf(y + 1), lonOf(x));
       const h = z === 18 ? 0.014 : z === 17 ? 0.01 : 0.006;
+      // 坂にそわせるため、8×8 に分けて高さをつける
+      const N = 8, P = [], U = [];
+      const pt = (i, j) => {
+        const u = i / N, v = j / N;
+        const x = a[0] + (b[0] - a[0]) * u + (d[0] - a[0]) * v, z = a[1] + (b[1] - a[1]) * u + (d[1] - a[1]) * v;
+        return [x, h + H(x, z), z, u, 1 - v];
+      };
+      for (let j = 0; j < N; j++)
+        for (let i = 0; i < N; i++)
+          for (const [ii, jj] of [[i, j], [i, j + 1], [i + 1, j + 1], [i, j], [i + 1, j + 1], [i + 1, j]]) {
+            const q = pt(ii, jj);
+            P.push(q[0], q[1], q[2]);
+            U.push(q[3], q[4]);
+          }
       const geo = new THREE.BufferGeometry();
-      geo.setAttribute("position", new THREE.Float32BufferAttribute([a[0], h, a[1], d[0], h, d[1], c[0], h, c[1], a[0], h, a[1], c[0], h, c[1], b[0], h, b[1]], 3));
-      geo.setAttribute("uv", new THREE.Float32BufferAttribute([0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1], 2));
+      geo.setAttribute("position", new THREE.Float32BufferAttribute(P, 3));
+      geo.setAttribute("uv", new THREE.Float32BufferAttribute(U, 2));
       const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xa9aec4 }));
       mesh.visible = false;
       mesh.userData.g3hide = true;
@@ -1767,6 +2466,8 @@ const City = (() => {
     lights.sun.color.setHex(c.sun[0]);
     lights.sun.intensity = c.sun[1];
     lights.sun.position.set(...c.sun[2]);
+    const sd = new THREE.Vector3(...c.sun[2]).normalize();
+    lights.sun.userData.dir = [sd.x, sd.y, sd.z];
     if (mats) {
       mats.bld.emissiveIntensity = c.glow;
       for (const f of mats.fac) f.emissiveIntensity = c.win;
@@ -1779,6 +2480,28 @@ const City = (() => {
   }
   let photoTint = 0xffffff;
 
+  // 地面: 自分のまわり1.6km四方を、標高にそった網にする(200m動いたら作り直す)
+  let groundAt = null;
+  function updateGround(p) {
+    const THREE = T();
+    if (groundAt && Math.hypot(p.x - groundAt[0], p.z - groundAt[1]) < 200) return;
+    groundAt = [p.x, p.z];
+    const S = 1600, N = 64;
+    const geo = new THREE.PlaneGeometry(S, S, N, N);
+    geo.rotateX(-Math.PI / 2);
+    const a = geo.attributes.position;
+    for (let i = 0; i < a.count; i++) {
+      const x = a.getX(i) + p.x, z = a.getZ(i) + p.z;
+      a.setXYZ(i, x, H(x, z) - 0.12, z);
+    }
+    geo.computeVertexNormals();
+    ground.geometry.dispose();
+    ground.geometry = geo;
+    ground.rotation.x = 0;
+    ground.position.set(0, 0, 0);
+    ground.receiveShadow = true;
+  }
+
   function init3D() {
     const THREE = T();
     const el = $("ct-view");
@@ -1790,7 +2513,18 @@ const City = (() => {
     scene.fog = new THREE.Fog(0x6a4a66, 120, 620);
     lights.hemi = new THREE.HemisphereLight(0xaab4ff, 0x3a3038, 0.85);
     lights.sun = new THREE.DirectionalLight(0xffb070, 0.9);
-    scene.add(lights.hemi, lights.sun);
+    scene.add(lights.hemi, lights.sun, lights.sun.target);
+    // 影(PCだけ。自分のまわり140m四方に、建物・木・電柱・自転車の影を落とす)
+    if (innerWidth >= 900) {
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      const sh = lights.sun.shadow;
+      lights.sun.castShadow = true;
+      sh.mapSize.set(2048, 2048);
+      Object.assign(sh.camera, { left: -70, right: 70, top: 70, bottom: -70, near: 1, far: 400 });
+      sh.bias = -0.0008;
+      sh.normalBias = 0.04;
+    }
     camera = new THREE.PerspectiveCamera(60, 1, 0.3, 1400);
     ground = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.MeshLambertMaterial({ color: 0x23272b }));
     ground.rotation.x = -Math.PI / 2;
@@ -1842,7 +2576,7 @@ const City = (() => {
     // ゴールの門
     const g = at(route.length);
     const gate = new THREE.Mesh(new THREE.TorusGeometry(5, 0.35, 8, 24, Math.PI), new THREE.MeshBasicMaterial({ color: 0xffc44d }));
-    gate.position.set(g.x, 0, g.z);
+    gate.position.set(g.x, H(g.x, g.z), g.z);
     gate.rotation.y = -Math.atan2(g.tz, g.tx) + Math.PI / 2;
     scene.add(gate);
   }
@@ -1866,6 +2600,7 @@ const City = (() => {
     const foe = Battle.foeOf(Battle.state(sim.ride));
     rival.g.add(nameTag(foe.name, "#ff4455"));
     GB = garageBikers(me, rival);
+    for (const b of [me, rival]) b.g.traverse((o) => o.isMesh && (o.castShadow = true));
     if (typeof MonsterArt !== "undefined") MonsterArt.load();
     Battle.deal(sim.ride);
     buildRouteStrip();
@@ -1873,6 +2608,7 @@ const City = (() => {
     photoStyle();
     wantPhotos(0);
     Plateau.want(0);
+    Roads.want(0);
     hudDuel();
     // 最初の街が出るまで待つ(長くても40秒。出なければ道の線だけで走り出す)
     sim.paused = true;
@@ -1904,7 +2640,9 @@ const City = (() => {
     else s.stamina = Math.min(1, s.stamina + dt / 45);
     const P = s.brake ? 0 : want ? (s.sprint && s.stamina > 0.02 ? 620 : s.auto && !s.pedal ? 150 : 270) : 0;
     const v = Math.max(s.v, 1.2);
-    let F = P / v - 0.5 * 1.2 * 0.32 * s.v * s.v - 0.005 * s.mass * 9.81 * (s.v > 0.05 ? 1 : 0);
+    // 勾配: 上りは重力が後ろへ、下りは前へ(sin ≒ 勾配/100)
+    s.grade = Terrain.grade(s.along);
+    let F = P / v - 0.5 * 1.2 * 0.32 * s.v * s.v - 0.005 * s.mass * 9.81 * (s.v > 0.05 ? 1 : 0) - s.mass * 9.81 * (s.grade / 100);
     if (s.brake) F -= s.mass * 4;
     // 曲がり角では、曲がれる速さまで自動で落とす
     const turn = turnAhead(s.along);
@@ -1916,7 +2654,9 @@ const City = (() => {
     // ライバル: 決めたペースを中心に、少し速くなったり遅くなったりする
     const rt = turnAhead(s.rAlong);
     const rmax = rt > 75 ? 16 / KMH : rt > 50 ? 23 / KMH : rt > 28 ? 31 / KMH : 99;
-    const target = Math.min(rmax, s.rivalV * (1 + 0.09 * Math.sin(s.t / 37) + 0.05 * Math.sin(s.t / 11 + 2)));
+    // ライバルも、上りでは遅く・下りでは速く(1%で約7%)
+    const rg = Terrain.grade(s.rAlong);
+    const target = Math.min(rmax, s.rivalV * Math.max(0.45, Math.min(1.3, 1 - rg * 0.07)) * (1 + 0.09 * Math.sin(s.t / 37) + 0.05 * Math.sin(s.t / 11 + 2)));
     s.rV += Math.max(-4, Math.min(0.55, target - s.rV)) * Math.min(1, dt * 1.2);
     s.rAlong = Math.min(route.length, s.rAlong + s.rV * dt);
     s.t += dt;
@@ -2120,7 +2860,11 @@ const City = (() => {
     if (G3.on() && (s.credT = (s.credT || 0) + 1) % 8 === 1) $("ct-gm-cred").textContent = G3.credits();
     $("ct-speed").textContent = (s.v * KMH).toFixed(0);
     if ((s.whereT = (s.whereT || 0) + 1) % 6 === 1) whereAmI();
+    const gr = Terrain.grade(s.along);
     $("ct-power").textContent = `${s.power || 0} W`;
+    const ge = $("ct-grade");
+    ge.textContent = Terrain.ok() ? `${gr >= 0 ? "▲" : "▼"} ${Math.abs(gr).toFixed(1)}%` : "";
+    ge.className = "ct-grade " + (gr > 2 ? "up" : gr < -2 ? "down" : "");
     $("ct-remain").textContent = `ゴールまで ${((route.length - s.along) / 1000).toFixed(2)} km`;
     const gap = s.along - s.rAlong;
     const el = $("ct-gap");
@@ -2258,9 +3002,15 @@ const City = (() => {
     }
   }
 
+  // side: 走る位置(車道の左端から約0.9m)から、さらに右へ何m
+  function riderPos(along, side) {
+    const p = at(along), r = Roads.ride(along), o = (r ? r.off : 0) - side;
+    const x = p.x + p.tz * o, z = p.z - p.tx * o;
+    return { x, z, y: H(x, z), tx: p.tx, tz: p.tz };
+  }
   function placeBiker(b, along, side, dt, v, pedaling) {
-    const p = at(along);
-    b.g.position.set(p.x - p.tz * side, 0, p.z + p.tx * side);
+    const p = riderPos(along, side);
+    b.g.position.set(p.x, p.y, p.z);
     b.g.rotation.y = -Math.atan2(p.tz, p.tx);
     b.pose(pedaling ? dt * 9 : 0, (v * dt) / 0.34);
     return p;
@@ -2280,24 +3030,31 @@ const City = (() => {
         if (s.paused) break;
       }
       if (s.along >= route.length - 0.5) finish();
-      if ((s.tileT = (s.tileT || 0) + real) > 1.5) (s.tileT = 0), wantTiles(s.along), G3.on() || (wantPhotos(s.along), Plateau.want(s.along));
+      if ((s.tileT = (s.tileT || 0) + real) > 1.5) (s.tileT = 0), wantTiles(s.along), Roads.want(s.along), G3.on() || (wantPhotos(s.along), Plateau.want(s.along));
     }
     const p = placeBiker(me, s.along, 0, real * s.speedX, s.v, (s.auto || s.pedal) && !s.brake && !s.paused);
-    placeBiker(rival, s.rAlong, 1.3, real * s.speedX, s.rV, !s.paused);
-    rival.g.position.y = G3.on() ? G3.rivalY() : 0;
+    placeBiker(rival, s.rAlong, 1.1, real * s.speedX, s.rV, !s.paused);
+    if (G3.on()) rival.g.position.y = G3.rivalY();
     const myPed = (s.auto || s.pedal) && !s.brake && !s.paused && !s.done;
     if (GB) GB.update(real * s.speedX, myPed, s.paused ? 0 : s.v, !s.paused && !s.done, s.paused ? 0 : s.rV);
     Mons.update(real * Math.min(4, s.speedX));
     // 追いかけるカメラ(後ろ上から。速いほど少し引いて、視野を広げる)
     const back = 6.5 + s.v * 0.18, up = 2.9 + s.v * 0.05;
-    const want = new THREE.Vector3(p.x - p.tx * back, up, p.z - p.tz * back);
+    const want = new THREE.Vector3(p.x - p.tx * back, p.y + up, p.z - p.tz * back);
     if (!s.camPos) s.camPos = want.clone();
     s.camPos.lerp(want, Math.min(1, real * 3.2));
     camera.position.copy(s.camPos);
-    camera.lookAt(p.x + p.tx * 9, 1.2, p.z + p.tz * 9);
+    camera.lookAt(p.x + p.tx * 9, p.y + 1.2, p.z + p.tz * 9);
     camera.fov = 58 + Math.min(16, s.v * 1.1);
     camera.updateProjectionMatrix();
-    ground.position.set(p.x, 0, p.z);
+    updateGround(p);
+    if (lights.sun.castShadow) {
+      const d = lights.sun.userData.dir || [0, 1, 0];
+      lights.sun.position.set(p.x + d[0] * 150, p.y + d[1] * 150, p.z + d[2] * 150);
+      lights.sun.target.position.set(p.x, p.y, p.z);
+      lights.sun.target.updateMatrixWorld();
+    }
+    Roads.update(s.along, real);
     G3.update(real);
     renderer.render(scene, camera);
     if ((s.hudT = (s.hudT || 0) + real) > 0.12) (s.hudT = 0), hud();
@@ -2322,8 +3079,18 @@ const City = (() => {
   }
 
   // ---------- はじめの画面 ----------
+  // 自宅: この端末にだけ保存(住所は公開のページに書かない)
+  const homeOf = () => {
+    try {
+      return JSON.parse(localStorage.getItem("city_home") || "null");
+    } catch (e) {
+      return null;
+    }
+  };
   function placeOptions() {
     const list = STATIONS.slice();
+    const home = homeOf();
+    if (home && home.lat) list.unshift({ name: "🏠 自宅", lat: home.lat, lon: home.lon });
     const saved = (typeof Store !== "undefined" && Store.places) || [];
     for (const p of saved) if (p.lat && p.lon) list.push({ name: "📍 " + p.name, lat: p.lat, lon: p.lon });
     return list;
@@ -2349,6 +3116,10 @@ const City = (() => {
         } catch (e) {}
       }
       makeRoute(pts);
+      msg.textContent = "坂(標高)を調べています…";
+      try {
+        await Terrain.prepare();
+      } catch (e) {}
     } catch (e) {
       $("ct-go").disabled = false;
       return (msg.textContent = "ルートを取れませんでした。通信を確かめて、もう一度お試しください");
@@ -2369,11 +3140,51 @@ const City = (() => {
     $("ct-auto").checked = sim.auto;
   }
   function bind() {
-    const list = placeOptions();
-    const opt = (sel) => list.map((p, i) => `<option value="${i}" ${i === sel ? "selected" : ""}>${esc(p.name)}</option>`).join("");
-    $("ct-from").innerHTML = opt(0);
-    $("ct-to").innerHTML = opt(1);
-    $("ct-go").onclick = begin;
+    // 出発・目的地の選択肢。前回選んだもの(なければ 出発=自宅か荻窪駅、目的地=池袋駅)
+    const fill = () => {
+      const list = placeOptions();
+      let last = {};
+      try {
+        last = JSON.parse(localStorage.getItem("city_last") || "{}");
+      } catch (e) {}
+      const idx = (name, def) => {
+        const i = list.findIndex((p) => p.name === name);
+        return i >= 0 ? i : Math.max(0, list.findIndex((p) => p.name === def));
+      };
+      const opt = (sel) => list.map((p, i) => `<option value="${i}" ${i === sel ? "selected" : ""}>${esc(p.name)}</option>`).join("");
+      $("ct-from").innerHTML = opt(idx(last.from, homeOf() ? "🏠 自宅" : "荻窪駅"));
+      $("ct-to").innerHTML = opt(idx(last.to, "池袋駅"));
+    };
+    fill();
+    const saveLast = () => {
+      const list = placeOptions();
+      try {
+        localStorage.setItem("city_last", JSON.stringify({ from: (list[+$("ct-from").value] || {}).name, to: (list[+$("ct-to").value] || {}).name }));
+      } catch (e) {}
+    };
+    $("ct-from").onchange = $("ct-to").onchange = saveLast;
+    // 自宅の登録: 住所を国土地理院の住所検索で緯度経度にして、この端末に保存
+    const hm = homeOf();
+    $("ct-home-now").textContent = hm ? `登録済み: ${hm.label || ""}` : "未登録";
+    $("ct-home-save").onclick = async () => {
+      const q = $("ct-home").value.trim();
+      if (!q) return;
+      $("ct-home-now").textContent = "住所を調べています…";
+      try {
+        const res = await fetch("https://msearch.gsi.go.jp/address-search/AddressSearch?q=" + encodeURIComponent(q));
+        const r = (await res.json())[0];
+        if (!r) throw new Error("none");
+        const [lon, lat] = r.geometry.coordinates;
+        localStorage.setItem("city_home", JSON.stringify({ lat, lon, label: r.properties.title }));
+        localStorage.setItem("city_last", JSON.stringify({ from: "🏠 自宅", to: (placeOptions()[+$("ct-to").value] || {}).name || "池袋駅" }));
+        $("ct-home").value = "";
+        $("ct-home-now").textContent = `登録済み: ${r.properties.title}`;
+        fill();
+      } catch (e) {
+        $("ct-home-now").textContent = "住所が見つかりませんでした。番地まで入れてみてください";
+      }
+    };
+    $("ct-go").onclick = () => (saveLast(), begin());
     const hold = (id, key) => {
       const el = $(id);
       const on = (e) => (e.preventDefault(), sim && (sim[key] = true));
@@ -2451,5 +3262,5 @@ const City = (() => {
   }
 
   if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", bind);
-  return { at, turnAhead, readTile, _state: () => ({ sim, route, tiles, failed, camera, Plateau }) };
+  return { at, turnAhead, readTile, _state: () => ({ sim, route, tiles, failed, camera, Plateau, Roads }), ride: (a) => Roads.ride(a) };
 })();

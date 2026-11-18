@@ -104,3 +104,9 @@ body.city { margin: 0; overflow: hidden; background: #050608; color: #fff; font-
 .ct-gm span { font-size: 0.62rem; color: #fff; text-shadow: 0 1px 2px #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (min-width: 900px) { .ct-gm { bottom: 8px; } }
 @media (max-width: 899px) { .ct-map-state { white-space: normal; width: 88vw; text-align: center; font-size: 0.66rem; } }
+.ct-g3 input[type="text"] { width: 100%; box-sizing: border-box; padding: 9px; margin-top: 4px; font-size: 0.95rem; background: #11151c; color: #fff; border: 1px solid #2a3140; border-radius: 4px; }
+.ct-g3 summary small { color: #8a93a2; margin-left: 6px; }
+/* 勾配 */
+.ct-grade { font-size: 0.95rem; font-weight: 800; color: #dfe4ec; }
+.ct-grade.up { color: #ffb36b; }
+.ct-grade.down { color: #7fd8ff; }
