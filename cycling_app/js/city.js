@@ -439,6 +439,7 @@ const City = (() => {
       const PAL = [[0.82, 0.8, 0.76], [0.7, 0.72, 0.76], [0.86, 0.84, 0.8], [0.62, 0.6, 0.6], [0.78, 0.7, 0.62], [0.66, 0.7, 0.72]];
       for (const [id, h0, ll] of data.b) {
         if (!isNear(project(ll[0], ll[1]))) continue;
+        if (plateauOn && Plateau.covers(ll[0], ll[1])) continue; // 実物の建物(PLATEAU)で出す
         const pts = [];
         for (let i = 0; i < ll.length; i += 2) pts.push(project(ll[i], ll[i + 1]));
         if (pts.length > 3 && pts[0][0] === pts[pts.length - 1][0] && pts[0][1] === pts[pts.length - 1][1]) pts.pop();
@@ -730,6 +731,177 @@ const City = (() => {
     }
     pump();
   }
+  // ---------- 実物の建物(PLATEAU: 国土交通省の3D都市モデル) ----------
+  // 区ごとの建物データ(3D Tiles)から、ルートの近くの区画(約500m四方)だけを読み、ワーカーで座標を直して置く。
+  // 一度読んだ区画は端末(Cache Storage)に残す。走る道に重なる建物はワーカーが外す。
+  let plateauOn = typeof PLATEAU_INDEX !== "undefined" && (() => {
+    try {
+      const v = localStorage.getItem("city_plateau");
+      return v == null ? true : v === "1";
+    } catch (e) {
+      return true;
+    }
+  })();
+  const Plateau = (() => {
+    const IDX = typeof PLATEAU_INDEX !== "undefined" ? PLATEAU_INDEX : [];
+    let leaves = null, worker = null, waiting = new Map(), loaded = new Map(), queue = [], busy = 0, fails = 0, broken = false, prepared = null;
+    const R = () => (innerWidth < 900 ? 230 : 330); // 読む範囲(m)
+    const covers = (lat, lon) => !broken && IDX.some((c) => lon >= c[4] && lon <= c[6] && lat >= c[5] && lat <= c[7]);
+    async function cached(url, type) {
+      try {
+        const c = await caches.open("city-plateau-v1");
+        const hit = await c.match(url);
+        if (hit) return type === "json" ? hit.json() : hit.arrayBuffer();
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(res.status);
+        c.put(url, res.clone()).catch(() => {});
+        return type === "json" ? res.json() : res.arrayBuffer();
+      } catch (e) {
+        if (e && /^\d+$/.test(e.message)) throw e;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(res.status);
+        return type === "json" ? res.json() : res.arrayBuffer();
+      }
+    }
+    // ルートが通る市区町村の区画を集める
+    function prepare() {
+      if (prepared) return prepared;
+      let la0 = 90, la1 = -90, lo0 = 180, lo1 = -180;
+      for (const [la, lo] of route.points) (la0 = Math.min(la0, la)), (la1 = Math.max(la1, la)), (lo0 = Math.min(lo0, lo)), (lo1 = Math.max(lo1, lo));
+      const m = 0.006;
+      const cities = IDX.filter((c) => c[4] < lo1 + m && c[6] > lo0 - m && c[5] < la1 + m && c[7] > la0 - m);
+      const D = 180 / Math.PI;
+      prepared = Promise.all(
+        cities.map((c) =>
+          cached(c[3] + "tileset.json", "json")
+            .then((ts) => {
+              const out = [];
+              const walk = (n) => {
+                const r = n.boundingVolume && n.boundingVolume.region;
+                if (r) {
+                  const w = r[0] * D, so = r[1] * D, e = r[2] * D, no = r[3] * D;
+                  if (e < lo0 - m || w > lo1 + m || no < la0 - m || so > la1 + m) return;
+                  const uri = n.content && (n.content.uri || n.content.url);
+                  if (!(n.children && n.children.length) && uri && /\.b3dm$/.test(uri)) {
+                    const a = project(no, w), b = project(so, e);
+                    const rect = [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[0], b[0]), Math.max(a[1], b[1])];
+                    // ルートから離れた区画は使わない
+                    let near = false;
+                    for (let x = Math.floor(rect[0] / 100); x <= Math.floor(rect[2] / 100) && !near; x++) for (let z = Math.floor(rect[1] / 100); z <= Math.floor(rect[3] / 100); z++) if (route.near.has(x + ":" + z)) (near = true);
+                    if (near) out.push({ key: c[0] + "/" + uri, url: c[3] + uri, rect });
+                  }
+                }
+                for (const ch of n.children || []) walk(ch);
+              };
+              walk(ts.root);
+              return out;
+            })
+            .catch(() => (fails++, []))
+        )
+      ).then((all) => {
+        leaves = all.flat();
+        if (cities.length && !leaves.length) broken = true; // 一つも読めなかった: 地図(OSM)の建物に戻す
+        return leaves;
+      });
+      return prepared;
+    }
+    function startWorker() {
+      if (worker) return;
+      // ページと同じ版のワーカーを読む(古いものが残らないように)
+      const me = document.querySelector('script[src*="js/city.js"]');
+      const v = me && me.src.includes("?") ? "?" + me.src.split("?")[1] : "";
+      worker = new Worker("js/plateau-worker.js" + v);
+      worker.postMessage({ type: "init", route: { xy: route.xy, lat0: route.lat0, lon0: route.lon0, kx: route.kx, kz: route.kz }, clear: CLEAR });
+      worker.onmessage = (e) => {
+        const d = e.data, w = waiting.get(d.id);
+        waiting.delete(d.id);
+        if (w) w(d);
+      };
+    }
+    const rectDist = (r, p) => Math.hypot(Math.max(r[0] - p.x, 0, p.x - r[2]), Math.max(r[1] - p.z, 0, p.z - r[3]));
+    function want(along) {
+      if (!plateauOn || broken) return clear();
+      if (!leaves) return void prepare().then(() => want(along));
+      const need = new Map();
+      for (const d of [0, 250, 500]) {
+        const p = at(along + d);
+        for (const L of leaves) {
+          const dist = rectDist(L.rect, p);
+          if (dist < R() && (!need.has(L.key) || need.get(L.key) > dist + d)) need.set(L.key, dist + d);
+        }
+      }
+      for (const L of leaves) if (need.has(L.key) && !loaded.has(L.key) && !queue.includes(L)) queue.push(L);
+      queue = queue.filter((L) => need.has(L.key) && !loaded.has(L.key));
+      queue.sort((a, b) => need.get(a.key) - need.get(b.key));
+      // 遠くなった区画は片づける
+      const p0 = at(along);
+      for (const [key, t] of loaded) {
+        const L = leaves.find((x) => x.key === key);
+        if (t.mesh && L && rectDist(L.rect, p0) > 900) {
+          scene.remove(t.mesh);
+          t.mesh.geometry.dispose();
+          loaded.delete(key);
+        }
+      }
+      pump();
+    }
+    async function pump() {
+      if (busy >= 2 || !queue.length) return;
+      const L = queue.shift();
+      if (loaded.has(L.key)) return pump();
+      loaded.set(L.key, { state: "load" });
+      busy++;
+      hudMap();
+      try {
+        startWorker();
+        const buf = await cached(L.url, "bin");
+        const id = Math.random();
+        const d = await new Promise((res) => {
+          waiting.set(id, res);
+          worker.postMessage({ type: "tile", id, buf }, [buf]);
+        });
+        if (d.error) throw new Error(d.error);
+        const t = loaded.get(L.key);
+        if (t && plateauOn) {
+          const THREE = T();
+          const geo = new THREE.BufferGeometry();
+          geo.setAttribute("position", new THREE.BufferAttribute(d.pos, 3));
+          geo.setAttribute("normal", new THREE.BufferAttribute(d.nor, 3, true));
+          geo.setAttribute("uv", new THREE.BufferAttribute(d.uv, 2));
+          geo.setAttribute("color", new THREE.BufferAttribute(d.col, 3, true));
+          geo.computeBoundingSphere();
+          t.mesh = new THREE.Mesh(geo, mats.bld);
+          t.state = "ok";
+          t.names = d.names;
+          scene.add(t.mesh);
+        } else loaded.delete(L.key);
+      } catch (e) {
+        fails++;
+        loaded.set(L.key, { state: "fail" });
+      }
+      busy--;
+      hudMap();
+      pump();
+      pump();
+    }
+    function clear() {
+      queue = [];
+      for (const [, t] of loaded) if (t.mesh) (scene.remove(t.mesh), t.mesh.geometry.dispose());
+      loaded.clear();
+    }
+    return {
+      covers,
+      want,
+      clear,
+      prepare,
+      // 走り出してよいか(ルートの最初の区画が出た/読めない/区画がない)
+      ready: () => !plateauOn || broken || (leaves && (!leaves.length || [...loaded.values()].some((t) => t.state !== "load"))),
+      left: () => queue.length + busy,
+      fails: () => fails,
+      broken: () => broken,
+    };
+  })();
+
   // ---------- 地面の航空写真(国土地理院の地図タイル) ----------
   // 近くだけ細かい写真(ズーム18・1枚 約120m)。早送りのときは粗い写真にして、取りに行く枚数を減らす
   let photos = new Map(), photoOn = true;
@@ -845,7 +1017,8 @@ const City = (() => {
     const el = $("ct-map-state");
     if (!el) return;
     const n = queue.length + loading;
-    el.textContent = (n ? `街を読み込み中… 残り${n}区画` : failed ? `読めなかった区画 ${failed}(道と建物が出ない所があります)` : "") + (lastErr ? ` ・地図サーバー: ${lastErr}` : "");
+    const pn = typeof Plateau !== "undefined" && plateauOn ? Plateau.left() : 0;
+    el.textContent = (n ? `街を読み込み中… 残り${n}区画` : failed ? `読めなかった区画 ${failed}(道と建物が出ない所があります)` : "") + (pn ? ` 実物の建物を読み込み中… 残り${pn}区画` : "") + (lastErr ? ` ・地図サーバー: ${lastErr}` : "");
   }
 
   // ---------- 自転車と人(かんたんな形) ----------
@@ -1048,6 +1221,7 @@ const City = (() => {
     wantTiles(0);
     photoStyle();
     wantPhotos(0);
+    Plateau.want(0);
     hudDuel();
     // 最初の街が出るまで待つ(長くても40秒。出なければ道の線だけで走り出す)
     sim.paused = true;
@@ -1055,7 +1229,7 @@ const City = (() => {
     wait.hidden = false;
     const t0 = Date.now();
     const iv = setInterval(() => {
-      const ok = [...tiles.values()].some((t) => t.state === "ok");
+      const ok = [...tiles.values()].some((t) => t.state === "ok") && Plateau.ready();
       const sec = Math.round((Date.now() - t0) / 1000);
       wait.querySelector("small").textContent = `${sec}秒${lastErr ? " ・地図サーバー: " + lastErr + "(やり直し中)" : ""}`;
       if (ok || sec >= 40) {
@@ -1368,7 +1542,7 @@ const City = (() => {
         if (s.paused) break;
       }
       if (s.along >= route.length - 0.5) finish();
-      if ((s.tileT = (s.tileT || 0) + real) > 1.5) (s.tileT = 0), wantTiles(s.along), wantPhotos(s.along);
+      if ((s.tileT = (s.tileT || 0) + real) > 1.5) (s.tileT = 0), wantTiles(s.along), wantPhotos(s.along), Plateau.want(s.along);
     }
     const p = placeBiker(me, s.along, 0, real * s.speedX, s.v, (s.auto || s.pedal) && !s.brake && !s.paused);
     placeBiker(rival, s.rAlong, 1.3, real * s.speedX, s.rV, !s.paused);
@@ -1469,6 +1643,24 @@ const City = (() => {
     $("ct-auto").onchange = (e) => sim && (sim.auto = e.target.checked);
     $("ct-x").onchange = (e) => sim && (sim.speedX = +e.target.value);
     $("ct-bgm").onchange = (e) => (e.target.checked ? Bgm.start() : Bgm.stop());
+    $("ct-plateau").checked = plateauOn;
+    $("ct-plateau0").checked = plateauOn;
+    const setPlateau = (on) => {
+      plateauOn = on;
+      $("ct-plateau").checked = $("ct-plateau0").checked = on;
+      try {
+        localStorage.setItem("city_plateau", on ? "1" : "0");
+      } catch (e) {}
+      if (!sim) return;
+      // 地図(OSM)の建物を建て直す(PLATEAU と入れ替えるため)
+      for (const [, t] of tiles) if (t.group) (scene.remove(t.group), t.group.traverse((o) => o.geometry && o.geometry.dispose()));
+      tiles.clear();
+      queue.length = 0;
+      wantTiles(sim.along);
+      Plateau.want(sim.along);
+    };
+    $("ct-plateau").onchange = (e) => setPlateau(e.target.checked);
+    $("ct-plateau0").onchange = (e) => setPlateau(e.target.checked);
     $("ct-photo").onchange = (e) => {
       photoOn = e.target.checked;
       if (sim) photoStyle(), wantPhotos(sim.along);
@@ -1483,5 +1675,5 @@ const City = (() => {
   }
 
   if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", bind);
-  return { at, turnAhead, readTile, _state: () => ({ sim, route, tiles, failed, camera }) };
+  return { at, turnAhead, readTile, _state: () => ({ sim, route, tiles, failed, camera, Plateau }) };
 })();

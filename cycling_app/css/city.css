@@ -80,3 +80,11 @@ body.city { margin: 0; overflow: hidden; background: #050608; color: #fff; font-
 .ct-where:empty { display: none; }
 .ct-near { left: 50%; top: 24%; transform: translateX(-50%); padding: 8px 22px; font-size: 1.25rem; font-weight: 800; white-space: nowrap; background: linear-gradient(90deg, transparent, rgba(6, 9, 14, 0.85) 15%, rgba(6, 9, 14, 0.85) 85%, transparent); text-shadow: 0 2px 6px #000; animation: ct-in 0.3s ease-out; }
 .ct-map-state { top: calc(88px + env(safe-area-inset-top)) !important; }
+.ct-check small { display: block; margin-left: 24px; color: #7d8696; font-size: 0.72rem; }
+.ct-osm .short { display: none; }
+@media (max-width: 899px) {
+  .ct-osm { left: 0; right: 0; bottom: 1px; text-align: center; font-size: 0.5rem; }
+  .ct-osm .long { display: none; }
+  .ct-osm .short { display: inline; }
+  .ct-ctrl { bottom: calc(14px + env(safe-area-inset-bottom)); }
+}

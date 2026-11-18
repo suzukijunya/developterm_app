@@ -8,12 +8,12 @@
 <meta name="theme-color" content="#050608" />
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-<link rel="stylesheet" href="css/style.css?v=2026.11.61" />
-<link rel="stylesheet" href="css/duelist.css?v=2026.11.61" />
-<link rel="stylesheet" href="css/cinema.css?v=2026.11.61" />
-<link rel="stylesheet" href="css/board.css?v=2026.11.61" />
-<link rel="stylesheet" href="css/tcard.css?v=2026.11.61" />
-<link rel="stylesheet" href="css/city.css?v=2026.11.61" />
+<link rel="stylesheet" href="css/style.css?v=2026.11.62" />
+<link rel="stylesheet" href="css/duelist.css?v=2026.11.62" />
+<link rel="stylesheet" href="css/cinema.css?v=2026.11.62" />
+<link rel="stylesheet" href="css/board.css?v=2026.11.62" />
+<link rel="stylesheet" href="css/tcard.css?v=2026.11.62" />
+<link rel="stylesheet" href="css/city.css?v=2026.11.62" />
 </head>
 <body class="city">
 <div id="ct-view"></div>
@@ -26,9 +26,10 @@
   <label>目的地<select id="ct-to"></select></label>
   <label>ライバルの速さ<select id="ct-rival"><option value="22">ゆっくり(22km/h)</option><option value="25" selected>ふつう(25km/h)</option><option value="28">速い(28km/h)</option><option value="32">とても速い(32km/h)</option></select></label>
   <label class="ct-check"><input type="checkbox" id="ct-auto0" /> 自動でこぐ(見るだけ)</label>
+  <label class="ct-check"><input type="checkbox" id="ct-plateau0" checked /> 実物の建物(PLATEAU・国交省の3D都市モデル)<small>東京都内。区画ごとに約5MBを読み込みます</small></label>
   <button class="btn start" id="ct-go">スタート</button>
   <p id="ct-msg" class="ct-msg"></p>
-  <p class="ct-note">街の建物と道は OpenStreetMap の地図タイル(OpenFreeMap)から取ります。送るのは、出発と目的地の位置と、ルートが通る地図の区画(約2km四方)の番号だけです。一度取った街は端末に保存します。地面の航空写真は国土地理院の地図タイルです(同じく区画の番号だけを送ります)。<br />© OpenStreetMap contributors ・ OpenFreeMap ・ OpenMapTiles</p>
+  <p class="ct-note">街の建物と道は OpenStreetMap の地図タイル(OpenFreeMap)から取ります。送るのは、出発と目的地の位置と、ルートが通る地図の区画(約2km四方)の番号だけです。一度取った街は端末に保存します。地面の航空写真は国土地理院の地図タイル、実物の建物は国土交通省の PLATEAU です(どちらも区画の番号だけを送ります)。<br />© OpenStreetMap contributors ・ OpenFreeMap ・ OpenMapTiles</p>
 </section>
 
 <div id="ct-hud" class="ct-hud" hidden>
@@ -56,30 +57,32 @@
     <label><input type="checkbox" id="ct-voice" checked /> 声</label>
     <label><input type="checkbox" id="ct-bgm" checked /> BGM・効果音</label>
     <label><input type="checkbox" id="ct-photo" checked /> 航空写真</label>
+    <label><input type="checkbox" id="ct-plateau" checked /> 実物の建物</label>
     <a href="index.html">やめる</a>
   </div>
   <div id="ct-where" class="ct-where"></div>
   <div id="ct-near" class="ct-near" hidden></div>
   <div id="ct-map-state" class="ct-map-state"></div>
-  <div class="ct-osm">© OpenStreetMap contributors ・ OpenFreeMap ・ 航空写真: 国土地理院</div>
+  <div class="ct-osm"><span class="long">© OpenStreetMap contributors ・ OpenFreeMap ・ 航空写真: 国土地理院 ・ 建物: PLATEAU(国土交通省)</span><span class="short">© OSM・OpenFreeMap・国土地理院・PLATEAU(国交省)</span></div>
 </div>
 <div id="ct-wait" class="ct-wait" hidden><b>街を読み込み中…</b><small></small></div>
 <div id="ct-result" class="ct-result" hidden></div>
 
 <script src="https://unpkg.com/three@0.149.0/build/three.min.js"></script>
-<script src="js/store.js?v=2026.11.61"></script>
-<script src="js/nav.js?v=2026.11.61"></script>
-<script src="js/physics.js?v=2026.11.61"></script>
-<script src="js/eta.js?v=2026.11.61"></script>
-<script src="js/duel.js?v=2026.11.61"></script>
-<script src="js/battle.js?v=2026.11.61"></script>
-<script src="js/tcard.js?v=2026.11.61"></script>
-<script src="js/duelfx.js?v=2026.11.61"></script>
-<script src="js/cinema.js?v=2026.11.61"></script>
-<script src="js/board.js?v=2026.11.61"></script>
-<script src="js/monart.js?v=2026.11.61"></script>
-<script src="js/voice.js?v=2026.11.61"></script>
-<script src="js/duellines.js?v=2026.11.61"></script>
-<script src="js/city.js?v=2026.11.61"></script>
+<script src="js/store.js?v=2026.11.62"></script>
+<script src="js/nav.js?v=2026.11.62"></script>
+<script src="js/physics.js?v=2026.11.62"></script>
+<script src="js/eta.js?v=2026.11.62"></script>
+<script src="js/duel.js?v=2026.11.62"></script>
+<script src="js/battle.js?v=2026.11.62"></script>
+<script src="js/tcard.js?v=2026.11.62"></script>
+<script src="js/duelfx.js?v=2026.11.62"></script>
+<script src="js/cinema.js?v=2026.11.62"></script>
+<script src="js/board.js?v=2026.11.62"></script>
+<script src="js/monart.js?v=2026.11.62"></script>
+<script src="js/voice.js?v=2026.11.62"></script>
+<script src="js/duellines.js?v=2026.11.62"></script>
+<script src="js/plateau-index.js?v=2026.11.62"></script>
+<script src="js/city.js?v=2026.11.62"></script>
 </body>
 </html>
