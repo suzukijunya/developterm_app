@@ -73,5 +73,10 @@ body.city { margin: 0; overflow: hidden; background: #050608; color: #fff; font-
 .ct-wait b { display: block; font-size: 1.2rem; letter-spacing: 0.08em; }
 .ct-wait small { color: #cfd5df; }
 /* デュエルの盤面は、走っている画面の右上に小さく出す(街が見えたままにする) */
-.city .bd { transform-origin: 100% 0; transform: translateY(calc(62px + env(safe-area-inset-top))) scale(0.56); border: 2px solid #ffa030; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7); }
-@media (min-width: 900px) { .city .bd { transform: translateY(70px) scale(0.44); } }
+.city .bd { transform-origin: 100% 0; transform: translateY(calc(92px + env(safe-area-inset-top))) scale(0.42); border: 2px solid #ffa030; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7); }
+@media (min-width: 900px) { .city .bd { transform: translateY(96px) scale(0.42); } }
+/* いまどこ(区・町名・道の名前)と、目印の近くを通ったときの知らせ */
+.ct-where { left: 50%; top: calc(58px + env(safe-area-inset-top)); transform: translateX(-50%); max-width: 92vw; padding: 3px 14px; font-size: 0.86rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: rgba(6, 9, 14, 0.72); border-bottom: 2px solid #35d6ff; }
+.ct-where:empty { display: none; }
+.ct-near { left: 50%; top: 24%; transform: translateX(-50%); padding: 8px 22px; font-size: 1.25rem; font-weight: 800; white-space: nowrap; background: linear-gradient(90deg, transparent, rgba(6, 9, 14, 0.85) 15%, rgba(6, 9, 14, 0.85) 85%, transparent); text-shadow: 0 2px 6px #000; animation: ct-in 0.3s ease-out; }
+.ct-map-state { top: calc(88px + env(safe-area-inset-top)) !important; }

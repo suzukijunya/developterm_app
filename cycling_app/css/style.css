@@ -1492,3 +1492,7 @@ a.tab {
 .ai-voice-row select { margin-left: 6px; }
 .pack-steps { margin: 4px 0 4px 1.2em; padding: 0; line-height: 1.6; }
 .pack-steps code, .ai-voice code { font-size: 0.75em; padding: 1px 4px; border-radius: 4px; background: rgba(127, 127, 127, 0.15); user-select: all; }
+
+/* 走行中: いまいる場所(区・町名) */
+.where-now { margin: 6px 0; font-size: 0.92rem; font-weight: 700; text-align: center; color: var(--muted, #9aa3b2); }
+.where-now:empty { display: none; }

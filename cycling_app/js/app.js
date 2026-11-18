@@ -405,6 +405,7 @@
     }
     if (result !== "inaccurate") updateNav();
     if (Store.prefs.duel) duelStep();
+    updateWhere(pos);
     updateEta();
     refreshWeather(pos);
     persist(false);
@@ -412,6 +413,25 @@
   }
 
   // デュエルモード: スピードカウンターとゴーストの読み上げ
+  // いまどこを走っているか(区・町名)。250m動くか2分たったら調べ直す(地図サーバーに送りすぎないよう、20秒は空ける)
+  const whereState = { t: 0, lat: 0, lon: 0, text: "", busy: false };
+  function updateWhere(pos) {
+    if (!pos || whereState.busy || typeof Geocode === "undefined") return;
+    const now = Date.now();
+    const moved = Math.hypot((pos.lat - whereState.lat) * 110540, (pos.lon - whereState.lon) * 91000);
+    if (now - whereState.t < 20000 || (whereState.text && moved < 250 && now - whereState.t < 120000)) return;
+    Object.assign(whereState, { busy: true, t: now, lat: pos.lat, lon: pos.lon });
+    Geocode.reverse(pos.lat, pos.lon)
+      .then((txt) => {
+        if (!txt) return;
+        whereState.text = txt.replace(/^(東京都|.{2,3}[都道府県])/, "");
+        const el = document.getElementById("where-now");
+        if (el) el.textContent = "📍 " + whereState.text;
+      })
+      .catch(() => {})
+      .then(() => (whereState.busy = false));
+  }
+
   function duelStep() {
     const wind = currentWind();
     const extra = { remainM: ride.eta && !ride.eta.arrived ? ride.eta.remainM : null, headwind: wind && ride.heading != null ? Physics.headwind(wind.speed, wind.from, ride.heading) : null };
@@ -1237,6 +1257,7 @@
                 : ""
             }
           </div>
+          <div class="where-now" id="where-now">${whereState.text ? "📍 " + esc(whereState.text) : ""}</div>
           ${Store.prefs.duel ? `<div class="duel-bar" id="duelbar"></div>` : ""}
           <div class="hero">
             <div class="hero-label">消費カロリー</div>
@@ -2452,7 +2473,7 @@ print("このファイルをスマホに送って(AirDrop など)、アプリの
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2026.11.58";
+  const APP_VERSION = "2026.11.59";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });

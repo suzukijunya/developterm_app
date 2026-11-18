@@ -157,6 +157,8 @@ const City = (() => {
   // ---------- 街のデータ(OpenFreeMap の地図タイル。鍵なし・1枚 約2km四方) ----------
   const ROAD_W = { motorway: 16, trunk: 16, primary: 14, secondary: 11, tertiary: 9, unclassified: 6.5, residential: 6, living_street: 5, service: 4, pedestrian: 5, cycleway: 2.5, footway: 2.2, path: 2, steps: 2, track: 3 };
   const CLASS = { motorway: "motorway", trunk: "trunk", primary: "primary", secondary: "secondary", tertiary: "tertiary", minor: "residential", service: "service", track: "track", path: "footway", busway: "service" };
+  const WANT = new Set(["building", "transportation", "transportation_name", "place", "poi", "water", "park", "landuse", "landcover"]);
+  const AREA = { university: "campus", college: "campus", school: "campus", hospital: "hospital", cemetery: "park", stadium: "park", pitch: "park", playground: "park", railway: "rail" };
   const Z = 14, NT = 2 ** Z;
   const tileX = (lon) => Math.floor(((lon + 180) / 360) * NT);
   const tileY = (lat) => Math.floor(((1 - Math.asinh(Math.tan((lat * Math.PI) / 180)) / Math.PI) / 2) * NT);
@@ -191,7 +193,7 @@ const City = (() => {
       }
     };
     const str = (a, b) => new TextDecoder().decode(u8.subarray(a, b));
-    const out = { b: [], r: [] };
+    const out = { b: [], r: [], n: [], pl: [], poi: [], a: [] };
     let n = 0;
     each(u8.length, (f, w, a, b) => {
       if (f !== 3 || w !== 2) return;
@@ -220,7 +222,7 @@ const City = (() => {
           pos = sv;
         } else if (f2 === 5) extent = a2;
       });
-      if (name === "building" || name === "transportation") {
+      if (WANT.has(name)) {
         const toLL = (px, py) => [+tileLat(y + py / extent).toFixed(6), +tileLon(x + px / extent).toFixed(6)];
         for (const [fa, fb] of feats) {
           pos = fa;
@@ -268,6 +270,40 @@ const City = (() => {
               for (let i = 0; i < rg.length; i += 2) pts.push(...toLL(rg[i], rg[i + 1]));
               out.b.push([-(++n) - x * 131 - y * 7919 * 4096, Math.min(250, h), pts]);
             }
+          } else if (name === "transportation_name" && type === 2 && pr.name && CLASS[pr.class] && pr.class !== "path" && pr.class !== "service" && !/[;;]/.test(pr.name)) {
+            // 道の名前(いま走っている道を表示するため)
+            for (const rg of rings) {
+              const pts = [];
+              for (let i = 0; i < rg.length; i += 2) pts.push(...toLL(rg[i], rg[i + 1]));
+              out.n.push([String(pr.name), pts]);
+            }
+          } else if (name === "place" && type === 1 && pr.name && rings[0]) {
+            out.pl.push([String(pr.name), String(pr.class || ""), ...toLL(rings[0][0], rings[0][1]), +pr.rank || 99]);
+          } else if (name === "poi" && type === 1 && pr.name && rings[0]) {
+            out.poi.push([String(pr.name), String(pr.class || ""), String(pr.subclass || ""), ...toLL(rings[0][0], rings[0][1]), +pr.rank || 99]);
+          } else if ((name === "water" || name === "park" || name === "landuse" || name === "landcover") && type === 3) {
+            const kind = name === "water" ? "water" : name === "park" ? "park" : name === "landcover" ? (pr.class === "grass" || pr.class === "wood" ? "park" : "") : AREA[pr.class] || "";
+            if (!kind) continue;
+            for (const rg of rings) {
+              if (rg.length < 6) continue;
+              let area = 0;
+              for (let i = 0; i < rg.length; i += 2) {
+                const j = (i + 2) % rg.length;
+                area += rg[i] * rg[j + 1] - rg[j] * rg[i + 1];
+              }
+              if (area <= 0) continue;
+              const pts = [];
+              for (let i = 0; i < rg.length; i += 2) pts.push(...toLL(rg[i], rg[i + 1]));
+              out.a.push([kind, pts]);
+            }
+          } else if (name === "transportation" && type === 2 && (pr.class === "rail" || pr.class === "transit")) {
+            if (pr.brunnel === "tunnel") continue;
+            for (const rg of rings) {
+              if (rg.length < 4) continue;
+              const pts = [];
+              for (let i = 0; i < rg.length; i += 2) pts.push(...toLL(rg[i], rg[i + 1]));
+              out.r.push([-(++n), "rail", pts, 0]);
+            }
           } else if (name === "transportation" && type === 2) {
             const kind = pr.class === "path" && pr.subclass === "cycleway" ? "cycleway" : CLASS[pr.class];
             if (!kind) continue;
@@ -303,7 +339,7 @@ const City = (() => {
     return tmpl.replace("{z}", Z).replace("{x}", x).replace("{y}", y);
   }
   async function fetchTile(ix, iy) {
-    const key = `v3:${Z}:${ix}:${iy}`;
+    const key = `v5:${Z}:${ix}:${iy}`;
     const hit = await cacheGet(key);
     if (hit) return hit;
     try {
@@ -383,6 +419,7 @@ const City = (() => {
     mats = {
       bld: new THREE.MeshLambertMaterial({ map: tex(wall), emissiveMap: tex(glow), emissive: 0xffffff, emissiveIntensity: 0.85, vertexColors: true }),
       road: new THREE.MeshLambertMaterial({ map: tex(rd), vertexColors: true }),
+      area: new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }),
     };
   }
 
@@ -450,9 +487,10 @@ const City = (() => {
       const pos = [], nor = [], uv = [], col = [];
       for (const [id, kind, ll, tunnel] of data.r) {
         if (tunnel) continue;
-        const w = ROAD_W[kind] || 4, big = w >= 9, walk = w <= 3;
-        const y = big ? 0.05 : walk ? 0.02 : 0.035;
-        const c = walk ? [1.5, 1.42, 1.3] : [1, 1, 1];
+        const rail = kind === "rail";
+        const w = rail ? 3.6 : ROAD_W[kind] || 4, big = w >= 9, walk = w <= 3 && !rail;
+        const y = rail ? 0.07 : big ? 0.05 : walk ? 0.02 : 0.035;
+        const c = rail ? [1.9, 1.5, 1.2] : walk ? [1.5, 1.42, 1.3] : [1, 1, 1];
         const p = [];
         for (let i = 0; i < ll.length; i += 2) p.push(project(ll[i], ll[i + 1]));
         if (!isNear(p[0]) && !isNear(p[p.length - 1])) continue;
@@ -491,7 +529,165 @@ const City = (() => {
         group.add(m);
       }
     }
+    // 公園・水面・学校や病院の敷地(地面の色を変える)
+    {
+      const pos = [], col = [];
+      const COL = { water: [0.16, 0.36, 0.62], park: [0.2, 0.42, 0.24], campus: [0.42, 0.38, 0.3], hospital: [0.44, 0.32, 0.34], rail: [0.26, 0.24, 0.24] };
+      for (const [kind, ll] of data.a || []) {
+        const pts = [];
+        for (let i = 0; i < ll.length; i += 2) pts.push(project(ll[i], ll[i + 1]));
+        if (pts.length > 3 && pts[0][0] === pts[pts.length - 1][0] && pts[0][1] === pts[pts.length - 1][1]) pts.pop();
+        if (pts.length < 3 || !pts.some(isNear)) continue;
+        const c = COL[kind] || COL.park, y = kind === "water" ? 0.024 : 0.018;
+        const tri = THREE.ShapeUtils.triangulateShape(pts.map((q) => new THREE.Vector2(q[0], q[1])), []);
+        for (const t of tri)
+          for (const i of t) {
+            pos.push(pts[i][0], y, pts[i][1]);
+            col.push(c[0], c[1], c[2]);
+          }
+      }
+      if (pos.length) {
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+        geo.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+        geo.computeVertexNormals();
+        group.add(new THREE.Mesh(geo, mats.area));
+      }
+    }
+    // いまどこを走っているかを出すための名前(道・町)と、目印になる施設
+    const info = { names: [], places: [], lms: [] };
+    for (const [nm, ll] of data.n || []) {
+      const pts = [];
+      for (let i = 0; i < ll.length; i += 2) pts.push(project(ll[i], ll[i + 1]));
+      if (pts.some(isNear)) info.names.push({ name: nm, pts });
+    }
+    for (const [nm, cls, la, lo] of data.pl || []) {
+      const [x, z] = project(la, lo);
+      info.places.push({ name: nm, cls, x, z });
+    }
+    const got = new Set();
+    for (const [nm0, cls, sub, la, lo, rank] of data.poi || []) {
+      const lm = landmark(nm0, cls, sub, rank);
+      if (!lm) continue;
+      const q = project(la, lo);
+      const d = routeDist(q);
+      if (d > lm.r || got.has(lm.name)) continue;
+      got.add(lm.name);
+      info.lms.push({ name: lm.name, icon: lm.icon, x: q[0], z: q[1], along: d.along });
+      const sp = signSprite(lm);
+      sp.position.set(q[0], lm.big ? 46 : 30, q[1]);
+      group.add(sp);
+      const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, lm.big ? 44 : 28, 6), new THREE.MeshBasicMaterial({ color: lm.color, transparent: true, opacity: 0.55 }));
+      beam.position.set(q[0], (lm.big ? 44 : 28) / 2, q[1]);
+      group.add(beam);
+    }
+    group.userData.info = info;
     return group;
+  }
+  // 目印にする施設かどうか。r: ルートからこの距離(m)までなら看板を立てる
+  function landmark(name, cls, sub, rank) {
+    const L = (icon, color, r, big, nm) => ({ name: nm || name, icon, color, r, big });
+    if (cls === "railway" && /station|subway|halt|tram/.test(sub)) return L("🚉", "#3db8ff", 330, true, /駅$/.test(name) ? name : name + "駅");
+    if (cls === "college") return L("🎓", "#c79bff", 330, true);
+    if (cls === "stadium") return L("🏟️", "#ffd36b", 330, true);
+    if (cls === "hospital" && sub === "hospital" && rank <= 4) return L("🏥", "#ff8fa3", 220);
+    if (cls === "town_hall" && sub === "townhall") return L("🏛️", "#ffd36b", 220);
+    if ((cls === "museum" || cls === "attraction" || cls === "castle") && rank <= 30) return L("🏛️", "#ffd36b", 220);
+    if (cls === "park" && rank <= 6) return L("🌳", "#7be08a", 140);
+    if (cls === "place_of_worship" && rank <= 4) return L("⛩️", "#ff9a6b", 140);
+    if (cls === "school" && sub === "school" && rank <= 6) return L("🏫", "#c79bff", 110);
+    if (cls === "library" && sub === "library") return L("📚", "#9ad0ff", 110);
+    if (cls === "police" || cls === "fire_station") return L(cls === "police" ? "🚓" : "🚒", "#9ad0ff", 80);
+    if (cls === "cinema" || cls === "theatre") return L("🎭", "#ffd36b", 110);
+    return null;
+  }
+  // 点 q からルートまでの距離(近くの線分だけ調べる)。数値として使え、.along にルート上の位置が入る
+  function routeDist(q) {
+    let best = 1e9, along = 0;
+    const cx = Math.floor(q[0] / 50), cz = Math.floor(q[1] / 50), R = 7;
+    const done = new Set();
+    for (let x = cx - R; x <= cx + R; x++)
+      for (let z = cz - R; z <= cz + R; z++)
+        for (const i of route.grid.get(x + ":" + z) || []) {
+          if (done.has(i)) continue;
+          done.add(i);
+          const a = route.xy[i], b = route.xy[i + 1];
+          const vx = b[0] - a[0], vz = b[1] - a[1], L = vx * vx + vz * vz;
+          const t = L ? Math.max(0, Math.min(1, ((q[0] - a[0]) * vx + (q[1] - a[1]) * vz) / L)) : 0;
+          const d = Math.hypot(q[0] - a[0] - vx * t, q[1] - a[1] - vz * t);
+          if (d < best) (best = d), (along = route.cum[i] + Math.sqrt(L) * t);
+        }
+    const out = new Number(best);
+    out.along = along;
+    return out;
+  }
+  // 施設の名前の看板(空に浮かべる。建物の向こうでも見える)
+  function signSprite(lm) {
+    const THREE = T();
+    const cv = document.createElement("canvas");
+    cv.width = 512;
+    cv.height = 128;
+    const c = cv.getContext("2d");
+    c.font = "700 54px 'Hiragino Sans', 'Noto Sans JP', sans-serif";
+    const text = lm.name.length > 14 ? lm.name.slice(0, 13) + "…" : lm.name;
+    const w = Math.min(500, c.measureText(text).width + 110);
+    const x0 = (512 - w) / 2;
+    c.fillStyle = "rgba(6,10,20,0.86)";
+    c.fillRect(x0, 14, w, 100);
+    c.fillStyle = lm.color;
+    c.fillRect(x0, 14, w, 7);
+    c.fillRect(x0, 107, w, 7);
+    c.textBaseline = "middle";
+    c.font = "60px sans-serif";
+    c.fillText(lm.icon, x0 + 14, 66);
+    c.font = "700 54px 'Hiragino Sans', 'Noto Sans JP', sans-serif";
+    c.fillStyle = "#fff";
+    c.fillText(text, x0 + 92, 66, w - 104);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.encoding = THREE.sRGBEncoding;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
+    const k = lm.big ? 44 : 28;
+    sp.scale.set(k, k / 4, 1);
+    sp.renderOrder = 5;
+    return sp;
+  }
+  // いまいる場所: 区・町名・道の名前・近くの目印
+  function whereAmI() {
+    const p = at(sim.along);
+    let city = null, cd = 1e9, town = null, td = 1e9, road = null, rd = 22;
+    for (const t of tiles.values()) {
+      const inf = t.state === "ok" && t.group && t.group.userData.info;
+      if (!inf) continue;
+      for (const pl of inf.places) {
+        const d = Math.hypot(pl.x - p.x, pl.z - p.z);
+        if (pl.cls === "city" || pl.cls === "town") d < cd && ((cd = d), (city = pl.name));
+        else if (pl.cls === "neighbourhood" || pl.cls === "quarter") {
+          // 丁目のほうを優先(同じくらいの距離なら)
+          const dd = pl.cls === "neighbourhood" ? d : d + 250;
+          dd < td && ((td = dd), (town = pl.name));
+        }
+      }
+      for (const n of inf.names)
+        for (let i = 0; i < n.pts.length - 1; i++) {
+          const a = n.pts[i], b = n.pts[i + 1];
+          const vx = b[0] - a[0], vz = b[1] - a[1], L = vx * vx + vz * vz;
+          const tt = L ? Math.max(0, Math.min(1, ((p.x - a[0]) * vx + (p.z - a[1]) * vz) / L)) : 0;
+          const d = Math.hypot(p.x - a[0] - vx * tt, p.z - a[1] - vz * tt);
+          if (d < rd) (rd = d), (road = n.name);
+        }
+      // 目印の近くを通ったら知らせる
+      for (const lm of inf.lms) {
+        if (lm.said || Math.abs(lm.along - sim.along) > 90) continue;
+        lm.said = true;
+        const el = $("ct-near");
+        el.textContent = `${lm.icon} ${lm.name} 付近`;
+        el.hidden = false;
+        clearTimeout(whereAmI.to);
+        whereAmI.to = setTimeout(() => (el.hidden = true), 4500 / Math.min(4, sim.speedX));
+        if (sim.speedX <= 2) ticker(`${lm.icon} ${lm.name} を通過`, "you");
+      }
+    }
+    $("ct-where").textContent = city || town || road ? `📍 ${[city, town].filter(Boolean).join(" ")}${road ? " ・ " + road : ""}` : "";
   }
 
   // いまの位置のまわりの街を用意する(足りない分を順に取りに行く)
@@ -905,6 +1101,7 @@ const City = (() => {
   function hud() {
     const s = sim;
     $("ct-speed").textContent = (s.v * KMH).toFixed(0);
+    if ((s.whereT = (s.whereT || 0) + 1) % 6 === 1) whereAmI();
     $("ct-power").textContent = `${s.power || 0} W`;
     $("ct-remain").textContent = `ゴールまで ${((route.length - s.along) / 1000).toFixed(2)} km`;
     const gap = s.along - s.rAlong;
@@ -936,6 +1133,19 @@ const City = (() => {
       else c.moveTo(px, py);
     });
     c.stroke();
+    // 駅など大きな目印を、地図にも出す
+    c.font = "9px sans-serif";
+    for (const t of tiles.values()) {
+      const inf = t.state === "ok" && t.group && t.group.userData.info;
+      for (const lm of (inf && inf.lms) || []) {
+        if (lm.icon !== "🚉" && lm.icon !== "🎓") continue;
+        const [px, py] = P(lm.x, lm.z);
+        c.fillStyle = "#7fd8ff";
+        c.fillRect(px - 2, py - 2, 4, 4);
+        c.fillStyle = "rgba(255,255,255,0.9)";
+        c.fillText(lm.name.slice(0, 6), px + 4, py + 3);
+      }
+    }
     for (const [al, col] of [[sim.rAlong, "#ff4455"], [sim.along, "#ffa030"]]) {
       const p = at(al), [px, py] = P(p.x, p.z);
       c.fillStyle = col;
