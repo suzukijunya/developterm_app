@@ -575,7 +575,7 @@ const City = (() => {
         geo.setAttribute("uv", new THREE.Float32BufferAttribute(ch.uv, 2));
         geo.setAttribute("color", new THREE.Float32BufferAttribute(ch.col, 3));
         const m = new THREE.Mesh(geo, mats.bld);
-        m.visible = !(plateauOn && Plateau.hasAt(ch.cx, ch.cz));
+        m.visible = !G3.on() && !(plateauOn && Plateau.hasAt(ch.cx, ch.cz));
         group.add(m);
         group.userData.chunks.push({ cx: ch.cx, cz: ch.cz, mesh: m });
       }
@@ -676,10 +676,12 @@ const City = (() => {
       const sp = signSprite(lm);
       sp.position.set(q[0], hgt, q[1]);
       sp.visible = false;
+      sp.userData.sign = true;
       group.add(sp);
       const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, hgt, 6), new THREE.MeshBasicMaterial({ color: lm.color, transparent: true, opacity: 0.6, depthTest: false, fog: false }));
       beam.position.set(q[0], hgt / 2, q[1]);
       beam.visible = false;
+      beam.userData.sign = true;
       group.add(beam);
       info.lms.push({ name: lm.name, icon: lm.icon, x: q[0], z: q[1], along: d.along, big: lm.big, sp, beam });
     }
@@ -1009,6 +1011,7 @@ const City = (() => {
           t.state = "ok";
           t.names = d.names;
           scene.add(t.mesh);
+          if (G3.on()) t.mesh.visible = false;
           syncPlaceholders();
         } else loaded.delete(L.key);
       } catch (e) {
@@ -1074,6 +1077,9 @@ const City = (() => {
     return {
       covers,
       hasAt,
+      setVisible: (v) => {
+        for (const [, t] of loaded) if (t.mesh) t.mesh.visible = v;
+      },
       want,
       clear,
       prepare,
@@ -1087,7 +1093,164 @@ const City = (() => {
 
   // 実物の建物が届いた所では、地図の(仮の)建物を隠す
   function syncPlaceholders() {
-    for (const t of tiles.values()) for (const ch of (t.group && t.group.userData.chunks) || []) ch.mesh.visible = !(plateauOn && Plateau.hasAt(ch.cx, ch.cz));
+    const g = typeof G3 !== "undefined" && G3.on();
+    for (const t of tiles.values()) for (const ch of (t.group && t.group.userData.chunks) || []) ch.mesh.visible = !g && !(plateauOn && Plateau.hasAt(ch.cx, ch.cz));
+  }
+
+  // ---------- Googleの3D(Photorealistic 3D Tiles: Googleマップの3Dと同じ写真の街) ----------
+  // 使う人の Google Maps Platform の APIキー(端末にだけ保存)で読む。Googleマップのロゴと、データの出典を画面に出す。
+  // 3D Tiles の座標(地心)を、アプリの平面(x=東, y=上, z=南)に合わせる。誤差が出ないよう、自分の近くを基準点にして400mごとに置き直す。
+  const G3 = (() => {
+    let tiles = null, on = false, starting = null, anchor = null, groundH = 80, err = "", models = 0, t0 = 0;
+    const ray = { caster: null, tick: 0, me: 0, rival: 0 };
+    const getKey = () => {
+      try {
+        return localStorage.getItem("city_gkey") || "";
+      } catch (e) {
+        return "";
+      }
+    };
+    async function start() {
+      if (tiles || starting) return starting;
+      starting = (async () => {
+        const THREE = T();
+        const [lib, plug, { GLTFLoader }, { DRACOLoader }] = await Promise.all([
+          import("3d-tiles-renderer"),
+          import("3d-tiles-renderer/plugins"),
+          import("three/examples/jsm/loaders/GLTFLoader.js"),
+          import("three/examples/jsm/loaders/DRACOLoader.js"),
+        ]);
+        tiles = new lib.TilesRenderer();
+        tiles.registerPlugin(new plug.GoogleCloudAuthPlugin({ apiToken: getKey(), autoRefreshToken: true }));
+        // 細かさ(小さいほど細かい)。スマホは軽めに
+        tiles.errorTarget = innerWidth < 900 ? 16 : 8;
+        tiles.lruCache.minSize = innerWidth < 900 ? 300 : 900;
+        tiles.lruCache.maxSize = innerWidth < 900 ? 500 : 1600;
+        const draco = new DRACOLoader();
+        draco.setDecoderPath("js/vendor/draco/");
+        const gl = new GLTFLoader(tiles.manager);
+        gl.setDRACOLoader(draco);
+        tiles.manager.addHandler(/\.gltf$/, gl);
+        tiles.addEventListener("load-model", () => models++);
+        tiles.setCamera(camera);
+        tiles.setResolutionFromRenderer(camera, renderer);
+        tiles.group.matrixAutoUpdate = false;
+        scene.add(tiles.group);
+        ray.caster = new THREE.Raycaster();
+        ray.caster.firstHitOnly = true;
+        t0 = Date.now();
+        place(sim ? sim.along : 0, true);
+      })().catch((e) => {
+        err = "読み込めませんでした(" + String((e && e.message) || e).slice(0, 40) + ")";
+        tiles = null;
+        starting = null;
+      });
+      return starting;
+    }
+    // 基準点(自分のいる所)を置き直し、地心座標 → アプリの平面 の変換を作る
+    function place(along, force) {
+      if (!tiles) return;
+      const THREE = T();
+      const p = at(along);
+      if (!force && anchor && Math.hypot(p.x - anchor.x, p.z - anchor.z) < 400) return;
+      anchor = { x: p.x, z: p.z };
+      const lat = route.lat0 - p.z / route.kz, lon = route.lon0 + p.x / route.kx;
+      const D = Math.PI / 180, A = 6378137, E2 = 0.00669437999014;
+      const sl = Math.sin(lat * D), N = A / Math.sqrt(1 - E2 * sl * sl), M = (A * (1 - E2)) / Math.pow(1 - E2 * sl * sl, 1.5);
+      const sx = route.kx / (N * Math.cos(lat * D) * D), sz = route.kz / (M * D);
+      const enu = new THREE.Matrix4();
+      tiles.ellipsoid.getEastNorthUpFrame(lat * D, lon * D, enu);
+      const toApp = new THREE.Matrix4().set(1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, 0, 0, 0, 1); // (東, 北, 上) → (x, y, z) = (東, 上, -北)
+      // 縮尺は東西と南北でわずかに違う(0.3%ほど)。3D Tiles の細かさの計算が狂わないよう、平均の1つにそろえる(400mで1m未満の差)
+      const k = (sx + sz) / 2;
+      const m = new THREE.Matrix4().makeTranslation(p.x, -groundH, p.z).multiply(new THREE.Matrix4().makeScale(k, k, k)).multiply(toApp).multiply(enu.invert());
+      tiles.group.matrix.copy(m);
+      tiles.group.matrixWorldNeedsUpdate = true;
+      tiles.group.updateMatrixWorld(true);
+    }
+    // 地面の高さ: 自分の真下を測って、道路の面が y=0 になるようにする
+    function groundAt(x, z) {
+      const THREE = T();
+      let best = null;
+      for (const [dx, dz] of [[0, 0], [1.2, 0], [-1.2, 0], [0, 1.2], [0, -1.2]]) {
+        ray.caster.set(new THREE.Vector3(x + dx, 400, z + dz), new THREE.Vector3(0, -1, 0));
+        const hit = ray.caster.intersectObject(tiles.group, true)[0];
+        if (hit && (best == null || hit.point.y < best)) best = hit.point.y; // 木や車ではなく、いちばん低い所(路面)
+      }
+      return best;
+    }
+    function update(dt) {
+      if (!on || !tiles) return;
+      const s = sim;
+      place(s.along);
+      if ((ray.tick += dt) > 0.3) {
+        ray.tick = 0;
+        const p = at(s.along);
+        const g = groundAt(p.x, p.z);
+        if (g != null && Math.abs(g) < 60) {
+          groundH += g * 0.6;
+          place(s.along, true);
+        }
+        const r = at(s.rAlong);
+        const gr = Math.hypot(r.x - p.x, r.z - p.z) < 600 ? groundAt(r.x - r.tz * 1.3, r.z + r.tx * 1.3) : null;
+        ray.rival = gr != null && Math.abs(gr) < 40 ? gr : 0;
+      }
+      camera.updateMatrixWorld();
+      tiles.setResolutionFromRenderer(camera, renderer);
+      tiles.update();
+      if (!err && !models && Date.now() - t0 > 20000) {
+        // 届かないときは、自前の街に戻して走り続ける
+        err = "街が届きません。APIキーと、Map Tiles API の有効化・請求先の設定を確かめてください";
+        on = false;
+        tiles.group.visible = false;
+        $("ct-google").checked = false;
+        syncGoogle();
+        ticker("Googleの3Dが読めないので、いつもの街で走ります", "opp");
+      }
+    }
+    function credits() {
+      if (!tiles) return "";
+      const list = [];
+      try {
+        for (const a of tiles.getAttributions()) if (a.type === "string" && a.value) list.push(a.value);
+      } catch (e) {}
+      return list.join(" ・ ");
+    }
+    return {
+      getKey,
+      setKey(k) {
+        try {
+          localStorage.setItem("city_gkey", (k || "").trim());
+        } catch (e) {}
+      },
+      async set(v) {
+        on = v && !!getKey();
+        if (on) await start();
+        if (tiles) tiles.group.visible = on;
+        return on;
+      },
+      on: () => on && !!tiles,
+      update,
+      credits,
+      rivalY: () => ray.rival,
+      err: () => err,
+      models: () => models,
+    };
+  })();
+  // 地図の区画のうち、施設の看板だけは残す(Googleの3Dでも、どこを走っているかわかるように)
+  function hideOwnCity(group, g) {
+    for (const ch of group.children) if (!ch.userData.sign) ch.visible = !g;
+  }
+  // Googleの3Dを使うときは、自前の街(地図の建物・道・PLATEAU・航空写真)を隠す
+  function syncGoogle() {
+    const g = G3.on();
+    for (const t of tiles.values()) if (t.group) hideOwnCity(t.group, g);
+    syncPlaceholders();
+    if (routeStrip) routeStrip.visible = !g;
+    if (ground) ground.position.y = g ? -3 : 0;
+    for (const [, m] of photos) m.visible = !g && !!m.material.map;
+    Plateau.setVisible(!g);
+    $("ct-gm").hidden = !g;
   }
 
   // ---------- 地面の航空写真(国土地理院の地図タイル) ----------
@@ -1125,6 +1288,7 @@ const City = (() => {
       geo.setAttribute("uv", new THREE.Float32BufferAttribute([0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1], 2));
       const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xa9aec4 }));
       mesh.visible = false;
+      mesh.userData.g3hide = true;
       photos.set(key, mesh);
       scene.add(mesh);
       const ld = new THREE.TextureLoader();
@@ -1136,7 +1300,7 @@ const City = (() => {
           tex.anisotropy = 8;
           mesh.material.map = tex;
           mesh.material.needsUpdate = true;
-          mesh.visible = true;
+          mesh.visible = !G3.on();
         },
         undefined,
         () => {}
@@ -1165,6 +1329,7 @@ const City = (() => {
       if (tiles.get(key) === t) {
         t.group = buildTile(data);
         t.state = "ok";
+        if (G3.on()) hideOwnCity(t.group, true);
         scene.add(t.group);
       }
     } catch (e) {
@@ -1205,8 +1370,8 @@ const City = (() => {
     const el = $("ct-map-state");
     if (!el) return;
     const n = queue.length + loading;
-    const pn = typeof Plateau !== "undefined" && plateauOn ? Plateau.left() : 0;
-    el.textContent = (n ? `街を読み込み中… 残り${n}区画` : failed ? `読めなかった区画 ${failed}(道と建物が出ない所があります)` : "") + (pn ? ` 実物の建物を読み込み中… 残り${pn}区画` : "") + (lastErr ? ` ・地図サーバー: ${lastErr}` : "");
+    const pn = typeof Plateau !== "undefined" && plateauOn && !G3.on() ? Plateau.left() : 0;
+    el.textContent = (n ? `街を読み込み中… 残り${n}区画` : failed ? `読めなかった区画 ${failed}(道と建物が出ない所があります)` : "") + (pn ? ` 実物の建物を読み込み中… 残り${pn}区画` : "") + (lastErr ? ` ・地図サーバー: ${lastErr}` : "") + (G3.err() ? ` ・Googleの3D: ${G3.err()}` : "");
   }
 
   // ---------- 自転車と人(かんたんな形) ----------
@@ -1690,6 +1855,8 @@ const City = (() => {
   }
   function hud() {
     const s = sim;
+    if ((s.mapT = (s.mapT || 0) + 1) % 10 === 1) hudMap();
+    if (G3.on() && (s.credT = (s.credT || 0) + 1) % 8 === 1) $("ct-gm-cred").textContent = G3.credits();
     $("ct-speed").textContent = (s.v * KMH).toFixed(0);
     if ((s.whereT = (s.whereT || 0) + 1) % 6 === 1) whereAmI();
     $("ct-power").textContent = `${s.power || 0} W`;
@@ -1703,7 +1870,90 @@ const City = (() => {
     $("ct-time").textContent = `${m}:${String(sec).padStart(2, "0")}`;
     drawMini();
   }
+  // 右上の地図: ふだんは自分のまわり(地理院地図。駅名・道路名つき)、タップでルート全体
+  let miniWhole = false;
+  const mapImgs = new Map();
+  function mapTile(z, x, y) {
+    const key = z + "/" + x + "/" + y;
+    let im = mapImgs.get(key);
+    if (!im) {
+      im = new Image();
+      im.crossOrigin = "anonymous";
+      im.src = `https://cyberjapandata.gsi.go.jp/xyz/std/${key}.png`;
+      mapImgs.set(key, im);
+      if (mapImgs.size > 120) mapImgs.delete(mapImgs.keys().next().value);
+    }
+    return im.complete && im.naturalWidth ? im : null;
+  }
   function drawMini() {
+    if (!miniWhole) return drawLocalMap();
+    drawWholeMap();
+  }
+  function drawLocalMap() {
+    const cv = $("ct-mini"), c = cv.getContext("2d");
+    const W = cv.width, H = cv.height;
+    const p = at(sim.along);
+    const lat = route.lat0 - p.z / route.kz, lon = route.lon0 + p.x / route.kx;
+    const Z = 16, n = 2 ** Z;
+    // 地図のタイル座標(ピクセル)で、自分の位置
+    const fx = ((lon + 180) / 360) * n * 256, fy = ((1 - Math.asinh(Math.tan((lat * Math.PI) / 180)) / Math.PI) / 2) * n * 256;
+    const k = 1.0; // 地図1ピクセル = 画面1ピクセル(約2.4m)
+    c.fillStyle = "#e8e6e0";
+    c.fillRect(0, 0, W, H);
+    const x0 = fx - W / 2 / k, y0 = fy - H / 2 / k;
+    for (let tx = Math.floor(x0 / 256); tx <= Math.floor((x0 + W / k) / 256); tx++)
+      for (let ty = Math.floor(y0 / 256); ty <= Math.floor((y0 + H / k) / 256); ty++) {
+        const im = mapTile(Z, tx, ty);
+        if (im) c.drawImage(im, (tx * 256 - x0) * k, (ty * 256 - y0) * k, 256 * k, 256 * k);
+      }
+    // ルート(地図のピクセル座標へ)
+    const toPx = (x, z) => {
+      const la = route.lat0 - z / route.kz, lo = route.lon0 + x / route.kx;
+      const px = ((lo + 180) / 360) * n * 256, py = ((1 - Math.asinh(Math.tan((la * Math.PI) / 180)) / Math.PI) / 2) * n * 256;
+      return [(px - x0) * k, (py - y0) * k];
+    };
+    c.lineCap = c.lineJoin = "round";
+    for (const [w, col] of [[6, "rgba(255,255,255,0.9)"], [3.5, "#1e88ff"]]) {
+      c.strokeStyle = col;
+      c.lineWidth = w;
+      c.beginPath();
+      route.xy.forEach(([x, z], i) => {
+        const [qx, qy] = toPx(x, z);
+        if (i) c.lineTo(qx, qy);
+        else c.moveTo(qx, qy);
+      });
+      c.stroke();
+    }
+    // ライバルと自分(自分は進む向きの矢印)
+    const r = at(sim.rAlong), [rx, ry] = toPx(r.x, r.z);
+    c.fillStyle = "#ff4455";
+    c.strokeStyle = "#fff";
+    c.lineWidth = 2;
+    c.beginPath();
+    c.arc(rx, ry, 5, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    const ang = Math.atan2(p.tz, p.tx);
+    c.save();
+    c.translate(W / 2, H / 2);
+    c.rotate(ang);
+    c.fillStyle = "#ff9a1f";
+    c.beginPath();
+    c.moveTo(10, 0);
+    c.lineTo(-7, -7);
+    c.lineTo(-3, 0);
+    c.lineTo(-7, 7);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.restore();
+    c.fillStyle = "rgba(255,255,255,0.85)";
+    c.fillRect(W - 54, H - 14, 54, 14);
+    c.fillStyle = "#333";
+    c.font = "9px sans-serif";
+    c.fillText("地理院地図", W - 51, H - 4);
+  }
+  function drawWholeMap() {
     const cv = $("ct-mini"), c = cv.getContext("2d");
     const W = cv.width, H = cv.height;
     if (!route.box) {
@@ -1714,6 +1964,8 @@ const City = (() => {
     }
     const b = route.box, P = (x, z) => [b.ox + (x - b.x0) * b.k, b.oz + (z - b.z0) * b.k];
     c.clearRect(0, 0, W, H);
+    c.fillStyle = "rgba(6,9,14,0.75)";
+    c.fillRect(0, 0, W, H);
     c.strokeStyle = "rgba(255,255,255,0.55)";
     c.lineWidth = 2;
     c.beginPath();
@@ -1767,10 +2019,11 @@ const City = (() => {
         if (s.paused) break;
       }
       if (s.along >= route.length - 0.5) finish();
-      if ((s.tileT = (s.tileT || 0) + real) > 1.5) (s.tileT = 0), wantTiles(s.along), wantPhotos(s.along), Plateau.want(s.along);
+      if ((s.tileT = (s.tileT || 0) + real) > 1.5) (s.tileT = 0), wantTiles(s.along), G3.on() || (wantPhotos(s.along), Plateau.want(s.along));
     }
     const p = placeBiker(me, s.along, 0, real * s.speedX, s.v, (s.auto || s.pedal) && !s.brake && !s.paused);
     placeBiker(rival, s.rAlong, 1.3, real * s.speedX, s.rV, !s.paused);
+    rival.g.position.y = G3.on() ? G3.rivalY() : 0;
     // 追いかけるカメラ(後ろ上から。速いほど少し引いて、視野を広げる)
     const back = 6.5 + s.v * 0.18, up = 2.9 + s.v * 0.05;
     const want = new THREE.Vector3(p.x - p.tx * back, up, p.z - p.tz * back);
@@ -1781,6 +2034,7 @@ const City = (() => {
     camera.fov = 58 + Math.min(16, s.v * 1.1);
     camera.updateProjectionMatrix();
     ground.position.set(p.x, 0, p.z);
+    G3.update(real);
     renderer.render(scene, camera);
     if ((s.hudT = (s.hudT || 0) + real) > 0.12) (s.hudT = 0), hud();
   }
@@ -1844,7 +2098,10 @@ const City = (() => {
     $("ct-setup").hidden = true;
     $("ct-hud").hidden = false;
     init3D();
+    G3.setKey($("ct-gkey").value);
     start({ rivalKmh: +$("ct-rival").value, auto: $("ct-auto0").checked });
+    $("ct-google").checked = $("ct-google0").checked;
+    if ($("ct-google0").checked) G3.set(true).then(syncGoogle);
     $("ct-auto").checked = sim.auto;
   }
   function bind() {
@@ -1868,8 +2125,40 @@ const City = (() => {
     $("ct-auto").onchange = (e) => sim && (sim.auto = e.target.checked);
     $("ct-x").onchange = (e) => sim && (sim.speedX = +e.target.value);
     $("ct-bgm").onchange = (e) => (e.target.checked ? Bgm.start() : Bgm.stop());
+    $("ct-mini").addEventListener("click", () => (miniWhole = !miniWhole));
     $("ct-time").value = timeMode;
     $("ct-time").onchange = (e) => sim && setTime(e.target.value);
+    const gk = $("ct-gkey");
+    gk.value = G3.getKey();
+    const gOn = (() => {
+      try {
+        return localStorage.getItem("city_google") === "1";
+      } catch (e) {
+        return false;
+      }
+    })();
+    $("ct-google0").checked = $("ct-google").checked = gOn && !!G3.getKey();
+    const setGoogle = async (v) => {
+      if (v && !G3.getKey()) {
+        $("ct-google0").checked = $("ct-google").checked = false;
+        $("ct-msg").textContent = "Googleの3Dを使うには、スタート画面でAPIキーを入れてください";
+        return;
+      }
+      $("ct-google0").checked = $("ct-google").checked = v;
+      try {
+        localStorage.setItem("city_google", v ? "1" : "0");
+      } catch (e) {}
+      if (sim) {
+        await G3.set(v);
+        syncGoogle();
+      }
+    };
+    gk.onchange = () => {
+      G3.setKey(gk.value);
+      if (gk.value.trim()) setGoogle(true);
+    };
+    $("ct-google0").onchange = (e) => setGoogle(e.target.checked);
+    $("ct-google").onchange = (e) => setGoogle(e.target.checked);
     $("ct-plateau").checked = plateauOn;
     $("ct-plateau0").checked = plateauOn;
     const setPlateau = (on) => {

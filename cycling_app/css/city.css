@@ -91,3 +91,16 @@ body.city { margin: 0; overflow: hidden; background: #050608; color: #fff; font-
 /* 昼の明るい景色でも読めるように、左下の数字に下敷きをつける */
 .ct-left { padding: 8px 12px 8px 10px; background: linear-gradient(90deg, rgba(6, 9, 14, 0.62), rgba(6, 9, 14, 0.25) 85%, transparent); border-radius: 0 10px 10px 0; left: 0 !important; }
 .ct-where, .ct-map-state { text-shadow: 0 1px 3px #000; }
+/* 右上の地図(地理院地図)。タップでルート全体に切り替え */
+#ct-mini { width: 132px; height: 132px; border-radius: 10px; border: 2px solid rgba(255, 255, 255, 0.85); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45); pointer-events: auto; cursor: pointer; background: #e8e6e0; }
+@media (min-width: 900px) { #ct-mini { width: 200px; height: 200px; } }
+/* Googleの3D: 設定と、Googleマップのロゴ・出典 */
+.ct-g3 { padding: 8px 10px; border: 1px solid #2a3140; border-radius: 6px; background: #0d1118; }
+.ct-g3 summary { cursor: pointer; font-size: 0.9rem; color: #dfe4ec; }
+.ct-g3 input[type="password"] { width: 100%; box-sizing: border-box; padding: 9px; margin-top: 4px; font-size: 0.95rem; background: #11151c; color: #fff; border: 1px solid #2a3140; border-radius: 4px; }
+.ct-g3 > * + * { margin-top: 8px; }
+.ct-gm { position: fixed; z-index: 6; left: 8px; bottom: calc(86px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 8px; max-width: 70vw; pointer-events: none; }
+.ct-gm b { padding: 2px 8px; font: 500 0.82rem/1.4 "Roboto", "Helvetica Neue", Arial, sans-serif; color: #5f6368; background: rgba(255, 255, 255, 0.92); border-radius: 3px; letter-spacing: 0.01em; }
+.ct-gm span { font-size: 0.62rem; color: #fff; text-shadow: 0 1px 2px #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (min-width: 900px) { .ct-gm { bottom: 8px; } }
+@media (max-width: 899px) { .ct-map-state { white-space: normal; width: 88vw; text-align: center; font-size: 0.66rem; } }
