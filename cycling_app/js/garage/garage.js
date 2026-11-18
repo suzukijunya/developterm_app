@@ -86,36 +86,45 @@
   // ---------- 装着済みを、公式の重さと実測8.6kgに合わせて更新(一度だけ) ----------
   // 公式・販売店の公称値がわかるパーツはその値に。フレームとフォークは公表値がないので、実測の重さから逆算する
   const CURRENT_FIX = {
-    id: "measured-2026-11-18",
+    // トキノさんに整備をお願いしたときのパーツ一覧(2026-11)。名前は一覧のまま。重さは一覧の値で、次の2点だけ直した
+    //   ・カセット CS-6700: 一覧は310g → 公称 11-28 で242g(12-25 は238g)
+    //   ・ワイヤー・アウター一式: 一覧になかったので足した(目安120g)
+    // フレームとフォーク(一覧では推定 1,850g + 1,050g)は、実測の合計から残りを分けて出す
+    id: "shop-list-2026-11-19",
     parts: {
-      wheels: { name: "MAVIC AKSIUM 前後(リムブレーキ)", components: [["AKSIUM フロント(公式)", 845], ["AKSIUM リア(公式)", 995]] },
-      tires: { name: "前: 予備タイヤ / 後: Panaracer AGILEST 25C", components: [["AGILEST 25C(後)", 190], ["予備タイヤ(前・目安)", 230]], attrs: { width: 25 } },
-      tubes: { name: "Continental TPU チューブ ×2", components: [["Continental TPU ×2", 70]] },
+      wheels: { name: "軽量ホイール Mavic Aksium 前後", components: [["軽量フロントホイール Mavic Aksium", 845], ["軽量リアホイール Mavic Aksium", 995], ["クイックリリース(エスケープR3純正)", 150]] },
+      tires: { name: "Panaracer Agilest 25c 前後", components: [["Panaracer Agilest 25c 前後", 440]], attrs: { width: 25 } },
+      tubes: { name: "TPUチューブ 前後", components: [["TPUチューブ 前後(40g×2想定)", 80]] },
       groupset: {
-        name: "105 5700系(フロントシングル)+ミニV",
+        name: "105(ST-5700 / RD-5701)+ULTEGRA CS-6700+フロントシングル",
         components: [
-          ["STI ST-5700 左右(公式)", 484],
-          ["リアディレイラー RD-5701(公称)", 238],
-          ["カセット CS-6700 11-28(目安)", 230],
-          ["チェーン KMC X10(公称)", 273],
-          ["ブレーキ TEKTRO RX1 前後(公称 150g×2)", 300],
-          ["純正クランク(四角軸)+BB(目安)", 950],
-          ["ワイヤー・アウター一式(目安)", 150],
-          ["クイックリリース 前後(付属・目安)", 120],
+          ["STIレバー ST-5700 左右セット", 490],
+          ["リアディレイラー RD-5701", 230],
+          ["スプロケット ULTEGRA CS-6700(公称)", 242],
+          ["チェーン KMC 10速", 257],
+          ["前後ブレーキ TEKTRO", 300],
+          ["クランク(フロントシングル化後)", 780],
+          ["BB 純正カートリッジ", 300],
+          ["チェーンリング Pass Quest(シングル/大型)", 115],
+          ["ワイヤー・アウター一式(目安)", 120],
         ],
       },
-      handlebar: { name: "KOCEVLO 一体型カーボンハンドル", components: [["KOCEVLO 一体型", 330]] },
+      handlebar: { name: "一体型カーボンハンドル KOCEVLO", components: [["一体型カーボンハンドル KOCEVLO", 330]] },
       stem: { name: "一体型ハンドルに含む", components: [] },
-      seatpost: { name: "シートポスト+シートクランプ(新品)", components: [["シートポスト", 145], ["シートクランプ(目安)", 20]] },
-      bartape: { name: "バーテープ(新品)+エンドキャップ", components: [["バーテープ一式(目安)", 70]] },
+      seatpost: { name: "Tni カーボンシートポスト", components: [["Tni カーボンシートポスト", 145]] },
+      saddle: { name: "RYET X6P EVA", components: [["RYET X6P EVA", 119]] },
+      pedals: { name: "MicroHERO", components: [["MicroHERO", 185]] },
+      bartape: { name: "バーテープ/小物", components: [["バーテープ/小物", 59]] },
       accessories: { name: "ライト前後+サイコン(量るときは外す)", components: [["ライト・サイコン(目安)", 250]] },
     },
-    frameShare: 0.65, // フレームとフォークの残りを分ける割合(フレーム側)
+    frameName: "Escape R3 フレーム(Sサイズ・ヘッドセット込み)",
+    forkName: "Cr-moフォーク(純正)",
+    frameShare: 0.64, // フレームとフォークの残りを分ける割合(フレーム側。アルミのクロスバイク用フレーム1.5kg前後・クロモリフォーク850g前後の比)
   };
   function applyCurrentFix() {
     const cur = G.builds && G.builds.current;
     if (!cur || (G.currentFix && G.currentFix.id === CURRENT_FIX.id)) return;
-    if (!/escape/i.test((cur.parts.frame || {}).name || "")) return; // エスケープR3のときだけ
+    if (!/escape/i.test((cur.parts.frame || {}).name || "") && !(G.currentFix && /measured/.test(G.currentFix.id))) return; // エスケープR3のときだけ
     const kg = G.measured && G.measured.kg ? G.measured.kg : 8.6;
     const prev = JSON.parse(JSON.stringify(cur));
     for (const [slot, d] of Object.entries(CURRENT_FIX.parts)) {
@@ -130,10 +139,10 @@
     const others = Parts.SLOTS.filter((x) => x.id !== "frame" && x.id !== "fork" && x.id !== "accessories").reduce((a, x) => a + (cur.parts[x.id] && cur.parts[x.id].mounted !== false ? +cur.parts[x.id].g || 0 : 0), 0);
     const rest = Math.max(1500, Math.round(kg * 1000 - others));
     const fg = Math.round(rest * CURRENT_FIX.frameShare);
-    cur.parts.frame = Object.assign({}, cur.parts.frame, { name: "GIANT ESCAPE R3 フレーム", g: fg, mounted: true });
-    cur.parts.fork = Object.assign({}, cur.parts.fork, { name: "ESCAPE R3 フォーク", g: rest - fg, mounted: true });
+    cur.parts.frame = Object.assign({}, cur.parts.frame, { name: CURRENT_FIX.frameName, g: fg, mounted: true });
+    cur.parts.fork = Object.assign({}, cur.parts.fork, { name: CURRENT_FIX.forkName, g: rest - fg, mounted: true });
     for (const k of ["frame", "fork"]) delete cur.parts[k].components, delete cur.parts[k].shop, delete cur.parts[k].libId;
-    G.currentFix = { id: CURRENT_FIX.id, at: Date.now(), kg, prev };
+    G.currentFix = { id: CURRENT_FIX.id, at: Date.now(), kg, prev, dismissed: true };
     setMeasured(kg, true);
     // チャットのおすすめ(NEW)も、新しい装着済みから組み直す
     if (G.chatRec && G.chatRec.id === CHAT_REC.id && !G.chatRec.undone) {
