@@ -182,7 +182,21 @@ const Catalog = (() => {
     "s-power-expert": ["https://resources.specialized.com/image/27123-860_SDDL_POWER-EXPERT-MIRROR-SADDLE-BLK-143_HERO-SQUARE?bg=ffffff&w=800&h=800&q=75", "https://www.specialized.com/us/en/power-expert-with-mirror/p/1000148806"],
     "s-slr-boost": ["https://cdn11.bigcommerce.com/s-ubg9970srq/products/129/images/2083/041A620ICA011_SLR_Boost_Kit_Carbonio_Superflow_S_THREE_QUARTER_copia__46444.1793257478.386.513.jpg?c=1", "https://www.selleitalia.com/slr-boost-kit-carbonio-superflow/"],
   };
-  for (const it of ITEMS) if (IMGS[it.id]) (it.img = IMGS[it.id][0]), (it.imgPage = IMGS[it.id][1]);
+  // メーカーのサイトから取れないもの(Shimano・廃番など)は、楽天市場のショップの商品写真を参照する。
+  // 出品が終わると写真が消えることがある(そのときは部位の絵に戻る)
+  const R = (path, q) => ["https://tshop.r10s.jp/" + path + "?fitin=600:600", "https://search.rakuten.co.jp/search/mall/" + encodeURIComponent(q) + "/", "ショップの写真"];
+  Object.assign(IMGS, {
+    "w-zonda": R("vehicle/cabinet/campagnolo/imgrc0068664810.jpg", "ZONDA C17"),
+    "p-ritchey-carbon": R("elephantcycles/cabinet/r/rtc0003-1.jpg", "RITCHEY WCS カーボン 1ボルト シートポスト"),
+    "p-flexlogic": R("thepowerful/cabinet/ritchey/0796941417525.jpg", "RITCHEY FLEXLOGIC シートポスト"),
+    "d-r550": R("realcreation/cabinet/f07/ra4524667226_10621.jpg", "PD-R550"),
+    "d-r7000": R("grumpy/cabinet/gallery/shohin14/ec-2502041517_1.jpg", "PD-R7000"),
+    "d-r8000": R("cyclick-2/cabinet/shimano2023/shimano-pd-r8000.jpg", "PD-R8000"),
+    "d-me700": R("bike-king/cabinet/shimano2/smn-pdme700.jpg", "PD-ME700"),
+    "g-chain": R("uemura-cycle-parts/cabinet/items/folder1/smn-0000001974y.jpg", "CN-HG95"),
+    "a-ti-qr": R("auc-nijibashibic/cabinet/img7/titanqr-bk.jpg", "チタン クイックリリース ロード"),
+  });
+  for (const it of ITEMS) if (IMGS[it.id]) (it.img = IMGS[it.id][0]), (it.imgPage = IMGS[it.id][1]), (it.imgLabel = IMGS[it.id][2] || "メーカーの写真");
 
   function cost(item, usedOk) {
     return usedOk && item.used ? Math.round((item.used[0] + item.used[1]) / 2 / 500) * 500 : item.price;

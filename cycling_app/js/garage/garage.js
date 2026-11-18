@@ -2267,7 +2267,7 @@
     return `<article class="g-pc ${inCur ? "mine" : ""}">
       <div class="g-pc-img" data-prod="${it.id}" ${find}>${partPhoto(it)}
         <label class="g-pc-ph" title="写真を付ける">📷<input type="file" accept="image/*" data-prod-photo="${it.id}" hidden /></label>
-        ${it.imgPage && !ownPhotos[it.id] ? `<a class="g-pc-src" href="${esc(it.imgPage)}" target="_blank" rel="noopener">メーカーの写真</a>` : ""}</div>
+        ${it.imgPage && !ownPhotos[it.id] ? `<a class="g-pc-src" href="${esc(it.imgPage)}" target="_blank" rel="noopener">${esc(it.imgLabel || "メーカーの写真")}</a>` : ""}</div>
       <div class="g-pc-body">
         <small class="g-pc-slot">${esc(Parts.slotName(it.slot))}${inCur ? " ・装着済み" : ""}</small>
         <strong class="g-pc-name">${esc(it.name)}</strong>
