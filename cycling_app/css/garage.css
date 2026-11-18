@@ -1359,3 +1359,15 @@ body.ms-open {
 .g-fold { margin: 12px 0; }
 .g-fold > summary { cursor: pointer; font-weight: 800; padding: 10px 4px; }
 @media (min-width: 1500px) { #garage > .g-main > .g-pcat { column-span: all; display: block; } }
+.g-pc-sec { border-top: 1px solid rgba(127, 127, 127, 0.22); }
+.g-pc-sec > summary { display: flex; align-items: baseline; gap: 10px; padding: 12px 4px; cursor: pointer; list-style: none; }
+.g-pc-sec > summary::-webkit-details-marker { display: none; }
+.g-pc-sec > summary::before { content: "▸"; transition: transform 0.2s; }
+.g-pc-sec[open] > summary::before { transform: rotate(90deg); }
+.g-pc-sec > summary b { font-size: 1rem; }
+.g-pc-sec > summary small { opacity: 0.7; }
+.g-pc-sec .g-pc-grid { margin: 0 0 14px; }
+.g-chatrec ul { list-style: none; padding: 0; margin: 6px 0; }
+.g-chatrec li { padding: 6px 0; border-top: 1px solid rgba(127, 127, 127, 0.18); }
+.g-chatrec li small { display: block; opacity: 0.75; font-size: 0.75rem; }
+.g-chatrec .good { color: #3dcc7a; font-style: normal; }

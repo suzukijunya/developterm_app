@@ -54,6 +54,34 @@
   }
 
   let G = loadGarage();
+
+  // ---------- チャットで決めたおすすめ構成 ----------
+  // おすすめの相談はチャットで行い、決まった構成をここに書く。新しい版(id)のときだけ、一度 NEW に組み込む(前の NEW は戻せる)
+  const CHAT_REC = {
+    id: "2026-11-18",
+    title: "チャットのおすすめ",
+    // 予算上限なし・クランクは純正(四角軸)・タイヤは25Cのまま軽さ優先・乗った後に腰が張る
+    items: ["w-9000c24", "t-agilest25", "g-fc5700", "a-ti-qr"],
+    why: {
+      "w-9000c24": "いちばん軽いリムブレーキ用ホイール(−約450g)。カーボン補強のリムで、レーシングゼロより振動が少なく、乗った後の腰の張りにもやさしい。ブレーキ面はアルミなのでミニVでも安心",
+      "t-agilest25": "25Cのまま軽さ優先。予備タイヤの前輪を後輪とそろえる",
+      "g-fc5700": "純正の四角軸クランクを中空の105に。−約150gで、踏んだときのたわみも減る(取り付けはお店で)",
+      "a-ti-qr": "付属の鉄のクイックリリースをチタンに。−約70gの手軽な軽量化",
+    },
+  };
+  function applyChatRec() {
+    if (!G.builds || !G.builds.current || (G.chatRec && G.chatRec.id === CHAT_REC.id)) return;
+    const nx = JSON.parse(JSON.stringify(G.builds.current));
+    nx.name = CHAT_REC.title;
+    for (const id of CHAT_REC.items) {
+      const it = Catalog.byId(id);
+      if (it && !Catalog.installed(nx, it)) Catalog.apply(nx, it);
+    }
+    G.chatRec = { id: CHAT_REC.id, at: Date.now(), prevNext: G.builds.next || null };
+    G.builds.next = nx;
+    Store.setGarage(G);
+  }
+  applyChatRec();
   const save = () => Store.setGarage(G);
   const other = () => (G.active === "current" ? "next" : "current");
   const B = (k = G.active) => G.builds[k];
@@ -369,7 +397,6 @@
     const T = [
       ["parts", "🧰 パーツ"],
       ["fit", "🧍 フィッティング"],
-      ["aero", "💨 空力"],
       ["compare", "📊 比較"],
       ["clerk", "🛒 パーツ図鑑"],
       ["mission", "🎖️ ミッション"],
@@ -754,6 +781,28 @@
     </section>`;
   }
 
+  function chatRecHtml() {
+    if (!G.chatRec || G.chatRec.id !== CHAT_REC.id || G.chatRec.dismissed) return "";
+    const cur = G.builds.current;
+    let saved = 0, yenSum = 0;
+    const rows = CHAT_REC.items
+      .map((id) => Catalog.byId(id))
+      .filter(Boolean)
+      .map((it) => {
+        const d = it.kind === "delta" ? it.deltaG : Math.max(0, ((cur.parts[it.slot] || {}).g || 0) - it.g);
+        saved += d;
+        yenSum += Catalog.cost(it, true);
+        return `<li><b>${esc(it.name)}</b>${d ? ` <em class="good">−${d}g</em>` : ""}<small>${esc(CHAT_REC.why[it.id] || "")}</small></li>`;
+      })
+      .join("");
+    return `<section class="card g-chatrec">
+      <h2>💬 ${esc(CHAT_REC.title)}をNEWに入れました</h2>
+      <ul>${rows}</ul>
+      <p class="small">合計 <b class="good">−${saved.toLocaleString()}g</b>・中古中心で約${Catalog.yen(Math.round(yenSum / 1000) * 1000)}</p>
+      <div class="g-plan-btns">${G.chatRec.undone ? `<span class="g-tag">前のNEWに戻しました</span>` : G.chatRec.prevNext ? `<button class="link" data-chatrec="undo">前のNEWに戻す</button>` : ""}<button class="link" data-chatrec="hide">閉じる</button></div>
+    </section>`;
+  }
+
   function partsPanel() {
     const b = B();
     const rows = Parts.SLOTS.map((sl) => {
@@ -775,6 +824,7 @@
     }).join("");
     void rows;
     return `
+      ${chatRecHtml()}
       ${quickHtml()}
       ${libForm ? libFormHtml() : ""}
       ${importRev ? importHtml() : ""}
@@ -1558,6 +1608,22 @@
   }
 
   // ---------- フィッティング ----------
+  // 実際のバイクで2か所を測って、アプリの計算をそれに合わせる(フレームの形の違い・ハンドルの形の分を吸収する)
+  function calibHtml(b) {
+    const m = Fit.saddleToHood(b.geo, b.pos);
+    const p = b.pos;
+    const done = !!(p.reachAdj || p.dropAdj);
+    return `<details class="g-more g-calib" ${done ? "" : "open"}>
+      <summary>📏 実測で合わせる(精度アップ)${done ? " ・合わせ済み" : ""}</summary>
+      <p class="small">アプリはフレームの形を一般的なロードバイクで仮定しています。エスケープR3は形が違うので、メジャーで次の2つを測って入れると、上体や肩の角度がずっと正確になります。</p>
+      <ol class="small g-calib-how"><li><b>サドル先端〜ブラケット</b>: サドルの先端から、ブレーキレバーのゴム(フード)の上の真ん中まで、まっすぐ測る</li><li><b>落差</b>: 床からサドル上面までの高さ − 床からフードの上面までの高さ(ハンドルの方が低ければプラス)</li></ol>
+      ${num("pos.measDist", "サドル先端〜ブラケット", p.measDist || 0, "mm", 5, 1000)}
+      ${num("pos.measDrop", "落差(サドル − ブラケット)", p.measDrop || 0, "mm", 5, 1000)}
+      <p class="muted small">いまのアプリの計算: 距離 ${mm(m.dist)}mm・落差 ${mm(m.drop)}mm${p.reachAdj || p.dropAdj ? `(補正: 前後 ${mm(p.reachAdj || 0) >= 0 ? "+" : ""}${mm(p.reachAdj || 0)}mm・高さ ${mm(-(p.dropAdj || 0)) >= 0 ? "+" : ""}${mm(-(p.dropAdj || 0))}mm)` : ""}</p>
+      <div class="g-row"><button class="btn sub" id="calib">この実測に合わせる</button>${p.reachAdj || p.dropAdj ? `<button class="link" id="calib-reset">補正を外す</button>` : ""}</div>
+    </details>`;
+  }
+
   function fitPanel() {
     const b = B();
     const r = calc().fit;
@@ -1585,7 +1651,7 @@
         ${cm("shoulder", "肩幅(肩先〜肩先)", body.shoulder)}
         ${cm("foot", "足のサイズ", body.foot)}
         ${sel("body.flex", "前屈", body.flex, [["stiff", "床に手が届かない"], ["normal", "指先が床に届く"], ["soft", "手のひらが床につく"]])}
-        ${sel("body.backPain", "腰痛", body.backPain ? "1" : "", [["", "なし"], ["1", "あり"]])}
+        ${sel("body.backPainType", "腰痛", body.backPain ? body.backPainType || "during" : "", [["", "なし"], ["after", "乗った後に腰が張る"], ["during", "乗っている途中で腰が痛い"], ["upper", "背中の上〜首・肩がつらい"]])}
         <details class="g-more" ${body.thighLen || body.thighCirc ? "open" : ""}>
           <summary>各部の長さと太さ(写真で測った値・メジャーで測った値)</summary>
           <p class="muted small">長さは「立った写真で測る」で自動で入ります。太さはメジャーで測った周囲の長さを入れると、3Dの体の形と空気抵抗の計算が正確になります。</p>
@@ -1610,6 +1676,7 @@
         ${sel("pos.stemAngle", "ステム角度", b.pos.stemAngle, [-17, -10, -8, -6, 0, 6, 8, 10, 17].map((x) => [x, (x > 0 ? "+" : "") + x + "°"]))}
         ${sel("pos.hands", "持つ位置", b.pos.hands, [["tops", "上ハンドル"], ["hoods", "ブラケット"], ["drops", "下ハンドル"]])}
         ${num("pos.elbow", "肘の曲げ", b.pos.elbow, "°", 5)}
+        ${calibHtml(b)}
       </section>
       <section class="card">
         <h2>関節の角度</h2>
@@ -1978,9 +2045,9 @@
   }
 
   // ---------- パーツ図鑑(写真・スペック・重さの差を見比べる。おすすめの相談はチャットで) ----------
-  let catSlot = "all";
+  const catOpen = new Set(["wheels"]); // 開いているジャンル
   const CAT_TABS = [
-    ["all", "すべて"], ["wheels", "ホイール"], ["tires", "タイヤ"], ["tubes", "チューブ"], ["saddle", "サドル"],
+    ["wheels", "ホイール"], ["tires", "タイヤ"], ["tubes", "チューブ"], ["saddle", "サドル"],
     ["seatpost", "シートポスト"], ["pedals", "ペダル"], ["groupset", "駆動系"], ["accessories", "小物"],
   ];
   const PHOTO_KEY = "cycling_prod_photos";
@@ -2030,7 +2097,6 @@
   }
   function clerkPanel() {
     const c = clerkState();
-    const items = Catalog.ITEMS.filter((it) => catSlot === "all" || it.slot === catSlot);
     const ms = Clerk.maintenance(Store.rides, c.maint);
     const maintHtml = `
       <section class="card g-maint">
@@ -2046,9 +2112,14 @@
     return `
       <section class="card g-pcat">
         <h2>🛒 パーツ図鑑</h2>
-        <div class="g-chips g-pc-tabs">${CAT_TABS.map(([k, l]) => `<button class="g-chip2 ${catSlot === k ? "on" : ""}" data-cat-slot="${k}">${l}</button>`).join("")}</div>
-        <p class="muted small">重さの差は「装着済み」と比べた値。重さ・価格は目安です。${AI.ready ? "" : "写真は📷で自分で付けるか、AIの設定をすると自動で探します。"}</p>
-        <div class="g-pc-grid">${items.map(partCard).join("")}</div>
+        <p class="muted small">重さの差は「装着済み」と比べた値。重さ・価格は目安です。</p>
+        ${CAT_TABS.map(([k, l]) => {
+          const items = Catalog.ITEMS.filter((it) => it.slot === k);
+          if (!items.length) return "";
+          const best = Math.min(...items.map((it) => (it.kind === "delta" ? -(it.deltaG || 0) : it.g - ((G.builds.current.parts[k] || {}).g || 0))));
+          return `<details class="g-pc-sec" data-cat-sec="${k}" ${catOpen.has(k) ? "open" : ""}><summary><b>${l}</b><small>${items.length}点${best < 0 ? `・最大 −${Math.abs(best)}g` : ""}</small></summary>
+            <div class="g-pc-grid">${items.map(partCard).join("")}</div></details>`;
+        }).join("")}
       </section>
       <details class="g-fold"><summary>🔧 整備メモ・近くのお店</summary>${maintHtml}${shopsHtml()}</details>`;
   }
@@ -2354,6 +2425,10 @@
     const last = keys[keys.length - 1];
     let val = raw;
     if (last === "backPain") val = raw === "1";
+    else if (last === "backPainType") {
+      G.body.backPain = !!raw;
+      val = raw;
+    }
     else if (last === "discRear") val = raw === "1";
     else if (last === "name" || last === "flex" || last === "hands" || last === "aero" || last === "type" || path === "color") val = raw;
     else {
@@ -2510,9 +2585,15 @@
       return renderAll();
     }
     if (t.dataset.mon) return monAction(t.dataset.monId, t.dataset.mon);
-    if (t.dataset.catSlot) {
-      catSlot = t.dataset.catSlot;
-      return renderPanel();
+    if (t.dataset.chatrec) {
+      if (t.dataset.chatrec === "undo" && G.chatRec.prevNext) {
+        G.builds.next = G.chatRec.prevNext;
+        G.chatRec.undone = true;
+        G.chatRec.prevNext = null;
+      }
+      if (t.dataset.chatrec === "hide") G.chatRec.dismissed = true;
+      save();
+      return renderAll();
     }
     if (t.dataset.scan) {
       const a = t.dataset.scan;
@@ -2795,6 +2876,17 @@
       B().pos.elbow = Math.max(0, Math.round(G.measure.riding.angles.elbow));
       changed();
       renderPanel();
+    } else if (t.id === "calib" || t.id === "calib-reset") {
+      const pos = B().pos;
+      if (t.id === "calib-reset") Object.assign(pos, { reachAdj: 0, dropAdj: 0 });
+      else {
+        if (!(pos.measDist > 0.3 && pos.measDist < 0.9)) return alert("サドル先端〜ブラケットの距離を mm で入れてください(例: 520)");
+        const adj = Fit.calibrate(B().geo, pos, pos.measDist, pos.measDrop || 0);
+        Object.assign(pos, adj);
+      }
+      suggestion = null;
+      changed();
+      renderAll();
     } else if (t.id === "optimize") {
       runOptimize();
       renderPanel();
@@ -2862,6 +2954,18 @@
     if (t.dataset.lf && t.dataset.lf !== "slot") libForm[t.dataset.lf] = t.value;
     if (t.dataset.lfSpec) libForm.specs[t.dataset.lfSpec] = t.value;
   });
+
+  // パーツ図鑑のジャンルの開け閉めを覚えておく(描き直しても開いたまま)
+  el.addEventListener(
+    "toggle",
+    (e) => {
+      const d = e.target;
+      if (!d.dataset || !d.dataset.catSec) return;
+      if (d.open) catOpen.add(d.dataset.catSec);
+      else catOpen.delete(d.dataset.catSec);
+    },
+    true
+  );
 
   el.addEventListener("change", async (e) => {
     const t = e.target;

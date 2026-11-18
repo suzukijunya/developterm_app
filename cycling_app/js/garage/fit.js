@@ -137,7 +137,8 @@ const Fit = (() => {
     // ステム: コラムスペーサーの上、ステムの中心
     const steerer = add(htTop, mul(up, p.spacers + 0.02));
     const stemDeg = 90 - g.headAngle + p.stemAngle;
-    const barClamp = add(steerer, v(Math.cos(stemDeg * RAD) * p.stemLength, Math.sin(stemDeg * RAD) * p.stemLength));
+    // reachAdj / dropAdj: 実際のバイクで測った距離に合わせるための補正(フレームの形の違いなどの分)
+    const barClamp = add(add(steerer, v(Math.cos(stemDeg * RAD) * p.stemLength, Math.sin(stemDeg * RAD) * p.stemLength)), v(p.reachAdj || 0, -(p.dropAdj || 0)));
     const hw = p.barWidth / 2;
     const grips = {
       tops: { pt: add(barClamp, v(0.0, 0.0)), z: 0.13 },
@@ -147,7 +148,9 @@ const Fit = (() => {
     // ヘッドチューブとシートチューブの間(トップチューブ・ダウンチューブの付け根)
     const ttFront = add(htTop, mul(up, -0.02));
     const dtFront = add(htBot, mul(up, 0.03));
-    return { g, p, R, ha, sa, up, fwd, htTop, htBot, crown, frontAxle, rearAxle, seatDir, stTop, saddle, saddleTop, clamp, steerer, barClamp, grips, ttFront, dtFront };
+    // サドルの先端(シートチューブの延長線から約14cm前)
+    const saddleNose = add(saddleTop, v(0.14, 0));
+    return { g, p, R, ha, sa, up, fwd, saddleNose, htTop, htBot, crown, frontAxle, rearAxle, seatDir, stTop, saddle, saddleTop, clamp, steerer, barClamp, grips, ttFront, dtFront };
   }
 
   // ---------- ライダーの姿勢(逆運動学) ----------
@@ -365,20 +368,39 @@ const Fit = (() => {
     };
   }
 
+  // ---------- 実測で合わせる ----------
+  // サドル先端〜ブラケット(フードの上)までの距離と、サドル上面とブラケット上面の高さの差(落差)を、アプリの計算で出す
+  function saddleToHood(geo, pos) {
+    const bk = bike(geo, pos);
+    const hood = add(bk.grips.hoods.pt, v(0, 0.01));
+    const dx = hood.x - bk.saddleNose.x, dy = bk.saddleTop.y - hood.y;
+    return { dist: Math.hypot(dx, dy), drop: dy, dx };
+  }
+  // 測った距離(dist)と落差(drop)に合うように、補正(reachAdj・dropAdj)を求める
+  function calibrate(geo, pos, dist, drop) {
+    const base = Object.assign({}, pos, { reachAdj: 0, dropAdj: 0 });
+    const m = saddleToHood(geo, base);
+    const dxWant = Math.sqrt(Math.max(0, dist * dist - drop * drop));
+    return { reachAdj: dxWant - m.dx, dropAdj: drop - m.drop };
+  }
+
   // ---------- 目安の範囲 ----------
   // goal: comfort(楽・腰にやさしい) / balance / aero(速さ)
   function targets(body, goal) {
     const flex = body.flex || "normal";
-    const hipMin = { stiff: 50, normal: 45, soft: 40 }[flex] + (body.backPain ? 5 : 0);
+    // 腰痛の種類: after(乗った後に張る)/ during(乗っている途中で痛い)/ upper(背中の上〜首・肩)
+    const bp = body.backPain ? body.backPainType || "during" : "";
+    const hipMin = { stiff: 50, normal: 45, soft: 40 }[flex] + (bp === "during" ? 5 : bp === "after" ? 3 : 0);
     const torso = goal === "aero" ? [28, 40] : goal === "comfort" ? [45, 60] : [38, 50];
     // 腰痛があるときは、上体を少し起こした範囲を目安にする(速さ優先のときは除く)
-    if (body.backPain && goal !== "aero") torso[0] = Math.max(torso[0], goal === "comfort" ? 48 : 44);
+    if (bp && bp !== "upper" && goal !== "aero") torso[0] = Math.max(torso[0], goal === "comfort" ? (bp === "during" ? 48 : 46) : bp === "during" ? 44 : 42);
+    const shoulder = bp === "upper" ? [75, 92] : [75, 100];
     return {
       kneeExt: { ok: [140, 150], warn: [135, 155], label: "膝の伸び(下死点)" },
       kneeTop: { ok: [68, 180], warn: [62, 180], label: "膝の曲がり(上死点)" },
       hip: { ok: [hipMin, 180], warn: [hipMin - 5, 180], label: "股関節の角度(最も閉じた時)" },
       torso: { ok: torso, warn: [torso[0] - 5, torso[1] + 5], label: "上体の角度(水平から)" },
-      shoulder: { ok: [75, 100], warn: [65, 110], label: "肩の角度(胴と腕)" },
+      shoulder: { ok: shoulder, warn: [65, shoulder[1] + 10], label: "肩の角度(胴と腕)" },
       kops: { ok: [-0.02, 0.02], warn: [-0.035, 0.035], label: "膝とペダル軸の前後(3時)" },
     };
   }
@@ -494,7 +516,7 @@ const Fit = (() => {
     };
   }
 
-  return { DEFAULT_GEO, DEFAULT_POS, DEFAULT_BODY, segments, bike, rider, capsules, frontalArea, bikeCda, bikeCdaParts, compute, anglesAt, targets, judge, penalty, optimize, performance, angleAt, riderCd };
+  return { saddleToHood, calibrate, DEFAULT_GEO, DEFAULT_POS, DEFAULT_BODY, segments, bike, rider, capsules, frontalArea, bikeCda, bikeCdaParts, compute, anglesAt, targets, judge, penalty, optimize, performance, angleAt, riderCd };
 })();
 
 if (typeof module !== "undefined") module.exports = Fit;
