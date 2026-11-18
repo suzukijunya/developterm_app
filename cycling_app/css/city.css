@@ -69,3 +69,9 @@ body.city { margin: 0; overflow: hidden; background: #050608; color: #fff; font-
   #ct-mini { width: 150px; height: 150px; }
   .ct-line { font-size: 0.85rem; }
 }
+.ct-wait { position: fixed; left: 50%; top: 42%; z-index: 8; transform: translate(-50%, -50%); padding: 16px 26px; text-align: center; background: rgba(6, 9, 14, 0.85); border-top: 3px solid #ff9a2e; }
+.ct-wait b { display: block; font-size: 1.2rem; letter-spacing: 0.08em; }
+.ct-wait small { color: #cfd5df; }
+/* デュエルの盤面は、走っている画面の右上に小さく出す(街が見えたままにする) */
+.city .bd { transform-origin: 100% 0; transform: translateY(calc(62px + env(safe-area-inset-top))) scale(0.56); border: 2px solid #ffa030; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7); }
+@media (min-width: 900px) { .city .bd { transform: translateY(70px) scale(0.44); } }

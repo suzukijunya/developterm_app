@@ -15,9 +15,8 @@ const City = (() => {
     { name: "中野駅", lat: 35.7056, lon: 139.6659 },
     { name: "吉祥寺駅", lat: 35.7031, lon: 139.5798 },
   ];
-  const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter", "https://overpass.private.coffee/api/interpreter"];
-  const TILE_LAT = 0.0036, TILE_LON = 0.0044; // 1枚 約400m四方
-  const LOAD_R = 520, DROP_R = 1300;
+  const LOAD_R = 450, DROP_R = 1500;
+  const NEAR = 420; // ルートからこれより遠い建物・道は作らない(m)。数を減らして軽くする
   const CLEAR = 3.5; // 走る線から、これより近い建物は建てない(m)
 
   let renderer, scene, camera, clock;
@@ -26,7 +25,7 @@ const City = (() => {
   let tiles = new Map(); // "ix:iy" → { state, group }
   let seen = new Set(); // 作り終えた way の id
   let queue = [];
-  let loading = 0, failed = 0;
+  let loading = 0, failed = 0, lastErr = "", ahead = null;
   let mats = null;
   let sim = null;
   let running = false;
@@ -57,7 +56,16 @@ const City = (() => {
         }
     }
     route.grid = grid;
+    // ルートから NEAR m以内のマス(100m角)
+    const near = new Set();
+    const R = Math.ceil(NEAR / 100);
+    for (let d = 0; d <= route.length; d += 60) {
+      const p = at(d), cx = Math.floor(p.x / 100), cz = Math.floor(p.z / 100);
+      for (let x = -R; x <= R; x++) for (let z = -R; z <= R; z++) if (x * x + z * z <= R * R) near.add(cx + x + ":" + (cz + z));
+    }
+    route.near = near;
   }
+  const isNear = (p) => route.near.has(Math.floor(p[0] / 100) + ":" + Math.floor(p[1] / 100));
   // 2本の線分のいちばん近い距離
   function segDist(a, b, c, d) {
     const pd = (p, q, r) => {
@@ -146,49 +154,178 @@ const City = (() => {
     } catch (e) {}
   }
 
-  // ---------- 街のデータ(Overpass) ----------
+  // ---------- 街のデータ(OpenFreeMap の地図タイル。鍵なし・1枚 約2km四方) ----------
   const ROAD_W = { motorway: 16, trunk: 16, primary: 14, secondary: 11, tertiary: 9, unclassified: 6.5, residential: 6, living_street: 5, service: 4, pedestrian: 5, cycleway: 2.5, footway: 2.2, path: 2, steps: 2, track: 3 };
-  function compact(json) {
-    const b = [], r = [];
-    for (const e of json.elements || []) {
-      if (e.type !== "way" || !e.geometry || e.geometry.length < 2) continue;
-      const tg = e.tags || {};
-      const pts = [];
-      for (const g of e.geometry) pts.push(+g.lat.toFixed(6), +g.lon.toFixed(6));
-      if (tg.building) {
-        let h = parseFloat(tg.height);
-        if (!(h > 0)) h = parseFloat(tg["building:levels"]) * 3.2;
-        b.push([e.id, h > 0 ? Math.min(250, h) : 0, pts]);
-      } else if (tg.highway) {
-        const kind = String(tg.highway).replace(/_link$/, "");
-        if (ROAD_W[kind]) r.push([e.id, kind, pts, tg.tunnel === "yes" ? 1 : 0]);
+  const CLASS = { motorway: "motorway", trunk: "trunk", primary: "primary", secondary: "secondary", tertiary: "tertiary", minor: "residential", service: "service", track: "track", path: "footway", busway: "service" };
+  const Z = 14, NT = 2 ** Z;
+  const tileX = (lon) => Math.floor(((lon + 180) / 360) * NT);
+  const tileY = (lat) => Math.floor(((1 - Math.asinh(Math.tan((lat * Math.PI) / 180)) / Math.PI) / 2) * NT);
+  const tileLon = (x) => (x / NT) * 360 - 180;
+  const tileLat = (y) => (Math.atan(Math.sinh(Math.PI * (1 - (2 * y) / NT))) * 180) / Math.PI;
+
+  // 地図タイル(Mapbox Vector Tile)を読む。必要な層(building / transportation)だけ取り出す
+  function readTile(buf, x, y) {
+    const u8 = new Uint8Array(buf), dv = new DataView(buf);
+    let pos = 0;
+    const varint = () => {
+      let r = 0, sh = 0, b;
+      do {
+        b = u8[pos++];
+        r += (b & 0x7f) * 2 ** sh;
+        sh += 7;
+      } while (b & 0x80);
+      return r;
+    };
+    // 1つのメッセージの中身を、項目ごとに fn(番号, 種類, 始まり, 終わり or 値) で渡す
+    const each = (end, fn) => {
+      while (pos < end) {
+        const tag = varint(), f = tag >>> 3, w = tag & 7;
+        if (w === 0) fn(f, w, varint());
+        else if (w === 2) {
+          const len = varint(), st = pos;
+          fn(f, w, st, st + len);
+          pos = st + len;
+        } else if (w === 5) (fn(f, w, pos), (pos += 4));
+        else if (w === 1) (fn(f, w, pos), (pos += 8));
+        else return;
       }
+    };
+    const str = (a, b) => new TextDecoder().decode(u8.subarray(a, b));
+    const out = { b: [], r: [] };
+    let n = 0;
+    each(u8.length, (f, w, a, b) => {
+      if (f !== 3 || w !== 2) return;
+      // 層
+      const save = pos;
+      pos = a;
+      let name = "", extent = 4096;
+      const keys = [], vals = [], feats = [];
+      each(b, (f2, w2, a2, b2) => {
+        if (f2 === 1) name = str(a2, b2);
+        else if (f2 === 2) feats.push([a2, b2]);
+        else if (f2 === 3) keys.push(str(a2, b2));
+        else if (f2 === 4) {
+          const sv = pos;
+          pos = a2;
+          let v = null;
+          each(b2, (f3, w3, a3, b3) => {
+            if (f3 === 1) v = str(a3, b3);
+            else if (f3 === 2) v = dv.getFloat32(a3, true);
+            else if (f3 === 3) v = dv.getFloat64(a3, true);
+            else if (f3 === 6) v = a3 & 1 ? -(a3 + 1) / 2 : a3 / 2;
+            else if (f3 === 7) v = !!a3;
+            else v = a3;
+          });
+          vals.push(v);
+          pos = sv;
+        } else if (f2 === 5) extent = a2;
+      });
+      if (name === "building" || name === "transportation") {
+        const toLL = (px, py) => [+tileLat(y + py / extent).toFixed(6), +tileLon(x + px / extent).toFixed(6)];
+        for (const [fa, fb] of feats) {
+          pos = fa;
+          let type = 0, tags = null, geom = null;
+          each(fb, (f3, w3, a3, b3) => {
+            if (f3 === 3) type = a3;
+            else if (f3 === 2) tags = [a3, b3];
+            else if (f3 === 4) geom = [a3, b3];
+          });
+          if (!geom) continue;
+          const pr = {};
+          if (tags) {
+            pos = tags[0];
+            while (pos < tags[1]) {
+              const k = keys[varint()], v = vals[varint()];
+              pr[k] = v;
+            }
+          }
+          // 図形(MoveTo / LineTo / ClosePath)
+          pos = geom[0];
+          const rings = [];
+          let cx = 0, cy = 0, cur = null;
+          while (pos < geom[1]) {
+            const cmd = varint(), id = cmd & 7, cnt = cmd >>> 3;
+            if (id === 7) continue;
+            for (let i = 0; i < cnt; i++) {
+              const dx = varint(), dy = varint();
+              cx += dx & 1 ? -(dx + 1) / 2 : dx / 2;
+              cy += dy & 1 ? -(dy + 1) / 2 : dy / 2;
+              if (id === 1) rings.push((cur = []));
+              cur.push(cx, cy);
+            }
+          }
+          if (name === "building" && type === 3) {
+            const h = +pr.render_height || 0;
+            for (const rg of rings) {
+              if (rg.length < 6) continue;
+              let area = 0;
+              for (let i = 0; i < rg.length; i += 2) {
+                const j = (i + 2) % rg.length;
+                area += rg[i] * rg[j + 1] - rg[j] * rg[i + 1];
+              }
+              if (area <= 0) continue; // 穴(中庭)は省く
+              const pts = [];
+              for (let i = 0; i < rg.length; i += 2) pts.push(...toLL(rg[i], rg[i + 1]));
+              out.b.push([-(++n) - x * 131 - y * 7919 * 4096, Math.min(250, h), pts]);
+            }
+          } else if (name === "transportation" && type === 2) {
+            const kind = pr.class === "path" && pr.subclass === "cycleway" ? "cycleway" : CLASS[pr.class];
+            if (!kind) continue;
+            for (const rg of rings) {
+              if (rg.length < 4) continue;
+              const pts = [];
+              for (let i = 0; i < rg.length; i += 2) pts.push(...toLL(rg[i], rg[i + 1]));
+              out.r.push([-(++n), kind, pts, pr.brunnel === "tunnel" ? 1 : 0]);
+            }
+          }
+        }
+      }
+      pos = save;
+    });
+    return out;
+  }
+  let tmpl = null;
+  async function tileUrl(x, y) {
+    if (!tmpl) {
+      try {
+        const c = JSON.parse(localStorage.getItem("city_tiles") || "null");
+        if (c && Date.now() - c.t < 3 * 86400000) tmpl = c.u;
+      } catch (e) {}
     }
-    return { b, r };
+    if (!tmpl) {
+      const res = await fetch("https://tiles.openfreemap.org/planet");
+      if (!res.ok) throw new Error(res.status);
+      tmpl = (await res.json()).tiles[0];
+      try {
+        localStorage.setItem("city_tiles", JSON.stringify({ t: Date.now(), u: tmpl }));
+      } catch (e) {}
+    }
+    return tmpl.replace("{z}", Z).replace("{x}", x).replace("{y}", y);
   }
   async function fetchTile(ix, iy) {
-    const key = `v1:${ix}:${iy}`;
+    const key = `v3:${Z}:${ix}:${iy}`;
     const hit = await cacheGet(key);
     if (hit) return hit;
-    const s = iy * TILE_LAT, w = ix * TILE_LON;
-    const box = `${s.toFixed(5)},${w.toFixed(5)},${(s + TILE_LAT).toFixed(5)},${(w + TILE_LON).toFixed(5)}`;
-    const q = `[out:json][timeout:25];(way["building"](${box});way["highway"](${box}););out geom;`;
-    let err = null;
-    for (const url of OVERPASS) {
-      try {
-        const ctl = new AbortController();
-        const to = setTimeout(() => ctl.abort(), 30000);
-        const res = await fetch(url, { method: "POST", body: "data=" + encodeURIComponent(q), headers: { "Content-Type": "application/x-www-form-urlencoded" }, signal: ctl.signal });
-        clearTimeout(to);
-        if (!res.ok) throw new Error(res.status);
-        const data = compact(await res.json());
-        cachePut(key, data);
-        return data;
-      } catch (e) {
-        err = e;
+    try {
+      const ctl = new AbortController();
+      const to = setTimeout(() => ctl.abort(), 25000);
+      let res = await fetch(await tileUrl(ix, iy), { signal: ctl.signal });
+      if (res.status === 404 || res.status === 410) {
+        // 地図の版が新しくなった: 置き場所を取り直す
+        tmpl = null;
+        localStorage.removeItem("city_tiles");
+        res = await fetch(await tileUrl(ix, iy), { signal: ctl.signal });
       }
+      clearTimeout(to);
+      if (!res.ok) throw new Error(res.status);
+      const data = readTile(await res.arrayBuffer(), ix, iy);
+      cachePut(key, data);
+      lastErr = "";
+      return data;
+    } catch (e) {
+      lastErr = e && e.name === "AbortError" ? "時間切れ" : String((e && e.message) || e).slice(0, 40);
+      throw e;
     }
-    throw err || new Error("map");
   }
 
   // ---------- 見た目の材料 ----------
@@ -264,8 +401,7 @@ const City = (() => {
       };
       const PAL = [[0.82, 0.8, 0.76], [0.7, 0.72, 0.76], [0.86, 0.84, 0.8], [0.62, 0.6, 0.6], [0.78, 0.7, 0.62], [0.66, 0.7, 0.72]];
       for (const [id, h0, ll] of data.b) {
-        if (seen.has(id)) continue;
-        seen.add(id);
+        if (!isNear(project(ll[0], ll[1]))) continue;
         const pts = [];
         for (let i = 0; i < ll.length; i += 2) pts.push(project(ll[i], ll[i + 1]));
         if (pts.length > 3 && pts[0][0] === pts[pts.length - 1][0] && pts[0][1] === pts[pts.length - 1][1]) pts.pop();
@@ -313,13 +449,13 @@ const City = (() => {
     {
       const pos = [], nor = [], uv = [], col = [];
       for (const [id, kind, ll, tunnel] of data.r) {
-        if (seen.has(id) || tunnel) continue;
-        seen.add(id);
+        if (tunnel) continue;
         const w = ROAD_W[kind] || 4, big = w >= 9, walk = w <= 3;
         const y = big ? 0.05 : walk ? 0.02 : 0.035;
         const c = walk ? [1.5, 1.42, 1.3] : [1, 1, 1];
         const p = [];
         for (let i = 0; i < ll.length; i += 2) p.push(project(ll[i], ll[i + 1]));
+        if (!isNear(p[0]) && !isNear(p[p.length - 1])) continue;
         let run = 0;
         const side = (i) => {
           const a = p[Math.max(0, i - 1)], b = p[Math.min(p.length - 1, i + 1)];
@@ -359,17 +495,21 @@ const City = (() => {
   }
 
   // いまの位置のまわりの街を用意する(足りない分を順に取りに行く)
+  function tileDist(ix, iy, p) {
+    const [x0, z0] = project(tileLat(iy), tileLon(ix)), [x1, z1] = project(tileLat(iy + 1), tileLon(ix + 1));
+    const dx = Math.max(Math.min(x0, x1) - p.x, 0, p.x - Math.max(x0, x1)), dz = Math.max(Math.min(z0, z1) - p.z, 0, p.z - Math.max(z0, z1));
+    return Math.hypot(dx, dz);
+  }
   function wantTiles(along) {
     const want = new Map();
-    for (const d of [0, 250, 500, 800]) {
+    for (const d of [0, 300, 600]) {
       const p = at(along + d);
       const lat = route.lat0 - p.z / route.kz, lon = route.lon0 + p.x / route.kx;
-      const cx = Math.floor(lon / TILE_LON), cy = Math.floor(lat / TILE_LAT);
+      const cx = tileX(lon), cy = tileY(lat);
       for (let dx = -1; dx <= 1; dx++)
         for (let dy = -1; dy <= 1; dy++) {
           const ix = cx + dx, iy = cy + dy, key = ix + ":" + iy;
-          const [tx, tz] = project((iy + 0.5) * TILE_LAT, (ix + 0.5) * TILE_LON);
-          const dist = Math.hypot(tx - p.x, tz - p.z);
+          const dist = tileDist(ix, iy, p);
           if (dist < LOAD_R && (!want.has(key) || want.get(key).dist > dist + d)) want.set(key, { ix, iy, dist: dist + d });
         }
     }
@@ -379,8 +519,7 @@ const City = (() => {
     const p0 = at(along);
     for (const [key, t] of tiles) {
       if (t.state !== "ok") continue;
-      const [tx, tz] = project((t.iy + 0.5) * TILE_LAT, (t.ix + 0.5) * TILE_LON);
-      if (Math.hypot(tx - p0.x, tz - p0.z) > DROP_R) {
+      if (tileDist(t.ix, t.iy, p0) > DROP_R) {
         scene.remove(t.group);
         t.group.traverse((o) => o.geometry && o.geometry.dispose());
         tiles.delete(key);
@@ -389,7 +528,8 @@ const City = (() => {
     pump();
   }
   async function pump() {
-    if (loading || !queue.length) return;
+    if (loading) return;
+    if (!queue.length) return prefetch();
     const key = queue.shift();
     const t = tiles.get(key);
     if (!t || t.state !== "wait") return pump();
@@ -403,18 +543,44 @@ const City = (() => {
         scene.add(t.group);
       }
     } catch (e) {
-      t.state = "fail";
-      failed++;
+      // 3回までやり直す(混んでいるだけのことが多い)
+      t.tries = (t.tries || 0) + 1;
+      if (t.tries < 3) {
+        t.state = "wait";
+        setTimeout(() => (tiles.get(key) === t && queue.push(key), pump()), 6000 * t.tries);
+      } else (t.state = "fail"), failed++;
     }
     loading--;
     hudMap();
-    setTimeout(pump, 250); // 地図サーバーに続けて送りすぎない
+    setTimeout(pump, 400); // 地図サーバーに続けて送りすぎない
+  }
+  // 手が空いているときに、この先のルートの街を先に取って端末に保存しておく(表示は近づいてから)
+  async function prefetch() {
+    if (!route || !sim || sim.done) return;
+    if (!ahead) {
+      ahead = [];
+      const got = new Set();
+      for (let d = 0; d <= route.length; d += 200) {
+        const p = at(d);
+        const k = tileX(route.lon0 + p.x / route.kx) + ":" + tileY(route.lat0 - p.z / route.kz);
+        if (!got.has(k)) got.add(k), ahead.push(k);
+      }
+    }
+    const key = ahead.shift();
+    if (!key) return;
+    const [ix, iy] = key.split(":").map(Number);
+    loading++;
+    try {
+      await fetchTile(ix, iy);
+    } catch (e) {}
+    loading--;
+    setTimeout(pump, 1200);
   }
   function hudMap() {
     const el = $("ct-map-state");
     if (!el) return;
     const n = queue.length + loading;
-    el.textContent = n ? `街を読み込み中… 残り${n}区画` : failed ? `読めなかった区画 ${failed}(道と建物が出ない所があります)` : "";
+    el.textContent = (n ? `街を読み込み中… 残り${n}区画` : failed ? `読めなかった区画 ${failed}(道と建物が出ない所があります)` : "") + (lastErr ? ` ・地図サーバー: ${lastErr}` : "");
   }
 
   // ---------- 自転車と人(かんたんな形) ----------
@@ -616,7 +782,23 @@ const City = (() => {
     buildRouteStrip();
     wantTiles(0);
     hudDuel();
-    ticker(`ライディング・デュエル、アクセラレーション! 相手は${foe.name}`, "you");
+    // 最初の街が出るまで待つ(長くても40秒。出なければ道の線だけで走り出す)
+    sim.paused = true;
+    const wait = $("ct-wait");
+    wait.hidden = false;
+    const t0 = Date.now();
+    const iv = setInterval(() => {
+      const ok = [...tiles.values()].some((t) => t.state === "ok");
+      const sec = Math.round((Date.now() - t0) / 1000);
+      wait.querySelector("small").textContent = `${sec}秒${lastErr ? " ・地図サーバー: " + lastErr + "(やり直し中)" : ""}`;
+      if (ok || sec >= 40) {
+        clearInterval(iv);
+        wait.hidden = true;
+        sim.paused = false;
+        ticker(`ライディング・デュエル、アクセラレーション! 相手は${foe.name}`, "you");
+        if (!ok) ticker("街を読めていません。道の線だけで走ります", "opp");
+      }
+    }, 300);
     running = true;
     clock.getDelta();
     loop();
@@ -656,9 +838,18 @@ const City = (() => {
     const names = { you: "YOU", opp: ev.foe ? ev.foe.name : "相手" };
     for (const line of turnLines(ev, names)) ticker(line[0], line[1]);
     hudDuel(ev);
-    // 見せ場だけ、走りを止めて全画面の演出を入れる
+    // 早送り(×5以上)のときは、演出を出さずに文だけ流す
+    if (s.speedX > 2) return;
+    // ふつうのターンは、画面の右上に小さな盤面を出して、1手ずつ動かして見せる
     const sc = ev.drama ? ev.drama.score : 0;
-    if (typeof Cinema !== "undefined" && sc >= 8 && s.t - (s.cineT || -99) > 60) {
+    const big = typeof Cinema !== "undefined" && sc >= 7 && s.t - (s.cineT || -99) > 45;
+    if (!big && typeof Board !== "undefined" && ev.before && !(typeof Cinema !== "undefined" && Cinema.busy())) {
+      try {
+        Board.play(ev, names);
+      } catch (e) {}
+    }
+    // 見せ場だけ、走りを止めて全画面の演出を入れる
+    if (big) {
       try {
         const ok = Cinema.play(ev, (c) => say(c.line), () => (s.paused = false));
         if (ok) (s.paused = true), (s.cineT = s.t), setTimeout(() => (s.paused = false), 16000);
@@ -879,5 +1070,5 @@ const City = (() => {
   }
 
   if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", bind);
-  return { at, turnAhead, compact, _state: () => ({ sim, route, tiles, failed }) };
+  return { at, turnAhead, readTile, _state: () => ({ sim, route, tiles, failed }) };
 })();
