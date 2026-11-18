@@ -420,6 +420,7 @@ const City = (() => {
       bld: new THREE.MeshLambertMaterial({ map: tex(wall), emissiveMap: tex(glow), emissive: 0xffffff, emissiveIntensity: 0.85, vertexColors: true }),
       road: new THREE.MeshLambertMaterial({ map: tex(rd), vertexColors: true }),
       area: new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }),
+      pcol: new THREE.MeshLambertMaterial({ vertexColors: true }),
     };
   }
 
@@ -811,7 +812,7 @@ const City = (() => {
       const me = document.querySelector('script[src*="js/city.js"]');
       const v = me && me.src.includes("?") ? "?" + me.src.split("?")[1] : "";
       worker = new Worker("js/plateau-worker.js" + v);
-      worker.postMessage({ type: "init", route: { xy: route.xy, lat0: route.lat0, lon0: route.lon0, kx: route.kx, kz: route.kz }, clear: CLEAR });
+      worker.postMessage({ type: "init", route: { xy: route.xy, lat0: route.lat0, lon0: route.lon0, kx: route.kx, kz: route.kz }, clear: CLEAR, texMax: innerWidth < 900 ? 2048 : 4096 });
       worker.onmessage = (e) => {
         const d = e.data, w = waiting.get(d.id);
         waiting.delete(d.id);
@@ -837,9 +838,8 @@ const City = (() => {
       const p0 = at(along);
       for (const [key, t] of loaded) {
         const L = leaves.find((x) => x.key === key);
-        if (t.mesh && L && rectDist(L.rect, p0) > 900) {
-          scene.remove(t.mesh);
-          t.mesh.geometry.dispose();
+        if (t.mesh && L && rectDist(L.rect, p0) > (t.texs && t.texs.length ? 600 : 900)) {
+          drop(t);
           loaded.delete(key);
         }
       }
@@ -864,13 +864,25 @@ const City = (() => {
         const t = loaded.get(L.key);
         if (t && plateauOn) {
           const THREE = T();
-          const geo = new THREE.BufferGeometry();
-          geo.setAttribute("position", new THREE.BufferAttribute(d.pos, 3));
-          geo.setAttribute("normal", new THREE.BufferAttribute(d.nor, 3, true));
-          geo.setAttribute("uv", new THREE.BufferAttribute(d.uv, 2));
-          geo.setAttribute("color", new THREE.BufferAttribute(d.col, 3, true));
-          geo.computeBoundingSphere();
-          t.mesh = new THREE.Mesh(geo, mats.bld);
+          // 写真(壁や屋根のテクスチャ)
+          const texs = await Promise.all((d.images || []).map(toTexture));
+          t.mesh = new THREE.Group();
+          t.texs = texs.filter(Boolean);
+          for (const g of d.groups) {
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute("position", new THREE.BufferAttribute(g.pos, 3));
+            geo.setAttribute("normal", new THREE.BufferAttribute(g.nor, 3, true));
+            geo.setAttribute("uv", new THREE.BufferAttribute(g.uv, 2));
+            geo.setAttribute("color", new THREE.BufferAttribute(g.col, 3, true));
+            geo.computeBoundingSphere();
+            let mat = mats.bld;
+            if (g.kind === "t") {
+              const tx = texs[g.img];
+              // 写真は光の当たり方まで写っているので、ライトの影響を受けない材質でそのまま見せる
+              mat = tx ? new THREE.MeshBasicMaterial({ map: tx, color: 0xe2e2ea }) : mats.pcol;
+            } else if (g.kind === "c") mat = mats.pcol;
+            t.mesh.add(new THREE.Mesh(geo, mat));
+          }
           t.state = "ok";
           t.names = d.names;
           scene.add(t.mesh);
@@ -884,9 +896,55 @@ const City = (() => {
       pump();
       pump();
     }
+    // 写真(ImageBitmap か、取り出せなかったときは画像のバイト列)からテクスチャを作る
+    async function toTexture(im) {
+      const THREE = T();
+      try {
+        let src = im.bitmap;
+        if (!src) {
+          const url = URL.createObjectURL(new Blob([im.bytes], { type: im.mime }));
+          src = await new Promise((res, rej) => {
+            const i = new Image();
+            i.onload = () => res(i);
+            i.onerror = rej;
+            i.src = url;
+          });
+          URL.revokeObjectURL(url);
+          const max = innerWidth < 900 ? 2048 : 4096;
+          if (src.width > max || src.height > max) {
+            const k = max / Math.max(src.width, src.height), cv = document.createElement("canvas");
+            cv.width = Math.round(src.width * k);
+            cv.height = Math.round(src.height * k);
+            cv.getContext("2d").drawImage(src, 0, 0, cv.width, cv.height);
+            src = cv;
+          }
+        }
+        const tx = new THREE.Texture(src);
+        tx.flipY = false; // glTF の写真の座標は上が0
+        tx.encoding = THREE.sRGBEncoding;
+        tx.anisotropy = 8;
+        tx.wrapS = tx.wrapT = THREE.ClampToEdgeWrapping;
+        tx.needsUpdate = true;
+        return tx;
+      } catch (e) {
+        return null;
+      }
+    }
+    function drop(t) {
+      if (!t.mesh) return;
+      scene.remove(t.mesh);
+      t.mesh.traverse((o) => {
+        if (o.geometry) o.geometry.dispose();
+        if (o.material && o.material.map && o.material !== mats.bld) o.material.dispose();
+      });
+      for (const tx of t.texs || []) {
+        if (tx.image && tx.image.close) tx.image.close();
+        tx.dispose();
+      }
+    }
     function clear() {
       queue = [];
-      for (const [, t] of loaded) if (t.mesh) (scene.remove(t.mesh), t.mesh.geometry.dispose());
+      for (const [, t] of loaded) drop(t);
       loaded.clear();
     }
     return {

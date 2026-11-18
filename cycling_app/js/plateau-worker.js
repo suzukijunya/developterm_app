@@ -1,7 +1,8 @@
 // PLATEAU(国交省の3D都市モデル)の建物タイル(3D Tiles の b3dm)を、シティデュエルの座標に直すワーカー。
 // 重い計算(Draco の展開・座標変換・走る道に重なる建物の除外)を、画面を止めずにここでやる。
 // 入力: { type: "init", route: { xy, lat0, lon0, kx, kz }, clear }  /  { type: "tile", id, buf }
-// 出力: { id, pos(Float32: x,y,z…), nor(Int8: 面の向き), uv(Float32), col(Uint8: r,g,b…), names: [{ name, x, z, h }], n(建物数), skipped }
+// 出力: { id, groups: [{ kind: "t"(写真)/"c"(色つき)/"p"(色なし), img(写真の番号), pos, nor, uv, col }], images: [{ bitmap | bytes, mime }], names, n, skipped }
+//   壁の写真つきの版(LOD2/3/4)は、写真をそのまま貼る(大きすぎる写真は texMax の幅に縮める)
 
 importScripts("vendor/draco/draco_wasm_wrapper.js");
 
@@ -12,12 +13,14 @@ const dracoP = fetch("vendor/draco/draco_decoder.wasm")
 
 let R = null; // 走るルート { xy, lat0, lon0, kx, kz, grid }
 let CLEAR = 3.5;
+let TEXMAX = 4096;
 
 self.onmessage = async (e) => {
   const d = e.data;
   if (d.type === "init") {
     R = d.route;
     CLEAR = d.clear || 3.5;
+    TEXMAX = d.texMax || 4096;
     R.grid = new Map();
     const xy = R.xy;
     for (let i = 0; i < xy.length - 1; i++) {
@@ -37,7 +40,10 @@ self.onmessage = async (e) => {
     try {
       const out = await tile(d.buf);
       out.id = d.id;
-      self.postMessage(out, [out.pos.buffer, out.nor.buffer, out.uv.buffer, out.col.buffer]);
+      const tr = [];
+      for (const g of out.groups) tr.push(g.pos.buffer, g.nor.buffer, g.uv.buffer, g.col.buffer);
+      for (const im of out.images) tr.push(im.bitmap || im.bytes);
+      self.postMessage(out, tr);
     } catch (err) {
       self.postMessage({ id: d.id, error: String((err && err.message) || err) });
     }
@@ -65,18 +71,90 @@ async function tile(buf) {
   const draco = (await dracoP).m;
 
   const parts = [];
+  const usedImg = new Set();
   for (const mesh of gj.meshes || [])
     for (const prim of mesh.primitives || []) {
       const ext = prim.extensions && prim.extensions.KHR_draco_mesh_compression;
       if (!ext) continue;
       const bv = gj.bufferViews[ext.bufferView];
       const arr = new Int8Array(buf, binStart + (bv.byteOffset || 0), bv.byteLength);
-      parts.push(decode(draco, arr, ext.attributes));
+      const comps = (name) => {
+        const a = gj.accessors[prim.attributes[name]];
+        return a ? { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 }[a.type] || 3 : 3;
+      };
+      const part = decode(draco, arr, ext.attributes, comps);
+      // 材質: 写真(baseColorTexture)があれば、その写真の番号
+      const mat = (gj.materials || [])[prim.material] || {};
+      const pbr = mat.pbrMetallicRoughness || {};
+      const tex = pbr.baseColorTexture ? (gj.textures || [])[pbr.baseColorTexture.index] : null;
+      const img = tex ? (tex.source != null ? tex.source : tex.extensions && tex.extensions.EXT_texture_webp ? tex.extensions.EXT_texture_webp.source : null) : null;
+      part.img = img != null && part.tex ? img : null;
+      part.factor = pbr.baseColorFactor || [1, 1, 1, 1];
+      if (part.img != null) usedImg.add(part.img);
+      parts.push(part);
     }
-  return build(parts, center, bt);
+  const out = build(parts, center, bt);
+  // 写真を取り出して(必要なら縮めて)画像にする
+  out.images = [];
+  const remap = new Map();
+  for (const i of usedImg) {
+    const im = gj.images[i];
+    if (!im || im.bufferView == null) continue;
+    const bv = gj.bufferViews[im.bufferView];
+    const bytes = buf.slice(binStart + (bv.byteOffset || 0), binStart + (bv.byteOffset || 0) + bv.byteLength);
+    remap.set(i, out.images.length);
+    out.images.push(await toBitmap(bytes, im.mimeType || "image/jpeg"));
+  }
+  for (const g of out.groups) if (g.kind === "t") g.img = remap.has(g.img) ? remap.get(g.img) : -1;
+  out.groups = out.groups.filter((g) => g.kind !== "t" || g.img >= 0);
+  return out;
 }
 
-function decode(draco, arr, ids) {
+// 写真の大きさ(WebP/PNG/JPEG の頭から読む)。わからなければ null
+function imgSize(b, mime) {
+  const u = new Uint8Array(b), dv = new DataView(b);
+  try {
+    if (/webp/.test(mime)) {
+      const tag = String.fromCharCode(u[12], u[13], u[14], u[15]);
+      if (tag === "VP8 ") return [dv.getUint16(26, true) & 0x3fff, dv.getUint16(28, true) & 0x3fff];
+      if (tag === "VP8L") {
+        const v = dv.getUint32(21, true);
+        return [(v & 0x3fff) + 1, ((v >> 14) & 0x3fff) + 1];
+      }
+      if (tag === "VP8X") return [(u[24] | (u[25] << 8) | (u[26] << 16)) + 1, (u[27] | (u[28] << 8) | (u[29] << 16)) + 1];
+    }
+    if (/png/.test(mime)) return [dv.getUint32(16), dv.getUint32(20)];
+    if (/jpe?g/.test(mime))
+      for (let p = 2; p < u.length - 9; ) {
+        if (u[p] !== 0xff) break;
+        const m = u[p + 1], len = dv.getUint16(p + 2);
+        if (m >= 0xc0 && m <= 0xc3) return [dv.getUint16(p + 7), dv.getUint16(p + 5)];
+        p += 2 + len;
+      }
+  } catch (e) {}
+  return null;
+}
+async function toBitmap(bytes, mime) {
+  if (typeof createImageBitmap !== "function") return { bytes, mime };
+  try {
+    const blob = new Blob([bytes], { type: mime });
+    const sz = imgSize(bytes, mime);
+    const k = sz ? Math.min(1, TEXMAX / Math.max(sz[0], sz[1])) : 1;
+    const opt = k < 1 ? { resizeWidth: Math.round(sz[0] * k), resizeHeight: Math.round(sz[1] * k), resizeQuality: "high" } : {};
+    let bm = await createImageBitmap(blob, opt);
+    if (bm.width > TEXMAX || bm.height > TEXMAX) {
+      const k2 = TEXMAX / Math.max(bm.width, bm.height);
+      const small = await createImageBitmap(bm, { resizeWidth: Math.round(bm.width * k2), resizeHeight: Math.round(bm.height * k2), resizeQuality: "high" });
+      bm.close();
+      bm = small;
+    }
+    return { bitmap: bm };
+  } catch (e) {
+    return { bytes, mime };
+  }
+}
+
+function decode(draco, arr, ids, comps) {
   const dec = new draco.Decoder();
   const mesh = new draco.Mesh();
   const db = new draco.DecoderBuffer();
@@ -95,6 +173,9 @@ function decode(draco, arr, ids) {
   };
   const pos = attr(ids.POSITION, 3);
   const bid = ids._BATCHID != null ? attr(ids._BATCHID, 1) : new Float32Array(mesh.num_points());
+  const tex = ids.TEXCOORD_0 != null ? attr(ids.TEXCOORD_0, 2) : null;
+  const cn = ids.COLOR_0 != null ? comps("COLOR_0") : 0;
+  const color = cn ? attr(ids.COLOR_0, cn) : null;
   const nIdx = mesh.num_faces() * 3, bytes = nIdx * 4;
   const ptr = draco._malloc(bytes);
   dec.GetTrianglesUInt32Array(mesh, bytes, ptr);
@@ -102,7 +183,7 @@ function decode(draco, arr, ids) {
   draco._free(ptr);
   draco.destroy(mesh);
   draco.destroy(dec);
-  return { pos, bid, idx };
+  return { pos, bid, idx, tex, color, cn };
 }
 
 // ---------- 座標: 地心座標(ECEF)→ アプリの平面(x=東, z=南, y=上) ----------
@@ -169,11 +250,17 @@ function build(parts, center, bt) {
     if (!pts[b].length) continue;
     if (onRoute(pts[b], bx0[b], bx1[b], bz0[b], bz1[b])) (skip[b] = 1), skipped++;
   }
-  // 3) 三角形ごとに(面の向きで)壁と屋根を分け、壁に窓の模様、屋根は暗い色
-  let tri = 0;
-  for (const pt of parts) tri += pt.idx.length / 3;
-  const pos = new Float32Array(tri * 9), nor = new Int8Array(tri * 9), uv = new Float32Array(tri * 6), col = new Uint8Array(tri * 9);
-  let w = 0, base = 0;
+  // 3) 三角形ごとに書き出す。写真つきは写真の座標、色つきはその色、色なしは壁に窓の模様・屋根は暗い色
+  const groups = new Map();
+  const G = (key, kind, img, n) => {
+    let g = groups.get(key);
+    if (!g) groups.set(key, (g = { kind, img, cap: 0, w: 0, parts: [] }));
+    g.cap += n;
+    return g;
+  };
+  for (const pt of parts) pt.g = pt.img != null ? G("t" + pt.img, "t", pt.img, pt.idx.length) : pt.color ? G("c", "c", null, pt.idx.length) : G("p", "p", null, pt.idx.length);
+  for (const g of groups.values()) Object.assign(g, { pos: new Float32Array(g.cap * 3), nor: new Int8Array(g.cap * 3), uv: new Float32Array(g.cap * 2), col: new Uint8Array(g.cap * 3) });
+  let base = 0;
   const pal = (b) => {
     const us = usage[b] || "";
     const h = hash(b * 7919 + Math.round(P[0]));
@@ -185,6 +272,9 @@ function build(parts, center, bt) {
   const colors = new Array(NB);
   for (const pt of parts) {
     const ix = pt.idx;
+    const g = pt.g;
+    const { pos, nor, uv, col } = g;
+    let w = g.w;
     for (let t = 0; t < ix.length; t += 3) {
       const ia = base + ix[t], ib = base + ix[t + 1], ic = base + ix[t + 2];
       const b = B[ia];
@@ -199,9 +289,10 @@ function build(parts, center, bt) {
       nx /= L;
       ny /= L;
       nz /= L;
-      const c = colors[b] || (colors[b] = pal(b));
+      const c = g.kind === "p" ? colors[b] || (colors[b] = pal(b)) : null;
       const roof = Math.abs(ny) > 0.55;
       const k = roof ? 0.5 : 1;
+      const vi = [ix[t], ix[t + 1], ix[t + 2]];
       const V = [ax, ay, az, bx, by, bz, qx, qy, qz];
       for (let j = 0; j < 3; j++) {
         const X = V[j * 3], Y = V[j * 3 + 1], Z = V[j * 3 + 2];
@@ -211,23 +302,36 @@ function build(parts, center, bt) {
         nor[w * 3] = Math.round(nx * 127);
         nor[w * 3 + 1] = Math.round(ny * 127);
         nor[w * 3 + 2] = Math.round(nz * 127);
-        if (roof) (uv[w * 2] = 0.004), (uv[w * 2 + 1] = 0.004);
-        else {
-          // 壁にそって横に進む距離で、窓の模様を貼る
-          uv[w * 2] = (-X * nz + Z * nx) / 28;
-          uv[w * 2 + 1] = Y / 25.6;
+        const v = vi[j];
+        if (g.kind === "t") {
+          uv[w * 2] = pt.tex[v * 2];
+          uv[w * 2 + 1] = pt.tex[v * 2 + 1];
+          col[w * 3] = col[w * 3 + 1] = col[w * 3 + 2] = 255;
+        } else if (g.kind === "c") {
+          const f = pt.factor, cn = pt.cn;
+          for (let q = 0; q < 3; q++) col[w * 3 + q] = Math.max(0, Math.min(255, Math.round(pt.color[v * cn + q] * f[q] * 255)));
+        } else {
+          if (roof) (uv[w * 2] = 0.004), (uv[w * 2 + 1] = 0.004);
+          else {
+            // 壁にそって横に進む距離で、窓の模様を貼る
+            uv[w * 2] = (-X * nz + Z * nx) / 28;
+            uv[w * 2 + 1] = Y / 25.6;
+          }
+          col[w * 3] = c[0] * k;
+          col[w * 3 + 1] = c[1] * k;
+          col[w * 3 + 2] = c[2] * k;
         }
-        col[w * 3] = c[0] * k;
-        col[w * 3 + 1] = c[1] * k;
-        col[w * 3 + 2] = c[2] * k;
         w++;
       }
     }
+    g.w = w;
     base += pt.pos.length / 3;
   }
   const lm = [];
   for (let b = 0; b < NB; b++) if (names[b] && !skip[b] && pts[b].length) lm.push({ name: String(names[b]), x: (bx0[b] + bx1[b]) / 2, z: (bz0[b] + bz1[b]) / 2, h: maxY[b] - minY[b] });
-  return { pos: pos.slice(0, w * 3), nor: nor.slice(0, w * 3), uv: uv.slice(0, w * 2), col: col.slice(0, w * 3), names: lm, n: NB - skipped, skipped };
+  const out = [];
+  for (const g of groups.values()) if (g.w) out.push({ kind: g.kind, img: g.img, pos: g.pos.slice(0, g.w * 3), nor: g.nor.slice(0, g.w * 3), uv: g.uv.slice(0, g.w * 2), col: g.col.slice(0, g.w * 3) });
+  return { groups: out, names: lm, n: NB - skipped, skipped };
 }
 
 function hash(n) {
