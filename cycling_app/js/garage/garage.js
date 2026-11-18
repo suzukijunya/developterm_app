@@ -781,6 +781,37 @@
     </section>`;
   }
 
+  // ---------- いまの設計思想とトレンド(チャットでまとめた内容。ガレージの上に出す) ----------
+  const TREND_KEY = "cycling_trend_open";
+  function trendHtml() {
+    let open = true;
+    try {
+      open = localStorage.getItem(TREND_KEY) !== "0";
+    } catch (e) {}
+    return `<details class="card g-trend" id="g-trend" ${open ? "open" : ""}>
+      <summary>💡 いまの設計思想とトレンド<small>2026年11月</small></summary>
+      <p class="g-trend-lead"><b>ざっくり言うと</b>: 今のアプリの前提「エスケープR3(リムブレーキ・10速)にお金をかけて仕上げていく」は、半分古くなっている。</p>
+      <h3>市場の流れ</h3>
+      <ul>
+        <li>新車は、入門グレードを除いてほぼディスクブレーキ。シマノの新しい105(12速の機械式)もディスクブレーキ専用。</li>
+        <li>この1か月の新型は、リドレー ファルコンRS 2.0、デローザ アイドルなど。上位モデルが入れ替わるたびに、乗り換えた人の旧モデルが中古に出てくる。</li>
+        <li><b>リムブレーキ用の中古パーツは安く、数も多い。</b>ヤフオクでもゾンダの前後セットが6万円前後、カーボンのリムブレーキ用ホイールは落札の平均が5万円台。</li>
+        <li>ただし、2026年に何%下がったかという数字のデータは見つからなかった。「安い・数が多い」という方向は確かだが、幅はわからない。</li>
+      </ul>
+      <h3>見直した方がいい点</h3>
+      <ul>
+        <li><b>リムブレーキの上級パーツを新品で買うのは、もう割に合わない。</b>中古の安い相場で買う前提にする。</li>
+        <li><b>将来の乗り換えに持っていけない</b>: リムブレーキ用ホイールは、ディスクブレーキのバイクでは使えず、売るときも値段がつきにくい。</li>
+        <li><b>予算が上限なしなら、乗り換えも本気の選択肢。</b>中古のディスクブレーキのロードバイク(ここ数年の型落ち)を買い、ホイールなどのお金はそっちに回す。NEWに入れていたTCR Advanced SLの構想もこの方向。</li>
+      </ul>
+      <h3>考え方を2つに分ける</h3>
+      <ol>
+        <li><b>R3延命プラン</b>: リムブレーキのパーツは中古の安いものだけで仕上げる。NEWに入れたデュラエースC24も、中古4〜7万円で買う前提。</li>
+        <li><b>乗り換えプラン</b>: 中古のディスクロード(TCRなど)と比べる。R3にかける総額と、乗り換えの総額を並べて判断する。</li>
+      </ol>
+    </details>`;
+  }
+
   function chatRecHtml() {
     if (!G.chatRec || G.chatRec.id !== CHAT_REC.id || G.chatRec.dismissed) return "";
     const cur = G.builds.current;
@@ -2398,7 +2429,7 @@
 
   function renderPanel() {
     const panel = document.getElementById("panel");
-    panel.innerHTML = tab === "parts" ? partsPanel() : tab === "fit" ? fitPanel() : tab === "aero" ? aeroPanel() : tab === "clerk" ? clerkPanel() : tab === "mission" ? missionPanel() : comparePanel();
+    panel.innerHTML = trendHtml() + (tab === "parts" ? partsPanel() : tab === "fit" ? fitPanel() : tab === "aero" ? aeroPanel() : tab === "clerk" ? clerkPanel() : tab === "mission" ? missionPanel() : comparePanel());
     if (tab === "aero") drawSilhouette();
     if (tab === "parts") loadPhotos();
     renderPartCard();
@@ -2960,6 +2991,12 @@
     "toggle",
     (e) => {
       const d = e.target;
+      if (d.id === "g-trend") {
+        try {
+          localStorage.setItem(TREND_KEY, d.open ? "1" : "0");
+        } catch (err) {}
+        return;
+      }
       if (!d.dataset || !d.dataset.catSec) return;
       if (d.open) catOpen.add(d.dataset.catSec);
       else catOpen.delete(d.dataset.catSec);

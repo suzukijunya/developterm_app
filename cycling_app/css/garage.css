@@ -1371,3 +1371,11 @@ body.ms-open {
 .g-chatrec li { padding: 6px 0; border-top: 1px solid rgba(127, 127, 127, 0.18); }
 .g-chatrec li small { display: block; opacity: 0.75; font-size: 0.75rem; }
 .g-chatrec .good { color: #3dcc7a; font-style: normal; }
+
+/* いまの設計思想とトレンド */
+.g-trend > summary { cursor: pointer; font-weight: 800; font-size: 1rem; display: flex; align-items: baseline; gap: 8px; }
+.g-trend > summary small { font-weight: 400; opacity: 0.6; font-size: 0.75rem; }
+.g-trend h3 { font-size: 0.9rem; margin: 12px 0 4px; }
+.g-trend ul, .g-trend ol { margin: 0; padding-left: 1.2em; font-size: 0.85rem; line-height: 1.65; }
+.g-trend-lead { font-size: 0.9rem; margin: 10px 0 0; }
+@media (min-width: 1500px) { #garage > .g-main > .g-trend { column-span: all; display: block; } }
