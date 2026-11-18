@@ -435,7 +435,8 @@
         if (selected) View3D.highlight(selected, false);
         playFx();
       } catch (e) {
-        // 3Dが使えなくても数値は出す
+        // 3Dが使えなくても数値は出す(原因はコンソールに残す)
+        console.error("3D model:", e);
       }
     });
   }

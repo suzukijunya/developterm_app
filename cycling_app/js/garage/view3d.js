@@ -847,7 +847,27 @@ const View3D = (() => {
   }
 
   // 歯車の形(チェーンリング・スプロケット)。z方向に厚み depth
-  function gear(rOuter, teeth, depth, material, holeR) {
+  // いくつもの形を1つにまとめる(チェーンのコマなど、数が多いもの用)
+  function mergeGeos(list) {
+    const THREE = T();
+    const flat = list.map((g) => (g.index ? g.toNonIndexed() : g));
+    const count = flat.reduce((n, g) => n + g.attributes.position.count, 0);
+    const pos = new Float32Array(count * 3), nor = new Float32Array(count * 3), uv = new Float32Array(count * 2);
+    let o = 0;
+    for (const g of flat) {
+      pos.set(g.attributes.position.array, o * 3);
+      nor.set(g.attributes.normal.array, o * 3);
+      if (g.attributes.uv) uv.set(g.attributes.uv.array, o * 2);
+      o += g.attributes.position.count;
+    }
+    const out = new THREE.BufferGeometry();
+    out.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    out.setAttribute("normal", new THREE.BufferAttribute(nor, 3));
+    out.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+    return out;
+  }
+
+  function gear(rOuter, teeth, depth, material, holeR, cut) {
     const THREE = T();
     const sh = new THREE.Shape();
     const rRoot = rOuter - 0.004;
@@ -867,7 +887,15 @@ const View3D = (() => {
       hole.absarc(0, 0, holeR, 0, Math.PI * 2, true);
       sh.holes.push(hole);
     }
-    const geo = new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: false, curveSegments: 4 });
+    // 肉抜きの丸穴(cut: { n 個, r 穴の半径, at 中心からの距離 })
+    if (cut && cut.r > 0.0015)
+      for (let i = 0; i < cut.n; i++) {
+        const a = ((i + 0.5) / cut.n) * Math.PI * 2;
+        const h = new THREE.Path();
+        h.absarc(Math.cos(a) * cut.at, Math.sin(a) * cut.at, cut.r, 0, Math.PI * 2, true);
+        sh.holes.push(h);
+      }
+    const geo = new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: false, curveSegments: 8 });
     geo.translate(0, 0, -depth / 2);
     return new THREE.Mesh(geo, material);
   }
@@ -1046,20 +1074,46 @@ const View3D = (() => {
 
     // コンポ: チェーンリング・クランク・スプロケット・チェーン・変速機・ブレーキ・シフター
     const gg = group("groupset");
+    const steel = mat(0xc4c9d0, { metalness: 0.95, roughness: 0.22 });
+    const darkAl = mat(0x25272c, { metalness: 0.75, roughness: 0.32 });
+    const chainM = mat(0x9aa0a8, { metalness: 0.95, roughness: 0.3 });
+    // z軸向きの円柱(ボルト・軸・カップなど)
+    const cylZ = (x, y, z, r, len, material, seg = 24) => {
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, seg), material);
+      m.rotation.x = Math.PI / 2;
+      m.position.set(x, y, z);
+      return m;
+    };
     const ringR = 0.1;
-    const ring = gear(ringR, 50, 0.004, mat(0x2b2d32, { metalness: 0.8, roughness: 0.3 }), 0.07);
-    ring.position.set(0, 0, 0.052);
+    const ringZ = 0.052;
+    // チェーンリング: 細い歯の輪 + 5本腕のスパイダー + 固定ボルト
+    const ring = gear(ringR, 50, 0.0035, darkAl, 0.079);
+    ring.position.set(0, 0, ringZ);
     gg.add(ring);
-    // スパイダー(チェーンリングを支える腕)
     const spider = new THREE.Group();
     spider.userData.crank = true;
-    for (let i = 0; i < 4; i++) {
-      const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
-      const arm = box({ x: Math.cos(a) * 0.04, y: Math.sin(a) * 0.04, z: 0.058 }, [0.08, 0.014, 0.006], blackM);
+    const bcd = 0.0715;
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2 + Math.PI / 2;
+      const sh = new THREE.Shape();
+      sh.moveTo(0.012, -0.013);
+      sh.lineTo(bcd + 0.004, -0.0075);
+      sh.absarc(bcd + 0.004, 0, 0.0075, -Math.PI / 2, Math.PI / 2, false);
+      sh.lineTo(0.012, 0.013);
+      sh.closePath();
+      const arm = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: 0.005, bevelEnabled: true, bevelThickness: 0.0012, bevelSize: 0.0012, bevelSegments: 2, curveSegments: 8 }), paint(0x1b1c20, { metalness: 0.4 }));
       arm.rotation.z = a;
+      arm.position.z = ringZ + 0.002;
       spider.add(arm);
+      // チェーンリングボルト
+      spider.add(cylZ(Math.cos(a) * (bcd + 0.004), Math.sin(a) * (bcd + 0.004), ringZ + 0.0085, 0.0042, 0.003, steel, 12));
+      spider.add(cylZ(Math.cos(a) * (bcd + 0.004), Math.sin(a) * (bcd + 0.004), ringZ + 0.0095, 0.002, 0.003, blackM, 6));
     }
+    spider.add(cylZ(0, 0, ringZ + 0.004, 0.026, 0.008, paint(0x1b1c20, { metalness: 0.4 }), 32));
     gg.add(spider);
+    // BB(カップと軸)
+    for (const sgn of [-1, 1]) gg.add(cylZ(0, 0, sgn * 0.0385, 0.0225, 0.009, darkAl, 32));
+    gg.add(cylZ(0, 0, -0.005, 0.012, 0.15, steel, 20));
     // クランク(先細りの腕)
     const crank = new THREE.Group();
     crank.name = "crank";
@@ -1071,49 +1125,163 @@ const View3D = (() => {
     armShape.absarc(0, cl, 0.012, Math.PI, 0, true);
     armShape.lineTo(0.018, 0);
     armShape.absarc(0, 0, 0.018, 0, Math.PI, true);
-    const armGeo = new THREE.ExtrudeGeometry(armShape, { depth: 0.012, bevelEnabled: true, bevelThickness: 0.002, bevelSize: 0.002, bevelSegments: 2 });
+    const armGeo = new THREE.ExtrudeGeometry(armShape, { depth: 0.012, bevelEnabled: true, bevelThickness: 0.003, bevelSize: 0.003, bevelSegments: 3, curveSegments: 12 });
     const armR = new THREE.Mesh(armGeo, paint(0x1b1c20, { metalness: 0.4 }));
     armR.position.z = 0.068;
     const armL = new THREE.Mesh(armGeo, paint(0x1b1c20, { metalness: 0.4 }));
     armL.rotation.z = Math.PI;
     armL.position.z = -0.08;
     crank.add(armR, armL);
+    // 軸のキャップと、ペダルを付ける側のボス
+    crank.add(cylZ(0, 0, 0.0845, 0.0105, 0.003, steel, 20), cylZ(0, 0, 0.0855, 0.004, 0.003, blackM, 6));
+    crank.add(cylZ(0, cl, 0.0845, 0.0085, 0.003, steel, 16), cylZ(0, -cl, -0.0825, 0.0085, 0.003, steel, 16));
+    crank.add(cylZ(0, 0, -0.0825, 0.0105, 0.003, blackM, 20));
     gg.add(crank);
-    // スプロケット(11〜28T)
+    // スプロケット(11〜28T): 肉抜き穴つきの歯車を、スペーサーをはさんで重ねる
+    const rx = bk.rearAxle.x, ry = bk.rearAxle.y;
     const cogs = [11, 12, 13, 14, 15, 17, 19, 21, 24, 28];
+    const cogRad = (t) => 0.0042 * t + 0.002;
+    const cogZ = (i) => 0.052 - i * 0.0039;
     cogs.forEach((t, i) => {
-      const cog = gear(0.0042 * t + 0.002, t, 0.0018, metal, 0.008);
-      cog.position.set(bk.rearAxle.x, bk.rearAxle.y, 0.052 - i * 0.0039);
+      const r = cogRad(t);
+      const cog = gear(r, t, 0.0017, steel, 0.0175, t >= 17 ? { n: t >= 24 ? 8 : 6, r: (r - 0.0275) * 0.36, at: 0.0175 + (r - 0.0215) * 0.5 } : null);
+      cog.position.set(rx, ry, cogZ(i));
       cog.userData.spin = true;
       gg.add(cog);
     });
-    // リアディレイラー(プーリー2つとケージ)
-    const rx = bk.rearAxle.x, ry = bk.rearAxle.y;
-    const pU = { x: rx + 0.005, y: ry - 0.065, z: 0.05 };
-    const pL = { x: rx + 0.02, y: ry - 0.135, z: 0.05 };
-    gg.add(box({ x: rx - 0.012, y: ry - 0.03, z: 0.068 }, [0.03, 0.05, 0.02], blackM));
-    const cage = tube(pU, pL, 0.012, blackM, 0.35);
-    cage.position.z = 0.058;
-    gg.add(cage);
+    gg.add(cylZ(rx, ry, cogZ(4.5), 0.0172, 0.041, darkAl, 24)); // フリーボディ
+    const lock = gear(0.0165, 12, 0.003, steel, 0.006); // ロックリング
+    lock.position.set(rx, ry, cogZ(0) + 0.003);
+    gg.add(lock);
+    // リアディレイラー: 取り付け部 → 平行四辺形のリンク → プーリーケージ(2枚の板の間にプーリー2つ)
+    const ci = 4; // チェーンが掛かっている段(15T)
+    const cz = cogZ(ci);
+    const pulR = 0.0185;
+    const pU = { x: rx + 0.012, y: ry - (cogRad(cogs[ci]) + pulR + 0.014), z: cz };
+    const pL = { x: rx + 0.04, y: pU.y - 0.072, z: cz };
+    const bK = { x: rx + 0.002, y: ry - 0.03 }; // Bナックル(ハンガーに付く側)
+    const pK = { x: pU.x + 0.016, y: pU.y + 0.012 }; // Pナックル(ケージの軸)
+    gg.add(cylZ(bK.x, bK.y, 0.067, 0.0125, 0.018, blackM, 24), cylZ(bK.x, bK.y, 0.077, 0.006, 0.003, steel, 6));
+    gg.add(box({ x: bK.x + 0.012, y: bK.y - 0.004, z: 0.069 }, [0.022, 0.02, 0.014], blackM));
+    for (const off of [-0.008, 0.008]) {
+      const lk = tube({ x: bK.x + 0.014 + off * 0.3, y: bK.y - 0.012 - off, z: 0.07 }, { x: pK.x + 0.004 + off * 0.3, y: pK.y + 0.004 - off, z: cz + 0.02 }, 0.0055, off < 0 ? darkAl : blackM, 0.5);
+      gg.add(lk);
+    }
+    gg.add(cylZ(pK.x, pK.y, cz + 0.016, 0.0115, 0.016, blackM, 24), cylZ(pK.x, pK.y, cz + 0.0255, 0.0045, 0.003, steel, 6));
+    // ケージの板(プーリーを2つ囲む長円。中を抜いて軽くした形)
+    const cdx = pL.x - pU.x, cdy = pL.y - pU.y, cLen = Math.hypot(cdx, cdy), cAng = Math.atan2(cdy, cdx);
+    const plateShape = () => {
+      const sh = new THREE.Shape();
+      const r = 0.0125;
+      sh.absarc(0, 0, r, Math.PI / 2, -Math.PI / 2, false);
+      sh.absarc(cLen, 0, r, -Math.PI / 2, Math.PI / 2, false);
+      sh.closePath();
+      const slot = new THREE.Path();
+      slot.absarc(cLen * 0.3, 0, 0.0048, Math.PI / 2, -Math.PI / 2, false);
+      slot.absarc(cLen * 0.7, 0, 0.0048, -Math.PI / 2, Math.PI / 2, false);
+      slot.closePath();
+      sh.holes.push(slot);
+      return sh;
+    };
+    for (const [dz, m] of [[0.0052, blackM], [-0.0062, darkAl]]) {
+      const plate = new THREE.Mesh(new THREE.ExtrudeGeometry(plateShape(), { depth: 0.0013, bevelEnabled: false, curveSegments: 10 }), m);
+      plate.rotation.z = cAng;
+      plate.position.set(pU.x, pU.y, cz + dz);
+      gg.add(plate);
+    }
     for (const pp of [pU, pL]) {
-      const pul = gear(0.016, 11, 0.004, mat(0x3a3d43, { metalness: 0.6 }), 0.004);
-      pul.position.copy(V(pp));
+      const pul = gear(pulR, 11, 0.0028, mat(0x2e3036, { metalness: 0.3, roughness: 0.5 }), 0.004);
+      pul.position.set(pp.x, pp.y, cz);
       pul.userData.spin = true;
       gg.add(pul);
+      gg.add(cylZ(pp.x, pp.y, cz + 0.0072, 0.0038, 0.002, steel, 6), cylZ(pp.x, pp.y, cz, 0.0034, 0.013, steel, 10));
     }
-    // チェーン: チェーンリング → 上を通ってスプロケット → プーリー2つ → 下を通ってチェーンリング
-    const cogR = 0.0042 * 15 + 0.002;
-    const pts = [];
-    const z = 0.05;
-    for (let a = 90; a >= -90; a -= 15) pts.push(new THREE.Vector3(Math.cos((a * Math.PI) / 180) * ringR, Math.sin((a * Math.PI) / 180) * ringR, z)); // チェーンリングの前側
-    pts.push(new THREE.Vector3(pL.x + 0.016, pL.y - 0.012, z));
-    pts.push(new THREE.Vector3(pL.x - 0.006, pL.y - 0.016, z));
-    pts.push(new THREE.Vector3(pU.x + 0.016, pU.y, z));
-    pts.push(new THREE.Vector3(pU.x - 0.014, pU.y + 0.006, z));
-    for (let a = -100; a >= -270; a -= 20) pts.push(new THREE.Vector3(rx + Math.cos((a * Math.PI) / 180) * cogR, ry + Math.sin((a * Math.PI) / 180) * cogR, z)); // スプロケットの後ろ側
-    pts.push(new THREE.Vector3(-0.03, ringR, z));
-    const chain = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true, "catmullrom", 0.2), 220, 0.0035, 6, true), mat(0x8a9099, { metalness: 0.9, roughness: 0.35 }));
-    gg.add(chain);
+    // 変速ワイヤー(アウターが後ろに輪を描いてチェーンステーへ)
+    const cable = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(bK.x + 0.02, bK.y - 0.002, 0.072),
+      new THREE.Vector3(bK.x - 0.035, bK.y + 0.012, 0.07),
+      new THREE.Vector3(bK.x - 0.05, bK.y + 0.05, 0.062),
+      new THREE.Vector3(bK.x - 0.012, bK.y + 0.065, 0.05),
+      new THREE.Vector3(rx + 0.07, ry + 0.012, 0.04),
+    ]);
+    gg.add(new THREE.Mesh(new THREE.TubeGeometry(cable, 40, 0.0024, 8, false), mat(0x101114, { roughness: 0.6 })));
+    gg.add(cylZ(bK.x + 0.022, bK.y - 0.002, 0.072, 0.004, 0.006, steel, 10));
+    // チェーン: 1コマずつ(外プレート・内プレート・ローラー)。歯車に接する線をたどって並べる
+    {
+      const pitch = 0.0127;
+      // 回る向き s: 反時計回り +1 / 時計回り -1(右が前)
+      const circ = [
+        { c: [0, 0], r: ringR - 0.0035, s: -1 },
+        { c: [pL.x, pL.y], r: pulR - 0.003, s: -1 },
+        { c: [pU.x, pU.y], r: pulR - 0.003, s: 1 },
+        { c: [rx, ry], r: cogRad(cogs[ci]) - 0.0035, s: -1 },
+      ];
+      const n = circ.length;
+      const tan = circ.map((A, i) => {
+        const B = circ[(i + 1) % n];
+        const dx = B.c[0] - A.c[0], dy = B.c[1] - A.c[1], D = Math.hypot(dx, dy), phi = Math.atan2(dy, dx);
+        const k = Math.max(-0.999, Math.min(0.999, (A.r * A.s - B.r * B.s) / D));
+        for (const sg of [1, -1]) {
+          const th = phi + sg * Math.acos(k);
+          const R = [Math.cos(th), Math.sin(th)], u = [-R[1], R[0]];
+          if (dx * u[0] + dy * u[1] > 0) return { a: [A.c[0] + A.r * A.s * R[0], A.c[1] + A.r * A.s * R[1]], b: [B.c[0] + B.r * B.s * R[0], B.c[1] + B.r * B.s * R[1]] };
+        }
+      });
+      const line = [];
+      for (let i = 0; i < n; i++) {
+        const C = circ[i], inn = tan[(i + n - 1) % n].b, out = tan[i].a;
+        let a0 = Math.atan2(inn[1] - C.c[1], inn[0] - C.c[0]), a1 = Math.atan2(out[1] - C.c[1], out[0] - C.c[0]);
+        if (C.s > 0) while (a1 < a0) a1 += Math.PI * 2;
+        else while (a1 > a0) a1 -= Math.PI * 2;
+        const steps = Math.max(2, Math.ceil((Math.abs(a1 - a0) * C.r) / 0.002));
+        for (let j = 0; j <= steps; j++) {
+          const t = a0 + ((a1 - a0) * j) / steps;
+          line.push([C.c[0] + Math.cos(t) * C.r, C.c[1] + Math.sin(t) * C.r]);
+        }
+        const st2 = Math.ceil(Math.hypot(tan[i].b[0] - out[0], tan[i].b[1] - out[1]) / 0.002);
+        for (let j = 1; j < st2; j++) line.push([out[0] + ((tan[i].b[0] - out[0]) * j) / st2, out[1] + ((tan[i].b[1] - out[1]) * j) / st2]);
+      }
+      // 線の上を、コマの長さずつ歩いてピンの位置を決める(コマ数は偶数にして、長さを少しだけ合わせる)
+      const cum = [0];
+      for (let i = 1; i <= line.length; i++) {
+        const p0 = line[i - 1], p1 = line[i % line.length];
+        cum.push(cum[i - 1] + Math.hypot(p1[0] - p0[0], p1[1] - p0[1]));
+      }
+      const total = cum[cum.length - 1];
+      const links = Math.round(total / pitch / 2) * 2;
+      const at = (d) => {
+        let i = 1;
+        while (i < cum.length - 1 && cum[i] < d) i++;
+        const f = (d - cum[i - 1]) / Math.max(1e-9, cum[i] - cum[i - 1]);
+        const p0 = line[i - 1], p1 = line[i % line.length];
+        return [p0[0] + (p1[0] - p0[0]) * f, p0[1] + (p1[1] - p0[1]) * f];
+      };
+      // チェーンラインは、前(チェーンリング)から後ろ(スプロケット)へ少し内側に寄る
+      const zAt = (x) => cz + (ringZ - cz) * Math.max(0, Math.min(1, (x - (rx + 0.04)) / (-0.02 - (rx + 0.04))));
+      const plateSh = new THREE.Shape();
+      plateSh.absarc(-pitch / 2, 0, 0.0041, Math.PI / 2, -Math.PI / 2, false);
+      plateSh.absarc(pitch / 2, 0, 0.0041, -Math.PI / 2, Math.PI / 2, false);
+      plateSh.closePath();
+      const plateGeo = new THREE.ExtrudeGeometry(plateSh, { depth: 0.0009, bevelEnabled: false, curveSegments: 4 });
+      plateGeo.translate(0, 0, -0.00045);
+      const rollGeo = new THREE.CylinderGeometry(0.0037, 0.0037, 0.0044, 10);
+      rollGeo.rotateX(Math.PI / 2);
+      const parts = [];
+      const M = new THREE.Matrix4();
+      for (let i = 0; i < links; i++) {
+        const p0 = at((i / links) * total), p1 = at((((i + 1) % links) / links) * total || total);
+        const mx = (p0[0] + p1[0]) / 2, my = (p0[1] + p1[1]) / 2, ang = Math.atan2(p1[1] - p0[1], p1[0] - p0[0]);
+        const z0 = zAt(mx);
+        const half = i % 2 ? 0.0024 : 0.0034;
+        for (const sgn of [-1, 1]) {
+          M.makeRotationZ(ang).setPosition(mx, my, z0 + sgn * half);
+          parts.push(plateGeo.clone().applyMatrix4(M));
+        }
+        M.makeTranslation(p0[0], p0[1], zAt(p0[0]));
+        parts.push(rollGeo.clone().applyMatrix4(M));
+      }
+      gg.add(new THREE.Mesh(mergeGeos(parts), chainM));
+    }
     // ブレーキ(キャリパー)
     const caliper = (c, flipX) => {
       const g = new THREE.Group();
@@ -3081,7 +3249,7 @@ const View3D = (() => {
     scene.add(tubeG);
     const DIR = { wheels: [0.7, 0.3, 1.5], tires: [0.7, 0.3, 1.5], tubes: [0.5, 0.25, 1.6], saddle: [0.9, 0.7, 1.3], handlebar: [-1.3, 0.5, 1.1], bartape: [-1.3, 0.5, 1.1], stem: [0.6, 0.6, 1.4], pedals: [0.8, 0.8, 1.3], fork: [-1.0, 0.25, 1.4] };
     // 離れて2つあるもの(前後のホイール・左右のペダルなど)は、片方だけを大きく写す
-    const HALF = { wheels: ["x", 1], tires: ["x", 1], pedals: ["z", 1], groupset: ["y", -1], accessories: ["x", 1] };
+    const HALF = { wheels: ["x", 1], tires: ["x", 1], pedals: ["z", 1], groupset: ["y", -1, 0.42], accessories: ["x", 1] };
     const key = new THREE.DirectionalLight(0xffffff, 1.6);
     const fill = new THREE.HemisphereLight(0xdfe8ff, 0x3a3f4a, 0.9);
     key.layers.set(L);
@@ -3106,7 +3274,7 @@ const View3D = (() => {
         if (!o.isMesh && !o.isLine && !o.isPoints) return;
         if (h) {
           const ob = new THREE.Box3().setFromObject(o);
-          if (ob.isEmpty() || (ob.getCenter(new THREE.Vector3())[h[0]] - mid[h[0]]) * h[1] < 0) return;
+          if (ob.isEmpty() || (ob.getCenter(new THREE.Vector3())[h[0]] - (h[2] != null ? b.min[h[0]] + (b.max[h[0]] - b.min[h[0]]) * h[2] : mid[h[0]])) * h[1] < 0) return;
           bb.union(ob);
         }
         o.layers.enable(L);
