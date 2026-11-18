@@ -371,7 +371,7 @@
       ["fit", "🧍 フィッティング"],
       ["aero", "💨 空力"],
       ["compare", "📊 比較"],
-      ["clerk", "🧑‍🔧 店員さん"],
+      ["clerk", "🛒 パーツ図鑑"],
       ["mission", "🎖️ ミッション"],
     ];
     document.getElementById("tabs").innerHTML = T.map(([id, label]) => `<button class="g-tab ${tab === id ? "on" : ""}" data-tab="${id}">${label}</button>`).join("");
@@ -1927,7 +1927,7 @@
         } catch (e) {
           break; // キーの間違い・通信できないときは、続けて探さない
         }
-        document.querySelectorAll(`[data-prod="${it.id}"]`).forEach((x) => (x.innerHTML = prodImg(it)));
+        document.querySelectorAll(`[data-prod="${it.id}"]`).forEach((x) => (x.innerHTML = x.classList.contains("g-pc-img") ? partPhoto(it) + `<label class="g-pc-ph" title="写真を付ける">📷<input type="file" accept="image/*" data-prod-photo="${it.id}" hidden /></label>` : prodImg(it)));
       }
     } finally {
       finding = false;
@@ -1977,69 +1977,60 @@
     };
   }
 
+  // ---------- パーツ図鑑(写真・スペック・重さの差を見比べる。おすすめの相談はチャットで) ----------
+  let catSlot = "all";
+  const CAT_TABS = [
+    ["all", "すべて"], ["wheels", "ホイール"], ["tires", "タイヤ"], ["tubes", "チューブ"], ["saddle", "サドル"],
+    ["seatpost", "シートポスト"], ["pedals", "ペダル"], ["groupset", "駆動系"], ["accessories", "小物"],
+  ];
+  const PHOTO_KEY = "cycling_prod_photos";
+  let ownPhotos = {};
+  try {
+    ownPhotos = JSON.parse(localStorage.getItem(PHOTO_KEY)) || {};
+  } catch (e) {}
+  // 写真がないときの絵(部位ごと)
+  const PART_SVG = {
+    wheels: '<circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" stroke-width="6"/><circle cx="50" cy="50" r="33" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="50" cy="50" r="5" fill="currentColor"/>' + Array.from({ length: 12 }, (_, i) => `<line x1="50" y1="50" x2="${50 + 33 * Math.cos((i * Math.PI) / 6)}" y2="${50 + 33 * Math.sin((i * Math.PI) / 6)}" stroke="currentColor" stroke-width="1.2"/>`).join(""),
+    tires: '<circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" stroke-width="10" stroke-dasharray="4 3"/><circle cx="50" cy="50" r="30" fill="none" stroke="currentColor" stroke-width="2"/>',
+    tubes: '<circle cx="50" cy="50" r="34" fill="none" stroke="currentColor" stroke-width="7"/><rect x="47" y="8" width="6" height="14" rx="2" fill="currentColor"/>',
+    saddle: '<path d="M10 52 C25 38 50 36 70 40 C82 42 92 46 92 52 C92 58 80 60 66 58 C50 56 38 64 26 64 C14 64 8 58 10 52Z" fill="currentColor" opacity=".85"/><line x1="40" y1="64" x2="60" y2="80" stroke="currentColor" stroke-width="3"/><line x1="56" y1="60" x2="62" y2="80" stroke="currentColor" stroke-width="3"/>',
+    seatpost: '<rect x="44" y="20" width="12" height="70" rx="4" fill="currentColor" opacity=".85"/><rect x="34" y="12" width="32" height="10" rx="3" fill="currentColor"/>',
+    pedals: '<rect x="22" y="34" width="56" height="32" rx="8" fill="none" stroke="currentColor" stroke-width="5"/><line x1="10" y1="50" x2="22" y2="50" stroke="currentColor" stroke-width="5"/>',
+    groupset: '<circle cx="42" cy="50" r="30" fill="none" stroke="currentColor" stroke-width="5" stroke-dasharray="3 2"/><circle cx="42" cy="50" r="8" fill="currentColor"/><line x1="42" y1="50" x2="86" y2="74" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>',
+    accessories: '<line x1="15" y1="50" x2="80" y2="50" stroke="currentColor" stroke-width="4"/><path d="M80 38 L92 50 L80 62Z" fill="currentColor"/><circle cx="18" cy="50" r="7" fill="currentColor"/>',
+  };
+  function partPhoto(it) {
+    const own = ownPhotos[it.id];
+    const ai = AI.cachedImage(it.id);
+    if (own) return `<img src="${own}" alt="" />`;
+    if (ai && ai.url) return `<img src="${esc(ai.url)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()" />`;
+    return `<svg viewBox="0 0 100 100" class="g-pc-svg" aria-hidden="true">${PART_SVG[it.slot] || PART_SVG.accessories}</svg>`;
+  }
+  function partCard(it) {
+    const cur = G.builds.current.parts[it.slot];
+    const curG = cur && cur.mounted !== false ? +cur.g || 0 : 0;
+    const diff = it.kind === "delta" ? -(it.deltaG || 0) : it.g - curG;
+    const inNext = Catalog.installed(G.builds.next, it);
+    const inCur = Catalog.installed(G.builds.current, it);
+    const find = AI.ready && !ownPhotos[it.id] && !AI.cachedImage(it.id) ? `data-find-img="${it.id}"` : "";
+    return `<article class="g-pc ${inCur ? "mine" : ""}">
+      <div class="g-pc-img" data-prod="${it.id}" ${find}>${partPhoto(it)}
+        <label class="g-pc-ph" title="写真を付ける">📷<input type="file" accept="image/*" data-prod-photo="${it.id}" hidden /></label></div>
+      <div class="g-pc-body">
+        <small class="g-pc-slot">${esc(Parts.slotName(it.slot))}${inCur ? " ・装着済み" : ""}</small>
+        <strong class="g-pc-name">${esc(it.name)}</strong>
+        <div class="g-pc-nums"><b>${it.kind === "delta" ? "" : it.g.toLocaleString() + "g"}</b>${diff ? `<em class="${diff < 0 ? "good" : "bad"}">${diff < 0 ? "−" : "+"}${Math.abs(diff).toLocaleString()}g</em>` : ""}</div>
+        <div class="g-pc-price"><span>新品 ${Catalog.yen(it.price)}</span>${it.used ? `<span>中古 ${Catalog.yen(it.used[0])}〜${it.used[1].toLocaleString()}</span>` : ""}</div>
+        ${it.spec ? `<dl class="g-pc-spec">${it.spec.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>` : ""}
+        <div class="g-pc-btns">${inNext ? `<span class="g-tag">NEWに入っています</span>` : `<button class="btn sub" data-clerk-next="${it.id}">NEWに入れる</button>`}
+          <a class="g-chip2" href="${esc(mercariUrl(it.name))}" target="_blank" rel="noopener">メルカリ</a>
+          <a class="g-chip2" href="https://www.google.com/search?tbm=isch&q=${encodeURIComponent(it.name)}" target="_blank" rel="noopener">🔎 画像</a>
+          ${inCur ? "" : `<button class="link" data-clerk-bought="${it.id}">買って付けた</button>`}</div>
+      </div></article>`;
+  }
   function clerkPanel() {
     const c = clerkState();
-    const ctx = clerkContext();
-    const say = Clerk.comments(ctx).slice(0, 3);
-    const h = c.hearing || { budget: 30000, goals: G.body.backPain ? ["comfort", "light"] : ["light"], usedOk: true };
-    const hearingHtml = `
-      <section class="card g-hear">
-        <h2>🧑‍🔧 ご相談</h2>
-        <p class="small">いまのバイク(装着済み)を見て、予算の中で効くパーツから順番に選びます。${G.body.backPain ? "腰痛ありで登録されているので、腰が楽になるものを優先します。" : ""}</p>
-        <p class="g-sub">ご予算は?</p>
-        <div class="g-chips">${Clerk.BUDGETS.map((y) => `<button class="g-chip2 ${h.budget === y ? "on" : ""}" data-hear-budget="${y}">${y >= 10000 ? y / 10000 + "万円" : y + "円"}</button>`).join("")}
-          <label class="g-in g-budget"><input type="number" inputmode="numeric" id="hear-budget" value="${h.budget}" step="1000" min="1000" /><em>円</em></label></div>
-        <p class="g-sub">どうなりたいですか?(いくつでも)</p>
-        ${Clerk.GOALS.map((g) => `<label class="check"><input type="checkbox" data-hear-goal="${g.id}" ${h.goals.includes(g.id) ? "checked" : ""} /><span>${g.label}</span></label>`).join("")}
-        <label class="check"><input type="checkbox" id="hear-used" ${h.usedOk !== false ? "checked" : ""} /><span>中古でもいい<small>メルカリ・ヤフオク・中古店の相場で考えます</small></span></label>
-        <button class="btn start" data-clerk="plan">この内容で相談する</button>
-      </section>`;
-    const row = (x, idx) => {
-      const it = x.item;
-      const inNext = Catalog.installed(G.builds.next, it);
-      return `<div class="g-plan-row">
-        <div class="g-plan-n">${idx}</div>
-        <span data-prod="${it.id}" class="g-plan-img">${prodImg(it)}</span>
-        <div class="g-plan-body">
-          <small>${esc(Parts.slotName(it.slot))}${x.pinned ? ` <em class="g-mine">あなたが選んだ候補</em>` : ""}</small>${G.active === "current" && !Catalog.installed(B(), it) ? previewHtml(it) : ""}<strong>${esc(it.name)}</strong>
-          <div class="g-plan-meta"><b>${x.reason ? esc(x.reason) : "—"}</b><span>${esc(Catalog.priceText(it))}</span></div>
-          ${
-            x.alts && x.alts.length > 1
-              ? `<label class="g-field g-alt"><span>ほかの候補</span><select data-clerk-alt="${x.key}">${x.alts
-                  .map((a) => `<option value="${a.item.id}" ${a.item.id === it.id ? "selected" : ""}>${esc(a.item.name)}(${a.saving > 0 ? `−${a.saving}g・` : ""}${Catalog.yen(a.cost)})</option>`)
-                  .join("")}</select></label>`
-              : ""
-          }
-          <p class="small muted">${esc(it.note)}</p>
-          ${it.needsShop ? `<p class="notice warn small">取り付けの前に、お店で合うか確かめてください</p>` : ""}
-          <div class="g-plan-btns">${inNext ? `<span class="g-tag">NEWに入っています</span>` : `<button class="btn sub" data-clerk-next="${it.id}">NEWに入れる</button>`}<button class="link" data-clerk-bought="${it.id}">買って付けた</button><button class="link danger" data-clerk-skip="${x.key}">この部位は替えない</button></div>
-        </div></div>`;
-    };
-    const plan = ctx.plan;
-    const planHtml = plan
-      ? `<section class="card g-plan">
-          <h2>📝 おすすめの順番 <span class="g-total">${Catalog.yen(plan.total)}</span></h2>
-          <p class="small">ご予算 ${Catalog.yen(plan.budget)}・${plan.usedOk ? "中古あり" : "新品のみ"}・${(c.hearing.goals || []).map((g) => (Clerk.GOALS.find((x) => x.id === g) || {}).label || g).join("、")}</p>
-          ${plan.items.length ? plan.items.map((x, i) => row(x, i + 1)).join("") : `<p class="muted">このご予算と目的で、今のバイクに効くパーツが見つかりませんでした。ご予算か目的を変えてみてください。</p>`}
-          ${plan.items.length ? `<p class="g-plan-sum">ぜんぶ替えると <strong>−${plan.saved.toLocaleString()}g</strong>(${ctx.bikeKg.toFixed(2)} → ${(ctx.bikeKg - plan.saved / 1000).toFixed(2)}kg)</p>
-            <button class="btn start" data-clerk="build">まとめてNEWに組む(3Dで見る)</button>` : ""}
-          ${plan.over ? `<p class="notice warn small">選んだ候補で、ご予算を ${Catalog.yen(plan.over)} 超えています</p>` : ""}
-          ${plan.later.length ? `<p class="g-sub">ご予算が増えたら</p>${plan.later.map((x) => `<p class="small">・${esc(x.item.name)} ${x.reason ? `(${esc(x.reason)})` : ""} ${esc(Catalog.priceText(x.item))}</p>`).join("")}` : ""}
-          ${
-            plan.others.length
-              ? `<details class="g-cat"><summary>➕ ほかの部位も選ぶ(${plan.others.length})</summary>${plan.others
-                  .map(
-                    (o) => `<div class="g-cat-row"><div><small>${esc(Parts.slotName(o.slot))}${o.skipped ? "(替えないにしています)" : ""}</small><strong>${esc(o.best.item.name)}</strong><small>${o.reason ? esc(o.reason) + "・" : ""}${esc(Catalog.priceText(o.best.item))}</small></div>
-                      <button class="btn sub" data-clerk-add="${o.key}" data-item="${o.best.item.id}">加える</button></div>`
-                  )
-                  .join("")}</details>`
-              : ""
-          }
-          ${c.hearing.choices && Object.keys(c.hearing.choices).length ? `<button class="link" data-clerk="auto">選んだ候補をやめて、おまかせに戻す</button>` : ""}
-          <p class="muted small">重さは公称値などの目安、価格は2026年10月時点の目安です。「買って付けた」を押すと装着済みに反映して、次の一手を考え直します。</p>
-          <button class="link" data-clerk="edit">相談し直す</button>
-        </section>`
-      : "";
+    const items = Catalog.ITEMS.filter((it) => catSlot === "all" || it.slot === catSlot);
     const ms = Clerk.maintenance(Store.rides, c.maint);
     const maintHtml = `
       <section class="card g-maint">
@@ -2053,15 +2044,13 @@
         <p class="muted small">距離は、このアプリで記録したライドの合計です。</p>
       </section>`;
     return `
-      <section class="card g-clerk">
-        <div class="g-clerk-head"><span class="g-clerk-face">🧑‍🔧</span><div><strong>メカニックの店員さん</strong><small>今日のひとこと</small></div></div>
-        ${say.map((t) => `<p class="g-say">${esc(t)}</p>`).join("")}
+      <section class="card g-pcat">
+        <h2>🛒 パーツ図鑑</h2>
+        <div class="g-chips g-pc-tabs">${CAT_TABS.map(([k, l]) => `<button class="g-chip2 ${catSlot === k ? "on" : ""}" data-cat-slot="${k}">${l}</button>`).join("")}</div>
+        <p class="muted small">重さの差は「装着済み」と比べた値。重さ・価格は目安です。${AI.ready ? "" : "写真は📷で自分で付けるか、AIの設定をすると自動で探します。"}</p>
+        <div class="g-pc-grid">${items.map(partCard).join("")}</div>
       </section>
-      ${!c.hearing || c.editing ? hearingHtml : ""}
-      ${planHtml}
-      ${ladderHtml()}
-      ${maintHtml}
-      ${shopsHtml()}`;
+      <details class="g-fold"><summary>🔧 整備メモ・近くのお店</summary>${maintHtml}${shopsHtml()}</details>`;
   }
 
   // ---------- 近くのメンテナンス店 ----------
@@ -2395,7 +2384,7 @@
       t.disabled = true;
       return AI.findImage(it.id, it.name)
         .catch(() => null)
-        .then(() => document.querySelectorAll(`[data-prod="${it.id}"]`).forEach((x) => (x.innerHTML = prodImg(it))));
+        .then(() => document.querySelectorAll(`[data-prod="${it.id}"]`).forEach((x) => (x.innerHTML = x.classList.contains("g-pc-img") ? partPhoto(it) + `<label class="g-pc-ph" title="写真を付ける">📷<input type="file" accept="image/*" data-prod-photo="${it.id}" hidden /></label>` : prodImg(it))));
     }
     if (t.id === "lf-web") return searchWebPhotos();
     if (t.dataset.webPick && libForm && libForm.web) {
@@ -2521,6 +2510,10 @@
       return renderAll();
     }
     if (t.dataset.mon) return monAction(t.dataset.monId, t.dataset.mon);
+    if (t.dataset.catSlot) {
+      catSlot = t.dataset.catSlot;
+      return renderPanel();
+    }
     if (t.dataset.scan) {
       const a = t.dataset.scan;
       if (a === "toggle") {
@@ -2872,6 +2865,25 @@
 
   el.addEventListener("change", async (e) => {
     const t = e.target;
+    if (t.dataset.prodPhoto) {
+      const f = t.files && t.files[0];
+      const id = t.dataset.prodPhoto;
+      t.value = "";
+      if (!f) return;
+      try {
+        const img = await createImageBitmap(f);
+        const S = 480, k = Math.min(1, S / Math.max(img.width, img.height));
+        const cv = document.createElement("canvas");
+        cv.width = Math.round(img.width * k);
+        cv.height = Math.round(img.height * k);
+        cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+        ownPhotos[id] = cv.toDataURL("image/jpeg", 0.82);
+        localStorage.setItem(PHOTO_KEY, JSON.stringify(ownPhotos));
+      } catch (e) {
+        alert("写真を保存できませんでした");
+      }
+      return renderPanel();
+    }
     if (t.dataset.monFile) {
       const f = t.files && t.files[0];
       t.value = "";

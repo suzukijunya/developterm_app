@@ -556,11 +556,14 @@ const View3D = (() => {
         const Z = new THREE.Vector3(0, 0, 1), Y = new THREE.Vector3(0, 1, 0);
         const rot = (bn, axis, a) => bn && bn.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(axis, a));
         // Aポーズから腕を下ろす。この骨組みでは、腕の骨のY軸まわりが体の面の中で腕を振る向き(測って決めた)
-        rot(b.rArm, Y, -0.95);
-        rot(b.lArm, Y, 0.95);
-        // ひじを軽く曲げて、くつろいだ立ち姿に(Z軸まわりが前後の向き)
-        rot(b.rFore, Z, -0.35);
-        rot(b.lFore, Z, -0.35);
+        // (下ろしすぎると腕が胴に埋まり、ひじを大きく曲げると手が股の前で重なるので、角度は控えめに。正面・横から描いて確かめた)
+        rot(b.rArm, Y, -0.8);
+        rot(b.lArm, Y, 0.8);
+        // 腕を少し後ろへ引いて体の横に沿わせ、ひじは軽く曲げるだけ(手が太ももの横に来る)
+        rot(b.rArm, Z, 0.15);
+        rot(b.lArm, Z, 0.15);
+        rot(b.rFore, Z, -0.15);
+        rot(b.lFore, Z, -0.15);
         for (const k of Object.keys(b)) if (b[k]) rest.set(b[k], b[k].quaternion.clone());
         // 左手にレンチ(手の骨の先、指の中に)
         const hand = bone("Bip01_L_Hand");
