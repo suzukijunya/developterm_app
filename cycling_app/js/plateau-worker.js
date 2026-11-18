@@ -258,27 +258,48 @@ function build(parts, center, bt) {
     g.cap += n;
     return g;
   };
-  for (const pt of parts) pt.g = pt.img != null ? G("t" + pt.img, "t", pt.img, pt.idx.length) : pt.color ? G("c", "c", null, pt.idx.length) : G("p", "p", null, pt.idx.length);
+  // 写真のない建物は、外壁の種類(0=戸建て 1=マンション 2=オフィス・商業)ごとに分ける
+  const storeys = bt["bldg:storeysAboveGround"] || [];
+  const style = new Uint8Array(NB);
+  for (let b = 0; b < NB; b++) {
+    const us = String(usage[b] || ""), h = maxY[b] - minY[b], st = +storeys[b] || 0;
+    if (/共同住宅/.test(us)) style[b] = h >= 7 || st >= 3 ? 1 : 0;
+    else if (/商業|業務|官公庁|文教|医療|運輸|宿泊|娯楽|商業系複合/.test(us)) style[b] = h >= 9 ? 2 : 0;
+    else if (/住宅/.test(us)) style[b] = h >= 12 ? 1 : 0;
+    else style[b] = h >= 22 ? 2 : h >= 11 ? 1 : 0;
+  }
+  const PG = [];
+  for (const pt of parts)
+    if (pt.img != null) pt.g = G("t" + pt.img, "t", pt.img, pt.idx.length);
+    else if (pt.color) pt.g = G("c", "c", null, pt.idx.length);
+    else {
+      pt.g = null;
+      for (let k = 0; k < 3; k++) (PG[k] = G("p" + k, "p", null, pt.idx.length)), (PG[k].style = k);
+    }
   for (const g of groups.values()) Object.assign(g, { pos: new Float32Array(g.cap * 3), nor: new Int8Array(g.cap * 3), uv: new Float32Array(g.cap * 2), col: new Uint8Array(g.cap * 3) });
   let base = 0;
+  // 外壁の色(写真のない建物)。東京の住宅地に多い色から選ぶ
+  const WALL = [
+    [[246, 244, 238], [236, 228, 212], [222, 218, 210], [204, 190, 170], [168, 150, 128], [232, 232, 228], [190, 192, 194]],
+    [[244, 242, 236], [232, 222, 204], [214, 208, 198], [196, 172, 150], [226, 226, 222]],
+    [[206, 216, 226], [192, 202, 212], [222, 226, 230], [176, 190, 204]],
+  ];
+  const ROOF = [[78, 80, 86], [96, 74, 62], [62, 72, 88], [120, 118, 114], [140, 92, 70]];
   const pal = (b) => {
-    const us = usage[b] || "";
-    const h = hash(b * 7919 + Math.round(P[0]));
-    if (names[b]) return [236, 196, 120]; // 名前のある建物(駅など)は目立たせる
-    if (/商業|業務|官公庁|文教|医療|運輸/.test(us)) return [[150, 170, 196], [176, 186, 204], [128, 150, 176]][Math.floor(h * 3)];
-    if (/共同住宅/.test(us)) return [[204, 200, 192], [186, 190, 198], [214, 206, 190]][Math.floor(h * 3)];
-    return [[222, 210, 188], [206, 198, 186], [196, 188, 176], [214, 214, 210]][Math.floor(h * 4)];
+    const hh = hash(b * 7919 + Math.round(P[0] * 3));
+    const list = WALL[style[b]];
+    return list[Math.floor(hh * list.length)];
   };
   const colors = new Array(NB);
   for (const pt of parts) {
     const ix = pt.idx;
-    const g = pt.g;
-    const { pos, nor, uv, col } = g;
-    let w = g.w;
     for (let t = 0; t < ix.length; t += 3) {
       const ia = base + ix[t], ib = base + ix[t + 1], ic = base + ix[t + 2];
       const b = B[ia];
       if (skip[b]) continue;
+      const g = pt.g || PG[style[b]];
+      const { pos, nor, uv, col } = g;
+      let w = g.w;
       const ax = P[ia * 3], ay = P[ia * 3 + 1] - minY[b], az = P[ia * 3 + 2];
       const bx = P[ib * 3], by = P[ib * 3 + 1] - minY[b], bz = P[ib * 3 + 2];
       const qx = P[ic * 3], qy = P[ic * 3 + 1] - minY[b], qz = P[ic * 3 + 2];
@@ -291,7 +312,8 @@ function build(parts, center, bt) {
       nz /= L;
       const c = g.kind === "p" ? colors[b] || (colors[b] = pal(b)) : null;
       const roof = Math.abs(ny) > 0.55;
-      const k = roof ? 0.5 : 1;
+      // 屋根: 傾いた屋根は瓦・金属の色、平らな屋根はコンクリートの色
+      const rc = roof && g.kind === "p" ? (ny < 0.97 ? ROOF[Math.floor(hash(b * 31 + 7) * ROOF.length)] : [150, 150, 146]) : null;
       const vi = [ix[t], ix[t + 1], ix[t + 2]];
       const V = [ax, ay, az, bx, by, bz, qx, qy, qz];
       for (let j = 0; j < 3; j++) {
@@ -311,28 +333,36 @@ function build(parts, center, bt) {
           const f = pt.factor, cn = pt.cn;
           for (let q = 0; q < 3; q++) col[w * 3 + q] = Math.max(0, Math.min(255, Math.round(pt.color[v * cn + q] * f[q] * 255)));
         } else {
-          if (roof) (uv[w * 2] = 0.004), (uv[w * 2 + 1] = 0.004);
+          const st = style[b];
+          if (roof) (uv[w * 2] = RUV[st][0]), (uv[w * 2 + 1] = RUV[st][1]);
           else {
-            // 壁にそって横に進む距離で、窓の模様を貼る
-            uv[w * 2] = (-X * nz + Z * nx) / 28;
-            uv[w * 2 + 1] = Y / 25.6;
+            // 壁にそって横に進む距離で、外壁の模様(窓・ベランダ)を貼る
+            uv[w * 2] = (-X * nz + Z * nx) / FW[st];
+            uv[w * 2 + 1] = Y / FH[st];
           }
-          col[w * 3] = c[0] * k;
-          col[w * 3 + 1] = c[1] * k;
-          col[w * 3 + 2] = c[2] * k;
+          // 地面に近いほど少し暗く(影のたまり)
+          const ao = roof ? 1 : 0.74 + 0.26 * Math.min(1, Y / 4);
+          const cc = rc || c;
+          col[w * 3] = cc[0] * ao;
+          col[w * 3 + 1] = cc[1] * ao;
+          col[w * 3 + 2] = cc[2] * ao;
         }
         w++;
       }
+      g.w = w;
     }
-    g.w = w;
     base += pt.pos.length / 3;
   }
   const lm = [];
   for (let b = 0; b < NB; b++) if (names[b] && !skip[b] && pts[b].length) lm.push({ name: String(names[b]), x: (bx0[b] + bx1[b]) / 2, z: (bz0[b] + bz1[b]) / 2, h: maxY[b] - minY[b] });
   const out = [];
-  for (const g of groups.values()) if (g.w) out.push({ kind: g.kind, img: g.img, pos: g.pos.slice(0, g.w * 3), nor: g.nor.slice(0, g.w * 3), uv: g.uv.slice(0, g.w * 2), col: g.col.slice(0, g.w * 3) });
+  for (const g of groups.values()) if (g.w) out.push({ kind: g.kind, img: g.img, style: g.style, pos: g.pos.slice(0, g.w * 3), nor: g.nor.slice(0, g.w * 3), uv: g.uv.slice(0, g.w * 2), col: g.col.slice(0, g.w * 3) });
   return { groups: out, names: lm, n: NB - skipped, skipped };
 }
+
+// 外壁の模様1枚ぶんの大きさ(m)と、屋根に使う模様の中の無地の場所
+const FW = [7, 7.2, 6], FH = [6.4, 5.8, 8];
+const RUV = [[0.02, 0.98], [0.015, 0.5], [0.5, 0.07]];
 
 function hash(n) {
   let x = (n ^ 0x9e3779b9) >>> 0;

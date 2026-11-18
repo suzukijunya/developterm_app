@@ -88,3 +88,6 @@ body.city { margin: 0; overflow: hidden; background: #050608; color: #fff; font-
   .ct-osm .short { display: inline; }
   .ct-ctrl { bottom: calc(14px + env(safe-area-inset-bottom)); }
 }
+/* 昼の明るい景色でも読めるように、左下の数字に下敷きをつける */
+.ct-left { padding: 8px 12px 8px 10px; background: linear-gradient(90deg, rgba(6, 9, 14, 0.62), rgba(6, 9, 14, 0.25) 85%, transparent); border-radius: 0 10px 10px 0; left: 0 !important; }
+.ct-where, .ct-map-state { text-shadow: 0 1px 3px #000; }

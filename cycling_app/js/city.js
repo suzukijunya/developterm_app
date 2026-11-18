@@ -371,6 +371,89 @@ const City = (() => {
     x = Math.imul(x ^ (x >>> 13), 0xc2b2ae35);
     return ((x ^ (x >>> 16)) >>> 0) / 4294967296;
   }
+  // 写真のない実物の建物の外壁(0=戸建て 1=マンション 2=オフィス)。昼は窓が光らず、夜は一部の窓が光る
+  function facadeMats(tex) {
+    const THREE = T();
+    const S = 256;
+    const mk = (draw) => {
+      const a = document.createElement("canvas"), b = document.createElement("canvas");
+      a.width = a.height = b.width = b.height = S;
+      const w = a.getContext("2d"), g = b.getContext("2d");
+      g.fillStyle = "#000";
+      g.fillRect(0, 0, S, S);
+      draw(w, g);
+      return new THREE.MeshLambertMaterial({ map: tex(a), emissiveMap: tex(b), emissive: 0xffffff, emissiveIntensity: 0, vertexColors: true });
+    };
+    const glass = (w, x, y, ww, hh, top, bot) => {
+      const gr = w.createLinearGradient(0, y, 0, y + hh);
+      gr.addColorStop(0, top);
+      gr.addColorStop(1, bot);
+      w.fillStyle = gr;
+      w.fillRect(x, y, ww, hh);
+    };
+    const lit = (g, x, y, ww, hh, seed) => {
+      if (hash(seed) < 0.45) return;
+      g.fillStyle = hash(seed + 1) < 0.3 ? "#cfe0ff" : "#ffd590";
+      g.fillRect(x, y, ww, hh);
+    };
+    return [
+      // 戸建て: 7m×2階(6.4m)。外壁のサイディングと、枠つきの窓
+      mk((w, g) => {
+        w.fillStyle = "#f4f2ee";
+        w.fillRect(0, 0, S, S);
+        for (let y = 0; y < S; y += 8) (w.fillStyle = "rgba(0,0,0,0.05)"), w.fillRect(0, y, S, 1);
+        for (const fy of [0, 128])
+          for (const [x, ww] of [[34, 74], [150, 56]]) {
+            w.fillStyle = "#d8d8d4";
+            w.fillRect(x - 4, fy + 34, ww + 8, 62);
+            glass(w, x, fy + 38, ww, 54, "#9fb2c4", "#3c4a58");
+            w.fillStyle = "#e9e9e6";
+            w.fillRect(x + ww / 2 - 1, fy + 38, 2, 54);
+            lit(g, x, fy + 38, ww, 54, x * 3 + fy);
+          }
+      }),
+      // マンション: 7.2m×2階(5.8m)。ベランダの手すりと掃き出し窓、住戸の仕切り
+      mk((w, g) => {
+        w.fillStyle = "#eeece6";
+        w.fillRect(0, 0, S, S);
+        for (const fy of [0, 128]) {
+          glass(w, 14, fy + 20, 100, 70, "#a9bccc", "#46566a");
+          glass(w, 142, fy + 20, 100, 70, "#a9bccc", "#46566a");
+          lit(g, 14, fy + 20, 100, 70, fy + 11);
+          lit(g, 142, fy + 20, 100, 70, fy + 29);
+          w.fillStyle = "rgba(120,126,134,0.88)";
+          w.fillRect(0, fy + 84, S, 30);
+          w.fillStyle = "rgba(255,255,255,0.18)";
+          for (let x = 4; x < S; x += 9) w.fillRect(x, fy + 84, 2, 30);
+          w.fillStyle = "#dcdad4";
+          w.fillRect(0, fy + 114, S, 14);
+          w.fillStyle = "#f6f5f2";
+          w.fillRect(0, fy, 8, 128);
+          w.fillRect(124, fy, 10, 128);
+        }
+      }),
+      // オフィス・商業: 6m×2階(8m)。ガラスのカーテンウォールと、階ごとの帯
+      mk((w, g) => {
+        glass(w, 0, 0, S, S, "#9db6cc", "#4a6074");
+        for (const fy of [0, 128]) {
+          const gr = w.createLinearGradient(0, fy, S, fy + 90);
+          gr.addColorStop(0, "rgba(255,255,255,0.22)");
+          gr.addColorStop(0.5, "rgba(255,255,255,0)");
+          gr.addColorStop(1, "rgba(255,255,255,0.12)");
+          w.fillStyle = gr;
+          w.fillRect(0, fy, S, 98);
+          w.fillStyle = "#c9ccd0";
+          w.fillRect(0, fy + 98, S, 30);
+          for (let x = 30; x < S; x += 64) {
+            w.fillStyle = "#59626c";
+            w.fillRect(x, fy, 4, 98);
+            lit(g, x - 26, fy + 6, 56, 88, x + fy * 5);
+          }
+        }
+      }),
+    ];
+  }
+
   function buildMats() {
     const THREE = T();
     // 壁: 8×8 個の窓。いくつかは明かりがついている(光る分は別の絵に描く)
@@ -421,6 +504,7 @@ const City = (() => {
       road: new THREE.MeshLambertMaterial({ map: tex(rd), vertexColors: true }),
       area: new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }),
       pcol: new THREE.MeshLambertMaterial({ vertexColors: true }),
+      fac: facadeMats(tex),
     };
   }
 
@@ -428,9 +512,16 @@ const City = (() => {
   function buildTile(data) {
     const THREE = T();
     const group = new THREE.Group();
-    // 建物
+    // 建物(250m の塊ごとに別のメッシュにする。実物の建物=PLATEAU が届いた塊は隠す)
     {
-      const pos = [], nor = [], uv = [], col = [];
+      const chunks = new Map();
+      let pos, nor, uv, col;
+      const chunkOf = (x, z) => {
+        const key = Math.floor(x / 250) + ":" + Math.floor(z / 250);
+        let ch = chunks.get(key);
+        if (!ch) chunks.set(key, (ch = { key, cx: (Math.floor(x / 250) + 0.5) * 250, cz: (Math.floor(z / 250) + 0.5) * 250, pos: [], nor: [], uv: [], col: [] }));
+        return ch;
+      };
       const push = (x, y, z, nx, ny, nz, u, v, c) => {
         pos.push(x, y, z);
         nor.push(nx, ny, nz);
@@ -440,7 +531,6 @@ const City = (() => {
       const PAL = [[0.82, 0.8, 0.76], [0.7, 0.72, 0.76], [0.86, 0.84, 0.8], [0.62, 0.6, 0.6], [0.78, 0.7, 0.62], [0.66, 0.7, 0.72]];
       for (const [id, h0, ll] of data.b) {
         if (!isNear(project(ll[0], ll[1]))) continue;
-        if (plateauOn && Plateau.covers(ll[0], ll[1])) continue; // 実物の建物(PLATEAU)で出す
         const pts = [];
         for (let i = 0; i < ll.length; i += 2) pts.push(project(ll[i], ll[i + 1]));
         if (pts.length > 3 && pts[0][0] === pts[pts.length - 1][0] && pts[0][1] === pts[pts.length - 1][1]) pts.pop();
@@ -452,6 +542,7 @@ const City = (() => {
         }
         if (Math.abs(area) < 8) continue; // とても小さいものは省く
         if (area < 0) pts.reverse();
+        ({ pos, nor, uv, col } = chunkOf(pts[0][0], pts[0][1]));
         const k = hash(id);
         // 高さがわからない建物は、広さから見当をつける(広いほど高め)
         const h = h0 || Math.min(40, 5.5 + k * 5 + Math.sqrt(Math.abs(area) / 2) * 0.22);
@@ -475,13 +566,18 @@ const City = (() => {
         const tri = THREE.ShapeUtils.triangulateShape(pts.map((p) => new THREE.Vector2(p[0], p[1])), []);
         for (const t of tri) for (const i of [t[0], t[2], t[1]]) push(pts[i][0], h, pts[i][1], 0, 1, 0, 0.004, 0.004, cr);
       }
-      if (pos.length) {
+      group.userData.chunks = [];
+      for (const ch of chunks.values()) {
+        if (!ch.pos.length) continue;
         const geo = new THREE.BufferGeometry();
-        geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-        geo.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3));
-        geo.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
-        geo.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
-        group.add(new THREE.Mesh(geo, mats.bld));
+        geo.setAttribute("position", new THREE.Float32BufferAttribute(ch.pos, 3));
+        geo.setAttribute("normal", new THREE.Float32BufferAttribute(ch.nor, 3));
+        geo.setAttribute("uv", new THREE.Float32BufferAttribute(ch.uv, 2));
+        geo.setAttribute("color", new THREE.Float32BufferAttribute(ch.col, 3));
+        const m = new THREE.Mesh(geo, mats.bld);
+        m.visible = !(plateauOn && Plateau.hasAt(ch.cx, ch.cz));
+        group.add(m);
+        group.userData.chunks.push({ cx: ch.cx, cz: ch.cz, mesh: m });
       }
     }
     // 道
@@ -748,6 +844,15 @@ const City = (() => {
     let leaves = null, worker = null, waiting = new Map(), loaded = new Map(), queue = [], busy = 0, fails = 0, broken = false, prepared = null;
     const R = () => (innerWidth < 900 ? 230 : 330); // 読む範囲(m)
     const covers = (lat, lon) => !broken && IDX.some((c) => lon >= c[4] && lon <= c[6] && lat >= c[5] && lat <= c[7]);
+    // (x, z) の場所の実物の建物が、もう出ているか
+    function hasAt(x, z) {
+      if (!leaves) return false;
+      for (const L of leaves) if (x >= L.rect[0] && x <= L.rect[2] && z >= L.rect[1] && z <= L.rect[3]) {
+        const t = loaded.get(L.key);
+        if (t && t.state === "ok") return true;
+      }
+      return false;
+    }
     async function cached(url, type) {
       try {
         const c = await caches.open("city-plateau-v1");
@@ -821,10 +926,14 @@ const City = (() => {
     }
     const rectDist = (r, p) => Math.hypot(Math.max(r[0] - p.x, 0, p.x - r[2]), Math.max(r[1] - p.z, 0, p.z - r[3]));
     function want(along) {
-      if (!plateauOn || broken) return clear();
+      if (!plateauOn || broken) return clear(), syncPlaceholders();
       if (!leaves) return void prepare().then(() => want(along));
       const need = new Map();
-      for (const d of [0, 250, 500]) {
+      // 先読み: 早送りのときほど先まで(20秒ぶん。最大3km)
+      const ahead = Math.min(3000, Math.max(500, (sim ? sim.v * sim.speedX : 7) * 20));
+      const marks = [0, 250, 500];
+      for (let d = 800; d <= ahead; d += 300) marks.push(d);
+      for (const d of marks) {
         const p = at(along + d);
         for (const L of leaves) {
           const dist = rectDist(L.rect, p);
@@ -834,19 +943,20 @@ const City = (() => {
       for (const L of leaves) if (need.has(L.key) && !loaded.has(L.key) && !queue.includes(L)) queue.push(L);
       queue = queue.filter((L) => need.has(L.key) && !loaded.has(L.key));
       queue.sort((a, b) => need.get(a.key) - need.get(b.key));
-      // 遠くなった区画は片づける
+      // 通り過ぎて遠くなった区画は片づける(この先の区画は残す)
       const p0 = at(along);
       for (const [key, t] of loaded) {
         const L = leaves.find((x) => x.key === key);
-        if (t.mesh && L && rectDist(L.rect, p0) > (t.texs && t.texs.length ? 600 : 900)) {
+        if (t.mesh && L && !need.has(key) && rectDist(L.rect, p0) > (t.texs && t.texs.length ? 600 : 900)) {
           drop(t);
           loaded.delete(key);
         }
       }
+      syncPlaceholders();
       pump();
     }
     async function pump() {
-      if (busy >= 2 || !queue.length) return;
+      if (busy >= (innerWidth < 900 ? 2 : 3) || !queue.length) return;
       const L = queue.shift();
       if (loaded.has(L.key)) return pump();
       loaded.set(L.key, { state: "load" });
@@ -869,6 +979,17 @@ const City = (() => {
           t.mesh = new THREE.Group();
           t.texs = texs.filter(Boolean);
           for (const g of d.groups) {
+            if (g.kind === "p" && g.style != null) {
+              // 写真のない建物: 外壁の種類ごと
+              const geo = new THREE.BufferGeometry();
+              geo.setAttribute("position", new THREE.BufferAttribute(g.pos, 3));
+              geo.setAttribute("normal", new THREE.BufferAttribute(g.nor, 3, true));
+              geo.setAttribute("uv", new THREE.BufferAttribute(g.uv, 2));
+              geo.setAttribute("color", new THREE.BufferAttribute(g.col, 3, true));
+              geo.computeBoundingSphere();
+              t.mesh.add(new THREE.Mesh(geo, mats.fac[g.style] || mats.bld));
+              continue;
+            }
             const geo = new THREE.BufferGeometry();
             geo.setAttribute("position", new THREE.BufferAttribute(g.pos, 3));
             geo.setAttribute("normal", new THREE.BufferAttribute(g.nor, 3, true));
@@ -879,13 +1000,16 @@ const City = (() => {
             if (g.kind === "t") {
               const tx = texs[g.img];
               // 写真は光の当たり方まで写っているので、ライトの影響を受けない材質でそのまま見せる
-              mat = tx ? new THREE.MeshBasicMaterial({ map: tx, color: 0xe2e2ea }) : mats.pcol;
+              mat = tx ? new THREE.MeshBasicMaterial({ map: tx, color: photoTint }) : mats.pcol;
             } else if (g.kind === "c") mat = mats.pcol;
-            t.mesh.add(new THREE.Mesh(geo, mat));
+            const mesh = new THREE.Mesh(geo, mat);
+            if (g.kind === "t") mesh.userData.photo = true;
+            t.mesh.add(mesh);
           }
           t.state = "ok";
           t.names = d.names;
           scene.add(t.mesh);
+          syncPlaceholders();
         } else loaded.delete(L.key);
       } catch (e) {
         fails++;
@@ -949,6 +1073,7 @@ const City = (() => {
     }
     return {
       covers,
+      hasAt,
       want,
       clear,
       prepare,
@@ -959,6 +1084,11 @@ const City = (() => {
       broken: () => broken,
     };
   })();
+
+  // 実物の建物が届いた所では、地図の(仮の)建物を隠す
+  function syncPlaceholders() {
+    for (const t of tiles.values()) for (const ch of (t.group && t.group.userData.chunks) || []) ch.mesh.visible = !(plateauOn && Plateau.hasAt(ch.cx, ch.cz));
+  }
 
   // ---------- 地面の航空写真(国土地理院の地図タイル) ----------
   // 近くだけ細かい写真(ズーム18・1枚 約120m)。早送りのときは粗い写真にして、取りに行く枚数を減らす
@@ -1191,6 +1321,59 @@ const City = (() => {
   }
 
   // ---------- 3Dの用意 ----------
+  // 時間帯。昼は航空写真や壁の写真と同じ光(リアル優先)、夕方・夜は窓に明かり
+  const lights = {};
+  let timeMode = (() => {
+    try {
+      return localStorage.getItem("city_time") || "day";
+    } catch (e) {
+      return "day";
+    }
+  })();
+  const TIMES = {
+    day: { sky: [[0, "#3f7fd0"], [0.5, "#8fbbe8"], [0.7, "#d6e4f0"], [1, "#e4ebf0"]], fog: 0xc9d6e2, near: 220, far: 1100, hemi: [0xe6efff, 0x8a8478, 1.05], sun: [0xfff4e2, 1.1, [-0.35, 0.8, 0.45]], glow: 0, win: 0, ground: 0x3b3d40, photo: 0xffffff },
+    dusk: { sky: [[0, "#0b1230"], [0.45, "#27306a"], [0.62, "#b0567a"], [0.72, "#f0a060"], [1, "#f0a060"]], fog: 0x6a4a66, near: 120, far: 620, hemi: [0xaab4ff, 0x3a3038, 0.85], sun: [0xffb070, 0.9, [-0.6, 0.35, 0.5]], glow: 0.85, win: 0.75, ground: 0x23272b, photo: 0xb8aab4 },
+    night: { sky: [[0, "#02040c"], [0.6, "#0a1430"], [0.75, "#1c2340"], [1, "#2a2a3a"]], fog: 0x141a2c, near: 90, far: 520, hemi: [0x5a6aa0, 0x10121a, 0.5], sun: [0x8aa0ff, 0.25, [0.3, 0.6, -0.4]], glow: 1.1, win: 1, ground: 0x15171a, photo: 0x6a6e80 },
+  };
+  function setTime(m) {
+    const THREE = T();
+    const c = TIMES[m] || TIMES.day;
+    timeMode = TIMES[m] ? m : "day";
+    try {
+      localStorage.setItem("city_time", timeMode);
+    } catch (e) {}
+    const cv = document.createElement("canvas");
+    cv.width = 4;
+    cv.height = 256;
+    const x = cv.getContext("2d"), gr = x.createLinearGradient(0, 0, 0, 256);
+    for (const [o, col] of c.sky) gr.addColorStop(o, col);
+    x.fillStyle = gr;
+    x.fillRect(0, 0, 4, 256);
+    const tx = new THREE.CanvasTexture(cv);
+    tx.encoding = THREE.sRGBEncoding;
+    if (scene.background && scene.background.dispose) scene.background.dispose();
+    scene.background = tx;
+    scene.fog.color.setHex(c.fog);
+    scene.fog.near = c.near;
+    scene.fog.far = c.far;
+    lights.hemi.color.setHex(c.hemi[0]);
+    lights.hemi.groundColor.setHex(c.hemi[1]);
+    lights.hemi.intensity = c.hemi[2];
+    lights.sun.color.setHex(c.sun[0]);
+    lights.sun.intensity = c.sun[1];
+    lights.sun.position.set(...c.sun[2]);
+    if (mats) {
+      mats.bld.emissiveIntensity = c.glow;
+      for (const f of mats.fac) f.emissiveIntensity = c.win;
+    }
+    if (ground) ground.material.color.setHex(c.ground);
+    photoTint = c.photo;
+    scene.traverse((o) => o.isMesh && o.material && o.material.isMeshBasicMaterial && o.material.map && o.userData.photo && o.material.color.setHex(c.photo));
+    const sel = $("ct-time");
+    if (sel) sel.value = timeMode;
+  }
+  let photoTint = 0xffffff;
+
   function init3D() {
     const THREE = T();
     const el = $("ct-view");
@@ -1199,32 +1382,16 @@ const City = (() => {
     renderer.outputEncoding = THREE.sRGBEncoding;
     el.appendChild(renderer.domElement);
     scene = new THREE.Scene();
-    // 夕暮れの空(上が濃い青、地平線がオレンジ)
-    const sky = document.createElement("canvas");
-    sky.width = 4;
-    sky.height = 256;
-    const s = sky.getContext("2d");
-    const gr = s.createLinearGradient(0, 0, 0, 256);
-    gr.addColorStop(0, "#0b1230");
-    gr.addColorStop(0.45, "#27306a");
-    gr.addColorStop(0.62, "#b0567a");
-    gr.addColorStop(0.72, "#f0a060");
-    gr.addColorStop(1, "#f0a060");
-    s.fillStyle = gr;
-    s.fillRect(0, 0, 4, 256);
-    const skyTex = new THREE.CanvasTexture(sky);
-    skyTex.encoding = THREE.sRGBEncoding;
-    scene.background = skyTex;
     scene.fog = new THREE.Fog(0x6a4a66, 120, 620);
-    scene.add(new THREE.HemisphereLight(0xaab4ff, 0x3a3038, 0.85));
-    const sun = new THREE.DirectionalLight(0xffb070, 0.9);
-    sun.position.set(-0.6, 0.35, 0.5);
-    scene.add(sun);
+    lights.hemi = new THREE.HemisphereLight(0xaab4ff, 0x3a3038, 0.85);
+    lights.sun = new THREE.DirectionalLight(0xffb070, 0.9);
+    scene.add(lights.hemi, lights.sun);
     camera = new THREE.PerspectiveCamera(60, 1, 0.3, 1400);
     ground = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.MeshLambertMaterial({ color: 0x23272b }));
     ground.rotation.x = -Math.PI / 2;
     scene.add(ground);
     buildMats();
+    setTime(timeMode);
     clock = new THREE.Clock();
     const resize = () => {
       const w = el.clientWidth, h = el.clientHeight;
@@ -1701,6 +1868,8 @@ const City = (() => {
     $("ct-auto").onchange = (e) => sim && (sim.auto = e.target.checked);
     $("ct-x").onchange = (e) => sim && (sim.speedX = +e.target.value);
     $("ct-bgm").onchange = (e) => (e.target.checked ? Bgm.start() : Bgm.stop());
+    $("ct-time").value = timeMode;
+    $("ct-time").onchange = (e) => sim && setTime(e.target.value);
     $("ct-plateau").checked = plateauOn;
     $("ct-plateau0").checked = plateauOn;
     const setPlateau = (on) => {
@@ -1710,12 +1879,8 @@ const City = (() => {
         localStorage.setItem("city_plateau", on ? "1" : "0");
       } catch (e) {}
       if (!sim) return;
-      // 地図(OSM)の建物を建て直す(PLATEAU と入れ替えるため)
-      for (const [, t] of tiles) if (t.group) (scene.remove(t.group), t.group.traverse((o) => o.geometry && o.geometry.dispose()));
-      tiles.clear();
-      queue.length = 0;
-      wantTiles(sim.along);
       Plateau.want(sim.along);
+      syncPlaceholders();
     };
     $("ct-plateau").onchange = (e) => setPlateau(e.target.checked);
     $("ct-plateau0").onchange = (e) => setPlateau(e.target.checked);
