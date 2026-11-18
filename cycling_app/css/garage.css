@@ -1383,3 +1383,26 @@ body.ms-open {
 .g-compare3 td.best { font-weight: 900; color: #3dcc7a; }
 .g-pc-img .g-pc-web { position: absolute; inset: 0; background: #fff; padding: 8px; box-sizing: border-box; }
 .g-pc-src { position: absolute; left: 6px; bottom: 6px; font-size: 0.6rem; padding: 2px 6px; border-radius: 4px; background: rgba(0, 0, 0, 0.5); color: #fff; text-decoration: none; }
+
+/* フィッティングの診断(横棒のゲージ) */
+.fg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 18px; margin: 10px 0; }
+.fg-head { display: flex; align-items: baseline; gap: 8px; font-size: 0.85rem; }
+.fg-head span { flex: 1; }
+.fg-head b { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.fg-head em { font-style: normal; font-size: 0.68rem; font-weight: 800; padding: 1px 7px; border-radius: 99px; background: rgba(61, 204, 122, 0.18); color: #3dcc7a; }
+.fg-row.warn .fg-head em { background: rgba(255, 190, 60, 0.18); color: #ffbe3c; }
+.fg-row.ng .fg-head em { background: rgba(255, 107, 107, 0.2); color: #ff6b6b; }
+.fg-bar { position: relative; height: 10px; margin: 5px 0 3px; border-radius: 99px; background: rgba(127, 127, 127, 0.22); }
+.fg-ok { position: absolute; top: 0; bottom: 0; border-radius: 99px; background: rgba(61, 204, 122, 0.55); }
+.fg-pin { position: absolute; top: -4px; width: 4px; height: 18px; margin-left: -2px; border-radius: 2px; background: #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5); }
+.fg-row.warn .fg-pin { background: #ffbe3c; } .fg-row.ng .fg-pin { background: #ff6b6b; }
+.fg-row small { font-size: 0.68rem; opacity: 0.65; }
+.fg-adv { margin: 6px 0; padding: 0; list-style: none; }
+.fg-adv li { padding: 7px 10px; margin: 4px 0; border-radius: 8px; font-size: 0.85rem; background: rgba(255, 190, 60, 0.12); border-left: 3px solid #ffbe3c; }
+.fg-adv li.ng { background: rgba(255, 107, 107, 0.12); border-left-color: #ff6b6b; }
+.fg-good { color: #3dcc7a; font-weight: 800; }
+.g-fold-card > summary { cursor: pointer; font-weight: 800; font-size: 1rem; }
+.g-fold-card > .card { border: 0; box-shadow: none; padding: 0; margin: 8px 0 0; background: none; }
+.g-fold-card > .card::before { display: none; }
+@media (min-width: 1500px) { #garage > .g-main > .fg { column-span: all; display: block; } }
+.g-builds { right: 10px; flex-wrap: wrap; }

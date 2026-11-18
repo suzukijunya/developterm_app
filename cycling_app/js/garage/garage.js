@@ -530,7 +530,6 @@
     const T = [
       ["parts", "🧰 パーツ"],
       ["fit", "🧍 フィッティング"],
-      ["compare", "📊 比較"],
     ];
     document.getElementById("tabs").innerHTML = T.map(([id, label]) => `<button class="g-tab ${tab === id ? "on" : ""}" data-tab="${id}">${label}</button>`).join("");
   }
@@ -1004,6 +1003,7 @@
       ${importRev ? importHtml() : ""}
       ${matrixHtml()}
       ${cell ? sheetHtml() : ""}
+      ${comparePanel()}
       ${catalogHtml()}
       ${scanHtml()}
       ${monstersHtml()}
@@ -1813,10 +1813,73 @@
     };
     const cm = (k, label, val) => num(`body.${k}`, label, val || 0, "cm", 0.5, 100);
     const sug = suggestion;
+    // 診断: 目安の範囲(緑の帯)に対して、いまの値(白い印)がどこにあるかを横棒で見せる
+    const SPAN = { kneeExt: [125, 165], kneeTop: [55, 100], hip: [30, 90], torso: [20, 70], shoulder: [55, 120], kops: [-0.045, 0.045] };
+    const ADV = {
+      kneeExt: ["サドルが低めです。サドルを少し上げると、膝が楽に伸びます", "サドルが高めです。サドルを少し下げると、腰が左右に揺れにくくなります"],
+      kneeTop: ["ペダルが上に来たとき、膝が深く曲がりすぎています。サドルを少し上げるか、後ろへ", ""],
+      hip: ["股関節が詰まっています。ハンドルを上げる(スペーサーを足す)か近づけると、腰が楽になります", ""],
+      torso: ["前傾が深めです。ハンドルを高く・近くすると、乗った後の腰の張りが減ります", "上体が起きています。楽ですが、向かい風では少し不利です"],
+      shoulder: ["ハンドルが近めです。腕が詰まるなら、ステムを長くするかサドルを後ろへ", "ハンドルが遠めです。ステムを短くするか、リーチの短いハンドルに"],
+      kops: ["膝がペダル軸より後ろです。サドルを少し前へ", "膝がペダル軸より前です。サドルを少し後ろへ"],
+    };
+    const keys = ["kneeExt", "kneeTop", "hip", "torso", "shoulder", "kops"];
+    const advice = [];
+    const gauge = (k) => {
+      const t = tg[k], val = ang[k], sp = SPAN[k];
+      const j = Fit.judge(val, t);
+      const pc = (x) => Math.max(0, Math.min(100, ((x - sp[0]) / (sp[1] - sp[0])) * 100));
+      const okL = pc(t.ok[0]), okR = pc(Math.min(t.ok[1], sp[1]));
+      if (j !== "ok") {
+        const msg = ADV[k][val < t.ok[0] ? 0 : 1];
+        if (msg) advice.push([j, msg]);
+      }
+      const txt = k === "kops" ? (val >= 0 ? "+" : "") + mm(val) + "mm" : val.toFixed(0) + "°";
+      const range = k === "kops" ? `${mm(t.ok[0])}〜+${mm(t.ok[1])}mm` : t.ok[1] >= 180 ? `${t.ok[0]}°以上` : `${t.ok[0]}〜${t.ok[1]}°`;
+      return `<div class="fg-row ${j}"><div class="fg-head"><span>${t.label}</span><b>${txt}</b><em>${j === "ok" ? "OK" : j === "warn" ? "注意" : "要調整"}</em></div>
+        <div class="fg-bar"><i class="fg-ok" style="left:${okL.toFixed(1)}%;width:${(okR - okL).toFixed(1)}%"></i><i class="fg-pin" style="left:${pc(val).toFixed(1)}%"></i></div>
+        <small>目安 ${range}</small></div>`;
+    };
+    const gauges = keys.map(gauge).join("");
+    const okCount = keys.filter((k) => Fit.judge(ang[k], tg[k]) === "ok").length;
+    const diag = `
+      <section class="card fg">
+        <h2>🩺 いまのポジション診断 <span class="g-total">${okCount}/${keys.length} OK</span></h2>
+        ${ang.reachGap > 0 ? `<p class="notice warn">ハンドルが遠く、腕が届きません(約${mm(ang.reachGap)}mm)。ステムを短くするか、肘の曲げを小さくしてください。</p>` : ""}
+        ${r.pose.legs.R.reachable ? "" : `<p class="notice warn">サドルが高すぎて、ペダルに足が届いていません。</p>`}
+        ${advice.length ? `<ul class="fg-adv">${advice.map(([j, m]) => `<li class="${j}">${m}</li>`).join("")}</ul>` : `<p class="fg-good">全部の角度が目安の中です。</p>`}
+        <div class="fg-grid">${gauges}</div>
+        <p class="muted small">緑の帯が目安、白い印がいまの値。目安は一般的なロードバイクのフィッティングの考え方(${body.backPain ? "腰痛ありの設定" : "腰痛なしの設定"})です。${b.pos.reachAdj || b.pos.dropAdj ? "" : "「実測で合わせる」をまだしていないので、上体と肩の角度はずれている可能性があります。"}</p>
+      </section>`;
     return `
-      ${measureCard()}
+      ${diag}
       <section class="card">
-        <h2>体の寸法</h2>
+        <h2>自動で調整</h2>
+        ${sel("goal", "優先すること", G.goal, [["comfort", "楽さ・腰へのやさしさ"], ["balance", "バランス"], ["aero", "速さ(空気抵抗)"]])}
+        <button class="btn start" id="optimize">🔧 最適なポジションを探す</button>
+        ${
+          sug
+            ? `<div class="g-sug">
+                ${sug.changes.length ? `<ul>${sug.changes.map((c) => `<li>${c}</li>`).join("")}</ul>` : `<p>今のポジションが、目安にいちばん近い状態です。</p>`}
+                <p class="muted small">調整後: 上体 ${sug.after.angles.torso.toFixed(0)}°・股関節 ${sug.after.angles.hip.toFixed(0)}°・膝 ${sug.after.angles.kneeExt.toFixed(0)}°・CdA ${sug.after.cda.total.toFixed(3)}</p>
+                ${sug.changes.length ? `<div class="g-row"><button class="btn sub" id="apply-sug">このバイクに反映</button><button class="btn sub" id="apply-sug-next">NEWに反映して比べる</button></div>` : ""}
+              </div>`
+            : ""
+        }
+      </section>
+      <section class="card">
+        <h2>ポジション(${B() === G.builds.current ? "装着済み" : "NEW"})</h2>
+        ${num("pos.saddleHeight", "サドル高(BB中心〜上面)", b.pos.saddleHeight, "mm", 5, 1000)}
+        ${num("pos.saddleSetback", "サドル前後(+で前)", b.pos.saddleSetback, "mm", 5, 1000)}
+        ${num("pos.spacers", "コラムスペーサー", b.pos.spacers, "mm", 5, 1000)}
+        ${num("pos.stemLength", "ステム長", b.pos.stemLength, "mm", 10, 1000)}
+        ${sel("pos.stemAngle", "ステム角度", b.pos.stemAngle, [-17, -10, -8, -6, 0, 6, 8, 10, 17].map((x) => [x, (x > 0 ? "+" : "") + x + "°"]))}
+        ${sel("pos.hands", "持つ位置", b.pos.hands, [["tops", "上ハンドル"], ["hoods", "ブラケット"], ["drops", "下ハンドル"]])}
+        ${num("pos.elbow", "肘の曲げ", b.pos.elbow, "°", 5)}
+        ${calibHtml(b)}
+      </section>
+      <details class="card g-fold-card" ${body.inseam ? "" : "open"}><summary>🧍 体の寸法</summary>
+        
         <p class="muted small">空欄(0)は身長から一般的な比率で計算します。測れる所だけ入れればOKです。</p>
         ${cm("height", "身長", body.height)}
         ${num("body.weight", "体重", body.weight, "kg", 0.1)}
@@ -1841,47 +1904,8 @@
           ${cm("waist", "ウエスト", body.waist)}
           ${cm("armCirc", "二の腕周り", body.armCirc)}
         </details>
-      </section>
-      <section class="card">
-        <h2>ポジション(${B() === G.builds.current ? "装着済み" : "NEW"})</h2>
-        ${num("pos.saddleHeight", "サドル高(BB中心〜上面)", b.pos.saddleHeight, "mm", 5, 1000)}
-        ${num("pos.saddleSetback", "サドル前後(+で前)", b.pos.saddleSetback, "mm", 5, 1000)}
-        ${num("pos.spacers", "コラムスペーサー", b.pos.spacers, "mm", 5, 1000)}
-        ${num("pos.stemLength", "ステム長", b.pos.stemLength, "mm", 10, 1000)}
-        ${sel("pos.stemAngle", "ステム角度", b.pos.stemAngle, [-17, -10, -8, -6, 0, 6, 8, 10, 17].map((x) => [x, (x > 0 ? "+" : "") + x + "°"]))}
-        ${sel("pos.hands", "持つ位置", b.pos.hands, [["tops", "上ハンドル"], ["hoods", "ブラケット"], ["drops", "下ハンドル"]])}
-        ${num("pos.elbow", "肘の曲げ", b.pos.elbow, "°", 5)}
-        ${calibHtml(b)}
-      </section>
-      <section class="card">
-        <h2>関節の角度</h2>
-        <table class="g-angles">
-          <tr><th>項目</th><th>いま</th><th>目安</th></tr>
-          ${row("kneeExt", ang.kneeExt, "°", (x) => x.toFixed(0))}
-          ${row("kneeTop", ang.kneeTop, "°", (x) => x.toFixed(0))}
-          ${row("hip", ang.hip, "°", (x) => x.toFixed(0))}
-          ${row("torso", ang.torso, "°", (x) => x.toFixed(0))}
-          ${row("shoulder", ang.shoulder, "°", (x) => x.toFixed(0))}
-          ${row("kops", ang.kops, "mm", (x) => (x >= 0 ? "+" : "") + mm(x))}
-        </table>
-        ${ang.reachGap > 0 ? `<p class="notice warn">ハンドルが遠く、腕が届きません(約${mm(ang.reachGap)}mm)。ステムを短くするか、肘の曲げを小さくしてください。</p>` : ""}
-        ${r.pose.legs.R.reachable ? "" : `<p class="notice warn">サドルが高すぎて、ペダルに足が届いていません。</p>`}
-        <p class="muted small">目安は一般的なロードバイクのフィッティングの考え方にもとづく範囲です。痛みや違和感がある場合は、専門店でのフィッティングをおすすめします。</p>
-      </section>
-      <section class="card">
-        <h2>自動で調整</h2>
-        ${sel("goal", "優先すること", G.goal, [["comfort", "楽さ・腰へのやさしさ"], ["balance", "バランス"], ["aero", "速さ(空気抵抗)"]])}
-        <button class="btn start" id="optimize">🔧 最適なポジションを探す</button>
-        ${
-          sug
-            ? `<div class="g-sug">
-                ${sug.changes.length ? `<ul>${sug.changes.map((c) => `<li>${c}</li>`).join("")}</ul>` : `<p>今のポジションが、目安にいちばん近い状態です。</p>`}
-                <p class="muted small">調整後: 上体 ${sug.after.angles.torso.toFixed(0)}°・股関節 ${sug.after.angles.hip.toFixed(0)}°・膝 ${sug.after.angles.kneeExt.toFixed(0)}°・CdA ${sug.after.cda.total.toFixed(3)}</p>
-                ${sug.changes.length ? `<div class="g-row"><button class="btn sub" id="apply-sug">このバイクに反映</button><button class="btn sub" id="apply-sug-next">NEWに反映して比べる</button></div>` : ""}
-              </div>`
-            : ""
-        }
-      </section>`;
+      </details>
+      <details class="card g-fold-card"><summary>📸 写真で測る</summary>${measureCard()}</details>`;
   }
 
   // ---------- 写真で測る ----------
@@ -2097,8 +2121,9 @@
         </table>
         <p class="muted small">太字はいちばん良い値。体重${G.body.weight}kg+バイクで計算(速度・時間は平地または一定勾配・無風の理論値)。乗り換えのフレーム・ホイール・コンポの重さは年式で変わる目安です。乗り換えを選ぶと3Dとパーツ表でも中身を見られ、パーツの数字も書き換えられます。</p>
       </section>
+      <details class="card g-fold-card"><summary>🗂️ 構成の管理・違うパーツ</summary>
       <section class="card">
-        <h2>違うパーツ</h2>
+        <h2>違うパーツ(装着済み → NEW)</h2>
         ${
           diffParts.length
             ? diffParts
@@ -2117,7 +2142,7 @@
         <button class="btn sub" id="promote">NEWを装着済みにする(パーツ交換した)</button>
         <button class="btn start" id="use-ride">装着済みの重量と空気抵抗を走行計算に使う</button>
         <p class="muted small">走行計算に使うと、消費カロリーとパワーの計算で、バイクの重さ(${kgTxt(a.bikeKg)})と空気抵抗(CdA ${a.fit.cda.total.toFixed(3)})をこの値にします。${Store.profile.useGarage ? "(いまはガレージの値を使っています)" : ""}</p>
-      </section>`;
+      </section></details>`;
   }
 
   // ---------- パネルの描画と操作 ----------
@@ -2546,7 +2571,7 @@
 
   function renderPanel() {
     const panel = document.getElementById("panel");
-    panel.innerHTML = trendHtml() + (tab === "parts" ? partsPanel() : tab === "fit" ? fitPanel() : tab === "aero" ? aeroPanel() : comparePanel());
+    panel.innerHTML = trendHtml() + (tab === "fit" ? fitPanel() : partsPanel());
     if (tab === "aero") drawSilhouette();
     if (tab === "parts") loadPhotos();
     renderPartCard();
