@@ -130,8 +130,8 @@
     const others = Parts.SLOTS.filter((x) => x.id !== "frame" && x.id !== "fork" && x.id !== "accessories").reduce((a, x) => a + (cur.parts[x.id] && cur.parts[x.id].mounted !== false ? +cur.parts[x.id].g || 0 : 0), 0);
     const rest = Math.max(1500, Math.round(kg * 1000 - others));
     const fg = Math.round(rest * CURRENT_FIX.frameShare);
-    cur.parts.frame = Object.assign({}, cur.parts.frame, { name: "GIANT ESCAPE R3 フレーム(実測から逆算)", g: fg, mounted: true });
-    cur.parts.fork = Object.assign({}, cur.parts.fork, { name: "ESCAPE R3 フォーク(実測から逆算)", g: rest - fg, mounted: true });
+    cur.parts.frame = Object.assign({}, cur.parts.frame, { name: "GIANT ESCAPE R3 フレーム", g: fg, mounted: true });
+    cur.parts.fork = Object.assign({}, cur.parts.fork, { name: "ESCAPE R3 フォーク", g: rest - fg, mounted: true });
     for (const k of ["frame", "fork"]) delete cur.parts[k].components, delete cur.parts[k].shop, delete cur.parts[k].libId;
     G.currentFix = { id: CURRENT_FIX.id, at: Date.now(), kg, prev };
     setMeasured(kg, true);
@@ -149,34 +149,69 @@
   }
 
   // ---------- 乗り換えプラン(中古のディスクロード)。NEW と並べて比べる ----------
-  const ALT_PLAN = {
-    id: "alt-2026-11-18",
-    title: "乗り換え: TCR ADVANCED PRO DISC(中古)",
-    price: [250000, 350000], // 中古の完成車の目安
-    parts: {
-      frame: ["GIANT TCR ADVANCED PRO DISC フレーム(2021〜23年式・目安)", 900, { aero: "round" }],
-      fork: ["TCR ADVANCED PRO DISC フォーク(付属・目安)", 370],
-      wheels: ["GIANT SLR 1 42 DISC(付属・カーボン・目安)", 1470, { rimFront: 42, rimRear: 42, discRear: false }],
-      groupset: ["105 R7020 油圧ディスク 2×11(付属・目安)", 2800],
-      handlebar: ["GIANT CONTACT SL ハンドル(付属・目安)", 250],
-      stem: ["GIANT CONTACT SL ステム(付属・目安)", 140],
-      seatpost: ["TCR 専用 VARIANT シートポスト(付属・目安)", 200],
+  // key は G.builds の名前。重さは年式で変わる目安(SL は以前 NEW に入れていた値を使う)
+  const ALT_PLANS = [
+    {
+      key: "alt",
+      id: "alt-2026-11-18",
+      chip: "乗り換え",
+      short: "TCR PRO",
+      title: "乗り換え: TCR ADVANCED PRO DISC(中古)",
+      price: [250000, 350000],
+      parts: {
+        frame: ["GIANT TCR ADVANCED PRO DISC フレーム", 900, { aero: "round" }],
+        fork: ["TCR ADVANCED PRO DISC フォーク", 370],
+        wheels: ["GIANT SLR 1 42 DISC(カーボン)", 1470, { rimFront: 42, rimRear: 42, discRear: false }],
+        groupset: ["105 R7020 油圧ディスク 2×11", 2800],
+        handlebar: ["GIANT CONTACT SL ハンドル", 250],
+        stem: ["GIANT CONTACT SL ステム", 140],
+        seatpost: ["TCR 専用 VARIANT シートポスト", 200],
+      },
     },
-  };
+    {
+      key: "alt2",
+      id: "alt2-2026-11-18",
+      chip: "乗り換え SL",
+      short: "TCR SL",
+      title: "乗り換え: TCR ADVANCED SL DISC(中古)",
+      price: [450000, 700000],
+      parts: {
+        frame: ["GIANT TCR ADVANCED SL DISC フレーム+ヘッドセット", 855, { aero: "round" }],
+        fork: ["TCR ADVANCED SL DISC フォーク", 340],
+        wheels: ["CADEX 42 DISC(カーボン)", 1370, { rimFront: 42, rimRear: 42, discRear: false }],
+        groupset: ["ULTEGRA Di2 R8170 油圧ディスク 2×12", 2550],
+        handlebar: ["GIANT CONTACT SLR ハンドル", 220],
+        stem: ["GIANT CONTACT SLR ステム", 120],
+        seatpost: ["TCR SL 専用 シートポスト", 140],
+      },
+    },
+  ];
+  const altKeys = () => ALT_PLANS.map((x) => x.key).filter((k) => G.builds[k]);
   function ensureAlt() {
     if (!G.builds || !G.builds.current) return;
-    if (G.builds.alt && G.altPlan && G.altPlan.id === ALT_PLAN.id) return;
-    const alt = JSON.parse(JSON.stringify(G.builds.current));
-    alt.name = ALT_PLAN.title;
-    alt.geo = Object.assign({}, Fit.DEFAULT_GEO); // ロードバイクの形
-    for (const [slot, [name, g, attrs]] of Object.entries(ALT_PLAN.parts)) alt.parts[slot] = { name, g, mounted: true, attrs: Object.assign({}, (alt.parts[slot] || {}).attrs || {}, attrs || {}) };
-    G.builds.alt = alt;
-    G.altPlan = { id: ALT_PLAN.id, at: Date.now() };
-    Store.setGarage(G);
+    G.altPlans = G.altPlans || {};
+    let changedAny = false;
+    for (const pl of ALT_PLANS) {
+      if (G.builds[pl.key] && G.altPlans[pl.key] === pl.id) continue;
+      const alt = JSON.parse(JSON.stringify(G.builds.current));
+      alt.name = pl.title;
+      alt.geo = Object.assign({}, Fit.DEFAULT_GEO); // ロードバイクの形
+      for (const [slot, [name, g, attrs]] of Object.entries(pl.parts)) alt.parts[slot] = { name, g, mounted: true, attrs: Object.assign({}, (alt.parts[slot] || {}).attrs || {}, attrs || {}) };
+      G.builds[pl.key] = alt;
+      G.altPlans[pl.key] = pl.id;
+      changedAny = true;
+    }
+    // アセンブル表には「実測から逆算」の注記を出さない(前の版で付けた名前を、どの構成でも直す)
+    for (const bk of Object.values(G.builds))
+      for (const k of ["frame", "fork"]) {
+        const p2 = bk && bk.parts && bk.parts[k];
+        if (p2 && /(実測から逆算)/.test(p2.name || "")) (p2.name = p2.name.replace("(実測から逆算)", "")), (changedAny = true);
+      }
+    if (changedAny) Store.setGarage(G);
   }
 
   const save = () => Store.setGarage(G);
-  const other = () => (G.active === "current" ? "next" : G.active === "alt" ? "next" : "current");
+  const other = () => (G.active === "current" ? "next" : /^alt/.test(G.active) ? "next" : "current");
   const B = (k = G.active) => G.builds[k];
 
   function input(k, extraPos) {
@@ -331,9 +366,9 @@
   }
 
   function renderBuilds() {
-    document.getElementById("builds").innerHTML = ["current", "next", "alt"]
+    document.getElementById("builds").innerHTML = ["current", "next", ...ALT_PLANS.map((x) => x.key)]
       .filter((k) => G.builds[k])
-      .map((k) => `<button class="g-chip ${G.active === k ? "on" : ""}" data-build="${k}">${k === "current" ? "装着済み" : k === "next" ? "NEW" : "乗り換え"}<small>${esc(G.builds[k].name)}</small></button>`)
+      .map((k) => `<button class="g-chip ${G.active === k ? "on" : ""}" data-build="${k}">${k === "current" ? "装着済み" : k === "next" ? "NEW" : ALT_PLANS.find((x) => x.key === k).chip}<small>${esc(G.builds[k].name)}</small></button>`)
       .join("");
   }
 
@@ -2024,20 +2059,21 @@
   function comparePanel() {
     const a = calc("current");
     const b = calc("next");
-    const c = G.builds.alt ? calcBuild(G.builds.alt) : null;
+    const alts = altKeys().map((k) => ({ pl: ALT_PLANS.find((x) => x.key === k), r: calcBuild(G.builds[k]) }));
     // かかるお金の目安: NEW は替えるパーツの中古相場、乗り換えは中古の完成車
     const nextCost = Parts.SLOTS.reduce((sum, sl) => {
       const p = G.builds.next.parts[sl.id];
       return sum + (p && p.shop && p.shop.used ? (p.shop.used[0] + p.shop.used[1]) / 2 : 0);
     }, 0) + CHAT_REC.items.map((id) => Catalog.byId(id)).filter((it) => it && it.kind === "delta" && Catalog.installed(G.builds.next, it) && !Catalog.installed(G.builds.current, it)).reduce((s2, it) => s2 + Catalog.cost(it, true), 0);
+    const get = { kg: (r) => r.bikeKg, rot: (r) => r.rot, v: (r) => r.perf.speed200, com: (r) => r.perf.commute, climb: (r) => r.perf.climb, acc: (r) => r.perf.accel, torso: (r) => r.fit.angles.torso };
     const rows = [
-      ["バイク重量", a.bikeKg, b.bikeKg, c && c.bikeKg, 2, "kg", true],
-      ["ホイール外周の重さ", a.rot, b.rot, c && c.rot, 2, "kg", true],
-      ["200Wでの平地の速度", a.perf.speed200, b.perf.speed200, c && c.perf.speed200, 1, "km/h", false],
-      ["平地11kmの時間(150W)", a.perf.commute, b.perf.commute, c && c.perf.commute, 2, "分", true],
-      ["5%の坂2km(250W)", a.perf.climb, b.perf.climb, c && c.perf.climb, 2, "分", true],
-      ["0→30km/h加速(400W)", a.perf.accel, b.perf.accel, c && c.perf.accel, 2, "秒", true],
-      ["上体の角度", a.fit.angles.torso, b.fit.angles.torso, c && c.fit.angles.torso, 0, "°", null],
+      ["バイク重量", "kg", 2, "kg", true],
+      ["ホイール外周の重さ", "rot", 2, "kg", true],
+      ["200Wでの平地の速度", "v", 1, "km/h", false],
+      ["平地11kmの時間(150W)", "com", 2, "分", true],
+      ["5%の坂2km(250W)", "climb", 2, "分", true],
+      ["0→30km/h加速(400W)", "acc", 2, "秒", true],
+      ["上体の角度", "torso", 0, "°", null],
     ];
     const diffParts = Parts.SLOTS.filter((sl) => {
       const x = G.builds.current.parts[sl.id] || {};
@@ -2050,17 +2086,17 @@
       <section class="card">
         <h2>マシン性能の比較(装着済み・NEW・乗り換え)</h2>
         <table class="g-table g-compare g-compare3">
-          <tr><th>項目</th><th>装着済み</th><th>NEW<small>R3延命</small></th>${c ? "<th>乗り換え<small>中古ディスク</small></th>" : ""}</tr>
+          <tr><th>項目</th><th>装着済み</th><th>NEW<small>R3延命</small></th>${alts.map((x) => `<th>${esc(x.pl.short)}<small>乗り換え</small></th>`).join("")}</tr>
           ${rows
-            .map(([n, x, y, z, d, u, low]) => {
-              const bi = best([x, y, z], low);
-              return `<tr><td>${n}</td>${cell(x, d, u, bi === 0)}${cell(y, d, u, bi === 1)}${c ? cell(z, d, u, bi === 2) : ""}</tr>`;
+            .map(([n, k, d, u, low]) => {
+              const vals = [a, b, ...alts.map((x) => x.r)].map(get[k]);
+              const bi = best(vals, low);
+              return `<tr><td>${n}</td>${vals.map((v, i) => cell(v, d, u, bi === i)).join("")}</tr>`;
             })
             .join("")}
-          <tr><td>かかるお金(目安)</td><td>—</td><td>約${Catalog.yen(Math.round(nextCost / 1000) * 1000)}<small>中古パーツ</small></td>${c ? `<td>${Catalog.yen(ALT_PLAN.price[0])}〜${ALT_PLAN.price[1].toLocaleString()}<small>中古の完成車</small></td>` : ""}</tr>
+          <tr><td>かかるお金(目安)</td><td>—</td><td>約${Catalog.yen(Math.round(nextCost / 1000) * 1000)}<small>中古パーツ</small></td>${alts.map((x) => `<td>${Catalog.yen(x.pl.price[0])}〜${x.pl.price[1].toLocaleString()}<small>中古の完成車</small></td>`).join("")}</tr>
         </table>
         <p class="muted small">太字はいちばん良い値。体重${G.body.weight}kg+バイクで計算(速度・時間は平地または一定勾配・無風の理論値)。乗り換えのフレーム・ホイール・コンポの重さは年式で変わる目安です。乗り換えを選ぶと3Dとパーツ表でも中身を見られ、パーツの数字も書き換えられます。</p>
-        ${c ? "" : ""}
       </section>
       <section class="card">
         <h2>違うパーツ</h2>
