@@ -531,7 +531,6 @@
       ["parts", "🧰 パーツ"],
       ["fit", "🧍 フィッティング"],
       ["compare", "📊 比較"],
-      ["clerk", "🛒 パーツ図鑑"],
     ];
     document.getElementById("tabs").innerHTML = T.map(([id, label]) => `<button class="g-tab ${tab === id ? "on" : ""}" data-tab="${id}">${label}</button>`).join("");
   }
@@ -1005,9 +1004,11 @@
       ${importRev ? importHtml() : ""}
       ${matrixHtml()}
       ${cell ? sheetHtml() : ""}
+      ${catalogHtml()}
       ${scanHtml()}
       ${monstersHtml()}
-      ${libraryHtml()}`;
+      ${libraryHtml()}
+      ${foldHtml()}`;
   }
 
   // ---------- 写真でパーツ登録(読み取り → 確認 → 組み込み) ----------
@@ -2280,7 +2281,21 @@
           ${inCur ? "" : `<button class="link" data-clerk-bought="${it.id}">買って付けた</button>`}</div>
       </div></article>`;
   }
-  function clerkPanel() {
+  function catalogHtml() {
+    return `
+      <section class="card g-pcat">
+        <h2>🛒 パーツ図鑑</h2>
+        <p class="muted small">重さの差は「装着済み」と比べた値。重さ・価格は目安です。</p>
+        ${CAT_TABS.map(([k, l]) => {
+          const items = Catalog.ITEMS.filter((it) => it.slot === k);
+          if (!items.length) return "";
+          const best = Math.min(...items.map((it) => (it.kind === "delta" ? -(it.deltaG || 0) : it.g - ((G.builds.current.parts[k] || {}).g || 0))));
+          return `<details class="g-pc-sec" data-cat-sec="${k}" ${catOpen.has(k) ? "open" : ""}><summary><b>${l}</b><small>${items.length}点${best < 0 ? `・最大 −${Math.abs(best)}g` : ""}</small></summary>
+            <div class="g-pc-grid">${items.map(partCard).join("")}</div></details>`;
+        }).join("")}
+      </section>`;
+  }
+  function foldHtml() {
     const c = clerkState();
     const ms = Clerk.maintenance(Store.rides, c.maint);
     const maintHtml = `
@@ -2294,19 +2309,7 @@
           .join("")}
         <p class="muted small">距離は、このアプリで記録したライドの合計です。</p>
       </section>`;
-    return `
-      <section class="card g-pcat">
-        <h2>🛒 パーツ図鑑</h2>
-        <p class="muted small">重さの差は「装着済み」と比べた値。重さ・価格は目安です。</p>
-        ${CAT_TABS.map(([k, l]) => {
-          const items = Catalog.ITEMS.filter((it) => it.slot === k);
-          if (!items.length) return "";
-          const best = Math.min(...items.map((it) => (it.kind === "delta" ? -(it.deltaG || 0) : it.g - ((G.builds.current.parts[k] || {}).g || 0))));
-          return `<details class="g-pc-sec" data-cat-sec="${k}" ${catOpen.has(k) ? "open" : ""}><summary><b>${l}</b><small>${items.length}点${best < 0 ? `・最大 −${Math.abs(best)}g` : ""}</small></summary>
-            <div class="g-pc-grid">${items.map(partCard).join("")}</div></details>`;
-        }).join("")}
-      </section>
-      <details class="g-fold"><summary>🔧 整備メモ・近くのお店</summary>${maintHtml}${shopsHtml()}</details>`;
+    return `<details class="g-fold" id="g-fold" ${foldOpen ? "open" : ""}><summary>🔧 整備メモ・近くのお店</summary>${maintHtml}${shopsHtml()}</details>`;
   }
 
   // ---------- 近くのメンテナンス店 ----------
@@ -2505,7 +2508,7 @@
     let el2 = document.getElementById("bubble");
     const today = new Date().toDateString();
     const c = clerkState();
-    if (tab === "clerk" || mode === "ride" || c.bubbleHidden === today) {
+    if (mode === "ride" || c.bubbleHidden === today) {
       if (el2) el2.remove();
       return;
     }
@@ -2517,13 +2520,18 @@
     el2.innerHTML = `<button class="g-bubble-main" data-tab="clerk"><span class="g-bubble-face">🧑‍🔧</span><span class="g-bubble-text">${esc(text)}</span></button><button class="g-bubble-x" id="bubble-x" aria-label="今日は閉じる">×</button>`;
   }
 
+  // 整備士(吹き出し)を押したら、パーツ画面の下の「整備メモ・近くのお店」を開いて見せる
+  let foldOpen = false;
   function openClerk() {
-    tab = "clerk";
+    tab = "parts";
+    foldOpen = true;
     if (mode !== "mechanic") setMode("mechanic");
     renderTabs();
     renderTools();
     renderPanel();
     renderBubble();
+    const f = document.getElementById("g-fold");
+    if (f) f.scrollIntoView({ behavior: "smooth", block: "start" });
     if (has3D) View3D.waveClerk();
     window.scrollTo({ top: document.getElementById("tabs").offsetTop - 60, behavior: "smooth" });
   }
@@ -2538,7 +2546,7 @@
 
   function renderPanel() {
     const panel = document.getElementById("panel");
-    panel.innerHTML = trendHtml() + (tab === "parts" ? partsPanel() : tab === "fit" ? fitPanel() : tab === "aero" ? aeroPanel() : tab === "clerk" ? clerkPanel() : comparePanel());
+    panel.innerHTML = trendHtml() + (tab === "parts" ? partsPanel() : tab === "fit" ? fitPanel() : tab === "aero" ? aeroPanel() : comparePanel());
     if (tab === "aero") drawSilhouette();
     if (tab === "parts") loadPhotos();
     renderPartCard();
@@ -3096,6 +3104,7 @@
     "toggle",
     (e) => {
       const d = e.target;
+      if (d.id === "g-fold") return void (foldOpen = d.open);
       if (d.id === "g-trend") {
         try {
           localStorage.setItem(TREND_KEY, d.open ? "1" : "0");
