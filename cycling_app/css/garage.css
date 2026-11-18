@@ -1379,3 +1379,5 @@ body.ms-open {
 .g-trend ul, .g-trend ol { margin: 0; padding-left: 1.2em; font-size: 0.85rem; line-height: 1.65; }
 .g-trend-lead { font-size: 0.9rem; margin: 10px 0 0; }
 @media (min-width: 1500px) { #garage > .g-main > .g-trend { column-span: all; display: block; } }
+.g-compare3 th small, .g-compare3 td small { display: block; font-weight: 400; font-size: 0.65rem; opacity: 0.7; }
+.g-compare3 td.best { font-weight: 900; color: #3dcc7a; }

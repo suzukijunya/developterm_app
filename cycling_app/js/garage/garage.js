@@ -82,8 +82,101 @@
     Store.setGarage(G);
   }
   applyChatRec();
+
+  // ---------- 装着済みを、公式の重さと実測8.6kgに合わせて更新(一度だけ) ----------
+  // 公式・販売店の公称値がわかるパーツはその値に。フレームとフォークは公表値がないので、実測の重さから逆算する
+  const CURRENT_FIX = {
+    id: "measured-2026-11-18",
+    parts: {
+      wheels: { name: "MAVIC AKSIUM 前後(リムブレーキ)", components: [["AKSIUM フロント(公式)", 845], ["AKSIUM リア(公式)", 995]] },
+      tires: { name: "前: 予備タイヤ / 後: Panaracer AGILEST 25C", components: [["AGILEST 25C(後)", 190], ["予備タイヤ(前・目安)", 230]], attrs: { width: 25 } },
+      tubes: { name: "Continental TPU チューブ ×2", components: [["Continental TPU ×2", 70]] },
+      groupset: {
+        name: "105 5700系(フロントシングル)+ミニV",
+        components: [
+          ["STI ST-5700 左右(公式)", 484],
+          ["リアディレイラー RD-5701(公称)", 238],
+          ["カセット CS-6700 11-28(目安)", 230],
+          ["チェーン KMC X10(公称)", 273],
+          ["ブレーキ TEKTRO RX1 前後(公称 150g×2)", 300],
+          ["純正クランク(四角軸)+BB(目安)", 950],
+          ["ワイヤー・アウター一式(目安)", 150],
+          ["クイックリリース 前後(付属・目安)", 120],
+        ],
+      },
+      handlebar: { name: "KOCEVLO 一体型カーボンハンドル", components: [["KOCEVLO 一体型", 330]] },
+      stem: { name: "一体型ハンドルに含む", components: [] },
+      seatpost: { name: "シートポスト+シートクランプ(新品)", components: [["シートポスト", 145], ["シートクランプ(目安)", 20]] },
+      bartape: { name: "バーテープ(新品)+エンドキャップ", components: [["バーテープ一式(目安)", 70]] },
+      accessories: { name: "ライト前後+サイコン(量るときは外す)", components: [["ライト・サイコン(目安)", 250]] },
+    },
+    frameShare: 0.65, // フレームとフォークの残りを分ける割合(フレーム側)
+  };
+  function applyCurrentFix() {
+    const cur = G.builds && G.builds.current;
+    if (!cur || (G.currentFix && G.currentFix.id === CURRENT_FIX.id)) return;
+    if (!/escape/i.test((cur.parts.frame || {}).name || "")) return; // エスケープR3のときだけ
+    const kg = G.measured && G.measured.kg ? G.measured.kg : 8.6;
+    const prev = JSON.parse(JSON.stringify(cur));
+    for (const [slot, d] of Object.entries(CURRENT_FIX.parts)) {
+      const old = cur.parts[slot] || {};
+      const comps = d.components.map(([name, g]) => ({ name, g }));
+      cur.parts[slot] = Object.assign({}, old, { name: d.name, g: comps.reduce((a, c) => a + c.g, 0), components: comps.length > 1 ? comps : undefined, mounted: true, attrs: Object.assign({}, old.attrs || {}, d.attrs || {}) });
+      delete cur.parts[slot].shop;
+      delete cur.parts[slot].shopDeltas;
+      delete cur.parts[slot].libId;
+    }
+    // 残り(実測 − ほかの部位。ライト・サイコンは量るときに外したので除く)を、フレームとフォークに分ける
+    const others = Parts.SLOTS.filter((x) => x.id !== "frame" && x.id !== "fork" && x.id !== "accessories").reduce((a, x) => a + (cur.parts[x.id] && cur.parts[x.id].mounted !== false ? +cur.parts[x.id].g || 0 : 0), 0);
+    const rest = Math.max(1500, Math.round(kg * 1000 - others));
+    const fg = Math.round(rest * CURRENT_FIX.frameShare);
+    cur.parts.frame = Object.assign({}, cur.parts.frame, { name: "GIANT ESCAPE R3 フレーム(実測から逆算)", g: fg, mounted: true });
+    cur.parts.fork = Object.assign({}, cur.parts.fork, { name: "ESCAPE R3 フォーク(実測から逆算)", g: rest - fg, mounted: true });
+    for (const k of ["frame", "fork"]) delete cur.parts[k].components, delete cur.parts[k].shop, delete cur.parts[k].libId;
+    G.currentFix = { id: CURRENT_FIX.id, at: Date.now(), kg, prev };
+    setMeasured(kg, true);
+    // チャットのおすすめ(NEW)も、新しい装着済みから組み直す
+    if (G.chatRec && G.chatRec.id === CHAT_REC.id && !G.chatRec.undone) {
+      const nx = JSON.parse(JSON.stringify(cur));
+      nx.name = CHAT_REC.title;
+      for (const id of CHAT_REC.items) {
+        const it = Catalog.byId(id);
+        if (it && !Catalog.installed(nx, it)) Catalog.apply(nx, it);
+      }
+      G.builds.next = nx;
+    }
+    Store.setGarage(G);
+  }
+
+  // ---------- 乗り換えプラン(中古のディスクロード)。NEW と並べて比べる ----------
+  const ALT_PLAN = {
+    id: "alt-2026-11-18",
+    title: "乗り換え: TCR ADVANCED PRO DISC(中古)",
+    price: [250000, 350000], // 中古の完成車の目安
+    parts: {
+      frame: ["GIANT TCR ADVANCED PRO DISC フレーム(2021〜23年式・目安)", 900, { aero: "round" }],
+      fork: ["TCR ADVANCED PRO DISC フォーク(付属・目安)", 370],
+      wheels: ["GIANT SLR 1 42 DISC(付属・カーボン・目安)", 1470, { rimFront: 42, rimRear: 42, discRear: false }],
+      groupset: ["105 R7020 油圧ディスク 2×11(付属・目安)", 2800],
+      handlebar: ["GIANT CONTACT SL ハンドル(付属・目安)", 250],
+      stem: ["GIANT CONTACT SL ステム(付属・目安)", 140],
+      seatpost: ["TCR 専用 VARIANT シートポスト(付属・目安)", 200],
+    },
+  };
+  function ensureAlt() {
+    if (!G.builds || !G.builds.current) return;
+    if (G.builds.alt && G.altPlan && G.altPlan.id === ALT_PLAN.id) return;
+    const alt = JSON.parse(JSON.stringify(G.builds.current));
+    alt.name = ALT_PLAN.title;
+    alt.geo = Object.assign({}, Fit.DEFAULT_GEO); // ロードバイクの形
+    for (const [slot, [name, g, attrs]] of Object.entries(ALT_PLAN.parts)) alt.parts[slot] = { name, g, mounted: true, attrs: Object.assign({}, (alt.parts[slot] || {}).attrs || {}, attrs || {}) };
+    G.builds.alt = alt;
+    G.altPlan = { id: ALT_PLAN.id, at: Date.now() };
+    Store.setGarage(G);
+  }
+
   const save = () => Store.setGarage(G);
-  const other = () => (G.active === "current" ? "next" : "current");
+  const other = () => (G.active === "current" ? "next" : G.active === "alt" ? "next" : "current");
   const B = (k = G.active) => G.builds[k];
 
   function input(k, extraPos) {
@@ -109,6 +202,10 @@
     const sum = Parts.totalGrams(cur.parts) - (exclAcc ? accGrams(cur) : 0);
     G.measured = { kg, exclAcc: !!exclAcc, offset: Math.round(kg * 1000 - sum), at: Date.now() };
   }
+  // 装着済みの更新と乗り換えプランは、setMeasured・accGrams ができてから
+  applyCurrentFix();
+  ensureAlt();
+
   // 重さが「目安」のままの部位(マイパーツでもカタログのパーツでもない)
   function roughSlots(b) {
     return Parts.SLOTS.filter((sl) => {
@@ -234,8 +331,9 @@
   }
 
   function renderBuilds() {
-    document.getElementById("builds").innerHTML = ["current", "next"]
-      .map((k) => `<button class="g-chip ${G.active === k ? "on" : ""}" data-build="${k}">${k === "current" ? "装着済み" : "NEW"}<small>${esc(G.builds[k].name)}</small></button>`)
+    document.getElementById("builds").innerHTML = ["current", "next", "alt"]
+      .filter((k) => G.builds[k])
+      .map((k) => `<button class="g-chip ${G.active === k ? "on" : ""}" data-build="${k}">${k === "current" ? "装着済み" : k === "next" ? "NEW" : "乗り換え"}<small>${esc(G.builds[k].name)}</small></button>`)
       .join("");
   }
 
@@ -812,6 +910,17 @@
     </details>`;
   }
 
+  function fixHtml() {
+    const f = G.currentFix;
+    if (!f || f.id !== CURRENT_FIX.id || f.dismissed) return "";
+    const cur = G.builds.current.parts;
+    return `<section class="card g-chatrec">
+      <h2>📏 装着済みを実測${f.kg}kgに合わせて更新しました</h2>
+      <p class="small">公式・公称の重さがわかるパーツ(アクシウム 845g/995g、ST-5700 484g、RD-5701 238g、KMC X10 273g、TEKTRO RX1 150g×2 など)はその値に。公表値のないフレームとフォークは、実測から逆算しました(フレーム ${(+cur.frame.g).toLocaleString()}g・フォーク ${(+cur.fork.g).toLocaleString()}g)。「目安」と書いた所は、測れたら書き換えてください。</p>
+      <div class="g-plan-btns">${f.undone ? `<span class="g-tag">前の内容に戻しました</span>` : f.prev ? `<button class="link" data-curfix="undo">前の内容に戻す</button>` : ""}<button class="link" data-curfix="hide">閉じる</button></div>
+    </section>`;
+  }
+
   function chatRecHtml() {
     if (!G.chatRec || G.chatRec.id !== CHAT_REC.id || G.chatRec.dismissed) return "";
     const cur = G.builds.current;
@@ -855,6 +964,7 @@
     }).join("");
     void rows;
     return `
+      ${fixHtml()}
       ${chatRecHtml()}
       ${quickHtml()}
       ${libForm ? libFormHtml() : ""}
@@ -1914,37 +2024,43 @@
   function comparePanel() {
     const a = calc("current");
     const b = calc("next");
+    const c = G.builds.alt ? calcBuild(G.builds.alt) : null;
+    // かかるお金の目安: NEW は替えるパーツの中古相場、乗り換えは中古の完成車
+    const nextCost = Parts.SLOTS.reduce((sum, sl) => {
+      const p = G.builds.next.parts[sl.id];
+      return sum + (p && p.shop && p.shop.used ? (p.shop.used[0] + p.shop.used[1]) / 2 : 0);
+    }, 0) + CHAT_REC.items.map((id) => Catalog.byId(id)).filter((it) => it && it.kind === "delta" && Catalog.installed(G.builds.next, it) && !Catalog.installed(G.builds.current, it)).reduce((s2, it) => s2 + Catalog.cost(it, true), 0);
     const rows = [
-      ["バイク重量", a.bikeKg, b.bikeKg, 2, "kg", true],
-      ["ホイール外周の重さ", a.rot, b.rot, 2, "kg", true],
-      ["空気抵抗 CdA", a.fit.cda.total, b.fit.cda.total, 3, "", true],
-      ["200Wでの平地の速度", a.perf.speed200, b.perf.speed200, 1, "km/h", false],
-      ["30km/hに必要なパワー", a.perf.watts30, b.perf.watts30, 0, "W", true],
-      ["平地11kmの時間(150W)", a.perf.commute, b.perf.commute, 2, "分", true],
-      ["5%の坂2km(250W)", a.perf.climb, b.perf.climb, 2, "分", true],
-      ["0→30km/h加速(400W)", a.perf.accel, b.perf.accel, 2, "秒", true],
-      ["上体の角度", a.fit.angles.torso, b.fit.angles.torso, 0, "°", null],
-      ["股関節の角度", a.fit.angles.hip, b.fit.angles.hip, 0, "°", false],
-      ["膝の伸び", a.fit.angles.kneeExt, b.fit.angles.kneeExt, 0, "°", null],
+      ["バイク重量", a.bikeKg, b.bikeKg, c && c.bikeKg, 2, "kg", true],
+      ["ホイール外周の重さ", a.rot, b.rot, c && c.rot, 2, "kg", true],
+      ["200Wでの平地の速度", a.perf.speed200, b.perf.speed200, c && c.perf.speed200, 1, "km/h", false],
+      ["平地11kmの時間(150W)", a.perf.commute, b.perf.commute, c && c.perf.commute, 2, "分", true],
+      ["5%の坂2km(250W)", a.perf.climb, b.perf.climb, c && c.perf.climb, 2, "分", true],
+      ["0→30km/h加速(400W)", a.perf.accel, b.perf.accel, c && c.perf.accel, 2, "秒", true],
+      ["上体の角度", a.fit.angles.torso, b.fit.angles.torso, c && c.fit.angles.torso, 0, "°", null],
     ];
-    const diffParts = Parts.SLOTS.filter((s) => {
-      const x = G.builds.current.parts[s.id] || {};
-      const y = G.builds.next.parts[s.id] || {};
+    const diffParts = Parts.SLOTS.filter((sl) => {
+      const x = G.builds.current.parts[sl.id] || {};
+      const y = G.builds.next.parts[sl.id] || {};
       return x.name !== y.name || x.g !== y.g || x.mounted !== y.mounted;
     });
+    const best = (vals, low) => (low == null ? -1 : vals.indexOf(low ? Math.min(...vals.filter((v) => v != null)) : Math.max(...vals.filter((v) => v != null))));
+    const cell = (v, d, u, on) => (v == null ? "<td>—</td>" : `<td class="${on ? "best" : ""}">${v.toFixed(d)}${u}</td>`);
     return `
       <section class="card">
-        <h2>マシン性能の比較</h2>
-        <table class="g-table g-compare">
-          <tr><th>項目</th><th>装着済み</th><th>NEW</th><th>差</th></tr>
+        <h2>マシン性能の比較(装着済み・NEW・乗り換え)</h2>
+        <table class="g-table g-compare g-compare3">
+          <tr><th>項目</th><th>装着済み</th><th>NEW<small>R3延命</small></th>${c ? "<th>乗り換え<small>中古ディスク</small></th>" : ""}</tr>
           ${rows
-            .map(
-              ([n, x, y, d, u, low]) =>
-                `<tr><td>${n}</td><td>${x.toFixed(d)}${u}</td><td>${y.toFixed(d)}${u}</td><td>${low == null ? `<span class="d same">${(y - x >= 0 ? "+" : "") + (y - x).toFixed(d)}</span>` : delta(x, y, d, "", low)}</td></tr>`
-            )
+            .map(([n, x, y, z, d, u, low]) => {
+              const bi = best([x, y, z], low);
+              return `<tr><td>${n}</td>${cell(x, d, u, bi === 0)}${cell(y, d, u, bi === 1)}${c ? cell(z, d, u, bi === 2) : ""}</tr>`;
+            })
             .join("")}
+          <tr><td>かかるお金(目安)</td><td>—</td><td>約${Catalog.yen(Math.round(nextCost / 1000) * 1000)}<small>中古パーツ</small></td>${c ? `<td>${Catalog.yen(ALT_PLAN.price[0])}〜${ALT_PLAN.price[1].toLocaleString()}<small>中古の完成車</small></td>` : ""}</tr>
         </table>
-        <p class="muted small">体重${G.body.weight}kg+バイクで計算。速度・時間は平地(または一定勾配)・無風の理論値です。</p>
+        <p class="muted small">太字はいちばん良い値。体重${G.body.weight}kg+バイクで計算(速度・時間は平地または一定勾配・無風の理論値)。乗り換えのフレーム・ホイール・コンポの重さは年式で変わる目安です。乗り換えを選ぶと3Dとパーツ表でも中身を見られ、パーツの数字も書き換えられます。</p>
+        ${c ? "" : ""}
       </section>
       <section class="card">
         <h2>違うパーツ</h2>
@@ -2616,6 +2732,18 @@
       return renderAll();
     }
     if (t.dataset.mon) return monAction(t.dataset.monId, t.dataset.mon);
+    if (t.dataset.curfix) {
+      const f = G.currentFix;
+      if (t.dataset.curfix === "undo" && f.prev) {
+        G.builds.current = f.prev;
+        f.prev = null;
+        f.undone = true;
+        setMeasured(f.kg, true);
+      }
+      if (t.dataset.curfix === "hide") f.dismissed = true;
+      save();
+      return renderAll();
+    }
     if (t.dataset.chatrec) {
       if (t.dataset.chatrec === "undo" && G.chatRec.prevNext) {
         G.builds.next = G.chatRec.prevNext;
