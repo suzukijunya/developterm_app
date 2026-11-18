@@ -24,11 +24,12 @@ const Board = (() => {
   }
 
   // ---------- 盤面のHTML ----------
-  const faceHtml = (c, cls = "") => `<div class="bc ${c.kind || ""} ${cls}"><i>${c.icon || "❔"}</i><b>${esc(c.name)}</b></div>`;
+  // カードの表(ガレージのモンスター一覧と同じデザイン)。side は絵(3Dモデルの姿)を選ぶのに使う
+  const faceHtml = (c, cls = "", side) => (typeof TCard !== "undefined" ? `<div class="bc tc-host ${cls}">${TCard.html(c, side)}</div>` : `<div class="bc ${c.kind || ""} ${cls}"><i>${c.icon || "❔"}</i><b>${esc(c.name)}</b></div>`);
   const backHtml = (cls = "") => `<div class="bc back ${cls}"></div>`;
   function monHtml(m, side) {
     return `<div class="bm ${m.synchro ? "syn" : ""} ${m.ace ? "ace" : ""}" data-uid="${esc(m.uid)}">
-      ${faceHtml({ kind: m.synchro ? "synchro" : "monster", icon: m.icon, name: m.name }, "flat")}
+      ${faceHtml(m, "flat", side)}
       <div class="bm-up">${typeof MonsterArt !== "undefined" && MonsterArt.src(m, side) ? MonsterArt.icon(m, side, "bm-ic bm-img") : `<span class="bm-ic">${m.icon}</span>`}<div class="bm-atk"><small>ATK</small>${m.atk}<i>★${m.lv || ""}</i></div></div>
     </div>`;
   }
@@ -277,7 +278,7 @@ const Board = (() => {
             burst(z, "syn");
           } else if (st.how === "revive") {
             bump(s, "grave", -1);
-            await fly(pile(s, "grave"), z, faceHtml({ kind: "monster", icon: m.icon, name: m.name }), T(500));
+            await fly(pile(s, "grave"), z, faceHtml(m, "", s), T(500));
           } else {
             const from = takeHand(s, m.key) || handEl(s);
             await fly(from, z, s === "you" ? faceHtml(cardOf(m.key)) : backHtml(), T(500), { s1: 0.7 });

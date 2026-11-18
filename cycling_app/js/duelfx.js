@@ -6,10 +6,10 @@ const DuelFx = (() => {
   let timer = null;
   const LP0 = () => (typeof Battle !== "undefined" ? Battle.LP0 : 4000);
 
+  // カード(ガレージのモンスター一覧と同じデザイン)。df-card は大きさと動きだけを受け持つ
   function cardHtml(c, cls = "") {
-    const type = c.kind === "trap" ? "TRAP" : c.kind === "monster" ? `${c.tuner ? "TUNER " : ""}Lv${c.lv} ATK${c.atk}` : "SPEED SPELL";
-    const art = c.icon || (c.kind === "trap" ? "⚡" : "🌀");
-    return `<div class="df-card ${c.kind} ${cls}"><div class="df-card-name">${esc(c.name)}</div><div class="df-card-art">${art}</div><div class="df-card-type">${type}</div><div class="df-card-text">${esc(c.text || "")}</div></div>`;
+    if (typeof TCard !== "undefined") return `<div class="df-card tc-host ${cls}">${TCard.html(c, "you")}</div>`;
+    return `<div class="df-card ${c.kind} ${cls}"><div class="df-card-name">${esc(c.name)}</div><div class="df-card-art">${c.icon || "🌀"}</div><div class="df-card-text">${esc(c.text || "")}</div></div>`;
   }
 
   function overlay(html, ms, onClose) {

@@ -908,17 +908,14 @@
       const has = MonsterArt.has(sl.id);
       const c = sl.card;
       const busy = monUi.busy === sl.id ? `<i class="tc-busy">絵にしています…</i>` : "";
-      const art = has ? `<img src="${MonsterArt.url(sl.id)}" alt="" />` : `<span>${sl.icon}</span>`;
-      // 共通の枠(自分・相手)も、同じ表面のカードで見せる
-      const cc = c || (sl.id === "*you"
-        ? { kind: "normal", attr: "風", type: "共通", text: "上で決めていない自分のモンスターが、全部この姿になる。", name: "自分(共通)" }
-        : { kind: "opp", attr: "闇", type: "共通", text: "相手のモンスターが、全部この姿になる。", name: "相手(共通)" });
-      const face = `<div class="tc tc-${cc.kind}">
-            <div class="tc-top"><b>${esc(cc.name || sl.id)}</b><i class="tc-attr">${cc.attr}</i></div>
-            <div class="tc-stars">${cc.lv ? "★".repeat(cc.lv) : ""}</div>
-            <div class="tc-art">${art}${busy}</div>
-            <div class="tc-box"><small>【${esc(cc.type)}】</small><p>${esc(cc.text)}</p><div class="tc-atk">${cc.atk ? `ATK/<b>${cc.atk}</b>` : "&nbsp;"}</div></div>
-          </div>`;
+      const art = has ? `<img src="${MonsterArt.url(sl.id)}" alt="" />` : `<span class="tc-crest">${sl.icon}</span>`;
+      // デュエルと同じカード(TCard)で見せる。共通の枠(自分・相手)も同じ表面
+      const cc = c
+        ? { kind: "monster", name: sl.id, icon: sl.icon, lv: c.lv, atk: c.atk, attr: c.attr, type: c.type, text: c.text }
+        : sl.id === "*you"
+          ? { kind: "monster", name: "自分(共通)", icon: sl.icon, attr: "風", type: "共通", text: "上で決めていない自分のモンスターが、全部この姿になる。" }
+          : { kind: "monster", name: "相手(共通)", icon: sl.icon, attr: "闇", type: "共通", text: "相手のモンスターが、全部この姿になる。" };
+      const face = TCard.html(cc, sl.id === "*opp" ? "opp" : "you", { kind: c ? c.kind : sl.id === "*opp" ? "opp" : "normal", art, artExtra: busy });
       return `<div class="tc-wrap ${has ? "has" : ""}">
         ${face}
         <div class="tc-btns"><label class="g-chip2 g-file">📂 GLB<input type="file" accept=".glb,model/gltf-binary" data-mon-file="${esc(sl.id)}" hidden /></label>
