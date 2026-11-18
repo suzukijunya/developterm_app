@@ -1465,6 +1465,246 @@ const City = (() => {
     pose(0, 0);
     return { g, pose };
   }
+  // ---------- ガレージと同じ3Dのバイクとライダー ----------
+  // 自分: ガレージで組んだ「いま選んでいる構成」。ライバル: 同じモデルを複製して、フレームを赤に塗る
+  let GB = null;
+  function garageBikers(meFallback, rivalFallback) {
+    const THREE = T();
+    let root = null;
+    try {
+      const G = typeof Store !== "undefined" && Store.garage;
+      if (typeof View3D === "undefined" || typeof Fit === "undefined" || !G || !G.builds) return null;
+      const b = G.builds[G.active] || G.builds.current;
+      if (!b || !b.geo || !G.body) return null;
+      const tire = (b.parts.tires && b.parts.tires.attrs && b.parts.tires.attrs.width) || 28;
+      const fit = Fit.compute({ geo: b.geo, pos: b.pos, aero: Parts.aeroOf(b.parts), wheelRadius: 0.311 + tire / 1000 }, G.body);
+      root = View3D.headless(fit, b, G.body);
+    } catch (e) {
+      return null;
+    }
+    if (!root) return null;
+    // 自分: 簡単な形は隠して、ガレージのモデルを入れる(名札などはそのまま)
+    for (const c of meFallback.g.children) c.visible = false;
+    meFallback.g.add(root);
+    meFallback.pose = () => {};
+    const R = View3D.wheelRadius();
+    const st = { crank: 90, wheel: 0, rCrank: 270, rWheel: 0, clone: null, src: null, dst: null, busy: false };
+    async function makeRival() {
+      st.busy = true;
+      try {
+        const { clone } = await import("three/examples/jsm/utils/SkeletonUtils.js");
+        View3D.poseAt(st.crank, st.wheel);
+        const c = clone(root);
+        // フレームとフォークを赤に
+        c.traverse((o) => {
+          if (o.userData && (o.userData.slot === "frame" || o.userData.slot === "fork"))
+            o.traverse((m) => {
+              if (m.isMesh && m.material && m.material.color && !m.material.map) {
+                m.material = m.material.clone();
+                m.material.color.setHex(0xc81e3a);
+              }
+            });
+        });
+        st.src = [];
+        st.dst = [];
+        root.traverse((o) => st.src.push(o));
+        c.traverse((o) => st.dst.push(o));
+        if (st.src.length !== st.dst.length) return;
+        for (const ch of rivalFallback.g.children) if (!ch.isSprite) ch.visible = false;
+        rivalFallback.g.add(c);
+        rivalFallback.pose = () => {};
+        st.clone = c;
+      } catch (e) {
+        // 複製できなければ、ライバルは簡単な形のまま
+      } finally {
+        st.busy = false;
+      }
+    }
+    return {
+      update(dt, myPed, myV, rvPed, rvV) {
+        if (myPed) st.crank = (st.crank + dt * 510) % 360;
+        st.wheel += (myV * dt) / R;
+        if (rvPed) st.rCrank = (st.rCrank + dt * 510) % 360;
+        st.rWheel += (rvV * dt) / R;
+        if (!st.clone && !st.busy && View3D.hasRig() && (st.tries = (st.tries || 0) + 1) < 4) makeRival();
+        if (st.clone) {
+          View3D.poseAt(st.rCrank, st.rWheel);
+          const a = st.src, b = st.dst;
+          for (let i = 0; i < a.length; i++) {
+            b[i].position.copy(a[i].position);
+            b[i].quaternion.copy(a[i].quaternion);
+            b[i].scale.copy(a[i].scale);
+            b[i].visible = a[i].visible;
+          }
+        }
+        View3D.poseAt(st.crank, st.wheel);
+      },
+    };
+  }
+
+  // ---------- 召喚中のモンスター: 自転車の後ろについて浮かぶ ----------
+  const Mons = (() => {
+    const live = new Map(); // "side:uid" → { obj, side, slot, born, gone, seen }
+    const cache = new Map();
+    let loader = null;
+    const size = (m) => (m.ace ? 1.9 : m.synchro ? 1.5 : 1.1);
+    // ガレージで登録した3Dモデル(なければ null)。高さ1・足もとが原点・前が +x
+    function template(m, side) {
+      const key = side + "|" + m.name;
+      if (!cache.has(key))
+        cache.set(
+          key,
+          (async () => {
+            const THREE = T();
+            if (typeof MonsterArt === "undefined" || !MonsterArt.glb || !window.GLTFLoader) return null;
+            const g = await MonsterArt.glb(m, side);
+            if (!g) return null;
+            loader = loader || new window.GLTFLoader();
+            const gltf = await new Promise((res, rej) => loader.parse(g.buf, "", res, rej));
+            const inner = new THREE.Group();
+            inner.add(gltf.scene);
+            inner.rotation.set(g.tf.flip ? Math.PI : 0, (g.tf.rotY || 0) + Math.PI / 2, 0);
+            const wrap = new THREE.Group();
+            wrap.add(inner);
+            let box = new THREE.Box3().setFromObject(wrap);
+            const sz = box.getSize(new THREE.Vector3());
+            inner.scale.setScalar(1 / Math.max(sz.y, sz.x * 0.7, sz.z * 0.7, 1e-3));
+            box = new THREE.Box3().setFromObject(wrap);
+            const c = box.getCenter(new THREE.Vector3());
+            inner.position.set(-c.x, -box.min.y, -c.z);
+            return wrap;
+          })().catch(() => null)
+        );
+      return cache.get(key);
+    }
+    // 3Dモデルがないときは、絵(ガレージで焼いた絵)か絵文字を光の中に浮かべる
+    function sprite(m, side) {
+      const THREE = T();
+      const cv = document.createElement("canvas");
+      cv.width = cv.height = 256;
+      const c = cv.getContext("2d");
+      const col = side === "you" ? "120,200,255" : "255,90,120";
+      const gr = c.createRadialGradient(128, 128, 10, 128, 128, 128);
+      gr.addColorStop(0, `rgba(${col},0.55)`);
+      gr.addColorStop(0.6, `rgba(${col},0.18)`);
+      gr.addColorStop(1, `rgba(${col},0)`);
+      c.fillStyle = gr;
+      c.fillRect(0, 0, 256, 256);
+      const tex = new THREE.CanvasTexture(cv);
+      tex.encoding = THREE.sRGBEncoding;
+      const url = typeof MonsterArt !== "undefined" && MonsterArt.src(m, side);
+      if (url) {
+        const im = new Image();
+        im.onload = () => {
+          const k = Math.min(220 / im.width, 220 / im.height);
+          c.drawImage(im, 128 - (im.width * k) / 2, 128 - (im.height * k) / 2, im.width * k, im.height * k);
+          tex.needsUpdate = true;
+        };
+        im.src = url;
+      } else {
+        c.font = "150px sans-serif";
+        c.textAlign = "center";
+        c.textBaseline = "middle";
+        c.fillText(m.icon || "❔", 128, 140);
+      }
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+      sp.center.set(0.5, 0.08);
+      return sp;
+    }
+    function atkTag(m, side) {
+      const THREE = T();
+      const cv = document.createElement("canvas");
+      cv.width = 256;
+      cv.height = 64;
+      const c = cv.getContext("2d");
+      c.fillStyle = side === "you" ? "rgba(10,40,110,0.82)" : "rgba(110,10,36,0.82)";
+      c.fillRect(20, 10, 216, 44);
+      c.fillStyle = "#ffd23d";
+      c.fillRect(20, 10, 216, 3);
+      c.font = "700 30px sans-serif";
+      c.textAlign = "center";
+      c.textBaseline = "middle";
+      c.fillStyle = "#fff";
+      c.fillText(`ATK ${m.atk}${m.lv ? "  ★" + m.lv : ""}`, 128, 34);
+      const t = new THREE.CanvasTexture(cv);
+      t.encoding = THREE.sRGBEncoding;
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false }));
+      sp.scale.set(0.9, 0.225, 1);
+      return sp;
+    }
+    function spawn(m, side) {
+      const THREE = T();
+      const obj = new THREE.Group();
+      const body = new THREE.Group();
+      obj.add(body);
+      const s = size(m);
+      // 足もとの光の輪
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.35, 0.5, 32), new THREE.MeshBasicMaterial({ color: side === "you" ? 0x6cc8ff : 0xff5a78, transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false }));
+      ring.rotation.x = -Math.PI / 2;
+      ring.scale.setScalar(s * 0.8);
+      obj.add(ring);
+      const tag = atkTag(m, side);
+      tag.position.y = s + 0.22;
+      obj.add(tag);
+      const fb = sprite(m, side);
+      fb.scale.set(s * 1.2, s * 1.2, 1);
+      body.add(fb);
+      template(m, side).then((tpl) => {
+        if (!tpl) return;
+        const c = tpl.clone(true);
+        c.scale.setScalar(s);
+        body.remove(fb);
+        body.add(c);
+      });
+      obj.scale.setScalar(0.01);
+      scene.add(obj);
+      return { obj, body, ring, side, born: sim ? sim.t : 0, gone: null, m };
+    }
+    function update(dt) {
+      if (!sim || !sim.ride.duel) return;
+      const b = Battle.state(sim.ride);
+      for (const L of live.values()) L.seen = false;
+      for (const side of ["you", "opp"])
+        (b[side].field || []).forEach((m, i) => {
+          if (!m) return;
+          const key = side + ":" + m.uid;
+          let L = live.get(key);
+          if (!L) live.set(key, (L = spawn(m, side)));
+          L.slot = i;
+          L.seen = true;
+          L.gone = null;
+        });
+      const t = sim.t;
+      for (const [key, L] of live) {
+        if (!L.seen && L.gone == null) L.gone = t;
+        const bike = L.side === "you" ? me.g : rival.g;
+        const yaw = bike.rotation.y, dx = Math.cos(-yaw), dz = Math.sin(-yaw);
+        // 自転車の斜め後ろの上に浮かぶ(カメラから自転車が隠れないように、左右と上に分ける)
+        const back = L.slot === 2 ? 2.6 : 1.8, lat = L.slot === 0 ? 1.7 : L.slot === 1 ? -1.7 : 0;
+        const bob = Math.sin(t * 1.7 + L.slot * 2) * 0.15;
+        const tx = bike.position.x - dx * back + dz * lat, tz = bike.position.z - dz * back - dx * lat, ty = bike.position.y + (L.slot === 2 ? 3.4 : 2.3) + bob;
+        const k = 1 - Math.exp(-dt * 5);
+        const o = L.obj;
+        if (o.scale.x < 0.05) o.position.set(tx, ty, tz);
+        o.position.x += (tx - o.position.x) * k;
+        o.position.y += (ty - o.position.y) * k;
+        o.position.z += (tz - o.position.z) * k;
+        o.rotation.y = yaw;
+        L.body.rotation.y = Math.sin(t * 0.8 + L.slot) * 0.25;
+        L.ring.rotation.z += dt * 1.5;
+        // 出てくるときは光って大きくなり、やられたら小さくなって消える
+        const life = L.gone == null ? Math.min(1, (t - L.born) / 0.6) : Math.max(0, 1 - (t - L.gone) / 0.5);
+        const sc = Math.max(0.01, life < 1 && L.gone == null ? 1 - Math.pow(1 - life, 3) * 1 + Math.sin(life * Math.PI) * 0.25 : life);
+        o.scale.setScalar(sc);
+        if (L.gone != null && life <= 0) {
+          scene.remove(o);
+          live.delete(key);
+        }
+      }
+    }
+    return { update };
+  })();
+
   function nameTag(text, color) {
     const THREE = T();
     const cv = document.createElement("canvas");
@@ -1555,6 +1795,25 @@ const City = (() => {
     ground = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.MeshLambertMaterial({ color: 0x23272b }));
     ground.rotation.x = -Math.PI / 2;
     scene.add(ground);
+    // 金属や塗装(ガレージのバイク)に空が映り込むように、周りの景色を作る
+    try {
+      const cv = document.createElement("canvas");
+      cv.width = 64;
+      cv.height = 32;
+      const x = cv.getContext("2d"), gr = x.createLinearGradient(0, 0, 0, 32);
+      gr.addColorStop(0, "#9cc4ee");
+      gr.addColorStop(0.48, "#e8eef4");
+      gr.addColorStop(0.52, "#7a7c80");
+      gr.addColorStop(1, "#3a3c40");
+      x.fillStyle = gr;
+      x.fillRect(0, 0, 64, 32);
+      const et = new THREE.CanvasTexture(cv);
+      et.mapping = THREE.EquirectangularReflectionMapping;
+      et.encoding = THREE.sRGBEncoding;
+      const pm = new THREE.PMREMGenerator(renderer);
+      scene.environment = pm.fromEquirectangular(et).texture;
+      pm.dispose();
+    } catch (e) {}
     buildMats();
     setTime(timeMode);
     clock = new THREE.Clock();
@@ -1606,6 +1865,8 @@ const City = (() => {
     scene.add(me.g, rival.g);
     const foe = Battle.foeOf(Battle.state(sim.ride));
     rival.g.add(nameTag(foe.name, "#ff4455"));
+    GB = garageBikers(me, rival);
+    if (typeof MonsterArt !== "undefined") MonsterArt.load();
     Battle.deal(sim.ride);
     buildRouteStrip();
     wantTiles(0);
@@ -2024,6 +2285,9 @@ const City = (() => {
     const p = placeBiker(me, s.along, 0, real * s.speedX, s.v, (s.auto || s.pedal) && !s.brake && !s.paused);
     placeBiker(rival, s.rAlong, 1.3, real * s.speedX, s.rV, !s.paused);
     rival.g.position.y = G3.on() ? G3.rivalY() : 0;
+    const myPed = (s.auto || s.pedal) && !s.brake && !s.paused && !s.done;
+    if (GB) GB.update(real * s.speedX, myPed, s.paused ? 0 : s.v, !s.paused && !s.done, s.paused ? 0 : s.rV);
+    Mons.update(real * Math.min(4, s.speedX));
     // 追いかけるカメラ(後ろ上から。速いほど少し引いて、視野を広げる)
     const back = 6.5 + s.v * 0.18, up = 2.9 + s.v * 0.05;
     const want = new THREE.Vector3(p.x - p.tx * back, up, p.z - p.tz * back);

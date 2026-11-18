@@ -3306,11 +3306,69 @@ const View3D = (() => {
     return out;
   }
 
+  // ---------- シティデュエル用: 画面を持たずに、バイクとライダー(ガレージと同じ3Dモデル)だけを組み立てる ----------
+  // 返す group を別のシーンに置き、毎フレーム tick(秒, こいでいるか) を呼ぶとペダリングする。
+  // ライダーの本物の人体モデルは非同期で読み込まれ、届いたら自動で入れ替わる
+  function headless(fit, build, body) {
+    const THREE = T();
+    if (!root) {
+      scene = new THREE.Scene();
+      root = new THREE.Group();
+      scene.add(root);
+      envGroup = new THREE.Group();
+      camera = new THREE.PerspectiveCamera();
+      anim.rider = true;
+      anim.pedaling = false;
+    }
+    state = { fit, build, body };
+    buildBike(fit, build);
+    buildRider();
+    if (riderGroup) riderGroup.visible = true;
+    if (rig) rig.root.visible = true;
+    const bk = fit.bike;
+    root.position.set(0, -(bk.g.bbDrop - bk.R), 0); // タイヤの接地点を y=0 に
+    updateRider();
+    return root;
+  }
+  function tick(dt, pedaling, speed) {
+    if (!state || !bikeGroup) return;
+    if (pedaling) anim.crank = (anim.crank + dt * 510) % 360;
+    if (rig && rig.root.parent !== root) root.add(rig.root);
+    if (rig) rig.root.visible = true;
+    updateRider();
+    bikeGroup.traverse((o) => {
+      if (o.userData.crank) o.rotation.z = (-anim.crank * Math.PI) / 180;
+      if (o.userData.spin) o.rotation.z -= dt * (speed != null ? speed / state.fit.bike.R : pedaling ? 4 : 0);
+      if (o.userData.pedal) {
+        const th = ((anim.crank + (o.userData.pedal < 0 ? 180 : 0)) * Math.PI) / 180;
+        o.position.set(Math.sin(th) * state.fit.bike.p.crank, Math.cos(th) * state.fit.bike.p.crank, o.userData.pedal * 0.1);
+      }
+    });
+  }
+  // クランクの角度(度)と車輪の回転角(ラジアン)を指定して、その瞬間の姿勢にする(ライバルなど、同じモデルを別の姿勢で使うとき)
+  function poseAt(crankDeg, wheelAng) {
+    if (!state || !bikeGroup) return;
+    anim.crank = crankDeg;
+    if (rig && rig.root.parent !== root) root.add(rig.root);
+    if (rig) rig.root.visible = true;
+    updateRider();
+    bikeGroup.traverse((o) => {
+      if (o.userData.crank) o.rotation.z = (-crankDeg * Math.PI) / 180;
+      if (o.userData.spin) o.rotation.z = -wheelAng;
+      if (o.userData.pedal) {
+        const th = ((crankDeg + (o.userData.pedal < 0 ? 180 : 0)) * Math.PI) / 180;
+        o.position.set(Math.sin(th) * state.fit.bike.p.crank, Math.cos(th) * state.fit.bike.p.crank, o.userData.pedal * 0.1);
+      }
+    });
+  }
+  const hasRig = () => !!rig;
+  const wheelRadius = () => (state ? state.fit.bike.R : 0.34);
+
   function dispose() {
     cancelAnimationFrame(raf);
     window.removeEventListener("resize", resize);
     if (renderer) renderer.dispose();
   }
 
-  return { partIcons, setScan, updateScan, hasScan, startMovie, stopMovie, partBox, equipFx, setPhotoreal, onClerk, waveClerk, create, setModel, setRider, setFlow, setPedaling, setExploded, highlight, clearHighlight, animateMount, setView, resize, dispose };
+  return { headless, tick, poseAt, hasRig, wheelRadius, partIcons, setScan, updateScan, hasScan, startMovie, stopMovie, partBox, equipFx, setPhotoreal, onClerk, waveClerk, create, setModel, setRider, setFlow, setPedaling, setExploded, highlight, clearHighlight, animateMount, setView, resize, dispose };
 })();

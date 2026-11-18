@@ -194,10 +194,21 @@ const MonsterArt = (() => {
     await put("monimg:" + id, null);
     setUrl(id, null);
   }
+  // 3Dモデル(GLB)そのもの。シティデュエルで浮かせて使う。{ buf, tf } か null
+  async function glb(m, side) {
+    for (const id of [m && m.name, "*" + (side || "you")]) {
+      if (!id) continue;
+      try {
+        const b = await get("mon:" + id);
+        if (b) return { buf: await b.arrayBuffer(), tf: meta()[id] || {} };
+      } catch (e) {}
+    }
+    return null;
+  }
   const has = (id) => !!urls[id];
   const url = (id) => urls[id] || null;
 
-  return { SLOTS, load, src, icon, assign, rerender, remove, has, url };
+  return { SLOTS, load, src, icon, assign, rerender, remove, has, url, glb };
 })();
 
 if (typeof module !== "undefined") module.exports = MonsterArt;
