@@ -1978,6 +1978,7 @@ print("このファイルをスマホに送って(AirDrop など)、アプリの
           </select></label>
 
         <h2>あそび</h2>
+        <a class="btn sub" href="city.html" style="display:block;text-align:center;text-decoration:none;margin-bottom:10px">🏙️ シティデュエル(実際の街を3Dで走る・家で遊ぶ)</a>
         <label class="check"><input type="checkbox" name="duel" ${pr.duel ? "checked" : ""} />
           <span>🃏 デュエルモード(5D's風)<small>走り出しの「アクセラレーション!」、1kmごとにたまるスピードカウンター、いつもの自分(ゴースト)とのLP勝負、ガレージのシンクロ召喚の演出</small></span></label>
         <label class="field"><span>デュエルの声</span><select name="duelVoice" id="duel-voice"><option value="">おまかせ(男性の声を探す)</option></select></label>
@@ -2451,7 +2452,7 @@ print("このファイルをスマホに送って(AirDrop など)、アプリの
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2026.11.55";
+  const APP_VERSION = "2026.11.56";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });
