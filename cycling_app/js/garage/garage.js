@@ -903,25 +903,37 @@
   function monstersHtml() {
     if (typeof MonsterArt === "undefined") return "";
     const n = Object.keys(G.monsters || {}).length;
-    const rows = MonsterArt.SLOTS.map((sl) => {
+    const cards = MonsterArt.SLOTS.map((sl) => {
       const meta = (G.monsters || {})[sl.id];
       const has = MonsterArt.has(sl.id);
-      const name = sl.id === "*you" ? "自分(共通)" : sl.id === "*opp" ? "相手(共通)" : sl.id;
-      return `<div class="g-mon">
-        <div class="g-mon-img">${has ? `<img src="${MonsterArt.url(sl.id)}" alt="" />` : `<span>${sl.icon}</span>`}${monUi.busy === sl.id ? `<i class="g-mon-busy">焼いています…</i>` : ""}</div>
-        <div class="g-mon-text"><b>${esc(name)}</b><small>${esc(sl.note)}${meta && !has ? "・この端末にはファイルがありません" : ""}</small>
-          ${sl.prompt ? `<details><summary>作るときの例(英語)</summary><code>${esc(sl.prompt)}</code></details>` : ""}
-          <div class="g-mon-btns"><label class="g-chip2 g-file">📂 GLB<input type="file" accept=".glb,model/gltf-binary" data-mon-file="${esc(sl.id)}" hidden /></label>
-          ${has ? `<button class="g-chip2" data-mon="rot" data-mon-id="${esc(sl.id)}">↻ 90°</button><button class="g-chip2 ${meta && meta.flip ? "on" : ""}" data-mon="flip" data-mon-id="${esc(sl.id)}">上下</button><button class="link danger" data-mon="del" data-mon-id="${esc(sl.id)}">消す</button>` : ""}</div>
-        </div></div>`;
+      const c = sl.card;
+      const busy = monUi.busy === sl.id ? `<i class="tc-busy">絵にしています…</i>` : "";
+      const art = has ? `<img src="${MonsterArt.url(sl.id)}" alt="" />` : `<span>${sl.icon}</span>`;
+      // 共通の枠(自分・相手)も、同じ表面のカードで見せる
+      const cc = c || (sl.id === "*you"
+        ? { kind: "normal", attr: "風", type: "共通", text: "上で決めていない自分のモンスターが、全部この姿になる。", name: "自分(共通)" }
+        : { kind: "opp", attr: "闇", type: "共通", text: "相手のモンスターが、全部この姿になる。", name: "相手(共通)" });
+      const face = `<div class="tc tc-${cc.kind}">
+            <div class="tc-top"><b>${esc(cc.name || sl.id)}</b><i class="tc-attr">${cc.attr}</i></div>
+            <div class="tc-stars">${cc.lv ? "★".repeat(cc.lv) : ""}</div>
+            <div class="tc-art">${art}${busy}</div>
+            <div class="tc-box"><small>【${esc(cc.type)}】</small><p>${esc(cc.text)}</p><div class="tc-atk">${cc.atk ? `ATK/<b>${cc.atk}</b>` : "&nbsp;"}</div></div>
+          </div>`;
+      return `<div class="tc-wrap ${has ? "has" : ""}">
+        ${face}
+        <div class="tc-btns"><label class="g-chip2 g-file">📂 GLB<input type="file" accept=".glb,model/gltf-binary" data-mon-file="${esc(sl.id)}" hidden /></label>
+          ${has ? `<button class="g-chip2" data-mon="rot" data-mon-id="${esc(sl.id)}">↻</button><button class="g-chip2 ${meta && meta.flip ? "on" : ""}" data-mon="flip" data-mon-id="${esc(sl.id)}">⇅</button><button class="g-chip2" data-mon="del" data-mon-id="${esc(sl.id)}">🗑</button>` : ""}</div>
+        ${meta && !has ? `<small class="tc-note">この端末にはファイルがありません</small>` : ""}
+        ${sl.prompt ? `<details class="tc-prompt"><summary>作るときの例</summary><code>${esc(sl.prompt)}</code></details>` : ""}
+      </div>`;
     }).join("");
-    return `<section class="card g-mons"><h2>🐉 デュエルのモンスター(3Dモデル)</h2>
-      <p class="small">meshy.ai などで作った<b>GLB</b>を読み込むと、ライディングデュエルの盤面や演出で、モンスターがそのモデルの姿で出てきます。読み込んだときに1枚の絵にして保存するので、走行中の電池は食いません。</p>
-      <p class="muted small">決めていない自分のモンスターは「自分(共通)」、相手のモンスターは「相手(共通)」の姿になります(どちらもなければ絵文字)。ファイルはこの端末の中だけに置き、同期しません。いま ${n}体。</p>
+    return `<section class="card g-mons"><h2>🐉 デュエルのモンスター <span class="g-total">${n}/${MonsterArt.SLOTS.length}体</span></h2>
+      <p class="muted small">meshy.ai などで作ったGLBを「📂 GLB」から読み込むと、カードの絵と、デュエル中のモンスターがそのモデルの姿になります。↻ は90°回す、⇅ は上下を返す。ファイルはこの端末の中だけに置きます。</p>
       ${monUi.status ? `<p class="notice warn small">${esc(monUi.status)}</p>` : ""}
-      <details class="g-mon-list" open><summary>モンスターの一覧(${MonsterArt.SLOTS.length})</summary>${rows}</details>
+      <div class="tc-grid">${cards}</div>
     </section>`;
   }
+
 
   // ---------- いまの設計思想とトレンド(チャットでまとめた内容。ガレージの上に出す) ----------
   const TREND_KEY = "cycling_trend_open";

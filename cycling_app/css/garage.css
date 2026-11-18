@@ -1428,3 +1428,37 @@ div.mx-cell.mx-alt.same { opacity: 0.45; }
   .mx-grid.has-alt span.mx-col.mx-alt { display: block; }
   .mx-alt-note { display: none; }
 }
+
+/* モンスターのカード(オリジナルのトレーディングカード風)。横に並べる */
+.tc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px 12px; margin-top: 12px; }
+.tc-wrap { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.tc { position: relative; aspect-ratio: 59 / 86; border-radius: 9px; padding: 6%; display: flex; flex-direction: column; gap: 3%; color: #14110c; background: linear-gradient(155deg, #7fa3c4, #3c5f80); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35), inset 0 0 0 5px rgba(0, 0, 0, 0.35), 0 6px 16px rgba(0, 0, 0, 0.5); container-type: inline-size; overflow: hidden; }
+.tc-effect { background: linear-gradient(155deg, #d59a5a, #8a5424); }
+.tc-tuner { background: linear-gradient(155deg, #58c9b0, #1f7a68); }
+.tc-synchro { background: linear-gradient(155deg, #f4f6f8, #a9b4c0); }
+.tc-ace { background: linear-gradient(155deg, #ffe08a, #c98a10 55%, #fff3c0); }
+.tc-top { display: flex; align-items: center; gap: 4%; padding: 2% 4%; border-radius: 4px; background: rgba(255, 255, 255, 0.55); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35); }
+.tc-top b { flex: 1; min-width: 0; font-size: 7.2cqw; line-height: 1.15; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tc-attr { flex: 0 0 auto; width: 11cqw; height: 11cqw; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-weight: 900; font-size: 6.5cqw; color: #fff; background: radial-gradient(circle at 35% 30%, #5ad1ff, #0b5fa8); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5); }
+.tc-ace .tc-attr, .tc-tuner .tc-attr { background: radial-gradient(circle at 35% 30%, #fff3a8, #d49a00); color: #3a2a00; }
+.tc-stars { text-align: right; font-size: 6.4cqw; line-height: 1; letter-spacing: -0.02em; color: #ffcf3d; text-shadow: 0 0 1px #000, 0 1px 0 #7a4a00; padding-right: 2%; min-height: 6.4cqw; }
+.tc-art { position: relative; flex: 1 1 0; min-height: 0; border-radius: 3px; display: grid; place-items: center; overflow: hidden; background: radial-gradient(circle at 50% 65%, #35557a, #0a1424 75%); box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.4); }
+.tc-ace .tc-art { background: radial-gradient(circle at 50% 65%, #7a5a10, #1a1204 75%); }
+.tc-art img { width: 100%; height: 100%; object-fit: contain; }
+.tc-art span { font-size: 34cqw; line-height: 1; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.6)); }
+.tc-box { flex: 0 0 31%; border-radius: 3px; padding: 3% 4%; background: rgba(255, 250, 235, 0.9); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.4); display: flex; flex-direction: column; overflow: hidden; }
+.tc-box small { font-size: 5.2cqw; font-weight: 900; line-height: 1.2; }
+.tc-box p { flex: 1; margin: 1% 0 0; font-size: 4.7cqw; line-height: 1.3; overflow: hidden; }
+.tc-atk { text-align: right; font-size: 6cqw; font-weight: 800; border-top: 1px solid rgba(0, 0, 0, 0.4); line-height: 1.3; }
+.tc-atk b { font-size: 7.4cqw; }
+.tc-busy { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, 0.65); color: #fff; font-style: normal; font-size: 6cqw; }
+.tc-opp { background: linear-gradient(155deg, #8a5a9a, #3a1f4a); }
+.tc-opp .tc-attr { background: radial-gradient(circle at 35% 30%, #b06ad0, #2a0a3a); }
+.tc-opp .tc-art { background: radial-gradient(circle at 50% 65%, #5a2a4a, #14060f 75%); }
+.tc-btns { display: flex; flex-wrap: wrap; gap: 4px; }
+.tc-btns .g-chip2 { padding: 4px 8px; font-size: 0.75rem; }
+.tc-note { font-size: 0.68rem; opacity: 0.7; }
+.tc-prompt { font-size: 0.7rem; }
+.tc-prompt summary { cursor: pointer; opacity: 0.75; }
+.tc-prompt code { display: block; white-space: normal; word-break: break-word; font-size: 0.66rem; padding: 4px 6px; margin-top: 2px; border-radius: 4px; background: rgba(127, 127, 127, 0.12); user-select: all; }
+@media (min-width: 1500px) { #garage > .g-main > .g-mons { column-span: all; display: block; } }

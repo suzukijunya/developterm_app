@@ -22,6 +22,22 @@ const MonsterArt = (() => {
     { id: "*you", icon: "🙂", note: "自分のモンスター(上で決めていないもの全部)", prompt: "" },
     { id: "*opp", icon: "😈", note: "相手のモンスター(全部)", prompt: "a dark menacing mechanical monster with red glowing eyes, game monster, full body" },
   ];
+  // カードに出す数字とテキスト(バトルのカードと同じ値)
+  const CARD = {
+    "ソニック・ストリーム・ドラゴン": { lv: 10, atk: 3500, kind: "ace", attr: "光", type: "ドラゴン族/エース", text: "運命のドローで呼ばれる。相手のいちばん強いモンスターを破壊して現れる。攻撃した後、相手に500ダメージ。" },
+    "ストリーム・ドラゴン": { lv: 8, atk: 3000, kind: "synchro", attr: "風", type: "ドラゴン族/シンクロ", text: "チューナー+チューナー以外のモンスター。攻撃した後、相手に500ダメージ。" },
+    "ホライズン・ウォリアー": { lv: 7, atk: 2700, kind: "synchro", attr: "風", type: "戦士族/シンクロ", text: "チューナー+チューナー以外のモンスター。地平の彼方から駆けつける戦士。" },
+    "ケイデンス・ナイト": { lv: 6, atk: 2500, kind: "synchro", attr: "風", type: "戦士族/シンクロ", text: "チューナー+チューナー以外のモンスター。1ターンに1度、戦闘では破壊されない。" },
+    "シンクロ・スプリンター": { lv: 5, atk: 2300, kind: "synchro", attr: "風", type: "機械族/シンクロ", text: "チューナー+チューナー以外のモンスター。シンクロ召喚すると1枚ドロー。" },
+    "カーボン・ドラゴン": { lv: 6, atk: 2400, kind: "effect", attr: "風", type: "ドラゴン族/効果", text: "スピードカウンターが5以上なら召喚できる。" },
+    "エアロ・ファルコン": { lv: 4, atk: 1800, kind: "normal", attr: "風", type: "鳥獣族", text: "空気を切り裂く翼。向かい風の中でも速度を落とさない。" },
+    "スポーク・ガーディアン": { lv: 4, atk: 1600, kind: "effect", attr: "地", type: "岩石族/効果", text: "1ターンに1度、戦闘では破壊されない。" },
+    "スプロケット・ナイト": { lv: 3, atk: 1300, kind: "normal", attr: "地", type: "機械族", text: "歯車の騎士。チューナーと組んでシンクロ召喚につなげる。" },
+    "ケイデンス・シンクロン": { lv: 3, atk: 1000, kind: "tuner", attr: "光", type: "機械族/チューナー", text: "召喚すると、手札のレベル3以下のモンスター1体を特殊召喚する。" },
+    "チェーン・ウルフ": { lv: 2, atk: 800, kind: "tuner", attr: "地", type: "獣族/チューナー", text: "召喚すると、スピードカウンターが1つ増える。" },
+    "ドラフティング・ラビット": { lv: 2, atk: 600, kind: "effect", attr: "風", type: "獣族/効果", text: "召喚すると1枚ドロー。" },
+  };
+  for (const sl of SLOTS) if (CARD[sl.id]) sl.card = CARD[sl.id];
   const urls = {};
   let loading = null;
 
