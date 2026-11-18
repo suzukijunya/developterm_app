@@ -2327,21 +2327,24 @@
         <div class="g-pc-btns">${inNext ? `<span class="g-tag">NEWに入っています</span>` : `<button class="btn sub" data-clerk-next="${it.id}">NEWに入れる</button>`}
           <a class="g-chip2" href="${esc(mercariUrl(it.name))}" target="_blank" rel="noopener">メルカリ</a>
           <a class="g-chip2" href="https://www.google.com/search?tbm=isch&q=${encodeURIComponent(it.name)}" target="_blank" rel="noopener">🔎 画像</a>
-          ${inCur ? "" : `<button class="link" data-clerk-bought="${it.id}">買って付けた</button>`}</div>
+          ${inCur ? "" : `<button class="link" data-clerk-bought="${it.id}">買って付けた</button>`}
+          <button class="g-pc-del" data-cat-del="${it.id}" title="図鑑から消す" aria-label="図鑑から消す">🗑</button></div>
       </div></article>`;
   }
   function catalogHtml() {
+    const hidden = new Set(G.catalogHidden || []); // 図鑑から消したパーツ(戻せる)
     return `
       <section class="card g-pcat">
         <h2>🛒 パーツ図鑑</h2>
         <p class="muted small">重さの差は「装着済み」と比べた値。重さ・価格は目安です。</p>
         ${CAT_TABS.map(([k, l]) => {
-          const items = Catalog.ITEMS.filter((it) => it.slot === k);
+          const items = Catalog.ITEMS.filter((it) => it.slot === k && !hidden.has(it.id));
           if (!items.length) return "";
           const best = Math.min(...items.map((it) => (it.kind === "delta" ? -(it.deltaG || 0) : it.g - ((G.builds.current.parts[k] || {}).g || 0))));
           return `<details class="g-pc-sec" data-cat-sec="${k}" ${catOpen.has(k) ? "open" : ""}><summary><b>${l}</b><small>${items.length}点${best < 0 ? `・最大 −${Math.abs(best)}g` : ""}</small></summary>
             <div class="g-pc-grid">${items.map(partCard).join("")}</div></details>`;
         }).join("")}
+        ${hidden.size ? `<p class="small g-pc-hidden">消したパーツ ${hidden.size}点: ${[...hidden].map((id) => Catalog.byId(id)).filter(Boolean).map((it) => `<button class="g-chip2" data-cat-restore="${it.id}" title="図鑑に戻す">↩ ${esc(it.name)}</button>`).join("")}</p>` : ""}
       </section>`;
   }
   function foldHtml() {
@@ -2782,6 +2785,18 @@
       return renderAll();
     }
     if (t.dataset.mon) return monAction(t.dataset.monId, t.dataset.mon);
+    if (t.dataset.catDel || t.dataset.catRestore) {
+      const id = t.dataset.catDel || t.dataset.catRestore;
+      const it = Catalog.byId(id);
+      const set = new Set(G.catalogHidden || []);
+      if (t.dataset.catDel) {
+        if (!confirm(`「${it ? it.name : id}」を図鑑から消しますか?(下の「消したパーツ」からいつでも戻せます)`)) return;
+        set.add(id);
+      } else set.delete(id);
+      G.catalogHidden = [...set];
+      save();
+      return renderPanel();
+    }
     if (t.dataset.curfix) {
       const f = G.currentFix;
       if (t.dataset.curfix === "undo" && f.prev) {

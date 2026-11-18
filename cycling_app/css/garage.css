@@ -1436,3 +1436,6 @@ div.mx-cell.mx-alt.same { opacity: 0.45; }
 .tc-prompt summary { cursor: pointer; opacity: 0.75; }
 .tc-prompt code { display: block; white-space: normal; word-break: break-word; font-size: 0.66rem; padding: 4px 6px; margin-top: 2px; border-radius: 4px; background: rgba(127, 127, 127, 0.12); user-select: all; }
 @media (min-width: 1500px) { #garage > .g-main > .g-mons { column-span: all; display: block; } }
+.g-pc-del { margin-left: auto; background: none; border: 0; cursor: pointer; font-size: 0.95rem; opacity: 0.55; padding: 4px; }
+.g-pc-del:hover { opacity: 1; }
+.g-pc-hidden { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(127, 127, 127, 0.22); }
