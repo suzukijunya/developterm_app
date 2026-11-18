@@ -1572,3 +1572,15 @@ button.mx-cell.mx-alt { cursor: pointer; text-align: left; font: inherit; color:
 .yt-st b { color: #ffb36b; }
 .mx-forkset { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--line, #2a3140); font-size: 0.85rem; }
 .mx-forkset small { width: 100%; color: var(--muted, #9aa3b2); }
+
+/* 設計思想とトレンド: 文字を減らしてタイルに */
+.tr-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin: 10px 0 4px; }
+.tr-tile, .dc-kpi { display: grid; gap: 2px; padding: 10px 12px; border-radius: 8px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); }
+.tr-tile small, .dc-kpi small { font-size: 0.7rem; color: #9aa3b2; }
+.tr-tile b, .dc-kpi b { font-size: 1.15rem; line-height: 1.25; font-variant-numeric: tabular-nums; }
+.tr-tile span, .dc-kpi span { font-size: 0.72rem; color: #c3c8d2; }
+.tr-foot { font-size: 0.72rem; color: #8a93a2; margin: 2px 0 0; }
+.dc-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: 8px; margin: 6px 0 10px; }
+.dc-kpi.on { border-color: rgba(57, 135, 229, 0.7); background: rgba(57, 135, 229, 0.1); }
+.dc-kpi.warn { border-color: rgba(217, 89, 38, 0.6); }
+.dc-kpi.warn b { color: #ffb08a; }

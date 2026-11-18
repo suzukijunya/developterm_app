@@ -116,11 +116,13 @@ const Decide = (() => {
       ["C", `C ${m.X}年後にディスクへ`, p.rimUp, m.C, sc.alt],
     ];
     return `<section class="dc" id="dc">
-      <h3>リムのまま? ディスクへ? (お金で比べる)</h3>
-      <p class="dc-lead">${T}年乗るなら、<b>${best === "B" ? "今ディスクへ乗り換える" : best === "A" ? "リムのまま乗り続ける" : `${m.X}年後に乗り換える`}</b>のがいちばん減りが少ない計算です。
-        ${diffBA > 0 ? `リムのままより今ディスクへの方が <b>${yen(diffBA)}</b> 少なく済みます。` : `今ディスクへより、リムのままの方が <b>${yen(-diffBA)}</b> 少なく済みます(そのかわり、走りの点は${(sc.alt || 0) - (sc.next || 0)}点低い)。`}
-        いつかディスクにするなら、乗り換えを1年遅らせるごとに約<b>${yen(Math.abs(perYear))}</b>${perYear >= 0 ? "多くかかります" : "浮きます"}(そのぶんディスクに乗れる年数が減る)。
-        ${m.delay[1] > m.delay[0] ? `ただし、リムのパーツを買ってから1年で乗り換えると、今すぐ乗り換えるより<b>${yen(m.delay[1] - m.delay[0])}</b>高くつきます(買ったパーツの値下がりのぶん)。` : ""}</p>
+      <h3>リムのまま? ディスクへ?</h3>
+      <div class="dc-kpis">
+        <div class="dc-kpi on"><small>${T}年でいちばん安い</small><b>${best === "B" ? "今ディスクへ" : best === "A" ? "リムのまま" : `${m.X}年後にディスク`}</b><span>${diffBA > 0 ? `リムのままより ${man(diffBA)}円 安い` : `今ディスクより ${man(-diffBA)}円 安い`}</span></div>
+        <div class="dc-kpi"><small>今ディスクにした場合の上乗せ</small><b>${man((m.delay[0] - m.A[T]) / T)}円/年</b><span>走りの点 +${(sc.alt || 0) - (sc.next || 0)}</span></div>
+        <div class="dc-kpi"><small>乗り換えを1年のばすごとに</small><b>${man(Math.abs(perYear))}円 ${perYear >= 0 ? "高い" : "浮く"}</b><span>そのぶんディスクの年数が減る</span></div>
+        ${m.delay[1] > m.delay[0] ? `<div class="dc-kpi warn"><small>パーツを買って1年で乗り換え</small><b>+${man(m.delay[1] - m.delay[0])}円</b><span>いちばん損な選び方</span></div>` : ""}
+      </div>
       <div class="dc-legend">${SER.map(([k, name, c]) => `<span><i style="background:var(${c})"${k === "C" ? ' class="dash"' : ""}></i>${esc(name)}</span>`).join("")}</div>
       <div class="dc-chart">${svg}<div class="dc-tip" hidden></div></div>
       <p class="dc-note">縦軸は「その年に全部売ったとしたら、いくら減っているか」(正味コスト)。払ったお金から、売れる値段を引いたもの。低いほど得。</p>
