@@ -198,8 +198,9 @@ const Catalog = (() => {
   });
   for (const it of ITEMS) if (IMGS[it.id]) (it.img = IMGS[it.id][0]), (it.imgPage = IMGS[it.id][1]), (it.imgLabel = IMGS[it.id][2] || "メーカーの写真");
 
-  function cost(item, usedOk) {
-    return usedOk && item.used ? Math.round((item.used[0] + item.used[1]) / 2 / 500) * 500 : item.price;
+  // 値段は中古の相場で考える(中古がない消耗品だけ新品)。usedOk=false のときだけ新品
+  function cost(item, usedOk = true) {
+    return usedOk !== false && item.used ? Math.round((item.used[0] + item.used[1]) / 2 / 500) * 500 : item.price;
   }
 
   function yen(n) {
@@ -208,8 +209,7 @@ const Catalog = (() => {
 
   // 「中古 ¥17,500〜30,000 / 新品 ¥75,780」のような表示
   function priceText(item) {
-    const used = item.used ? `中古 ${yen(item.used[0])}〜${item.used[1].toLocaleString()}` : "新品のみ";
-    return `${used} / 新品 ${yen(item.price)}`;
+    return item.used ? `中古 ${yen(item.used[0])}〜${item.used[1].toLocaleString()}` : `新品のみ ${yen(item.price)}`;
   }
 
   // バイクにつける(build.parts を書き換える)

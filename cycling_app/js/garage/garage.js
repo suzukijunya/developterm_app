@@ -621,7 +621,7 @@
       .slice(0, 3)
       .map((x) => `<i class="${x.db > 0 ? "up" : "down"}">${x.r.ja}${x.db > 0 ? "▲" : "▼"}</i>`)
       .join("");
-    const tier = Stats.tierOf(item.price, dt);
+    const tier = Stats.tierOf(Catalog.cost(item), dt);
     return `<span class="ac-prev"><b class="tier tier-${tier.id}">${tier.label}</b><span class="${dt >= 0 ? "up" : "down"}">TOTAL ${dt >= 0 ? "+" : "−"}${Math.abs(dt)}</span>${chips}</span>`;
   }
 
@@ -1238,7 +1238,7 @@
       </ul>
       <h3>見直した方がいい点</h3>
       <ul>
-        <li><b>リムブレーキの上級パーツを新品で買うのは、もう割に合わない。</b>中古の安い相場で買う前提にする。</li>
+        <li><b>パーツは中古で買う前提。</b>このアプリの値段・追加費用・損得の計算は、すべて中古の相場で出しています(中古の出回らない消耗品だけ新品)。</li>
         <li><b>将来の乗り換えに持っていけない</b>: リムブレーキ用ホイールは、ディスクブレーキのバイクでは使えず、売るときも値段がつきにくい。</li>
         <li><b>予算が上限なしなら、乗り換えも本気の選択肢。</b>中古のディスクブレーキのロードバイク(ここ数年の型落ち)を買い、ホイールなどのお金はそっちに回す。NEWに入れていたTCR Advanced SLの構想もこの方向。</li>
       </ul>
@@ -1301,7 +1301,7 @@
         <div class="g-part ${selected === sl.id ? "sel" : ""} ${off ? "off" : ""}">
           <button class="g-part-main" data-slot="${sl.id}">
             <span class="g-part-icon">${sl.icon}</span>
-            <span class="g-part-text"><small>${sl.name}</small>${inBar ? "一体型ハンドルに含む" : (p.libId ? "📘 " : "") + esc(p.name)}${!inBar && p.shop && p.shop.used ? `<em class="g-used">中古 ${Catalog.yen(p.shop.used[0])}〜${p.shop.used[1].toLocaleString()}</em>` : !inBar && p.shop ? `<em class="g-used">新品 ${Catalog.yen(p.shop.price)}</em>` : ""}</span>
+            <span class="g-part-text"><small>${sl.name}</small>${inBar ? "一体型ハンドルに含む" : (p.libId ? "📘 " : "") + esc(p.name)}${!inBar && p.shop && p.shop.used ? `<em class="g-used">中古 ${Catalog.yen(p.shop.used[0])}〜${p.shop.used[1].toLocaleString()}</em>` : !inBar && p.shop ? `<em class="g-used">新品のみ ${Catalog.yen(p.shop.price)}</em>` : ""}</span>
             <span class="g-part-g">${inBar ? "0 g" : off ? "取り外し中" : (+p.g || 0).toLocaleString() + " g"}</span>
           </button>
           ${needsDecal(p, sl.id) ? `<button class="g-mount g-decal-btn" data-decal-lib="${p.libId}">🎨 ロゴを貼る</button>` : ""}
@@ -2607,7 +2607,7 @@
         <small class="g-pc-slot">${esc(Parts.slotName(it.slot))}${inCur ? " ・装着済み" : ""}</small>
         <strong class="g-pc-name">${esc(it.name)}</strong>
         <div class="g-pc-nums"><b>${it.kind === "delta" ? "" : it.g.toLocaleString() + "g"}</b>${diff ? `<em class="${diff < 0 ? "good" : "bad"}">${diff < 0 ? "−" : "+"}${Math.abs(diff).toLocaleString()}g</em>` : ""}</div>
-        <div class="g-pc-price"><span>新品 ${Catalog.yen(it.price)}</span>${it.used ? `<span>中古 ${Catalog.yen(it.used[0])}〜${it.used[1].toLocaleString()}</span>` : ""}</div>
+        <div class="g-pc-price">${it.used ? `<span>中古 ${Catalog.yen(it.used[0])}〜${it.used[1].toLocaleString()}</span>` : `<span>新品のみ ${Catalog.yen(it.price)}</span>`}</div>
         ${it.spec ? `<dl class="g-pc-spec">${it.spec.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>` : ""}
         <div class="g-pc-btns">${inNext ? `<span class="g-tag">NEWに入っています</span>` : `<button class="btn sub" data-clerk-next="${it.id}">NEWに入れる</button>`}
           <a class="g-chip2" href="${esc(mercariUrl(it.name))}" target="_blank" rel="noopener">メルカリ</a>
@@ -3229,7 +3229,7 @@
       for (const x of upto) Catalog.apply(nx, x.item);
       const top = upto.slice().sort((a, b) => b.cost - a.cost)[0];
       G.active = "current";
-      equip({ slot: top.item.slot, name: `コスパ順 ${upto.length}点`, price: upto.reduce((a, x) => a + x.item.price, 0) }, () => {
+      equip({ slot: top.item.slot, name: `コスパ順 ${upto.length}点`, price: upto.reduce((a, x) => a + Catalog.cost(x.item), 0) }, () => {
         G.builds.next = nx;
         G.active = "next";
       });
@@ -3246,7 +3246,7 @@
       for (const x of plan.items) Catalog.apply(nx, x.item);
       const top = plan.items.slice().sort((a, b) => b.cost - a.cost)[0];
       G.active = "current";
-      equip({ slot: top && top.item.slot, name: `フルアセンブル ${plan.items.length}点`, price: plan.items.reduce((a, x) => a + x.item.price, 0) }, () => {
+      equip({ slot: top && top.item.slot, name: `フルアセンブル ${plan.items.length}点`, price: plan.items.reduce((a, x) => a + Catalog.cost(x.item), 0) }, () => {
         G.builds.next = nx;
         G.active = "next";
       });
@@ -3257,7 +3257,7 @@
     if (t.dataset.clerkNext || t.dataset.clerkBought || t.dataset.catPut) {
       const it = Catalog.byId(t.dataset.clerkNext || t.dataset.clerkBought || t.dataset.catPut);
       if (!it) return;
-      equip({ slot: it.slot, name: it.name, price: it.price }, () => {
+      equip({ slot: it.slot, name: it.name, price: Catalog.cost(it) }, () => {
         if (t.dataset.catPut) Catalog.apply(B(), it);
         else Catalog.apply(G.builds.next, it);
         if (t.dataset.clerkBought) Catalog.apply(G.builds.current, it);

@@ -61,12 +61,12 @@ const Stats = (() => {
     return clamp(s);
   }
 
-  // 付けているパーツの値段の合計(わかるものだけ)
+  // 付けているパーツの値段の合計(わかるものだけ)。中古の相場の真ん中で(中古がないものは新品)
   function valueOf(parts) {
     let yen = 0;
     for (const p of Object.values(parts)) {
       if (!on(p) || !p.shop) continue;
-      yen += p.shop.price || 0;
+      yen += p.shop.used ? (p.shop.used[0] + p.shop.used[1]) / 2 : p.shop.price || 0;
     }
     return yen;
   }
