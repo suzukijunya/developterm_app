@@ -508,7 +508,7 @@
         <text class="rd-val" y="13">${va.text}${dtxt ? `<tspan class="${db > 0 ? "up" : "down"}" dx="4">${dtxt}</tspan>` : ""}</text>
         <text class="rd-ja" y="24">${r.ja}</text></g>`;
     }).join("");
-    return `<svg class="ac-radar" viewBox="-205 -150 410 300" role="img" aria-label="性能の7角形グラフ">
+    return `<svg class="ac-radar" viewBox="-235 -150 470 300" role="img" aria-label="性能の7角形グラフ">
       ${[0.25, 0.5, 0.75, 1].map((f) => `<polygon class="rd-ring" points="${ring(f)}"/>`).join("")}
       ${Stats.ROWS.map((_, i) => `<line class="rd-axis" x1="0" y1="0" x2="${pt(i, R)[0].toFixed(1)}" y2="${pt(i, R)[1].toFixed(1)}"/>`).join("")}
       <polygon class="rd-other" points="${poly(o)}"/>
