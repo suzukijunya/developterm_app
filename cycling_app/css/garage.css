@@ -1406,3 +1406,25 @@ body.ms-open {
 .g-fold-card > .card::before { display: none; }
 @media (min-width: 1500px) { #garage > .g-main > .fg { column-span: all; display: block; } }
 .g-builds { right: 10px; flex-wrap: wrap; }
+
+/* パーツ画面: 主役(アセンブル表・比較・図鑑)は横いっぱい、道具は畳んだカードに */
+.g-tools > summary { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.g-tools > summary small { font-weight: 400; font-size: 0.75rem; opacity: 0.65; }
+.g-tools > .card, .g-tools > details.card { border: 0; box-shadow: none; padding: 0; margin: 12px 0 0; background: none; }
+.g-tools > .card::before, .g-tools > details.card::before { display: none; }
+.g-tools > .card + .card, .g-tools > .card + details.card, .g-tools > details.card + .card { padding-top: 12px; border-top: 1px solid rgba(127, 127, 127, 0.2); }
+@media (min-width: 1500px) {
+  #garage > .g-main > .g-mx, #garage > .g-main > .g-cmp, #garage > .g-main > .g-tools, #garage > .g-main > .g-chatrec { column-span: all; display: block; }
+  /* 広い画面では、アセンブル表を広く使う */
+  #garage > .g-main > .g-mx .mx-cell { min-height: 0; }
+}
+/* アセンブル表: 広い画面では乗り換えプランの列も並べる */
+.mx-alt { display: none; }
+.mx-alt-note { display: block; }
+div.mx-cell.mx-alt.same { opacity: 0.45; }
+@media (min-width: 1100px) {
+  .mx-grid.has-alt { grid-template-columns: 58px repeat(calc(2 + var(--alt)), minmax(0, 1fr)); }
+  .mx-grid.has-alt .mx-cell.mx-alt { display: grid; }
+  .mx-grid.has-alt span.mx-col.mx-alt { display: block; }
+  .mx-alt-note { display: none; }
+}

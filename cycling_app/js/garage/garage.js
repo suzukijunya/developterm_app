@@ -631,16 +631,27 @@
 
   function matrixHtml() {
     const kg = (k) => kgTxt(bikeGrams(G.builds[k]) / 1000);
+    const alts = altKeys();
+    // 乗り換えプランの列(見るだけ。装着済みとの重さの差を出す)
+    const altCell = (slotId, k) => {
+      const p = G.builds[k].parts[slotId] || { name: "(なし)", g: 0 };
+      const o = G.builds.current.parts[slotId] || {};
+      const same = o.name === p.name && o.g === p.g;
+      const dg = (p.mounted === false ? 0 : +p.g || 0) - (o.mounted === false ? 0 : +o.g || 0);
+      return `<div class="mx-cell nothumb mx-alt ${same ? "same" : "diff"}"><span class="mx-name">${same ? "(今のまま)" : esc(p.name)}</span><span class="mx-g">${(+p.g || 0).toLocaleString()} g${dg ? `<em class="${dg < 0 ? "up" : "down"}">${dg < 0 ? "−" : "+"}${Math.abs(dg)}g</em>` : ""}</span></div>`;
+    };
     return `
       <section class="card g-mx">
         <h2>アセンブル表</h2>
         <p class="muted small">マスをタップすると、その部位を付け替えられます(付けていないマイパーツやおすすめから選べます)。</p>
-        <div class="mx-grid">
+        <div class="mx-grid ${alts.length ? "has-alt" : ""}" style="--alt:${alts.length}">
           <span class="mx-corner"></span>
           <span class="mx-col ${G.active === "current" ? "on" : ""}">装着済み<small>${kg("current")}</small></span>
           <span class="mx-col ${G.active === "next" ? "on" : ""}">NEW<small>${kg("next")}</small></span>
-          ${Parts.SLOTS.map((sl) => `<span class="mx-slot">${sl.icon}<small>${sl.name}</small></span>${cellHtml(sl.id, "current")}${cellHtml(sl.id, "next")}`).join("")}
+          ${alts.map((k) => `<span class="mx-col mx-alt ${G.active === k ? "on" : ""}">${esc(ALT_PLANS.find((x) => x.key === k).short)}<small>${kg(k)}</small></span>`).join("")}
+          ${Parts.SLOTS.map((sl) => `<span class="mx-slot">${sl.icon}<small>${sl.name}</small></span>${cellHtml(sl.id, "current")}${cellHtml(sl.id, "next")}${alts.map((k) => altCell(sl.id, k)).join("")}`).join("")}
         </div>
+        ${alts.length ? `<p class="muted small mx-alt-note">乗り換えの列は、広い画面で表示します。中身を変えるときは、3Dの左上で「乗り換え」を選んでください。</p>` : ""}
       </section>`;
   }
 
@@ -975,6 +986,12 @@
     </section>`;
   }
 
+  // 使う回数の少ないものは、畳んでおく(開け閉めは覚える)
+  const openFolds = new Set();
+  function foldCard(id, title, sub, inner, force) {
+    return `<details class="card g-fold-card g-tools" data-fold="${id}" ${force || openFolds.has(id) ? "open" : ""}><summary>${title}<small>${sub}</small></summary>${inner}</details>`;
+  }
+
   function partsPanel() {
     const b = B();
     const rows = Parts.SLOTS.map((sl) => {
@@ -996,18 +1013,15 @@
     }).join("");
     void rows;
     return `
-      ${fixHtml()}
-      ${chatRecHtml()}
-      ${quickHtml()}
       ${libForm ? libFormHtml() : ""}
       ${importRev ? importHtml() : ""}
       ${matrixHtml()}
       ${cell ? sheetHtml() : ""}
       ${comparePanel()}
+      ${chatRecHtml()}
       ${catalogHtml()}
-      ${scanHtml()}
-      ${monstersHtml()}
-      ${libraryHtml()}
+      ${foldCard("reg", "📷 パーツを登録する・マイパーツ", "写真から登録、表の読み込み、バックアップ", quickHtml() + libraryHtml(), quick.entries.length > 0 || dataOpen || pasteOpen)}
+      ${foldCard("model", "📦 3Dモデル", "自分のバイクのスキャン、デュエルのモンスター", scanHtml() + monstersHtml(), false)}
       ${foldHtml()}`;
   }
 
@@ -2106,7 +2120,7 @@
     const best = (vals, low) => (low == null ? -1 : vals.indexOf(low ? Math.min(...vals.filter((v) => v != null)) : Math.max(...vals.filter((v) => v != null))));
     const cell = (v, d, u, on) => (v == null ? "<td>—</td>" : `<td class="${on ? "best" : ""}">${v.toFixed(d)}${u}</td>`);
     return `
-      <section class="card">
+      <section class="card g-cmp">
         <h2>マシン性能の比較(装着済み・NEW・乗り換え)</h2>
         <table class="g-table g-compare g-compare3">
           <tr><th>項目</th><th>装着済み</th><th>NEW<small>R3延命</small></th>${alts.map((x) => `<th>${esc(x.pl.short)}<small>乗り換え</small></th>`).join("")}</tr>
@@ -2121,7 +2135,7 @@
         </table>
         <p class="muted small">太字はいちばん良い値。体重${G.body.weight}kg+バイクで計算(速度・時間は平地または一定勾配・無風の理論値)。乗り換えのフレーム・ホイール・コンポの重さは年式で変わる目安です。乗り換えを選ぶと3Dとパーツ表でも中身を見られ、パーツの数字も書き換えられます。</p>
       </section>
-      <details class="card g-fold-card"><summary>🗂️ 構成の管理・違うパーツ</summary>
+      <details class="card g-fold-card g-tools" data-fold="manage" ${openFolds.has("manage") ? "open" : ""}><summary>🗂️ 構成の管理・違うパーツ<small>NEWを装着済みにする、コピー、走行計算に使う</small></summary>
       <section class="card">
         <h2>違うパーツ(装着済み → NEW)</h2>
         ${
@@ -2334,7 +2348,7 @@
           .join("")}
         <p class="muted small">距離は、このアプリで記録したライドの合計です。</p>
       </section>`;
-    return `<details class="g-fold" id="g-fold" ${foldOpen ? "open" : ""}><summary>🔧 整備メモ・近くのお店</summary>${maintHtml}${shopsHtml()}</details>`;
+    return `<details class="card g-fold-card g-tools" id="g-fold" ${foldOpen ? "open" : ""}><summary>🔧 整備メモ・近くのお店<small>空気圧やチェーンの時期、荻窪まわりのショップ</small></summary>${maintHtml}${shopsHtml()}</details>`;
   }
 
   // ---------- 近くのメンテナンス店 ----------
@@ -3130,6 +3144,7 @@
     (e) => {
       const d = e.target;
       if (d.id === "g-fold") return void (foldOpen = d.open);
+      if (d.dataset && d.dataset.fold) return void (d.open ? openFolds.add(d.dataset.fold) : openFolds.delete(d.dataset.fold));
       if (d.id === "g-trend") {
         try {
           localStorage.setItem(TREND_KEY, d.open ? "1" : "0");
