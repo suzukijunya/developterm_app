@@ -3346,9 +3346,21 @@ const View3D = (() => {
     });
   }
   // クランクの角度(度)と車輪の回転角(ラジアン)を指定して、その瞬間の姿勢にする(ライバルなど、同じモデルを別の姿勢で使うとき)
-  function poseAt(crankDeg, wheelAng) {
+  // drops: 0=ブラケット(ふだん) 〜 1=ドロップの下(スプリント)。間は手の位置をなめらかにつなぎ、スプリント中は車体を左右に振る
+  function poseAt(crankDeg, wheelAng, drops = 0) {
     if (!state || !bikeGroup) return;
     anim.crank = crankDeg;
+    const bk = state.fit.bike, g = bk.grips;
+    if (g && g.hoods && g.drops) {
+      const h = g.hoods, d = g.drops, k = Math.max(0, Math.min(1, drops));
+      const pt = {};
+      for (const key of Object.keys(h.pt)) pt[key] = h.pt[key] + ((d.pt[key] || 0) - h.pt[key]) * k;
+      g.blend = { pt, z: h.z + (d.z - h.z) * k };
+      bk.p.hands = "blend";
+      state.build.pos = Object.assign({}, state.build.pos, { hands: k > 0.5 ? "drops" : "hoods" });
+    }
+    // スプリントのダンシング: ペダルを踏み下ろす足と反対側へ、車体を傾ける(最大 約8°)
+    root.rotation.x = Math.sin((crankDeg * Math.PI) / 180) * 0.14 * Math.max(0, Math.min(1, drops));
     if (rig && rig.root.parent !== root) root.add(rig.root);
     if (rig) rig.root.visible = true;
     updateRider();

@@ -2177,7 +2177,9 @@ const City = (() => {
       if (!b || !b.geo || !G.body) return null;
       const tire = (b.parts.tires && b.parts.tires.attrs && b.parts.tires.attrs.width) || 28;
       const fit = Fit.compute({ geo: b.geo, pos: b.pos, aero: Parts.aeroOf(b.parts), wheelRadius: 0.311 + tire / 1000 }, G.body);
-      root = View3D.headless(fit, b, G.body);
+      // ガレージの保存データを書き換えないよう、複製して使う
+      const bc = JSON.parse(JSON.stringify(b));
+      root = View3D.headless(fit, bc, G.body);
     } catch (e) {
       return null;
     }
@@ -2187,7 +2189,7 @@ const City = (() => {
     meFallback.g.add(root);
     meFallback.pose = () => {};
     const R = View3D.wheelRadius();
-    const st = { crank: 90, wheel: 0, rCrank: 270, rWheel: 0, clone: null, src: null, dst: null, busy: false };
+    const st = { crank: 90, wheel: 0, rCrank: 270, rWheel: 0, drop: 0, rDrop: 0, clone: null, src: null, dst: null, busy: false };
     async function makeRival() {
       st.busy = true;
       try {
@@ -2220,14 +2222,18 @@ const City = (() => {
       }
     }
     return {
-      update(dt, myPed, myV, rvPed, rvV) {
-        if (myPed) st.crank = (st.crank + dt * 510) % 360;
+      // mySp / rvSp: スプリント中か。手はドロップの下へ(0.25秒ほどで持ち替え)、回転も上がる(約85→110rpm)
+      update(dt, myPed, myV, rvPed, rvV, mySp, rvSp) {
+        const ease = Math.min(1, dt * 4);
+        st.drop += ((mySp ? 1 : 0) - st.drop) * ease;
+        st.rDrop += ((rvSp ? 1 : 0) - st.rDrop) * ease;
+        if (myPed) st.crank = (st.crank + dt * 510 * (1 + 0.3 * st.drop)) % 360;
         st.wheel += (myV * dt) / R;
-        if (rvPed) st.rCrank = (st.rCrank + dt * 510) % 360;
+        if (rvPed) st.rCrank = (st.rCrank + dt * 510 * (1 + 0.3 * st.rDrop)) % 360;
         st.rWheel += (rvV * dt) / R;
         if (!st.clone && !st.busy && View3D.hasRig() && (st.tries = (st.tries || 0) + 1) < 4) makeRival();
         if (st.clone) {
-          View3D.poseAt(st.rCrank, st.rWheel);
+          View3D.poseAt(st.rCrank, st.rWheel, st.rDrop);
           const a = st.src, b = st.dst;
           for (let i = 0; i < a.length; i++) {
             b[i].position.copy(a[i].position);
@@ -2236,7 +2242,7 @@ const City = (() => {
             b[i].visible = a[i].visible;
           }
         }
-        View3D.poseAt(st.crank, st.wheel);
+        View3D.poseAt(st.crank, st.wheel, st.drop);
       },
     };
   }
@@ -3036,7 +3042,10 @@ const City = (() => {
     placeBiker(rival, s.rAlong, 1.1, real * s.speedX, s.rV, !s.paused);
     if (G3.on()) rival.g.position.y = G3.rivalY();
     const myPed = (s.auto || s.pedal) && !s.brake && !s.paused && !s.done;
-    if (GB) GB.update(real * s.speedX, myPed, s.paused ? 0 : s.v, !s.paused && !s.done, s.paused ? 0 : s.rV);
+    const mySp = myPed && s.sprint && s.stamina > 0.02;
+    // ライバルは、ゴール前500mか、ぐっと加速しているときにスプリント
+    const rvSp = !s.paused && !s.done && (route.length - s.rAlong < 500 || s.rV > s.rivalV * 1.06);
+    if (GB) GB.update(real * s.speedX, myPed, s.paused ? 0 : s.v, !s.paused && !s.done, s.paused ? 0 : s.rV, mySp, rvSp);
     Mons.update(real * Math.min(4, s.speedX));
     // 追いかけるカメラ(後ろ上から。速いほど少し引いて、視野を広げる)
     const back = 6.5 + s.v * 0.18, up = 2.9 + s.v * 0.05;
@@ -3262,5 +3271,5 @@ const City = (() => {
   }
 
   if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", bind);
-  return { at, turnAhead, readTile, _state: () => ({ sim, route, tiles, failed, camera, Plateau, Roads }), ride: (a) => Roads.ride(a) };
+  return { at, turnAhead, readTile, _state: () => ({ sim, route, tiles, failed, camera, Plateau, Roads, scene, me }), ride: (a) => Roads.ride(a) };
 })();
