@@ -530,6 +530,7 @@
     const T = [
       ["parts", "🧰 パーツ"],
       ["fit", "🧍 フィッティング"],
+      ["mon", "🐉 モンスター"],
     ];
     document.getElementById("tabs").innerHTML = T.map(([id, label]) => `<button class="g-tab ${tab === id ? "on" : ""}" data-tab="${id}">${label}</button>`).join("");
   }
@@ -918,7 +919,7 @@
       <p class="small">meshy.ai などで作った<b>GLB</b>を読み込むと、ライディングデュエルの盤面や演出で、モンスターがそのモデルの姿で出てきます。読み込んだときに1枚の絵にして保存するので、走行中の電池は食いません。</p>
       <p class="muted small">決めていない自分のモンスターは「自分(共通)」、相手のモンスターは「相手(共通)」の姿になります(どちらもなければ絵文字)。ファイルはこの端末の中だけに置き、同期しません。いま ${n}体。</p>
       ${monUi.status ? `<p class="notice warn small">${esc(monUi.status)}</p>` : ""}
-      <details class="g-mon-list" ${monUi.open || n ? "open" : ""}><summary>モンスターの一覧(${MonsterArt.SLOTS.length})</summary>${rows}</details>
+      <details class="g-mon-list" open><summary>モンスターの一覧(${MonsterArt.SLOTS.length})</summary>${rows}</details>
     </section>`;
   }
 
@@ -1021,7 +1022,7 @@
       ${chatRecHtml()}
       ${catalogHtml()}
       ${foldCard("reg", "📷 パーツを登録する・マイパーツ", "写真から登録、表の読み込み、バックアップ", quickHtml() + libraryHtml(), quick.entries.length > 0 || dataOpen || pasteOpen)}
-      ${foldCard("model", "📦 3Dモデル", "自分のバイクのスキャン、デュエルのモンスター", scanHtml() + monstersHtml(), false)}
+      ${foldCard("model", "📦 自分のバイクの3Dスキャン", "スキャンアプリのGLBを読み込む", scanHtml(), false)}
       ${foldHtml()}`;
   }
 
@@ -2585,7 +2586,7 @@
 
   function renderPanel() {
     const panel = document.getElementById("panel");
-    panel.innerHTML = trendHtml() + (tab === "fit" ? fitPanel() : partsPanel());
+    panel.innerHTML = (tab === "mon" ? "" : trendHtml()) + (tab === "fit" ? fitPanel() : tab === "mon" ? monstersHtml() : partsPanel());
     if (tab === "aero") drawSilhouette();
     if (tab === "parts") loadPhotos();
     renderPartCard();
