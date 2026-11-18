@@ -3,21 +3,23 @@
 
 const Parts = (() => {
   // 部位の一覧(表示順)。fields はその部位で編集できる属性
+  // 部位のアイコンは、ガレージの3Dモデルから描き出した画像(View3D.partIcons で作って assets/parts に置いたもの)
+  const ICO = (id) => `<img class="p-ico" src="assets/parts/${id}.png" alt="" />`;
   const SLOTS = [
-    { id: "frame", name: "フレーム", icon: "🔺" },
-    { id: "fork", name: "フォーク", icon: "🍴" },
-    { id: "wheels", name: "ホイール", icon: "⭕" },
-    { id: "tires", name: "タイヤ(2本)", icon: "🛞" },
-    { id: "tubes", name: "チューブ/シーラント", icon: "💧" },
-    { id: "groupset", name: "コンポ一式", icon: "⚙️" },
-    { id: "handlebar", name: "ハンドル", icon: "🚲" },
-    { id: "stem", name: "ステム", icon: "📐" },
-    { id: "seatpost", name: "シートポスト", icon: "📏" },
-    { id: "saddle", name: "サドル", icon: "💺" },
-    { id: "pedals", name: "ペダル", icon: "👟" },
-    { id: "bartape", name: "バーテープ", icon: "🎗️" },
-    { id: "cages", name: "ボトルケージ", icon: "🥤" },
-    { id: "accessories", name: "その他(ライト・サイコンなど)", icon: "🔦" },
+    { id: "frame", name: "フレーム", icon: ICO("frame") },
+    { id: "fork", name: "フォーク", icon: ICO("fork") },
+    { id: "wheels", name: "ホイール", icon: ICO("wheels") },
+    { id: "tires", name: "タイヤ(2本)", icon: ICO("tires") },
+    { id: "tubes", name: "チューブ/シーラント", icon: ICO("tubes") },
+    { id: "groupset", name: "コンポ一式", icon: ICO("groupset") },
+    { id: "handlebar", name: "ハンドル", icon: ICO("handlebar") },
+    { id: "stem", name: "ステム", icon: ICO("stem") },
+    { id: "seatpost", name: "シートポスト", icon: ICO("seatpost") },
+    { id: "saddle", name: "サドル", icon: ICO("saddle") },
+    { id: "pedals", name: "ペダル", icon: ICO("pedals") },
+    { id: "bartape", name: "バーテープ", icon: ICO("bartape") },
+    { id: "cages", name: "ボトルケージ", icon: ICO("cages") },
+    { id: "accessories", name: "その他(ライト・サイコンなど)", icon: ICO("accessories") },
   ];
 
   // 目安のパーツ(重量はグラム)。attrs は空気抵抗や3D表示に使う

@@ -3019,11 +3019,99 @@ const View3D = (() => {
     return { x: c.x, y: c.y, z: c.z, size: Math.max(sz.x, sz.y, sz.z) };
   }
 
+  // 部位アイコン用: いまの3Dモデルから、部位ごとに透明背景の画像を作る(開発時にPNGへ書き出して assets/parts に置く)
+  function partIcons(size = 192) {
+    const THREE = T();
+    const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+    r.setPixelRatio(1);
+    r.setSize(size * 2, size * 2);
+    r.outputEncoding = THREE.sRGBEncoding;
+    r.toneMapping = THREE.ACESFilmicToneMapping;
+    r.toneMappingExposure = 1.25;
+    const pm = new THREE.PMREMGenerator(r);
+    const keep = { bg: scene.background, fog: scene.fog, env: scene.environment };
+    scene.background = null;
+    scene.fog = null;
+    scene.environment = pm.fromEquirectangular(envTexture()).texture;
+    const L = 5;
+    const lights = [];
+    scene.traverse((o) => o.isLight && lights.push(o));
+    lights.forEach((l) => l.layers.enable(L));
+    const cam2 = new THREE.PerspectiveCamera(22, 1, 0.05, 50);
+    cam2.layers.set(L);
+    // チューブは3Dに無いので、ここだけ輪とバルブを作る
+    const tubeG = new THREE.Group();
+    const tm = new THREE.MeshStandardMaterial({ color: 0xb8521a, roughness: 0.6, metalness: 0.05 });
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.02, 20, 96), tm);
+    const valve = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.08, 12), new THREE.MeshStandardMaterial({ color: 0xc9a24a, roughness: 0.3, metalness: 0.9 }));
+    valve.position.set(0, -0.25, 0);
+    tubeG.add(ring, valve);
+    tubeG.position.set(0, 5, 0);
+    scene.add(tubeG);
+    const DIR = { wheels: [0.7, 0.3, 1.5], tires: [0.7, 0.3, 1.5], tubes: [0.5, 0.25, 1.6], saddle: [0.9, 0.7, 1.3], handlebar: [-1.3, 0.5, 1.1], bartape: [-1.3, 0.5, 1.1], stem: [0.6, 0.6, 1.4], pedals: [0.8, 0.8, 1.3], fork: [-1.0, 0.25, 1.4] };
+    // 離れて2つあるもの(前後のホイール・左右のペダルなど)は、片方だけを大きく写す
+    const HALF = { wheels: ["x", 1], tires: ["x", 1], pedals: ["z", 1], groupset: ["y", -1], accessories: ["x", 1] };
+    const key = new THREE.DirectionalLight(0xffffff, 1.6);
+    const fill = new THREE.HemisphereLight(0xdfe8ff, 0x3a3f4a, 0.9);
+    key.layers.set(L);
+    fill.layers.set(L);
+    scene.add(key, key.target, fill);
+    const out = {};
+    const c2 = document.createElement("canvas");
+    c2.width = c2.height = size;
+    const cx = c2.getContext("2d");
+    for (const id of Object.keys(groups).concat(["tubes"])) {
+      const g = id === "tubes" ? tubeG : groups[id];
+      if (!g) continue;
+      const b = new THREE.Box3().setFromObject(g);
+      if (b.isEmpty()) continue;
+      const wasVis = g.visible;
+      g.visible = true;
+      const shown = [];
+      const h = HALF[id];
+      const mid = b.getCenter(new THREE.Vector3());
+      const bb = h ? new THREE.Box3() : b;
+      g.traverse((o) => {
+        if (!o.isMesh && !o.isLine && !o.isPoints) return;
+        if (h) {
+          const ob = new THREE.Box3().setFromObject(o);
+          if (ob.isEmpty() || (ob.getCenter(new THREE.Vector3())[h[0]] - mid[h[0]]) * h[1] < 0) return;
+          bb.union(ob);
+        }
+        o.layers.enable(L);
+        shown.push(o);
+      });
+      const sp = (bb.isEmpty() ? b : bb).getBoundingSphere(new THREE.Sphere());
+      const d = new THREE.Vector3(...(DIR[id] || [1.0, 0.45, 1.5])).normalize();
+      const dist = (sp.radius / Math.sin((cam2.fov * Math.PI) / 360)) * 1.02;
+      cam2.position.copy(sp.center).addScaledVector(d, dist);
+      cam2.lookAt(sp.center);
+      key.position.copy(cam2.position).add(new THREE.Vector3(0.3, 1.2, 0.2));
+      key.target.position.copy(sp.center);
+      key.target.updateMatrixWorld();
+      r.render(scene, cam2);
+      cx.clearRect(0, 0, size, size);
+      cx.imageSmoothingQuality = "high";
+      cx.drawImage(r.domElement, 0, 0, size, size);
+      out[id] = c2.toDataURL("image/png");
+      shown.forEach((o) => o.layers.disable(L));
+      g.visible = wasVis;
+    }
+    lights.forEach((l) => l.layers.disable(L));
+    scene.remove(tubeG, key, key.target, fill);
+    scene.background = keep.bg;
+    scene.fog = keep.fog;
+    scene.environment = keep.env;
+    pm.dispose();
+    r.dispose();
+    return out;
+  }
+
   function dispose() {
     cancelAnimationFrame(raf);
     window.removeEventListener("resize", resize);
     if (renderer) renderer.dispose();
   }
 
-  return { setScan, updateScan, hasScan, startMovie, stopMovie, partBox, equipFx, setPhotoreal, onClerk, waveClerk, create, setModel, setRider, setFlow, setPedaling, setExploded, highlight, clearHighlight, animateMount, setView, resize, dispose };
+  return { partIcons, setScan, updateScan, hasScan, startMovie, stopMovie, partBox, equipFx, setPhotoreal, onClerk, waveClerk, create, setModel, setRider, setFlow, setPedaling, setExploded, highlight, clearHighlight, animateMount, setView, resize, dispose };
 })();

@@ -159,13 +159,13 @@
       title: "乗り換え: TCR ADVANCED PRO DISC(中古)",
       price: [250000, 350000],
       parts: {
-        frame: ["GIANT TCR ADVANCED PRO DISC フレーム(カーボン)", 900, { aero: "round" }],
-        fork: ["TCR ADVANCED PRO DISC フォーク(カーボン)", 370],
-        wheels: ["GIANT SLR 1 42 DISC(カーボン)", 1470, { rimFront: 42, rimRear: 42, discRear: false }],
-        groupset: ["105 R7020 油圧ディスク 2×11", 2800],
-        handlebar: ["GIANT CONTACT SL ハンドル", 250],
-        stem: ["GIANT CONTACT SL ステム", 140],
-        seatpost: ["TCR 専用 VARIANT シートポスト", 200],
+        frame: ["GIANT TCR ADVANCED PRO DISC フレーム(カーボン)", 900, { aero: "round" }, 110000],
+        fork: ["TCR ADVANCED PRO DISC フォーク(カーボン)", 370, null, 25000],
+        wheels: ["GIANT SLR 1 42 DISC(カーボン)", 1470, { rimFront: 42, rimRear: 42, discRear: false }, 60000],
+        groupset: ["105 R7020 油圧ディスク 2×11", 2800, null, 55000],
+        handlebar: ["GIANT CONTACT SL ハンドル", 250, null, 4000],
+        stem: ["GIANT CONTACT SL ステム", 140, null, 3000],
+        seatpost: ["TCR 専用 VARIANT シートポスト", 200, null, 8000],
       },
     },
     {
@@ -176,13 +176,13 @@
       title: "乗り換え: TCR ADVANCED SL DISC(中古)",
       price: [450000, 700000],
       parts: {
-        frame: ["GIANT TCR ADVANCED SL DISC フレーム(カーボン)", 855, { aero: "round" }],
-        fork: ["TCR ADVANCED SL DISC フォーク(カーボン)", 340],
-        wheels: ["CADEX 42 DISC(カーボン)", 1370, { rimFront: 42, rimRear: 42, discRear: false }],
-        groupset: ["ULTEGRA Di2 R8170 油圧ディスク 2×12", 2550],
-        handlebar: ["GIANT CONTACT SLR ハンドル", 220],
-        stem: ["GIANT CONTACT SLR ステム", 120],
-        seatpost: ["TCR SL 専用 シートポスト", 140],
+        frame: ["GIANT TCR ADVANCED SL DISC フレーム(カーボン)", 855, { aero: "round" }, 200000],
+        fork: ["TCR ADVANCED SL DISC フォーク(カーボン)", 340, null, 30000],
+        wheels: ["CADEX 42 DISC(カーボン)", 1370, { rimFront: 42, rimRear: 42, discRear: false }, 130000],
+        groupset: ["ULTEGRA Di2 R8170 油圧ディスク 2×12", 2550, null, 140000],
+        handlebar: ["GIANT CONTACT SLR ハンドル", 220, null, 15000],
+        stem: ["GIANT CONTACT SLR ステム", 120, null, 8000],
+        seatpost: ["TCR SL 専用 シートポスト", 140, null, 10000],
       },
     },
     // ランクAに届く構成: 乗り換えSLをもとに、乗り心地と丈夫さの点が上がるパーツに替える
@@ -195,16 +195,16 @@
       title: "ランクA構成: TCR SL+チューブレス28C",
       price: [520000, 780000],
       parts: {
-        frame: ["GIANT TCR ADVANCED SL DISC フレーム(カーボン)", 855, { aero: "round" }],
-        fork: ["TCR ADVANCED SL DISC フォーク(カーボン)", 340],
-        wheels: ["CADEX 42 DISC(カーボン)", 1370, { rimFront: 42, rimRear: 42, discRear: false }],
-        tires: ["Panaracer AGILEST DURO TLR 28C チューブレス ×2", 660, { width: 28 }],
-        tubes: ["シーラント(チューブレス)", 80],
-        groupset: ["ULTEGRA Di2 R8170 油圧ディスク 2×12", 2550],
-        handlebar: ["GIANT CONTACT SLR ハンドル(カーボン)", 220],
-        stem: ["GIANT CONTACT SLR ステム", 120],
-        seatpost: ["TCR SL 専用 シートポスト(カーボン)", 140],
-        bartape: ["厚手バーテープ", 80],
+        frame: ["GIANT TCR ADVANCED SL DISC フレーム(カーボン)", 855, { aero: "round" }, 200000],
+        fork: ["TCR ADVANCED SL DISC フォーク(カーボン)", 340, null, 30000],
+        wheels: ["CADEX 42 DISC(カーボン)", 1370, { rimFront: 42, rimRear: 42, discRear: false }, 130000],
+        tires: ["Panaracer AGILEST DURO TLR 28C チューブレス ×2", 660, { width: 28 }, 16000, true],
+        tubes: ["シーラント(チューブレス)", 80, null, 2500, true],
+        groupset: ["ULTEGRA Di2 R8170 油圧ディスク 2×12", 2550, null, 140000],
+        handlebar: ["GIANT CONTACT SLR ハンドル(カーボン)", 220, null, 15000],
+        stem: ["GIANT CONTACT SLR ステム", 120, null, 8000],
+        seatpost: ["TCR SL 専用 シートポスト(カーボン)", 140, null, 10000],
+        bartape: ["厚手バーテープ", 80, null, 3000, true],
       },
       items: ["s-power-expert", "d-me700"],
     },
@@ -218,22 +218,41 @@
       title: "ランクS構成: S-WORKS Aethos 6.5kg",
       price: [1800000, 2300000],
       parts: {
-        frame: ["S-WORKS Aethos フレーム(カーボン)", 585, { aero: "round" }],
-        fork: ["S-WORKS Aethos フォーク(カーボン)", 270],
-        wheels: ["Lightweight Obermayer EVO(カーボン 48mm)", 1200, { rimFront: 48, rimRear: 48, discRear: false }],
-        tires: ["Panaracer AGILEST DURO TLR 28C チューブレス ×2", 660, { width: 28 }],
-        tubes: ["シーラント(チューブレス)", 80],
-        groupset: ["DURA-ACE Di2 R9270 油圧ディスク 2×12", 2440],
-        handlebar: ["カーボン 一体型エアロハンドル", 320, { type: "integrated" }],
+        frame: ["S-WORKS Aethos フレーム(カーボン)", 585, { aero: "round" }, 320000],
+        fork: ["S-WORKS Aethos フォーク(カーボン)", 270, null, 40000],
+        wheels: ["Lightweight Obermayer EVO(カーボン 48mm)", 1200, { rimFront: 48, rimRear: 48, discRear: false }, 550000],
+        tires: ["Panaracer AGILEST DURO TLR 28C チューブレス ×2", 660, { width: 28 }, 16000, true],
+        tubes: ["シーラント(チューブレス)", 80, null, 2500, true],
+        groupset: ["DURA-ACE Di2 R9270 油圧ディスク 2×12", 2440, null, 280000],
+        handlebar: ["カーボン 一体型エアロハンドル", 320, { type: "integrated" }, 35000],
         stem: ["一体型ハンドルに含む", 0],
-        seatpost: ["RITCHEY WCS Carbon Link FlexLogic", 190],
-        bartape: ["厚手バーテープ", 80],
-        cages: ["カーボンケージ1個+ボトル1本", 25, { bottles: 1 }],
+        seatpost: ["RITCHEY WCS Carbon Link FlexLogic", 190, null, 18000],
+        bartape: ["厚手バーテープ", 80, null, 3000, true],
+        cages: ["カーボンケージ1個+ボトル1本", 25, { bottles: 1 }, 3000, true],
         accessories: ["なし(ライト・サイコンを外す)", 0],
       },
       items: ["s-power-expert", "d-me700"],
     },
   ];
+  // 装着済みから替えるパーツの値段の目安(中古の想定。消耗品は新品)。同じパーツなら null
+  function upCost(k, slotId) {
+    const p = (G.builds[k] || {}).parts[slotId];
+    const o = G.builds.current.parts[slotId] || {};
+    if (!p || k === "current" || p.mounted === false || (o.name === p.name && o.g === p.g)) return null;
+    let yen = 0, isNew = false, known = false;
+    const it = p.shop && p.shop.id ? Catalog.byId(p.shop.id) : null;
+    const pl = ALT_PLANS.find((x) => x.key === k);
+    const pp = pl && pl.parts[slotId];
+    if (it) (yen += Catalog.cost(it, true)), (isNew = !it.used), (known = true);
+    else if (pp && pp[0] === p.name && pp[3] != null) (yen += pp[3]), (isNew = !!pp[4]), (known = true);
+    for (const id of (p.shopDeltas || []).filter((d) => !(o.shopDeltas || []).includes(d))) {
+      const d = Catalog.byId(id);
+      if (d) (yen += Catalog.cost(d, true)), (known = true);
+    }
+    return known && yen > 0 ? { yen, isNew } : null;
+  }
+  const upTotal = (k) => Parts.SLOTS.reduce((s, sl) => s + ((upCost(k, sl.id) || {}).yen || 0), 0);
+  const yenHtml = (c) => (c ? `<span class="mx-yen">${c.isNew ? "新品" : "中古"} ${Catalog.yen(c.yen)}</span>` : "");
   const altKeys = () => ALT_PLANS.map((x) => x.key).filter((k) => G.builds[k]);
   function ensureAlt() {
     if (!G.builds || !G.builds.current) return;
@@ -717,7 +736,7 @@
     // マスには写真もアイコンも置かない(部位は左の列でわかる。写真はマスを開いた画面で見る)
     return `<button class="mx-cell nothumb ${(cell ? cell.slot === slotId && cell.k === k : selected === slotId && G.active === k) ? "sel" : ""} ${off ? "off" : ""} ${diff ? "diff" : ""} ${warn ? "warn" : ""}" data-cell="${slotId}" data-k="${k}">
       <span class="mx-name">${warn ? `<i class="mx-warn" title="部位がちがうかも">⚠️</i>` : ""}${inBar ? "一体型ハンドルに含む" : off ? "外しています" : esc(p.name)}</span>
-      <span class="mx-g">${inBar ? "0 g" : off ? "—" : (+p.g || 0).toLocaleString() + " g"}${diff && dg ? `<em class="${dg < 0 ? "up" : "down"}">${dg < 0 ? "−" : "+"}${Math.abs(dg)}g</em>` : ""}</span>
+      <span class="mx-g">${inBar ? "0 g" : off ? "—" : (+p.g || 0).toLocaleString() + " g"}${diff && dg ? `<em class="${dg < 0 ? "up" : "down"}">${dg < 0 ? "−" : "+"}${Math.abs(dg)}g</em>` : ""}</span>${yenHtml(upCost(k, slotId))}
     </button>`;
   }
 
@@ -730,7 +749,7 @@
       const o = G.builds.current.parts[slotId] || {};
       const same = o.name === p.name && o.g === p.g;
       const dg = (p.mounted === false ? 0 : +p.g || 0) - (o.mounted === false ? 0 : +o.g || 0);
-      return `<div class="mx-cell nothumb mx-alt ${same ? "same" : "diff"}"><span class="mx-name">${same ? "(今のまま)" : esc(p.name)}</span><span class="mx-g">${(+p.g || 0).toLocaleString()} g${dg ? `<em class="${dg < 0 ? "up" : "down"}">${dg < 0 ? "−" : "+"}${Math.abs(dg)}g</em>` : ""}</span></div>`;
+      return `<div class="mx-cell nothumb mx-alt ${same ? "same" : "diff"}"><span class="mx-name">${same ? "(今のまま)" : esc(p.name)}</span><span class="mx-g">${(+p.g || 0).toLocaleString()} g${dg ? `<em class="${dg < 0 ? "up" : "down"}">${dg < 0 ? "−" : "+"}${Math.abs(dg)}g</em>` : ""}</span>${yenHtml(upCost(k, slotId))}</div>`;
     };
     return `
       <section class="card g-mx">
@@ -742,7 +761,11 @@
           <span class="mx-col ${G.active === "next" ? "on" : ""}">NEW<small>${kg("next")}</small></span>
           ${alts.map((k) => `<span class="mx-col mx-alt ${G.active === k ? "on" : ""}">${esc(ALT_PLANS.find((x) => x.key === k).short)}<small>${kg(k)}</small></span>`).join("")}
           ${Parts.SLOTS.map((sl) => `<span class="mx-slot">${sl.icon}<small>${sl.name}</small></span>${cellHtml(sl.id, "current")}${cellHtml(sl.id, "next")}${alts.map((k) => altCell(sl.id, k)).join("")}`).join("")}
+          <span class="mx-slot mx-sum-l">💴<small>追加費用</small></span>
+          <div class="mx-cell nothumb mx-sum"><span class="mx-name">—</span></div>
+          ${["next", ...alts].map((k) => `<div class="mx-cell nothumb mx-sum ${k === "next" ? "" : "mx-alt"} ${G.active === k ? "on" : ""}"><span class="mx-name">${Catalog.yen(upTotal(k))}</span><span class="mx-g">装着済みから替える分</span></div>`).join("")}
         </div>
+        <p class="muted small">値段は中古の想定(タイヤなどの消耗品は新品)。工賃は入っていません。</p>
         ${alts.length ? `<p class="muted small mx-alt-note">乗り換えの列は、広い画面で表示します。中身を変えるときは、3Dの左上で「乗り換え」を選んでください。</p>` : ""}
       </section>`;
   }
@@ -1140,7 +1163,7 @@
         return `<div class="q-row ${e.include ? "" : "off"}">
           <div class="q-thumb" style="background-image:url('${e.url}');background-size:${(100 / Math.max(0.05, e.crop[2] - e.crop[0])).toFixed(1)}% ${(100 / Math.max(0.05, e.crop[3] - e.crop[1])).toFixed(1)}%;background-position:${((e.crop[0] / Math.max(0.0001, 1 - (e.crop[2] - e.crop[0]))) * 100).toFixed(1)}% ${((e.crop[1] / Math.max(0.0001, 1 - (e.crop[3] - e.crop[1]))) * 100).toFixed(1)}%"></div>
           <div class="q-body">
-            <div class="q-line"><select data-q="slot" data-i="${i}">${Parts.SLOTS.map((sl) => `<option value="${sl.id}" ${sl.id === r.slot ? "selected" : ""}>${sl.icon} ${sl.name}</option>`).join("")}</select>
+            <div class="q-line"><select data-q="slot" data-i="${i}">${Parts.SLOTS.map((sl) => `<option value="${sl.id}" ${sl.id === r.slot ? "selected" : ""}>${sl.name}</option>`).join("")}</select>
               <label class="q-inc"><input type="checkbox" data-q="include" data-i="${i}" ${e.include ? "checked" : ""} />組み込む</label></div>
             <div class="q-line"><input type="text" data-q="brand" data-i="${i}" value="${esc(r.brand || "")}" placeholder="メーカー" /><input type="text" data-q="model" data-i="${i}" value="${esc(r.model || "")}" placeholder="モデル" /></div>
             <div class="q-line"><span class="g-in"><input type="number" inputmode="decimal" data-q="weight_g" data-i="${i}" value="${r.weight_g || ""}" placeholder="重さ" /><em>g</em></span>
@@ -1366,7 +1389,7 @@
       <section class="card g-libform" id="libform">
         <h2>${f.id ? "マイパーツを編集" : "マイパーツを登録"}</h2>
         <label class="g-field"><span>部位</span><select data-lf="slot" ${f.id ? "disabled" : ""}>${Parts.SLOTS.map(
-          (sl) => `<option value="${sl.id}" ${sl.id === f.slot ? "selected" : ""}>${sl.icon} ${sl.name}</option>`
+          (sl) => `<option value="${sl.id}" ${sl.id === f.slot ? "selected" : ""}>${sl.name}</option>`
         ).join("")}</select></label>
         <div class="g-photo">
           ${photoTag(f.photoId, "g-photo-img")}
@@ -2199,11 +2222,6 @@
     const a = calc("current");
     const b = calc("next");
     const alts = altKeys().map((k) => ({ pl: ALT_PLANS.find((x) => x.key === k), r: calcBuild(G.builds[k]) }));
-    // かかるお金の目安: NEW は替えるパーツの中古相場、乗り換えは中古の完成車
-    const nextCost = Parts.SLOTS.reduce((sum, sl) => {
-      const p = G.builds.next.parts[sl.id];
-      return sum + (p && p.shop && p.shop.used ? (p.shop.used[0] + p.shop.used[1]) / 2 : 0);
-    }, 0) + CHAT_REC.items.map((id) => Catalog.byId(id)).filter((it) => it && it.kind === "delta" && Catalog.installed(G.builds.next, it) && !Catalog.installed(G.builds.current, it)).reduce((s2, it) => s2 + Catalog.cost(it, true), 0);
     const get = { kg: (r) => r.bikeKg, rot: (r) => r.rot, v: (r) => r.perf.speed200, com: (r) => r.perf.commute, climb: (r) => r.perf.climb, acc: (r) => r.perf.accel, torso: (r) => r.fit.angles.torso };
     const rows = [
       ["バイク重量", "kg", 2, "kg", true],
@@ -2233,7 +2251,7 @@
               return `<tr><td>${n}</td>${vals.map((v, i) => cell(v, d, u, bi === i)).join("")}</tr>`;
             })
             .join("")}
-          <tr><td>かかるお金(目安)</td><td>—</td><td>約${Catalog.yen(Math.round(nextCost / 1000) * 1000)}<small>中古パーツ</small></td>${alts.map((x) => `<td>${Catalog.yen(x.pl.price[0])}〜${x.pl.price[1].toLocaleString()}<small>中古の完成車</small></td>`).join("")}</tr>
+          <tr><td>かかるお金(目安)</td><td>—</td><td>${Catalog.yen(upTotal("next"))}<small>中古パーツ</small></td>${alts.map((x) => `<td>${Catalog.yen(upTotal(x.pl.key))}<small>中古パーツ合計</small></td>`).join("")}</tr>
         </table>
         <p class="muted small">太字はいちばん良い値。体重${G.body.weight}kg+バイクで計算(速度・時間は平地または一定勾配・無風の理論値)。乗り換えのフレーム・ホイール・コンポの重さは年式で変わる目安です。乗り換えを選ぶと3Dとパーツ表でも中身を見られ、パーツの数字も書き換えられます。</p>
       </section>

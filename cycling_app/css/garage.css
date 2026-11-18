@@ -1493,3 +1493,16 @@ div.mx-cell.mx-alt.same { opacity: 0.45; }
 }
 .g-summary > .ac-radar-wrap { flex-direction: row; align-items: center; }
 .g-summary .ac-b span { font-size: 0.85rem; color: inherit; font-weight: 800; }
+
+/* アセンブル表: 替えるパーツの値段(中古の想定)と合計 */
+.mx-yen { display: block; font-size: 0.68rem; font-weight: 700; color: #f2c14e; font-variant-numeric: tabular-nums; }
+.mx-sum { border-top: 2px solid var(--brand); cursor: default; }
+.mx-sum .mx-name { font-size: 0.95rem; font-weight: 800; color: #f2c14e; font-variant-numeric: tabular-nums; }
+.mx-sum.on { border-color: var(--brand); }
+
+/* 部位アイコン(3Dモデルから描き出した画像) */
+.p-ico { width: 2.4em; height: 2.4em; object-fit: contain; vertical-align: middle; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6)); }
+.mx-slot .p-ico { width: 40px; height: 40px; }
+.mx-top .p-ico { width: 1.8em; height: 1.8em; margin-right: 4px; }
+.mx-thumb.big .p-ico { width: 72px; height: 72px; }
+.g-part-icon .p-ico { width: 34px; height: 34px; }
