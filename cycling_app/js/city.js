@@ -573,13 +573,17 @@ const City = (() => {
       const d = routeDist(q);
       if (d > lm.r || got.has(lm.name)) continue;
       got.add(lm.name);
-      info.lms.push({ name: lm.name, icon: lm.icon, x: q[0], z: q[1], along: d.along });
+      // 看板は建物の少し上。画面の上で読める大きさを保ち、近づいたときだけ出す
+      const hgt = lm.big ? 24 : 15;
       const sp = signSprite(lm);
-      sp.position.set(q[0], lm.big ? 46 : 30, q[1]);
+      sp.position.set(q[0], hgt, q[1]);
+      sp.visible = false;
       group.add(sp);
-      const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, lm.big ? 44 : 28, 6), new THREE.MeshBasicMaterial({ color: lm.color, transparent: true, opacity: 0.55 }));
-      beam.position.set(q[0], (lm.big ? 44 : 28) / 2, q[1]);
+      const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, hgt, 6), new THREE.MeshBasicMaterial({ color: lm.color, transparent: true, opacity: 0.6, depthTest: false, fog: false }));
+      beam.position.set(q[0], hgt / 2, q[1]);
+      beam.visible = false;
       group.add(beam);
+      info.lms.push({ name: lm.name, icon: lm.icon, x: q[0], z: q[1], along: d.along, big: lm.big, sp, beam });
     }
     group.userData.info = info;
     return group;
@@ -645,8 +649,8 @@ const City = (() => {
     c.fillText(text, x0 + 92, 66, w - 104);
     const tex = new THREE.CanvasTexture(cv);
     tex.encoding = THREE.sRGBEncoding;
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
-    const k = lm.big ? 44 : 28;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true, sizeAttenuation: false, fog: false }));
+    const k = lm.big ? 0.34 : 0.25;
     sp.scale.set(k, k / 4, 1);
     sp.renderOrder = 5;
     return sp;
@@ -677,6 +681,9 @@ const City = (() => {
         }
       // 目印の近くを通ったら知らせる
       for (const lm of inf.lms) {
+        // 看板は、近く(大きな目印は450m、ほかは260m)まで来たら出す
+        const near = Math.hypot(lm.x - p.x, lm.z - p.z) < (lm.big ? 450 : 260);
+        lm.sp.visible = lm.beam.visible = near;
         if (lm.said || Math.abs(lm.along - sim.along) > 90) continue;
         lm.said = true;
         const el = $("ct-near");
@@ -1280,5 +1287,5 @@ const City = (() => {
   }
 
   if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", bind);
-  return { at, turnAhead, readTile, _state: () => ({ sim, route, tiles, failed }) };
+  return { at, turnAhead, readTile, _state: () => ({ sim, route, tiles, failed, camera }) };
 })();
