@@ -1165,12 +1165,12 @@ const City = (() => {
       if (v.length < 4) return v.length ? v.reduce((p, q) => p + q, 0) / v.length : NaN;
       return a * (1 - tx) * (1 - ty) + b * tx * (1 - ty) + c * (1 - tx) * ty + d * tx * ty;
     }
-    // ルートのまわり(左右300m)の標高タイルを全部読む
+    // ルートのまわり(地面の網が届く左右900m)の標高タイルを全部読む
     async function prepare() {
       const need = new Set();
       for (let d = 0; d <= route.length; d += 100) {
         const p = at(d);
-        for (const [ox, oz] of [[0, 0], [300, 0], [-300, 0], [0, 300], [0, -300]]) {
+        for (const [ox, oz] of [[0, 0], [450, 0], [-450, 0], [0, 450], [0, -450], [900, 0], [-900, 0], [0, 900], [0, -900], [640, 640], [-640, 640], [640, -640], [-640, -640]]) {
           const lat = route.lat0 - (p.z + oz) / route.kz, lon = route.lon0 + (p.x + ox) / route.kx;
           const [fx, fy] = px(lat, lon);
           need.add((fx >> 8) + ":" + (fy >> 8));
@@ -1188,8 +1188,8 @@ const City = (() => {
       const n = Math.ceil(route.length / 10) + 1, raw = new Float32Array(n);
       for (let i = 0; i < n; i++) {
         const p = at(i * 10);
-        const v = h(p.x, p.z);
-        raw[i] = v;
+        const v = abs(route.lat0 - p.z / route.kz, route.lon0 + p.x / route.kx);
+        raw[i] = isNaN(v) ? (i ? raw[i - 1] : 0) : v - base;
       }
       prof = new Float32Array(n);
       for (let i = 0; i < n; i++) {
@@ -1198,10 +1198,20 @@ const City = (() => {
         prof[i] = sum / k;
       }
     }
+    // 標高がわからない所は、いちばん近いルート上の高さを使う(出発地点の高さにすると、下った先で地面が浮く)
+    function nearRoute(x, z) {
+      if (!prof) return 0;
+      let best = 1e18, bi = 0;
+      for (let i = 0; i < prof.length; i += 3) {
+        const p = at(i * 10), d = (p.x - x) ** 2 + (p.z - z) ** 2;
+        if (d < best) (best = d), (bi = i);
+      }
+      return prof[bi];
+    }
     function h(x, z) {
       if (!ok) return 0;
       const v = abs(route.lat0 - z / route.kz, route.lon0 + x / route.kx);
-      return isNaN(v) ? 0 : v - base;
+      return isNaN(v) ? nearRoute(x, z) : v - base;
     }
     // 勾配(%)。前後20mの高さの差から
     function grade(along) {
@@ -3051,7 +3061,9 @@ const City = (() => {
     const back = 6.5 + s.v * 0.18, up = 2.9 + s.v * 0.05;
     const want = new THREE.Vector3(p.x - p.tx * back, p.y + up, p.z - p.tz * back);
     if (!s.camPos) s.camPos = want.clone();
-    s.camPos.lerp(want, Math.min(1, real * 3.2));
+    // 早送りでもカメラが遅れないように、追いつく速さも倍速に合わせる
+    s.camPos.lerp(want, 1 - Math.exp(-real * 3.2 * Math.max(1, s.speedX)));
+    if (s.camPos.distanceTo(want) > 30) s.camPos.copy(want);
     camera.position.copy(s.camPos);
     camera.lookAt(p.x + p.tx * 9, p.y + 1.2, p.z + p.tz * 9);
     camera.fov = 58 + Math.min(16, s.v * 1.1);
