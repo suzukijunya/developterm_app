@@ -26,6 +26,11 @@ const Catalog = (() => {
       score: { light: 2, speed: 2, commute: 1 }, note: "ZONDAより少し軽く、加速がよい",
     },
     {
+      id: "w-racingzero", slot: "wheels", kind: "swap", name: "FULCRUM Racing Zero (リムブレーキ・アルミ)", g: 1520,
+      attrs: { rimFront: 24, rimRear: 27, discRear: false }, price: 140000, used: [30000, 70000],
+      score: { light: 3, speed: 3, commute: 1 }, note: "アルミリムの最上級。硬くて反応がよく、こぎ出しが軽い。乗り心地は硬めなので28Cタイヤと合わせると腰にやさしい。「ナイト」(専用シュー)と「カーボン」は別物なので注意",
+    },
+    {
       id: "w-rs81", slot: "wheels", kind: "swap", name: "SHIMANO WH-RS81-C24-CL", g: 1502,
       attrs: { rimFront: 24, rimRear: 24, discRear: false }, price: 90000, used: [30000, 50000],
       score: { light: 2, speed: 2, commute: 1 }, note: "カーボン補強のリムで、乗り心地もよい",

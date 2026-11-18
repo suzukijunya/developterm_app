@@ -88,6 +88,8 @@ const View3D = (() => {
     bindControls(renderer.domElement);
     resize();
     window.addEventListener("resize", resize);
+    // PCの横並びレイアウトなど、入れ物の大きさだけが変わったときも描き直す
+    if (window.ResizeObserver) new ResizeObserver(() => resize()).observe(container);
     lastT = performance.now();
     loop();
   }
