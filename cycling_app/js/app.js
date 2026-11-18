@@ -1265,7 +1265,6 @@
       ${todayHero()}
       ${destPicker()}
       <button class="btn start" id="start">ライドを開始</button>
-      ${missionCard()}
       <p class="muted center">
         ${Store.profile.weightKg}kg + バイク${Store.profile.bikeKg}kg + 荷物${Store.profile.cargoKg}kg・${Store.profile.useGarage && Store.profile.cdaCustom ? `ガレージの空気抵抗(CdA ${Store.profile.cdaCustom})` : Physics.POSTURES[Store.profile.posture].label}で計算
         <br /><button class="link" data-view="settings">体格・バイク・目的地を変更</button>
@@ -1542,25 +1541,6 @@ print("このファイルをスマホに送って(AirDrop など)、アプリの
     speechSynthesis.onvoiceschanged = put;
   }
 
-  // ホーム画面の今月のミッション(まだのものから3つ)
-  function missionCard() {
-    const st = Missions.status(Store.rides, Store.places);
-    const left = st.missions.filter((m) => !m.done).sort((a, b) => b.pct - a.pct).slice(0, 3);
-    const done = st.missions.filter((m) => m.done).length;
-    return `
-      <section class="card missions">
-        <div class="ms-head"><div class="today-label">🎖️ ${st.month}のミッション</div><span>${done}/${st.missions.length} 達成・残り${st.daysLeft}日</span></div>
-        ${left
-          .map(
-            (m) => `<div class="ms-row"><span>${m.icon} ${esc(m.label)}</span><small>${Missions.fmtVal(m, m.value)}/${m.target.toLocaleString()}${m.unit}</small>
-              <div class="ms-bar"><i style="width:${m.pct.toFixed(1)}%"></i></div></div>`
-          )
-          .join("") || `<p class="small">今月のミッションをぜんぶ達成しました!🎉</p>`}
-        <p class="muted small">バッジ ${st.count}個${st.next ? `・あと${st.next.need - st.count}個で「${esc(st.next.label)}」` : ""}
-          <a class="link" href="garage.html?tab=mission">ガレージで見る</a></p>
-      </section>`;
-  }
-
   // ---------- 出撃リザルト(ランク・スコア・バッジ) ----------
   // ランクは「いつもの自分」と比べた速さ(過去のライドの平均速度の中央値)。記録が少ないうちは速度そのもので
   function sortieOf(r) {
@@ -1585,7 +1565,6 @@ print("このファイルをスマホに送って(AirDrop など)、アプリの
     if (others.length >= 3 && others.every((x) => x.distance < r.distance)) badges.push("📏 最長距離");
     if (others.length >= 3 && others.every((x) => (x.maxSpeed || 0) < r.maxSpeed)) badges.push(`⚡ 最高速度 ${fmt.kmh(r.maxSpeed)}km/h`);
     if (r.elevGain >= 100) badges.push(`⛰️ 獲得標高 ${Math.round(r.elevGain)}m`);
-    for (const m of Missions.newlyDone(Store.rides, Store.places, r)) badges.unshift(`🎖️ ミッション達成: ${m.label}`);
     const week = Store.rides.filter((x) => x.startedAt > r.startedAt - 7 * 86400000 && x.startedAt <= r.startedAt).length;
     if (week >= 3) badges.push(`🔥 7日間で${week}回目`);
     const g = Store.garage && Store.garage.builds && Store.garage.builds.current;
@@ -2472,7 +2451,7 @@ print("このファイルをスマホに送って(AirDrop など)、アプリの
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2026.11.39";
+  const APP_VERSION = "2026.11.40";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });
