@@ -170,6 +170,20 @@ const Catalog = (() => {
   };
   for (const it of ITEMS) if (SPECS[it.id]) it.spec = SPECS[it.id];
 
+  // 製品写真(メーカーの製品ページの画像を、そのまま参照する。[画像, 載っているページ])
+  const IMGS = {
+    "w-racingzero": ["https://www.fulcrumwheels.com/FILES/prodotti/%202021_Racing_Zero_2WF_RB_3_4_rear_500x500.jpg", "https://www.fulcrumwheels.com/en/wheels/road-bike-wheels/racing-zero-2WF"],
+    "t-agilest25": ["https://panaracer.com/wp/wp-content/uploads/2022/02/ag_st_top-1024x646.png", "https://panaracer.com/en/products/road_en/agilest-en/"],
+    "t-duro28": ["https://panaracer.com/wp/wp-content/uploads/2022/02/ag_duro_top-1024x646.png", "https://panaracer.com/en/products/road_en/agilest-en/agilest-duro-en"],
+    "t-gp5000-28": ["https://www.continental-tires.com/adobe/dynamicmedia/deliver/dm-aid--8c817406-8057-41af-8c3a-0d432fbf37fb/Continental_Grand-Prix-5000_ProductPicture_30.png?width=600", "https://www.continental-tires.com/products/b2c/bicycle/tires/grand-prix-5000/"],
+    "u-purple": ["https://panaracer.com/wp/wp-content/uploads/2026/05/purplelite_45-1024x646.webp", "https://panaracer.com/en/products/tube_en/other_en/purple_lite"],
+    "u-conti-tpu": ["https://www.continental-tires.com/adobe/dynamicmedia/deliver/dm-aid--09a41d10-18a5-4be5-ba20-181ebc1c87cb/Continental_BC_TPU-Tubes.png?width=600", "https://www.continental-tires.com/products/bicycle/tpu-tubes/"],
+    "s-power-comp": ["https://resources.specialized.com/image/27116-180_SDDL_POWER-COMP_BLK-SQUARE?bg=ffffff&w=800&h=800&q=75", "https://www.specialized.com/us/en/power-comp/p/155836"],
+    "s-power-expert": ["https://resources.specialized.com/image/27123-860_SDDL_POWER-EXPERT-MIRROR-SADDLE-BLK-143_HERO-SQUARE?bg=ffffff&w=800&h=800&q=75", "https://www.specialized.com/us/en/power-expert-with-mirror/p/1000148806"],
+    "s-slr-boost": ["https://cdn11.bigcommerce.com/s-ubg9970srq/products/129/images/2083/041A620ICA011_SLR_Boost_Kit_Carbonio_Superflow_S_THREE_QUARTER_copia__46444.1793257478.386.513.jpg?c=1", "https://www.selleitalia.com/slr-boost-kit-carbonio-superflow/"],
+  };
+  for (const it of ITEMS) if (IMGS[it.id]) (it.img = IMGS[it.id][0]), (it.imgPage = IMGS[it.id][1]);
+
   function cost(item, usedOk) {
     return usedOk && item.used ? Math.round((item.used[0] + item.used[1]) / 2 / 500) * 500 : item.price;
   }

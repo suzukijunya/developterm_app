@@ -1004,7 +1004,6 @@
       ${libForm ? libFormHtml() : ""}
       ${importRev ? importHtml() : ""}
       ${matrixHtml()}
-      ${measuredHtml()}
       ${cell ? sheetHtml() : ""}
       ${scanHtml()}
       ${monstersHtml()}
@@ -2251,9 +2250,12 @@
   function partPhoto(it) {
     const own = ownPhotos[it.id];
     const ai = AI.cachedImage(it.id);
+    const svg = `<svg viewBox="0 0 100 100" class="g-pc-svg" aria-hidden="true">${PART_SVG[it.slot] || PART_SVG.accessories}</svg>`;
     if (own) return `<img src="${own}" alt="" />`;
-    if (ai && ai.url) return `<img src="${esc(ai.url)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()" />`;
-    return `<svg viewBox="0 0 100 100" class="g-pc-svg" aria-hidden="true">${PART_SVG[it.slot] || PART_SVG.accessories}</svg>`;
+    // メーカーの製品写真(読めなかったら絵に戻す)
+    const url = it.img || (ai && ai.url);
+    if (url) return `${svg}<img class="g-pc-web" src="${esc(url)}" alt="${esc(it.name)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()" />`;
+    return svg;
   }
   function partCard(it) {
     const cur = G.builds.current.parts[it.slot];
@@ -2261,10 +2263,11 @@
     const diff = it.kind === "delta" ? -(it.deltaG || 0) : it.g - curG;
     const inNext = Catalog.installed(G.builds.next, it);
     const inCur = Catalog.installed(G.builds.current, it);
-    const find = AI.ready && !ownPhotos[it.id] && !AI.cachedImage(it.id) ? `data-find-img="${it.id}"` : "";
+    const find = AI.ready && !it.img && !ownPhotos[it.id] && !AI.cachedImage(it.id) ? `data-find-img="${it.id}"` : "";
     return `<article class="g-pc ${inCur ? "mine" : ""}">
       <div class="g-pc-img" data-prod="${it.id}" ${find}>${partPhoto(it)}
-        <label class="g-pc-ph" title="写真を付ける">📷<input type="file" accept="image/*" data-prod-photo="${it.id}" hidden /></label></div>
+        <label class="g-pc-ph" title="写真を付ける">📷<input type="file" accept="image/*" data-prod-photo="${it.id}" hidden /></label>
+        ${it.imgPage && !ownPhotos[it.id] ? `<a class="g-pc-src" href="${esc(it.imgPage)}" target="_blank" rel="noopener">メーカーの写真</a>` : ""}</div>
       <div class="g-pc-body">
         <small class="g-pc-slot">${esc(Parts.slotName(it.slot))}${inCur ? " ・装着済み" : ""}</small>
         <strong class="g-pc-name">${esc(it.name)}</strong>
