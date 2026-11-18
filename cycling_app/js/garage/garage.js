@@ -425,32 +425,51 @@
     return `${d > 0 ? "+" : "−"}${Math.abs(d).toFixed(dig)}${unit}`;
   }
 
+  // 性能は7角形のグラフで(オレンジ=選んでいる構成、白の点線=比べる相手)
+  function radarSvg(a, o) {
+    const N = Stats.ROWS.length, R = 100;
+    const pt = (i, r) => {
+      const t = -Math.PI / 2 + (i * 2 * Math.PI) / N;
+      return [Math.cos(t) * r, Math.sin(t) * r];
+    };
+    const poly = (st) => Stats.ROWS.map((r, i) => pt(i, Math.max(4, (st.v[r.k].bar / 100) * R)).map((x) => x.toFixed(1)).join(",")).join(" ");
+    const ring = (f) => Stats.ROWS.map((_, i) => pt(i, R * f).map((x) => x.toFixed(1)).join(",")).join(" ");
+    const labels = Stats.ROWS.map((r, i) => {
+      const [x, y] = pt(i, R + 16);
+      const va = a.v[r.k], vo = o.v[r.k];
+      const db = va.bar - vo.bar, d = va.raw - vo.raw;
+      const show = Math.abs(db) >= 0.5;
+      const dtxt = show ? (r.k === "comfort" || r.k === "durability" ? `${db > 0 ? "▲" : "▼"}${Math.abs(Math.round(db))}` : rawDelta(r.k, d)) : "";
+      const anchor = Math.abs(x) < 12 ? "middle" : x > 0 ? "start" : "end";
+      const dy = y < -R * 0.7 ? -14 : y > R * 0.5 ? 6 : -4;
+      return `<g transform="translate(${x.toFixed(1)} ${(y + dy).toFixed(1)})" text-anchor="${anchor}">
+        <text class="rd-en">${r.en}</text>
+        <text class="rd-val" y="13">${va.text}${dtxt ? `<tspan class="${db > 0 ? "up" : "down"}" dx="4">${dtxt}</tspan>` : ""}</text>
+        <text class="rd-ja" y="24">${r.ja}</text></g>`;
+    }).join("");
+    return `<svg class="ac-radar" viewBox="-205 -150 410 300" role="img" aria-label="性能の7角形グラフ">
+      ${[0.25, 0.5, 0.75, 1].map((f) => `<polygon class="rd-ring" points="${ring(f)}"/>`).join("")}
+      ${Stats.ROWS.map((_, i) => `<line class="rd-axis" x1="0" y1="0" x2="${pt(i, R)[0].toFixed(1)}" y2="${pt(i, R)[1].toFixed(1)}"/>`).join("")}
+      <polygon class="rd-other" points="${poly(o)}"/>
+      <polygon class="rd-me" points="${poly(a)}"/>
+      ${Stats.ROWS.map((r, i) => `<circle class="rd-dot" r="3" cx="${pt(i, Math.max(4, (a.v[r.k].bar / 100) * R))[0].toFixed(1)}" cy="${pt(i, Math.max(4, (a.v[r.k].bar / 100) * R))[1].toFixed(1)}"/>`).join("")}
+      ${labels}
+    </svg>`;
+  }
+
   function renderSummary() {
     const a = statsOf(B());
     const o = statsOf(B(other()));
     const name = other() === "next" ? "NEW" : "装着済み";
     const dt = a.total - o.total;
-    const rows = Stats.ROWS.map((r) => {
-      const va = a.v[r.k], vo = o.v[r.k];
-      const db = va.bar - vo.bar; // +なら良くなった
-      const d = va.raw - vo.raw;
-      const lo = Math.min(va.bar, vo.bar), hi = Math.max(va.bar, vo.bar);
-      const show = Math.abs(db) >= 0.5;
-      return `<div class="ac-row">
-        <span class="ac-en">${r.en}</span><span class="ac-ja">${r.ja}</span>
-        <span class="ac-bar"><i style="width:${lo.toFixed(1)}%"></i>${show ? `<em class="${db > 0 ? "up" : "down"}" style="left:${lo.toFixed(1)}%;width:${(hi - lo).toFixed(1)}%"></em>` : ""}</span>
-        <span class="ac-val">${va.text}</span>
-        <span class="ac-d ${show ? (db > 0 ? "up" : "down") : ""}">${show ? (r.k === "comfort" || r.k === "durability" ? `${db > 0 ? "▲" : "▼"}${Math.abs(Math.round(db))}` : rawDelta(r.k, d)) : ""}</span>
-      </div>`;
-    }).join("");
     document.getElementById("summary").innerHTML = `
       <div class="ac-head">
         <div class="ac-rank rank-${a.rank}"><small>RANK</small><b>${a.rank}</b></div>
         <div class="ac-total"><small>TOTAL SCORE</small><b>${a.total}</b>${dt ? `<em class="${dt > 0 ? "up" : "down"}">${dt > 0 ? "▲" : "▼"}${Math.abs(dt)}</em>` : ""}</div>
         <div class="ac-cost"><small>PARTS VALUE</small><b>${a.value ? Catalog.yen(a.value) : "—"}</b></div>
       </div>
-      <div class="ac-rows">${rows}</div>
-      <p class="g-vs">差は「${name}」と比べた値。緑は良くなった所、赤は悪くなった所</p>`;
+      <div class="ac-radar-wrap">${radarSvg(a, o)}</div>
+      <p class="g-vs"><i class="rd-key me"></i>選んでいる構成 <i class="rd-key other"></i>${name}(差はこれと比べた値)</p>`;
   }
 
   // 付けたらどう変わるか(カタログ・店員さんの候補の横に出す)
@@ -1029,7 +1048,8 @@
       ${cell ? sheetHtml() : ""}
       ${comparePanel()}
       ${chatRecHtml()}
-      ${catalogHtml()}
+      ${rankHtml()}
+      ${pcatHtml()}
       ${foldCard("reg", "📷 パーツを登録する・マイパーツ", "写真から登録、表の読み込み、バックアップ", quickHtml() + libraryHtml(), quick.entries.length > 0 || dataOpen || pasteOpen)}
       ${foldCard("model", "📦 自分のバイクの3Dスキャン", "スキャンアプリのGLBを読み込む", scanHtml(), false)}
       ${foldHtml()}`;
@@ -2235,7 +2255,8 @@
   // ---------- 店員さん ----------
   // 部位ごとの具体的なモデル(重さ・中古相場)
   function catalogHtml(id) {
-    const list = Catalog.forSlot(id);
+    const hid = new Set(G.catalogHidden || []); // 図鑑から消したパーツは、候補にも出さない
+    const list = Catalog.forSlot(id).filter((it) => !hid.has(it.id));
     if (!list.length) return "";
     const b = B();
     return `<details class="g-cat" ${G.active === "next" || cell ? "open" : ""}><summary>🏷️ 具体的なモデルから選ぶ(重さ・中古相場つき)</summary>
@@ -2331,7 +2352,87 @@
           <button class="g-pc-del" data-cat-del="${it.id}" title="図鑑から消す" aria-label="図鑑から消す">🗑</button></div>
       </div></article>`;
   }
-  function catalogHtml() {
+  // ---------- ランクA・Sへの道 ----------
+  // カタログのパーツを全部いちばん点が上がるものにした構成と、そのうえでランクA・Sに届く体重を出す
+  // (加速・登坂・速さの点は「体重+バイク」で決まるので、ランクは体重で大きく動く)
+  let rankPlan = null;
+  function computeRankPlan() {
+    const W0 = G.body.weight;
+    const cache = new Map();
+    const score = (b, w) => {
+      const tire = (b.parts.tires && b.parts.tires.attrs && b.parts.tires.attrs.width) || 28;
+      const aero = Parts.aeroOf(b.parts);
+      const key = JSON.stringify([b.geo, b.pos, aero, tire, w]);
+      let fit = cache.get(key);
+      if (!fit) {
+        fit = Fit.compute({ geo: b.geo, pos: b.pos, aero, wheelRadius: 0.311 + tire / 1000 }, Object.assign({}, G.body, { weight: w }), { coarse: true });
+        cache.set(key, fit);
+      }
+      const bikeKg = bikeGrams(b) / 1000;
+      const perf = Fit.performance(fit.cda.total, w + bikeKg, Parts.rotatingKg(b.parts));
+      return Stats.compute(b, { fit, bikeKg, perf });
+    };
+    const hid = new Set(G.catalogHidden || []);
+    const bySlot = {};
+    for (const it of Catalog.ITEMS) if (!hid.has(it.id)) (bySlot[it.slot] = bySlot[it.slot] || []).push(it);
+    const best = (key) => {
+      const b = JSON.parse(JSON.stringify(G.builds[key]));
+      const picks = [];
+      for (let round = 0; round < 2; round++)
+        for (const slot of Object.keys(bySlot)) {
+          let top = score(b, W0).total, pick = null;
+          for (const it of bySlot[slot]) {
+            if (key !== "current" && slot === "wheels") continue; // 乗り換え車はディスク用のホイール(リムブレーキ用は付かない)
+            if (it.kind === "delta" && (key !== "current" || Catalog.installed(b, it))) continue;
+            const t = JSON.parse(JSON.stringify(b));
+            Catalog.apply(t, it);
+            const sc = score(t, W0).total;
+            if (sc > top) (top = sc), (pick = it);
+          }
+          if (pick) {
+            Catalog.apply(b, pick);
+            // 同じ部位をもっと良いものに替え直したら、前の候補は一覧から外す
+            if (pick.kind === "swap") for (let i = picks.length - 1; i >= 0; i--) if (picks[i].slot === pick.slot && picks[i].kind === "swap") picks.splice(i, 1);
+            picks.push(pick);
+          }
+        }
+      return { b, picks };
+    };
+    const minW = Math.round(20 * G.body.height * G.body.height); // これより軽くは勧めない(BMI 20)
+    const need = (b, target) => {
+      for (let w = Math.floor(W0); w >= minW; w--) if (score(b, w).total >= target) return w;
+      return null;
+    };
+    const rows = ["current", ...altKeys()].map((key) => {
+      const { b, picks } = best(key);
+      const now = score(b, W0);
+      return { key, b, picks, now: now.total, rank: now.rank, kg: bikeGrams(b) / 1000, a: need(b, 680), s: need(b, 800), floor: score(b, minW).total };
+    });
+    return { rows, minW, base: score(G.builds.current, W0), at: W0 };
+  }
+  function rankHtml() {
+    const p = rankPlan;
+    const label = (k) => (k === "current" ? "R3延命(いまのバイク+パーツ)" : (ALT_PLANS.find((x) => x.key === k) || {}).short + " に乗り換え+パーツ");
+    const wtxt = (w, r) => (w == null ? `<span class="muted">届かない<small>${p.minW}kgでも${r.floor}点</small></span>` : w >= Math.floor(p.at) ? `<b class="good">いまの体重で届く</b>` : `<b>${w}kg</b><small>あと−${(p.at - w).toFixed(0)}kg</small>`);
+    return `<details class="card g-fold-card g-tools g-rank" data-fold="rank" ${openFolds.has("rank") ? "open" : ""}><summary>🏅 ランクA・Sの構成<small>いちばん点が上がるパーツの組み合わせと、必要な体重</small></summary>
+      ${
+        p
+          ? `<p class="small">いまは <b>${p.base.total}点・ランク${p.base.rank}</b>(体重${p.at}kg)。Aは680点、Sは800点から。加速・登坂・速さの点は「体重+バイク」で決まるので、<b>ランクはパーツよりも体重で大きく動きます。</b></p>
+        <table class="g-table g-ranktab"><tr><th>構成</th><th>いまの体重</th><th>ランクA</th><th>ランクS</th></tr>
+          ${p.rows.map((r) => `<tr><td>${esc(label(r.key))}<small>${r.kg.toFixed(2)}kg</small></td><td><b>${r.now}点</b><small>ランク${r.rank}</small></td><td>${wtxt(r.a, r)}</td><td>${wtxt(r.s, r)}</td></tr>`).join("")}
+        </table>
+        ${p.rows.map((r) => `<div class="g-rank-set"><p class="g-sub">${esc(label(r.key))}のパーツ</p>
+          ${r.picks.length ? `<ul>${r.picks.map((it) => `<li>${esc(Parts.slotName(it.slot))}: <b>${esc(it.name)}</b></li>`).join("")}</ul>` : `<p class="muted small">替えて点が上がるパーツはありません。</p>`}
+          ${r.key === "current" && r.picks.length ? `<button class="btn sub" data-rank-apply="current">この構成をNEWに入れる</button>` : ""}</div>`).join("")}
+        <p class="muted small">図鑑に載っているパーツの中での組み合わせです(図鑑から消したパーツは使いません)。体重は ${p.minW}kg(BMI 20)より下は出していません。ポジションは今のままで計算しています。</p>
+        <button class="link" data-rank="calc">計算し直す</button>`
+          : `<p class="small">図鑑のパーツを全部試して、いちばん総合点が上がる組み合わせを探します。そのうえで、ランクA(680点)とランクS(800点)に届く体重も出します。</p>
+        <button class="btn sub" data-rank="calc">計算する(数秒かかります)</button>`
+      }
+    </details>`;
+  }
+
+  function pcatHtml() {
     const hidden = new Set(G.catalogHidden || []); // 図鑑から消したパーツ(戻せる)
     return `
       <section class="card g-pcat">
@@ -2785,6 +2886,26 @@
       return renderAll();
     }
     if (t.dataset.mon) return monAction(t.dataset.monId, t.dataset.mon);
+    if (t.dataset.rank === "calc") {
+      t.textContent = "計算しています…";
+      t.disabled = true;
+      openFolds.add("rank");
+      return void setTimeout(() => {
+        rankPlan = computeRankPlan();
+        renderPanel();
+      }, 30);
+    }
+    if (t.dataset.rankApply && rankPlan) {
+      const r = rankPlan.rows.find((x) => x.key === t.dataset.rankApply);
+      if (!r || !confirm("いまのNEWを、この構成に入れ替えますか?")) return;
+      const nx = JSON.parse(JSON.stringify(r.b));
+      nx.name = "ランクA・Sの構成";
+      G.builds.next = nx;
+      G.active = "next";
+      changed();
+      renderAll();
+      return refresh3D();
+    }
     if (t.dataset.catDel || t.dataset.catRestore) {
       const id = t.dataset.catDel || t.dataset.catRestore;
       const it = Catalog.byId(id);

@@ -1439,3 +1439,24 @@ div.mx-cell.mx-alt.same { opacity: 0.45; }
 .g-pc-del { margin-left: auto; background: none; border: 0; cursor: pointer; font-size: 0.95rem; opacity: 0.55; padding: 4px; }
 .g-pc-del:hover { opacity: 1; }
 .g-pc-hidden { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(127, 127, 127, 0.22); }
+
+/* 性能の7角形グラフ */
+.ac-radar-wrap { display: flex; justify-content: center; padding: 4px 6px 0; }
+.ac-radar { width: 100%; max-width: 520px; height: auto; overflow: visible; font-family: "Rajdhani", "Hiragino Sans", "Noto Sans JP", sans-serif; }
+.rd-ring { fill: none; stroke: rgba(160, 175, 200, 0.28); stroke-width: 1; }
+.rd-axis { stroke: rgba(160, 175, 200, 0.22); stroke-width: 1; }
+.rd-other { fill: rgba(255, 255, 255, 0.06); stroke: rgba(255, 255, 255, 0.75); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.rd-me { fill: rgba(255, 138, 31, 0.3); stroke: #ff8a1f; stroke-width: 2.2; stroke-linejoin: round; }
+.rd-dot { fill: #ffb45c; stroke: #1a1206; stroke-width: 1; }
+.rd-en { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; fill: #9aa6b8; }
+.rd-val { font-size: 12.5px; font-weight: 800; fill: currentColor; }
+.rd-val .up { fill: #3dcc7a; font-size: 10.5px; } .rd-val .down { fill: #ff6b6b; font-size: 10.5px; }
+.rd-ja { font-size: 9px; fill: #8a94a6; }
+.rd-key { display: inline-block; width: 16px; height: 0; margin: 0 4px 3px 8px; border-top: 3px solid #ff8a1f; vertical-align: middle; }
+.rd-key.other { border-top: 2px dashed rgba(255, 255, 255, 0.75); }
+.g-vs { text-align: center; }
+
+/* ランクA・Sの構成 */
+.g-ranktab td small, .g-ranktab th small { display: block; font-weight: 400; font-size: 0.68rem; opacity: 0.7; }
+.g-ranktab .good { color: #3dcc7a; }
+.g-rank-set ul { margin: 2px 0 6px; padding-left: 1.2em; font-size: 0.82rem; line-height: 1.6; }
