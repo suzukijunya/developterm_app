@@ -153,14 +153,14 @@
   const ALT_PLANS = [
     {
       key: "alt",
-      id: "alt-2026-11-18",
+      id: "alt-2026-11-19",
       chip: "乗り換え",
       short: "TCR PRO",
       title: "乗り換え: TCR ADVANCED PRO DISC(中古)",
       price: [250000, 350000],
       parts: {
-        frame: ["GIANT TCR ADVANCED PRO DISC フレーム", 900, { aero: "round" }],
-        fork: ["TCR ADVANCED PRO DISC フォーク", 370],
+        frame: ["GIANT TCR ADVANCED PRO DISC フレーム(カーボン)", 900, { aero: "round" }],
+        fork: ["TCR ADVANCED PRO DISC フォーク(カーボン)", 370],
         wheels: ["GIANT SLR 1 42 DISC(カーボン)", 1470, { rimFront: 42, rimRear: 42, discRear: false }],
         groupset: ["105 R7020 油圧ディスク 2×11", 2800],
         handlebar: ["GIANT CONTACT SL ハンドル", 250],
@@ -170,20 +170,68 @@
     },
     {
       key: "alt2",
-      id: "alt2-2026-11-18",
+      id: "alt2-2026-11-19",
       chip: "乗り換え SL",
       short: "TCR SL",
       title: "乗り換え: TCR ADVANCED SL DISC(中古)",
       price: [450000, 700000],
       parts: {
-        frame: ["GIANT TCR ADVANCED SL DISC フレーム+ヘッドセット", 855, { aero: "round" }],
-        fork: ["TCR ADVANCED SL DISC フォーク", 340],
+        frame: ["GIANT TCR ADVANCED SL DISC フレーム(カーボン)", 855, { aero: "round" }],
+        fork: ["TCR ADVANCED SL DISC フォーク(カーボン)", 340],
         wheels: ["CADEX 42 DISC(カーボン)", 1370, { rimFront: 42, rimRear: 42, discRear: false }],
         groupset: ["ULTEGRA Di2 R8170 油圧ディスク 2×12", 2550],
         handlebar: ["GIANT CONTACT SLR ハンドル", 220],
         stem: ["GIANT CONTACT SLR ステム", 120],
         seatpost: ["TCR SL 専用 シートポスト", 140],
       },
+    },
+    // ランクAに届く構成: 乗り換えSLをもとに、乗り心地と丈夫さの点が上がるパーツに替える
+    {
+      key: "rankA",
+      id: "rankA-2026-11-19",
+      chip: "ランクA",
+      short: "RANK A",
+      fixed: true,
+      title: "ランクA構成: TCR SL+チューブレス28C",
+      price: [520000, 780000],
+      parts: {
+        frame: ["GIANT TCR ADVANCED SL DISC フレーム(カーボン)", 855, { aero: "round" }],
+        fork: ["TCR ADVANCED SL DISC フォーク(カーボン)", 340],
+        wheels: ["CADEX 42 DISC(カーボン)", 1370, { rimFront: 42, rimRear: 42, discRear: false }],
+        tires: ["Panaracer AGILEST DURO TLR 28C チューブレス ×2", 660, { width: 28 }],
+        tubes: ["シーラント(チューブレス)", 80],
+        groupset: ["ULTEGRA Di2 R8170 油圧ディスク 2×12", 2550],
+        handlebar: ["GIANT CONTACT SLR ハンドル(カーボン)", 220],
+        stem: ["GIANT CONTACT SLR ステム", 120],
+        seatpost: ["TCR SL 専用 シートポスト(カーボン)", 140],
+        bartape: ["厚手バーテープ", 80],
+      },
+      items: ["s-power-expert", "d-me700"],
+    },
+    // ランクSをねらう構成: 実在するパーツでいちばん点が高かった組み合わせ(超軽量フレーム+軽量ホイール+丈夫なチューブレス)
+    {
+      key: "rankS",
+      id: "rankS-2026-11-19",
+      chip: "ランクS",
+      short: "RANK S",
+      fixed: true,
+      title: "ランクS構成: S-WORKS Aethos 6.5kg",
+      price: [1800000, 2300000],
+      parts: {
+        frame: ["S-WORKS Aethos フレーム(カーボン)", 585, { aero: "round" }],
+        fork: ["S-WORKS Aethos フォーク(カーボン)", 270],
+        wheels: ["Lightweight Obermayer EVO(カーボン 48mm)", 1200, { rimFront: 48, rimRear: 48, discRear: false }],
+        tires: ["Panaracer AGILEST DURO TLR 28C チューブレス ×2", 660, { width: 28 }],
+        tubes: ["シーラント(チューブレス)", 80],
+        groupset: ["DURA-ACE Di2 R9270 油圧ディスク 2×12", 2440],
+        handlebar: ["カーボン 一体型エアロハンドル", 320, { type: "integrated" }],
+        stem: ["一体型ハンドルに含む", 0],
+        seatpost: ["RITCHEY WCS Carbon Link FlexLogic", 190],
+        bartape: ["厚手バーテープ", 80],
+        cages: ["カーボンケージ1個+ボトル1本", 25, { bottles: 1 }],
+        accessories: ["なし(ライト・サイコンを外す)", 0],
+      },
+      items: ["s-power-expert", "d-me700"],
     },
   ];
   const altKeys = () => ALT_PLANS.map((x) => x.key).filter((k) => G.builds[k]);
@@ -197,6 +245,10 @@
       alt.name = pl.title;
       alt.geo = Object.assign({}, Fit.DEFAULT_GEO); // ロードバイクの形
       for (const [slot, [name, g, attrs]] of Object.entries(pl.parts)) alt.parts[slot] = { name, g, mounted: true, attrs: Object.assign({}, (alt.parts[slot] || {}).attrs || {}, attrs || {}) };
+      for (const id of pl.items || []) {
+        const it = Catalog.byId(id);
+        if (it) Catalog.apply(alt, it);
+      }
       G.builds[pl.key] = alt;
       G.altPlans[pl.key] = pl.id;
       changedAny = true;
@@ -211,7 +263,7 @@
   }
 
   const save = () => Store.setGarage(G);
-  const other = () => (G.active === "current" ? "next" : /^alt/.test(G.active) ? "next" : "current");
+  const other = () => (G.active === "current" ? "next" : G.active === "next" ? "current" : "current");
   const B = (k = G.active) => G.builds[k];
 
   function input(k, extraPos) {
@@ -416,7 +468,16 @@
   }
 
   // ---------- アセンブル(性能のバー) ----------
-  const statsOf = (b) => Stats.compute(b, calcBuild(b));
+  // 同じ構成を何度も計算しないように、結果を覚えておく
+  const statsMemo = new Map();
+  const statsOf = (b) => {
+    const key = JSON.stringify([b.parts, b.pos, b.geo, G.body, G.measured && G.measured.offset]);
+    if (!statsMemo.has(key)) {
+      if (statsMemo.size > 40) statsMemo.clear();
+      statsMemo.set(key, Stats.compute(b, calcBuild(b)));
+    }
+    return statsMemo.get(key);
+  };
   // 生の値の差を、単位つきで(重さは g、ほかは表示の単位)
   function rawDelta(k, d) {
     if (k === "weight") return `${d > 0 ? "+" : "−"}${Math.abs(Math.round(d * 1000))}g`;
@@ -468,7 +529,18 @@
         <div class="ac-total"><small>TOTAL SCORE</small><b>${a.total}</b>${dt ? `<em class="${dt > 0 ? "up" : "down"}">${dt > 0 ? "▲" : "▼"}${Math.abs(dt)}</em>` : ""}</div>
         <div class="ac-cost"><small>PARTS VALUE</small><b>${a.value ? Catalog.yen(a.value) : "—"}</b></div>
       </div>
-      <div class="ac-radar-wrap">${radarSvg(a, o)}</div>
+      <div class="ac-radar-wrap">${radarSvg(a, o)}
+        <div class="ac-side">
+          <small class="ac-side-h">構成のランク(押すと切り替え)</small>
+          ${["current", "next", ...altKeys()].map((k) => {
+            const st = k === G.active ? a : statsOf(G.builds[k]);
+            const pl = ALT_PLANS.find((x) => x.key === k);
+            const label = k === "current" ? "装着済み" : k === "next" ? "NEW" : pl.chip;
+            return `<button class="ac-b ${k === G.active ? "on" : ""}" data-build="${k}"><i class="rank-${st.rank}">${st.rank}</i><span>${label}<small>${esc(G.builds[k].name)}</small></span><b>${st.total}</b><em>${(bikeGrams(G.builds[k]) / 1000).toFixed(2)}kg</em></button>`;
+          }).join("")}
+          <p class="ac-side-n">${a.total >= 800 ? "ランクSです" : a.total >= 680 ? `ランクSまで あと${800 - a.total}点` : `ランクAまで あと${680 - a.total}点・Sまで あと${800 - a.total}点`}<br />体重${G.body.weight}kgで計算。A: 680点〜 / S: 800点〜</p>
+        </div>
+      </div>
       <p class="g-vs"><i class="rd-key me"></i>選んでいる構成 <i class="rd-key other"></i>${name}(差はこれと比べた値)</p>`;
   }
 
@@ -2404,7 +2476,8 @@
       return null;
     };
     const rows = ["current", ...altKeys()].map((key) => {
-      const { b, picks } = best(key);
+      const pl = ALT_PLANS.find((x) => x.key === key);
+      const { b, picks } = pl && pl.fixed ? { b: G.builds[key], picks: [] } : best(key);
       const now = score(b, W0);
       return { key, b, picks, now: now.total, rank: now.rank, kg: bikeGrams(b) / 1000, a: need(b, 680), s: need(b, 800), floor: score(b, minW).total };
     });
@@ -2412,7 +2485,10 @@
   }
   function rankHtml() {
     const p = rankPlan;
-    const label = (k) => (k === "current" ? "R3延命(いまのバイク+パーツ)" : (ALT_PLANS.find((x) => x.key === k) || {}).short + " に乗り換え+パーツ");
+    const label = (k) => {
+      const pl = ALT_PLANS.find((x) => x.key === k);
+      return k === "current" ? "R3延命(いまのバイク+パーツ)" : pl.fixed ? pl.title : pl.short + " に乗り換え+パーツ";
+    };
     const wtxt = (w, r) => (w == null ? `<span class="muted">届かない<small>${p.minW}kgでも${r.floor}点</small></span>` : w >= Math.floor(p.at) ? `<b class="good">いまの体重で届く</b>` : `<b>${w}kg</b><small>あと−${(p.at - w).toFixed(0)}kg</small>`);
     return `<details class="card g-fold-card g-tools g-rank" data-fold="rank" ${openFolds.has("rank") ? "open" : ""}><summary>🏅 ランクA・Sの構成<small>いちばん点が上がるパーツの組み合わせと、必要な体重</small></summary>
       ${
@@ -2422,7 +2498,7 @@
           ${p.rows.map((r) => `<tr><td>${esc(label(r.key))}<small>${r.kg.toFixed(2)}kg</small></td><td><b>${r.now}点</b><small>ランク${r.rank}</small></td><td>${wtxt(r.a, r)}</td><td>${wtxt(r.s, r)}</td></tr>`).join("")}
         </table>
         ${p.rows.map((r) => `<div class="g-rank-set"><p class="g-sub">${esc(label(r.key))}のパーツ</p>
-          ${r.picks.length ? `<ul>${r.picks.map((it) => `<li>${esc(Parts.slotName(it.slot))}: <b>${esc(it.name)}</b></li>`).join("")}</ul>` : `<p class="muted small">替えて点が上がるパーツはありません。</p>`}
+          ${(ALT_PLANS.find((x) => x.key === r.key) || {}).fixed ? `<p class="muted small">3Dの左上で「${esc(ALT_PLANS.find((x) => x.key === r.key).chip)}」を選ぶと、パーツの一覧を見られます。</p>` : r.picks.length ? `<ul>${r.picks.map((it) => `<li>${esc(Parts.slotName(it.slot))}: <b>${esc(it.name)}</b></li>`).join("")}</ul>` : `<p class="muted small">替えて点が上がるパーツはありません。</p>`}
           ${r.key === "current" && r.picks.length ? `<button class="btn sub" data-rank-apply="current">この構成をNEWに入れる</button>` : ""}</div>`).join("")}
         <p class="muted small">図鑑に載っているパーツの中での組み合わせです(図鑑から消したパーツは使いません)。体重は ${p.minW}kg(BMI 20)より下は出していません。ポジションは今のままで計算しています。</p>
         <button class="link" data-rank="calc">計算し直す</button>`

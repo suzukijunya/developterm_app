@@ -1422,7 +1422,7 @@ body.ms-open {
 .mx-alt { display: none; }
 .mx-alt-note { display: block; }
 div.mx-cell.mx-alt.same { opacity: 0.45; }
-@media (min-width: 1100px) {
+@media (min-width: 1500px) {
   .mx-grid.has-alt { grid-template-columns: 58px repeat(calc(2 + var(--alt)), minmax(0, 1fr)); }
   .mx-grid.has-alt .mx-cell.mx-alt { display: grid; }
   .mx-grid.has-alt span.mx-col.mx-alt { display: block; }
@@ -1460,3 +1460,36 @@ div.mx-cell.mx-alt.same { opacity: 0.45; }
 .g-ranktab td small, .g-ranktab th small { display: block; font-weight: 400; font-size: 0.68rem; opacity: 0.7; }
 .g-ranktab .good { color: #3dcc7a; }
 .g-rank-set ul { margin: 2px 0 6px; padding-left: 1.2em; font-size: 0.82rem; line-height: 1.6; }
+
+.g-cmp { overflow-x: auto; }
+.g-compare3 { min-width: 100%; }
+.g-compare3 th, .g-compare3 td { white-space: nowrap; }
+.mx-grid.has-alt .mx-cell.mx-alt .mx-name { font-size: 0.7rem; }
+/* 構成のボタンは1段に(多いときは横にスクロール)。吹き出しより手前に */
+.g-builds { right: 10px; flex-wrap: nowrap; overflow-x: auto; z-index: 4; scrollbar-width: none; }
+.g-builds::-webkit-scrollbar { display: none; }
+.g-builds .g-chip { flex: 0 0 auto; }
+.g-builds .g-chip small { display: block; max-width: 96px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* 7角形の右: 全構成のランク一覧 */
+.ac-radar-wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 18px; }
+.ac-radar-wrap .ac-radar { flex: 1 1 340px; }
+.ac-side { flex: 1 1 280px; max-width: 460px; display: flex; flex-direction: column; gap: 4px; padding: 4px 0 8px; }
+.ac-side-h { font-size: 0.68rem; letter-spacing: 0.08em; color: #8a94a6; }
+.ac-b { display: grid; grid-template-columns: 30px 1fr auto auto; align-items: center; gap: 10px; padding: 6px 10px; border: 1px solid rgba(160, 175, 200, 0.22); background: rgba(255, 255, 255, 0.03); color: inherit; text-align: left; cursor: pointer; font: inherit; }
+.ac-b.on { border-color: #ff8a1f; background: rgba(255, 138, 31, 0.12); }
+.ac-b i { font-style: italic; font-weight: 900; font-size: 1.35rem; text-align: center; font-family: "Rajdhani", sans-serif; color: #9aa6b8; }
+.ac-b i.rank-S { color: #ffd23d; text-shadow: 0 0 10px rgba(255, 210, 61, 0.7); } .ac-b i.rank-A { color: #ff8a1f; } .ac-b i.rank-B { color: #4fa8ff; } .ac-b i.rank-C { color: #5fd08a; }
+.ac-b span { min-width: 0; font-weight: 800; font-size: 0.85rem; line-height: 1.15; }
+.ac-b span small { display: block; font-weight: 400; font-size: 0.66rem; opacity: 0.65; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ac-b b { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.ac-b em { font-style: normal; font-size: 0.72rem; opacity: 0.7; font-variant-numeric: tabular-nums; min-width: 4.2em; text-align: right; }
+.ac-side-n { margin: 4px 0 0; font-size: 0.7rem; color: #9aa6b8; line-height: 1.5; }
+.ac-side { min-width: 0; flex: 0 1 400px; }
+.ac-b { grid-template-columns: 30px minmax(0, 1fr) auto auto; }
+@media (min-width: 1500px) {
+  .ac-radar-wrap { flex-wrap: nowrap; justify-content: space-evenly; }
+  .ac-radar-wrap .ac-radar { flex: 0 1 480px; }
+}
+.g-summary > .ac-radar-wrap { flex-direction: row; align-items: center; }
+.g-summary .ac-b span { font-size: 0.85rem; color: inherit; font-weight: 800; }
