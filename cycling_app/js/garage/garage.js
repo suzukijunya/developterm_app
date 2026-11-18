@@ -686,6 +686,7 @@
       ["parts", "🧰 パーツ"],
       ["fit", "🧍 フィッティング"],
       ["mon", "🐉 モンスター"],
+      ["yt", "📺 動画"],
     ];
     document.getElementById("tabs").innerHTML = T.map(([id, label]) => `<button class="g-tab ${tab === id ? "on" : ""}" data-tab="${id}">${label}</button>`).join("");
   }
@@ -1143,6 +1144,83 @@
 
   // ---------- いまの設計思想とトレンド(チャットでまとめた内容。ガレージの上に出す) ----------
   const TREND_KEY = "cycling_trend_open";
+  // ---------- 📺 動画: YouTube で伸びているロードバイクの動画 ----------
+  const YTV = "cycling_yt_view";
+  const ytView = () => {
+    try {
+      return Object.assign({ span: 30, shorts: true, sort: "perDay" }, JSON.parse(localStorage.getItem(YTV) || "{}"));
+    } catch (e) {
+      return { span: 30, shorts: true, sort: "perDay" };
+    }
+  };
+  const nfmt = (n) => (n >= 1e4 ? (n / 1e4).toFixed(n >= 1e5 ? 0 : 1) + "万" : n.toLocaleString());
+  function ytHtml() {
+    if (typeof YT === "undefined") return "";
+    const v = ytView(), c = YT.cached(), k = YT.key();
+    const keyForm = `<details class="card yt-key" ${k ? "" : "open"}><summary>YouTube の APIキー${k ? "(設定済み)" : ""}</summary>
+      <p class="muted small">Google Cloud でプロジェクトを作り、「YouTube Data API v3」を有効にして APIキーを作ります(無料。1日の上限の範囲で使います)。キーは「HTTPリファラー」で suzukijunya.github.io に制限しておくと安全です。キーはこの端末にだけ保存し、同期しません。</p>
+      <div class="g-plan-btns"><input type="password" id="yt-key" placeholder="AIza..." autocomplete="off" style="flex:1;min-width:200px" /><button class="btn sub" id="yt-key-save" type="button">保存して探す</button>${k ? '<button class="link" id="yt-key-del" type="button">キーを消す</button>' : ""}</div>
+    </details>`;
+    if (!k) return `<section class="card"><h2>📺 伸びているロードバイク動画</h2><p class="muted small">アプリを開いたとき(同期でログインしている状態)に、YouTube で最近いちばん再生が伸びているロードバイクの動画を探し直して、ここに並べます。</p></section>` + keyForm;
+    let items = (c && c.items) || [];
+    const now = Date.now();
+    items = items.filter((x) => now - x.pub <= v.span * 864e5 && (v.shorts || x.sec > 60));
+    items.sort((a, b) => (v.sort === "views" ? b.views - a.views : b.perDay - a.perDay));
+    const age = c && c.t ? Math.round((now - c.t) / 60000) : null;
+    const chip = (key, val, label) => `<button class="chip ${v[key] === val ? "on" : ""}" data-ytv="${key}" data-val="${val}" type="button">${label}</button>`;
+    return `<section class="card yt">
+      <h2>📺 伸びているロードバイク動画</h2>
+      <div class="yt-bar">${chip("span", 7, "今週")}${chip("span", 30, "今月")}<span class="yt-sep"></span>${chip("sort", "perDay", "伸び(1日あたり)")}${chip("sort", "views", "再生回数")}<span class="yt-sep"></span>${chip("shorts", true, "ショートも")}${chip("shorts", false, "ショートなし")}
+        <button class="btn sub yt-re" id="yt-re" type="button" ${YT.busy() ? "disabled" : ""}>${YT.busy() ? "探しています…" : "探し直す"}</button></div>
+      <p class="muted small">${age == null ? "まだ探していません" : `${age < 1 ? "さっき" : age < 60 ? age + "分前に" : Math.round(age / 60) + "時間前に"}探した結果`}・${items.length}本${c && c.error ? ` ・<span class="yt-err">前回は失敗: ${esc(c.error)}</span>` : ""}</p>
+      <div class="yt-list">${items
+        .slice(0, 40)
+        .map(
+          (x, i) => `<a class="yt-item" href="https://www.youtube.com/watch?v=${encodeURIComponent(x.id)}" target="_blank" rel="noopener">
+          <span class="yt-th"><img src="${esc(x.img)}" alt="" loading="lazy" /><em>${x.sec <= 60 ? "ショート" : Math.floor(x.sec / 60) + ":" + String(x.sec % 60).padStart(2, "0")}</em><b>${i + 1}</b></span>
+          <span class="yt-tx"><strong>${esc(x.title)}</strong><small>${esc(x.ch)}</small><span class="yt-st"><b>${nfmt(x.perDay)}回/日</b> ・ ${nfmt(x.views)}回 ・ ${Math.max(1, Math.round((now - x.pub) / 864e5))}日前</span></span></a>`
+        )
+        .join("")}</div>
+    </section>` + keyForm;
+  }
+  function bindYt(panel) {
+    const save = (patch) => {
+      try {
+        localStorage.setItem(YTV, JSON.stringify(Object.assign(ytView(), patch)));
+      } catch (e) {}
+      renderPanel();
+    };
+    panel.querySelectorAll("[data-ytv]").forEach((b) =>
+      b.addEventListener("click", () => {
+        const k = b.dataset.ytv, raw = b.dataset.val;
+        save({ [k]: k === "span" ? +raw : k === "shorts" ? raw === "true" : raw });
+      })
+    );
+    const re = panel.querySelector("#yt-re");
+    if (re) re.addEventListener("click", () => (YT.refresh(true), renderPanel()));
+    const ks = panel.querySelector("#yt-key-save");
+    if (ks)
+      ks.addEventListener("click", () => {
+        const v = panel.querySelector("#yt-key").value.trim();
+        if (!v) return;
+        YT.setKey(v);
+        YT.refresh(true);
+        renderPanel();
+      });
+    const kd = panel.querySelector("#yt-key-del");
+    if (kd) kd.addEventListener("click", () => (YT.setKey(""), renderPanel()));
+  }
+  if (typeof YT !== "undefined") {
+    YT.on(() => tab === "yt" && renderPanel());
+    YT.onOpen();
+  }
+
+  // リム/ディスクの計算に渡す値(NEWのパーツ代、乗り換えの中古の値段、走りの点)
+  function decideCtx() {
+    const alt = ALT_PLANS.find((x) => x.key === "alt");
+    const sc = (k) => (G.builds[k] ? statsOf(G.builds[k]).total : null);
+    return { rimUp: Math.round(upTotal("next") / 1000) * 1000 || 79000, discPrice: alt ? Math.round((alt.price[0] + alt.price[1]) / 2 / 10000) * 10000 : 300000, scores: { next: sc("next"), alt: sc("alt") } };
+  }
   function trendHtml() {
     let open = true;
     try {
@@ -1169,6 +1247,7 @@
         <li><b>R3延命プラン</b>: リムブレーキのパーツは中古の安いものだけで仕上げる。NEWに入れたデュラエースC24も、中古4〜7万円で買う前提。</li>
         <li><b>乗り換えプラン</b>: 中古のディスクロード(TCRなど)と比べる。R3にかける総額と、乗り換えの総額を並べて判断する。</li>
       </ol>
+      ${typeof Decide !== "undefined" ? Decide.html(decideCtx()) : ""}
     </details>`;
   }
 
@@ -2888,11 +2967,13 @@
 
   function renderPanel() {
     const panel = document.getElementById("panel");
-    panel.innerHTML = (tab === "mon" ? "" : trendHtml()) + (tab === "fit" ? fitPanel() : tab === "mon" ? monstersHtml() : partsPanel());
+    panel.innerHTML = (tab === "mon" || tab === "yt" ? "" : trendHtml()) + (tab === "fit" ? fitPanel() : tab === "mon" ? monstersHtml() : tab === "yt" ? ytHtml() : partsPanel());
+    if (tab === "yt") bindYt(panel);
     if (tab === "aero") drawSilhouette();
     if (tab === "parts") loadPhotos();
     renderPartCard();
     fillProdImgs();
+    if (typeof Decide !== "undefined") Decide.mount(panel, decideCtx(), renderPanel);
     if (typeof Sync !== "undefined" && tab === "parts") {
       panel.insertAdjacentHTML("beforeend", Sync.panelHtml());
       Sync.bindPanel(panel, renderPanel);
