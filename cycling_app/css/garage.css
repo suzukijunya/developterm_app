@@ -1597,3 +1597,8 @@ button.mx-cell.mx-alt { cursor: pointer; text-align: left; font: inherit; color:
 /* 次にカスタムすべきパーツ */
 .mx-cell.mx-pick { position: relative; border: 2px solid #ff3b3b !important; box-shadow: 0 0 0 1px rgba(255, 59, 59, 0.35), 0 0 14px rgba(255, 59, 59, 0.35); padding-bottom: 22px; }
 .mx-pick-tag { position: absolute; left: 0; right: 0; bottom: 0; padding: 2px 6px; font-style: normal; font-size: 0.66rem; font-weight: 800; color: #fff; background: #d92b2b; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 2番目=ピンク、3番目=黄色 */
+.mx-cell.mx-pick2 { border-color: #ff5fb4 !important; box-shadow: 0 0 0 1px rgba(255, 95, 180, 0.35), 0 0 14px rgba(255, 95, 180, 0.35); }
+.mx-pick2 .mx-pick-tag { background: #d63d8f; }
+.mx-cell.mx-pick3 { border-color: #ffd23d !important; box-shadow: 0 0 0 1px rgba(255, 210, 61, 0.35), 0 0 14px rgba(255, 210, 61, 0.3); }
+.mx-pick3 .mx-pick-tag { background: #e0b100; color: #1a1400; }

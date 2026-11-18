@@ -820,31 +820,53 @@
   }
 
   // 次にカスタムすべきパーツ: NEW で替える部位のうち、1つだけ替えたときの「総合点の上がり ÷ 値段」がいちばん大きいもの
-  function nextPick() {
+  // カスタムする順番(上位3つ): NEW で替える部位を1つずつ付けて「総合点の上がり ÷ 中古の値段」が大きい順。
+  // NEW の変更が3つに足りなければ、図鑑のパーツから同じ基準で足す(その部位の NEW のマスに「候補」として出す)
+  function pickRank() {
     const cur = G.builds.current, nx = G.builds.next;
-    if (!cur || !nx) return null;
+    if (!cur || !nx) return [];
     const base = statsOf(cur).total;
-    let best = null;
+    const out = [];
+    const score = (t, yen) => {
+      const gain = statsOf(t).total - base, w = (bikeGrams(cur) - bikeGrams(t)) / 1000;
+      return { gain, w, yen, val: (gain + w * 2) / Math.max(1000, yen) };
+    };
     for (const sl of Parts.SLOTS) {
-      const id = sl.id === "fork" ? null : sl.id;
-      if (!id) continue;
-      const ids = id === "frame" ? ["frame", "fork"] : [id];
+      if (sl.id === "fork") continue;
+      const ids = sl.id === "frame" ? ["frame", "fork"] : [sl.id];
       if (ids.every((k) => JSON.stringify(cur.parts[k] || {}) === JSON.stringify(nx.parts[k] || {}))) continue;
       const t = JSON.parse(JSON.stringify(cur));
       for (const k of ids) t.parts[k] = JSON.parse(JSON.stringify(nx.parts[k]));
-      const gain = statsOf(t).total - base;
-      const yen = ids.reduce((a, k) => a + ((upCost("next", k) || {}).yen || 0), 0) || 1000;
-      const w = (bikeGrams(cur) - bikeGrams(t)) / 1000;
-      const val = (gain + w * 2) / yen; // 点が同じなら、軽くなる方
-      if (gain > 0 || w > 0) if (!best || val > best.val) best = { slot: id, gain, yen, w, val };
+      const r = score(t, ids.reduce((a, k) => a + ((upCost("next", k) || {}).yen || 0), 0));
+      if (r.gain > 0 || r.w > 0) out.push(Object.assign({ slot: sl.id }, r));
     }
-    return best;
+    out.sort((a, b) => b.val - a.val);
+    if (out.length < 3) {
+      const hid = new Set(G.catalogHidden || []), used = new Set(out.map((x) => x.slot));
+      const cand = [];
+      for (const it of Catalog.ITEMS) {
+        if (hid.has(it.id) || used.has(it.slot) || Catalog.installed(cur, it) || Catalog.installed(nx, it)) continue;
+        const t = JSON.parse(JSON.stringify(cur));
+        Catalog.apply(t, it);
+        const r = score(t, Catalog.cost(it));
+        if (r.gain > 0 || r.w > 0) cand.push(Object.assign({ slot: it.slot, item: it }, r));
+      }
+      cand.sort((a, b) => b.val - a.val);
+      for (const c of cand) {
+        if (out.length >= 3) break;
+        if (out.some((x) => x.slot === c.slot)) continue;
+        out.push(c);
+      }
+    }
+    return out.slice(0, 3);
   }
+  const nextPick = () => pickRank()[0] || null;
 
   function matrixHtml() {
     const kg = (k) => kgTxt(bikeGrams(G.builds[k]) / 1000);
     const alts = altKeys();
-    const pick = nextPick();
+    const ranks = pickRank();
+    const RK = [["mx-pick", "次はこれ"], ["mx-pick2", "その次"], ["mx-pick3", "3番目"]];
     // 乗り換えプランの列(見るだけ。装着済みとの重さの差を出す)
     const altCell = (slotId, k) => {
       const p = G.builds[k].parts[slotId] || { name: "(なし)", g: 0 };
@@ -866,7 +888,14 @@
             .map((sl) => {
               const nextCell = sl.id === "frame" ? frameSetCell("next") : cellHtml(sl.id, "next");
               // 次にカスタムすべき部位は、NEW のマスを赤で囲む
-              const mark = pick && pick.slot === sl.id ? nextCell.replace('class="mx-cell', 'class="mx-cell mx-pick').replace("</button>", `<i class="mx-pick-tag" title="NEWで替えるパーツのうち、お金あたりの上がり方がいちばん大きい">次はこれ +${pick.gain}点</i></button>`) : nextCell;
+              // 次にカスタムすべき順: 1番=赤、2番=ピンク、3番=黄色の枠
+              const ri = ranks.findIndex((x) => x.slot === sl.id || (sl.id === "frame" && x.slot === "fork"));
+              const pk = ranks[ri];
+              const mark = pk
+                ? nextCell
+                    .replace('class="mx-cell', `class="mx-cell mx-pick ${RK[ri][0]}`)
+                    .replace("</button>", `<i class="mx-pick-tag" title="お金あたりの上がり方の順">${RK[ri][1]}${pk.item ? ": " + esc(pk.item.short || pk.item.name) : ""} +${pk.gain}点</i></button>`)
+                : nextCell;
               return sl.id === "frame"
                 ? `<span class="mx-slot">${sl.icon}<small>フレームセット</small></span>${frameSetCell("current")}${mark}${alts.map((k) => frameSetCell(k, true)).join("")}`
                 : `<span class="mx-slot">${sl.icon}<small>${sl.name}</small></span>${cellHtml(sl.id, "current")}${mark}${alts.map((k) => altCell(sl.id, k)).join("")}`;
