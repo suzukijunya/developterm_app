@@ -90,10 +90,11 @@
     //   ・カセット CS-6700: 一覧は310g → 公称 11-28 で242g(12-25 は238g)
     //   ・ワイヤー・アウター一式: 一覧になかったので足した(目安120g)
     // フレームとフォーク(一覧では推定 1,850g + 1,050g)は、実測の合計から残りを分けて出す
-    id: "shop-list-2026-11-19",
+    id: "shop-list-2026-11-19b",
     parts: {
       wheels: { name: "軽量ホイール Mavic Aksium 前後", components: [["軽量フロントホイール Mavic Aksium", 845], ["軽量リアホイール Mavic Aksium", 995], ["クイックリリース(エスケープR3純正)", 150]] },
-      tires: { name: "Panaracer Agilest 25c 前後", components: [["Panaracer Agilest 25c 前後", 440]], attrs: { width: 25 } },
+      // 一覧は440g。Panaracer 公式の表では AGILEST 700×25C は1本190g(DURO は220g)なので、公式の値にする。図鑑の同じタイヤとして扱う
+      tires: { name: "Panaracer Agilest 25c 前後", components: [["Panaracer Agilest 25c 前後(公称190g×2)", 380]], attrs: { width: 25 }, shopId: "t-agilest25" },
       tubes: { name: "TPUチューブ 前後", components: [["TPUチューブ 前後(40g×2想定)", 80]] },
       groupset: {
         name: "105(ST-5700 / RD-5701)+ULTEGRA CS-6700+フロントシングル",
@@ -134,6 +135,9 @@
       delete cur.parts[slot].shop;
       delete cur.parts[slot].shopDeltas;
       delete cur.parts[slot].libId;
+      // 図鑑と同じパーツなら、つなげておく(NEW で同じものを「付け替え」にしないように)
+      const it = d.shopId && Catalog.byId(d.shopId);
+      if (it) cur.parts[slot].shop = { id: it.id, price: it.price, used: it.used };
     }
     // 残り(実測 − ほかの部位。ライト・サイコンは量るときに外したので除く)を、フレームとフォークに分ける
     const others = Parts.SLOTS.filter((x) => x.id !== "frame" && x.id !== "fork" && x.id !== "accessories").reduce((a, x) => a + (cur.parts[x.id] && cur.parts[x.id].mounted !== false ? +cur.parts[x.id].g || 0 : 0), 0);
