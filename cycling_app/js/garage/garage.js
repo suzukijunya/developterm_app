@@ -819,9 +819,32 @@
     </button>`;
   }
 
+  // 次にカスタムすべきパーツ: NEW で替える部位のうち、1つだけ替えたときの「総合点の上がり ÷ 値段」がいちばん大きいもの
+  function nextPick() {
+    const cur = G.builds.current, nx = G.builds.next;
+    if (!cur || !nx) return null;
+    const base = statsOf(cur).total;
+    let best = null;
+    for (const sl of Parts.SLOTS) {
+      const id = sl.id === "fork" ? null : sl.id;
+      if (!id) continue;
+      const ids = id === "frame" ? ["frame", "fork"] : [id];
+      if (ids.every((k) => JSON.stringify(cur.parts[k] || {}) === JSON.stringify(nx.parts[k] || {}))) continue;
+      const t = JSON.parse(JSON.stringify(cur));
+      for (const k of ids) t.parts[k] = JSON.parse(JSON.stringify(nx.parts[k]));
+      const gain = statsOf(t).total - base;
+      const yen = ids.reduce((a, k) => a + ((upCost("next", k) || {}).yen || 0), 0) || 1000;
+      const w = (bikeGrams(cur) - bikeGrams(t)) / 1000;
+      const val = (gain + w * 2) / yen; // 点が同じなら、軽くなる方
+      if (gain > 0 || w > 0) if (!best || val > best.val) best = { slot: id, gain, yen, w, val };
+    }
+    return best;
+  }
+
   function matrixHtml() {
     const kg = (k) => kgTxt(bikeGrams(G.builds[k]) / 1000);
     const alts = altKeys();
+    const pick = nextPick();
     // 乗り換えプランの列(見るだけ。装着済みとの重さの差を出す)
     const altCell = (slotId, k) => {
       const p = G.builds[k].parts[slotId] || { name: "(なし)", g: 0 };
@@ -834,24 +857,27 @@
       <section class="card g-mx">
         <h2>アセンブル表</h2>
         <p class="muted small">マスをタップすると、その部位を付け替えられます(付けていないマイパーツやおすすめから選べます)。</p>
-        <div class="mx-grid ${alts.length ? "has-alt" : ""}" style="--alt:${alts.length}">
+        <div class="mx-scroll"><div class="mx-grid ${alts.length ? "has-alt" : ""}" style="--alt:${alts.length}">
           <span class="mx-corner"></span>
           <span class="mx-col ${G.active === "current" ? "on" : ""}">装着済み<small>${kg("current")}</small></span>
           <span class="mx-col ${G.active === "next" ? "on" : ""}">NEW<small>${kg("next")}</small></span>
           ${alts.map((k) => `<span class="mx-col mx-alt ${G.active === k ? "on" : ""}">${esc(ALT_PLANS.find((x) => x.key === k).short)}<small>${kg(k)}</small></span>`).join("")}
           ${Parts.SLOTS.filter((sl) => sl.id !== "fork")
-            .map((sl) =>
-              sl.id === "frame"
-                ? `<span class="mx-slot">${sl.icon}<small>フレームセット</small></span>${frameSetCell("current")}${frameSetCell("next")}${alts.map((k) => frameSetCell(k, true)).join("")}`
-                : `<span class="mx-slot">${sl.icon}<small>${sl.name}</small></span>${cellHtml(sl.id, "current")}${cellHtml(sl.id, "next")}${alts.map((k) => altCell(sl.id, k)).join("")}`
-            )
+            .map((sl) => {
+              const nextCell = sl.id === "frame" ? frameSetCell("next") : cellHtml(sl.id, "next");
+              // 次にカスタムすべき部位は、NEW のマスを赤で囲む
+              const mark = pick && pick.slot === sl.id ? nextCell.replace('class="mx-cell', 'class="mx-cell mx-pick').replace("</button>", `<i class="mx-pick-tag" title="NEWで替えるパーツのうち、お金あたりの上がり方がいちばん大きい">次はこれ +${pick.gain}点</i></button>`) : nextCell;
+              return sl.id === "frame"
+                ? `<span class="mx-slot">${sl.icon}<small>フレームセット</small></span>${frameSetCell("current")}${mark}${alts.map((k) => frameSetCell(k, true)).join("")}`
+                : `<span class="mx-slot">${sl.icon}<small>${sl.name}</small></span>${cellHtml(sl.id, "current")}${mark}${alts.map((k) => altCell(sl.id, k)).join("")}`;
+            })
             .join("")}
           <span class="mx-slot mx-sum-l">💴<small>追加費用</small></span>
           <div class="mx-cell nothumb mx-sum"><span class="mx-name">—</span></div>
           ${["next", ...alts].map((k) => `<div class="mx-cell nothumb mx-sum ${k === "next" ? "" : "mx-alt"} ${G.active === k ? "on" : ""}"><span class="mx-name">${Catalog.yen(upTotal(k))}</span><span class="mx-g">装着済みから替える分</span></div>`).join("")}
-        </div>
+        </div></div>
         <p class="muted small">値段は中古の想定(タイヤなどの消耗品は新品)。工賃は入っていません。</p>
-        ${alts.length ? `<p class="muted small mx-alt-note">乗り換えの列は、広い画面で表示します。中身を変えるときは、3Dの左上で「乗り換え」を選んでください。</p>` : ""}
+        ${alts.length ? `<p class="muted small mx-alt-note">← 横にスライドすると、乗り換え・ランクの列も見られます</p>` : ""}
       </section>`;
   }
 
