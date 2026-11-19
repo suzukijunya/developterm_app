@@ -1602,3 +1602,4 @@ button.mx-cell.mx-alt { cursor: pointer; text-align: left; font: inherit; color:
 .mx-pick2 .mx-pick-tag { background: #d63d8f; }
 .mx-cell.mx-pick3 { border-color: #ffd23d !important; box-shadow: 0 0 0 1px rgba(255, 210, 61, 0.35), 0 0 14px rgba(255, 210, 61, 0.3); }
 .mx-pick3 .mx-pick-tag { background: #e0b100; color: #1a1400; }
+.mx-cell.mx-cand { border-style: dashed !important; }

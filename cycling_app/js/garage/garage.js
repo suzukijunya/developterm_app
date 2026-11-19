@@ -864,7 +864,8 @@
       let best = null;
       for (const c of cands) {
         if (out.some((o) => o.slot === c.slot)) continue;
-        if (c.item && out.length + cands.filter((x) => !x.item && !out.includes(x)).length >= 3 && cands.some((x) => !x.item && !out.includes(x))) continue; // NEW の分を先に
+        // NEW で替える分を全部並べてから、図鑑の候補へ
+        if (c.item && cands.some((x) => !x.item && !out.includes(x) && x.ok !== false)) continue;
         const u = JSON.parse(JSON.stringify(t));
         c.apply(u);
         const gain = statsOf(u).total - base, w = (g0 - bikeGrams(u)) / 1000;
@@ -872,13 +873,30 @@
         const val = (gain + w * 2) / Math.max(1000, c.yen);
         if (!best || val > best.val) best = { c, u, gain, w, val };
       }
-      if (!best) break;
+      if (!best) {
+        // NEW の分で効果がないものは外して、図鑑の候補へ
+        let any = false;
+        for (const x of cands) if (!x.item && !out.includes(x) && x.ok !== false) (x.ok = false), (any = true);
+        if (any) continue;
+        break;
+      }
       out.push(Object.assign(best.c, { gain: best.gain, w: best.w }));
       t = best.u;
     }
     return out;
   }
   const nextPick = () => pickRank()[0] || null;
+  // 図鑑からの候補: NEW のマスの代わりに、その候補のパーツ(名前・重さの差・値段)を出す
+  function candCell(pk, slotId) {
+    const it = pk.item, cur = G.builds.current.parts[slotId] || {};
+    const g = it.kind === "swap" ? it.g : Math.max(0, (+cur.g || 0) - it.deltaG);
+    const dg = g - (+cur.g || 0);
+    const yen = Catalog.cost(it);
+    return `<button class="mx-cell nothumb mx-cand diff" data-cell="${slotId}" data-k="next">
+      <span class="mx-name">${esc(it.kind === "swap" ? it.name : (cur.name || "") + " + " + (it.short || it.name))}</span>
+      <span class="mx-g">${g.toLocaleString()} g${dg ? `<em class="${dg < 0 ? "up" : "down"}">${dg < 0 ? "−" : "+"}${Math.abs(dg)}g</em>` : ""}</span>${yenHtml({ yen, isNew: !it.used })}
+    </button>`;
+  }
 
   function matrixHtml() {
     const kg = (k) => kgTxt(bikeGrams(G.builds[k]) / 1000);
@@ -909,10 +927,11 @@
               // 次にカスタムすべき順: 1番=赤、2番=ピンク、3番=黄色の枠
               const ri = ranks.findIndex((x) => x.slot === sl.id || (sl.id === "frame" && x.slot === "fork"));
               const pk = ranks[ri];
+              const base = pk && pk.item ? candCell(pk, sl.id) : nextCell;
               const mark = pk
-                ? nextCell
+                ? base
                     .replace('class="mx-cell', `class="mx-cell mx-pick ${RK[ri][0]}`)
-                    .replace("</button>", `<i class="mx-pick-tag" title="カスタムする順番(1つ付けたら、その状態から次を選ぶ)">${RK[ri][1]}${pk.item ? ": " + esc(pk.item.short || pk.item.name) : ""}</i></button>`)
+                    .replace("</button>", `<i class="mx-pick-tag" title="カスタムする順番(1つ付けたら、その状態から次を選ぶ)">${RK[ri][1]}${pk.item ? "(図鑑の候補)" : ""}</i></button>`)
                 : nextCell;
               return sl.id === "frame"
                 ? `<span class="mx-slot">${sl.icon}<small>フレームセット</small></span>${frameSetCell("current")}${mark}${alts.map((k) => frameSetCell(k, true)).join("")}`
