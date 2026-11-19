@@ -1326,7 +1326,7 @@ body.ms-open {
   }
 }
 @media (min-width: 1500px) {
-  #garage { grid-template-columns: minmax(0, 1fr) minmax(900px, 58vw); }
+  #garage { grid-template-columns: minmax(0, 1fr) minmax(1100px, 72vw); } /* 左の3Dは小さく、表を広く */
   #garage > .g-main { columns: 2; column-gap: 18px; }
   #garage > .g-main > * { break-inside: avoid; }
   #garage > .g-main > .card { display: inline-block; width: 100%; box-sizing: border-box; }
