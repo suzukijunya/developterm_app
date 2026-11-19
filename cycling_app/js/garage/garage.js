@@ -839,8 +839,14 @@
   }
 
   // 次にカスタムすべきパーツ: NEW で替える部位のうち、1つだけ替えたときの「総合点の上がり ÷ 値段」がいちばん大きいもの
+  // 基本設計: 乗り心地より、速さと軽さを重視する。カスタムの順番は、乗り心地・丈夫さの点を数えない
+  const FOCUS = ["weight", "aero", "speed", "climb", "accel"];
+  const focusScore = (b) => {
+    const v = statsOf(b).v;
+    return FOCUS.reduce((a, k) => a + (v[k] ? v[k].bar : 0), 0);
+  };
   // カスタムする順番(3つ): 1つ付けたら、それを付けた状態から次を選ぶ(積み上げ)。
-  // 選び方は「総合点の上がり ÷ 中古の値段」。候補は NEW で替える部位。3つに足りなければ図鑑から足す
+  // 選び方は「速さ・軽さの点の上がり ÷ 中古の値段」。候補は NEW で替える部位。3つに足りなければ図鑑から足す
   function pickRank() {
     const cur = G.builds.current, nx = G.builds.next;
     if (!cur || !nx) return [];
@@ -860,7 +866,7 @@
     const out = [];
     let t = JSON.parse(JSON.stringify(cur));
     while (out.length < 3) {
-      const base = statsOf(t).total, g0 = bikeGrams(t);
+      const base = focusScore(t), g0 = bikeGrams(t);
       let best = null;
       for (const c of cands) {
         if (out.some((o) => o.slot === c.slot)) continue;
@@ -868,8 +874,8 @@
         if (c.item && cands.some((x) => !x.item && !out.includes(x) && x.ok !== false)) continue;
         const u = JSON.parse(JSON.stringify(t));
         c.apply(u);
-        const gain = statsOf(u).total - base, w = (g0 - bikeGrams(u)) / 1000;
-        if (gain <= 0 && w <= 0) continue;
+        const gain = Math.round(focusScore(u) - base), w = (g0 - bikeGrams(u)) / 1000;
+        if (gain <= 0 || w < 0) continue; // 重くなるものは選ばない
         const val = (gain + w * 2) / Math.max(1000, c.yen);
         if (!best || val > best.val) best = { c, u, gain, w, val };
       }
@@ -886,13 +892,29 @@
     return out;
   }
   const nextPick = () => pickRank()[0] || null;
+  // 図鑑の候補のマスを開いたとき: 候補のパーツ(写真・スペック・値段)と「NEWに付ける」
+  function candSheet(id) {
+    const it = Catalog.byId(id);
+    if (!it) return "";
+    const kw = mercariKw(it.name);
+    const url = (st) => `https://jp.mercari.com/search?keyword=${encodeURIComponent(kw)}&status=${st}`;
+    return `<div class="mx-candbox">
+      <small>おすすめの候補(図鑑から)</small>
+      <div class="mx-now"><span data-prod="${it.id}">${prodImg(it)}</span><div><strong>${esc(it.name)}</strong>
+        <small>${it.kind === "swap" ? it.g.toLocaleString() + " g" : "−" + it.deltaG + " g"} ・ ${esc(Catalog.priceText(it))}</small>
+        <small class="muted">${esc(it.note || "")}</small></div></div>
+      ${it.spec ? `<dl class="g-pc-spec">${it.spec.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join("")}</dl>` : ""}
+      <div class="g-plan-btns"><button class="btn start" data-cat-put="${it.id}" type="button">NEWに付ける</button><a class="btn sub" href="${url("sold_out")}" target="_blank" rel="noopener">メルカリの相場</a></div>
+      <p class="muted small">下は、いま NEW に付いているパーツです。</p>
+    </div>`;
+  }
   // 図鑑からの候補: NEW のマスの代わりに、その候補のパーツ(名前・重さの差・値段)を出す
   function candCell(pk, slotId) {
     const it = pk.item, cur = G.builds.current.parts[slotId] || {};
     const g = it.kind === "swap" ? it.g : Math.max(0, (+cur.g || 0) - it.deltaG);
     const dg = g - (+cur.g || 0);
     const yen = Catalog.cost(it);
-    return `<button class="mx-cell nothumb mx-cand diff" data-cell="${slotId}" data-k="next">
+    return `<button class="mx-cell nothumb mx-cand diff" data-cell="${slotId}" data-k="next" data-cand="${it.id}">
       <span class="mx-name">${esc(it.kind === "swap" ? it.name : (cur.name || "") + " + " + (it.short || it.name))}</span>
       <span class="mx-g">${g.toLocaleString()} g${dg ? `<em class="${dg < 0 ? "up" : "down"}">${dg < 0 ? "−" : "+"}${Math.abs(dg)}g</em>` : ""}</span>${yenHtml({ yen, isNew: !it.used })}
     </button>`;
@@ -1021,6 +1043,7 @@
       <div class="mx-sheet" id="mxsheet">
         <div class="mx-panel">
           <div class="mx-top"><strong>${sl.icon} ${sl.name} <small>・ ${k === "current" ? "装着済み" : k === "next" ? "NEW" : esc((ALT_PLANS.find((x) => x.key === k) || {}).chip || "")}</small></strong><button class="mx-x" data-cell-close aria-label="閉じる">×</button></div>
+          ${cell.cand ? candSheet(cell.cand) : ""}
           <div class="mx-now">
             ${it && it.photoId ? photoTag(it.photoId, "mx-thumb big") : `<span class="mx-thumb big empty">${sl.icon}</span>`}
             <div><small>いま付いているパーツ${comps ? `(${comps.length}点・合計)` : ""}</small><strong>${inBar ? "一体型ハンドルに含む" : comps ? "" : esc(p.name)}</strong>
@@ -1058,8 +1081,8 @@
       </div>`;
   }
 
-  function openCell(slot, k) {
-    cell = { slot, k };
+  function openCell(slot, k, cand) {
+    cell = { slot, k, cand: cand || null };
     selected = slot;
     sheetEdit = false;
     const switched = G.active !== k;
@@ -3188,7 +3211,7 @@
       return startDecal();
     }
     // ---- 組み合わせ表 ----
-    if (t.dataset.cell) return openCell(t.dataset.cell, t.dataset.k);
+    if (t.dataset.cell) return openCell(t.dataset.cell, t.dataset.k, t.dataset.cand);
     if (t.hasAttribute("data-cell-close")) {
       cell = null;
       return renderPanel();
