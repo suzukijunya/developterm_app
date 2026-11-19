@@ -909,6 +909,83 @@
     return out;
   }
   const nextPick = () => pickRank()[0] || null;
+  // ---------- コンポ一式の中身: 部品ごとに「どれを何に替えるか」と互換性 ----------
+  // いまの前提: 10速(ST-5700 / RD-5701 / CS-6700)・リムブレーキ(ミニV)・フロントシングル・四角軸BB(BSA 68mm)
+  // 重さ・値段は目安(中古の相場の真ん中)。「1gあたりの値段」が安い順に、カスタムの順番を付ける
+  const GROUP_RECS = [
+    {
+      part: "クランク+BB(+チェーンリング)",
+      now: "四角軸クランク 780g + 純正BB 300g + Pass Quest 115g",
+      to: "SHIMANO 105 FC-5700(クランクだけ使う)+ BB SM-BBR60 + 110BCDのナローワイド歯 1枚",
+      dg: -440, yen: 12000,
+      ok: ["フレームのBBは BSA 68mm(ネジ式)で、SM-BBR60 が付く", "10速のチェーンでそのまま使える", "外側の歯だけ外して、110BCD(5本腕)のシングル用の歯に替える"],
+      warn: ["今の Pass Quest が110BCD用でなければ、歯も買い直し(約¥4,000)", "取り付けはお店で(専用工具が要る)"],
+    },
+    {
+      part: "左のSTIレバー",
+      now: "ST-5700(左・変速つき)約245g",
+      to: "ドロップハンドル用のブレーキだけのレバー(左)",
+      dg: -130, yen: 3000, isNew: true,
+      ok: ["フロントシングルなので、左の変速は使っていない", "ミニVはロード用レバーの引きしろで効く(今と同じ)"],
+      warn: ["左右でレバーの形が変わる", "右(変速つき)は今のまま"],
+    },
+    {
+      part: "リアディレイラー",
+      now: "RD-5701(105)230g",
+      to: "RD-6700(ULTEGRA)・SS(ショートケージ)",
+      dg: -35, yen: 5000,
+      ok: ["同じシマノ10速ロードなので、ST-5700 の右レバーでそのまま変速できる", "ショートケージで 11-28T まで使える"],
+      warn: ["軽くなる量は小さい"],
+    },
+    {
+      part: "スプロケット",
+      now: "ULTEGRA CS-6700 11-28T 242g",
+      to: "今のまま",
+      dg: 0, yen: 0, keep: true,
+      ok: ["すでにULTEGRA。DURA-ACE(7900)は11-28Tがなく、軽くするには歯の幅を狭める(11-25Tなど)しかない"],
+      warn: ["フロントシングルなので、歯の幅を狭めると坂で足りなくなる。今の 11-28T がおすすめ"],
+    },
+    {
+      part: "チェーン",
+      now: "KMC 10速 257g",
+      to: "今のまま(伸びたら KMC X10SL に)",
+      dg: 0, yen: 0, keep: true,
+      ok: ["軽いチェーンとの差は約20gで、値段に合わない"],
+      warn: [],
+    },
+    {
+      part: "ブレーキ",
+      now: "TEKTRO ミニV 前後 300g",
+      to: "今のまま",
+      dg: 0, yen: 0, keep: true,
+      ok: ["フレームはVブレーキ用の台座なので、ロード用のキャリパーは付かない"],
+      warn: ["軽いミニVとの差は小さい。シューを良いものにする方が止まりやすくなる"],
+    },
+  ];
+  function groupRecHtml() {
+    const list = GROUP_RECS.map((r, i) => Object.assign({ i }, r));
+    const act = list.filter((r) => !r.keep && r.dg < 0).sort((a, b) => a.yen / -a.dg - b.yen / -b.dg);
+    const RKc = [["mx-pick", "①"], ["mx-pick2", "②"], ["mx-pick3", "③"]];
+    const row = (r) => {
+      const ri = act.indexOf(r);
+      return `<div class="gr-row ${r.keep ? "keep" : ""} ${ri >= 0 && ri < 3 ? RKc[ri][0] : ""}">
+        <div class="gr-head">${ri >= 0 && ri < 3 ? `<b class="gr-rank">${RKc[ri][1]}</b>` : ""}<strong>${esc(r.part)}</strong>${r.keep ? `<em class="gr-keep">今のまま</em>` : `<em class="gr-d">${r.dg}g ・ ${r.isNew ? "新品" : "中古"} 約${Catalog.yen(r.yen)} ・ 1gあたり ${Catalog.yen(r.yen / -r.dg)}</em>`}</div>
+        <div class="gr-ft"><span>いま</span>${esc(r.now)}</div>
+        ${r.keep ? "" : `<div class="gr-ft"><span>替える</span><b>${esc(r.to)}</b></div>`}
+        ${r.ok.length ? `<ul class="gr-ok">${r.ok.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
+        ${r.warn.length ? `<ul class="gr-warn">${r.warn.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
+      </div>`;
+    };
+    const tot = act.reduce((a, r) => [a[0] + r.dg, a[1] + r.yen], [0, 0]);
+    return `<div class="gr">
+      <h4>コンポの中身: どこを何に替えるか</h4>
+      <p class="muted small">前提: 10速(105/ULTEGRA)・リムブレーキ(ミニV)・フロントシングル・BSA 68mm。重さ・値段は目安。順番は「1g 軽くするのにいくらかかるか」が安い順。</p>
+      ${act.map(row).join("")}
+      ${list.filter((r) => r.keep).map(row).join("")}
+      <p class="gr-tot">①〜③をすべて替えると <b>${tot[0]}g</b>・約 <b>${Catalog.yen(tot[1])}</b></p>
+    </div>`;
+  }
+
   // 図鑑の候補のマスを開いたとき: 候補のパーツ(写真・スペック・値段)と「NEWに付ける」
   function candSheet(id) {
     const it = Catalog.byId(id);
@@ -1138,6 +1215,7 @@
               <small>${inBar ? "0 g" : (+p.g || 0).toLocaleString() + " g"}${off ? " ・ 外しています" : ""}</small>
               <div class="g-plan-btns">${inBar ? "" : `<button class="btn sub" data-mount="${slot}">${off ? "取り付ける" : "外す"}</button>`}${it ? `<button class="link" data-lib-edit="${it.id}">マイパーツを編集</button>` : ""}</div></div>
           </div>
+          ${slot === "groupset" && k !== "current" ? groupRecHtml() : ""}
           ${inBar || off ? "" : partInfoHtml(k, slot)}
           ${slot === "frame" ? forkInSet(k) : slot === "fork" ? `<p class="muted small">フレームセットの一部です。<button class="link" type="button" data-cell="frame" data-k="${k}">フレームセットに戻る</button></p>` : ""}
           ${wrong

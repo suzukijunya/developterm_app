@@ -1620,3 +1620,21 @@ button.mx-cell.mx-alt { cursor: pointer; text-align: left; font: inherit; color:
 .mx-pc-con { background: rgba(255, 140, 120, 0.08); border-left: 3px solid #ff8c78; }
 .mx-pc-con small { color: #ff8c78; }
 @media (max-width: 600px) { .mx-pc { grid-template-columns: 1fr; } }
+/* コンポの中身 */
+.gr { margin: 8px 0 12px; }
+.gr h4 { margin: 0 0 4px; font-size: 0.95rem; }
+.gr-row { margin: 8px 0; padding: 8px 10px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; background: rgba(255, 255, 255, 0.03); }
+.gr-row.mx-pick { border: 2px solid #ff3b3b; }
+.gr-row.mx-pick2 { border: 2px solid #ff5fb4; }
+.gr-row.mx-pick3 { border: 2px solid #ffd23d; }
+.gr-row.keep { opacity: 0.75; }
+.gr-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+.gr-rank { font-size: 0.9rem; }
+.gr-d { font-style: normal; font-size: 0.76rem; color: #7be08a; font-weight: 700; }
+.gr-keep { font-style: normal; font-size: 0.74rem; color: #9aa3b2; }
+.gr-ft { display: grid; grid-template-columns: 52px 1fr; gap: 6px; font-size: 0.82rem; margin-top: 3px; }
+.gr-ft span { color: #9aa3b2; font-size: 0.74rem; }
+.gr-ok, .gr-warn { margin: 4px 0 0; padding-left: 1.2em; font-size: 0.78rem; line-height: 1.5; }
+.gr-ok li::marker { content: "✓ "; color: #7be08a; }
+.gr-warn li::marker { content: "! "; color: #ffb36b; }
+.gr-tot { font-size: 0.85rem; margin: 6px 0 0; }
