@@ -1050,6 +1050,24 @@
     </button>`;
   }
 
+  // 小物(バーテープ+ボトルケージ)のマス。重さ・値段は合計、名前は「バーテープ / ケージ」
+  function smallCell(k, alt) {
+    const b = G.builds[k], t = b.parts.bartape || { name: "(なし)", g: 0 }, c = b.parts.cages || { name: "(なし)", g: 0 };
+    const gOf = (p) => (p && p.mounted !== false ? +p.g || 0 : 0);
+    const g = gOf(t) + gOf(c);
+    const ob = G.builds[alt ? "current" : k === "current" ? "next" : "current"];
+    const og = gOf(ob.parts.bartape) + gOf(ob.parts.cages);
+    const same = (ob.parts.bartape || {}).name === t.name && (ob.parts.cages || {}).name === c.name && og === g;
+    const show = alt || k === "next", dg = g - og;
+    const c1 = upCost(k, "bartape"), c2 = upCost(k, "cages");
+    const cost = c1 || c2 ? { yen: ((c1 && c1.yen) || 0) + ((c2 && c2.yen) || 0), isNew: (!c1 || c1.isNew) && (!c2 || c2.isNew) } : null;
+    const sel = cell ? (cell.slot === "bartape" || cell.slot === "cages") && cell.k === k : false;
+    return `<button class="mx-cell nothumb ${alt ? "mx-alt " + (same ? "same" : "diff") : show && !same ? "diff" : ""} ${sel ? "sel" : ""}" data-cell="bartape" data-k="${k}">
+      <span class="mx-name">${alt && same ? "(今のまま)" : `${esc(t.name)} / ${esc(c.name)}`}</span>
+      <span class="mx-g">${g.toLocaleString()} g${show && dg ? `<em class="${dg < 0 ? "up" : "down"}">${dg < 0 ? "−" : "+"}${Math.abs(dg)}g</em>` : ""}</span>${yenHtml(cost)}
+    </button>`;
+  }
+
   function matrixHtml() {
     const kg = (k) => kgTxt(bikeGrams(G.builds[k]) / 1000);
     const alts = altKeys();
@@ -1090,8 +1108,21 @@
           <span class="mx-col ${G.active === "current" ? "on" : ""}">装着済み<small>${kg("current")}</small></span>
           <span class="mx-col ${G.active === "next" ? "on" : ""}">NEW<small>${kg("next")}</small></span>
           ${alts.map((k) => `<span class="mx-col mx-alt ${G.active === k ? "on" : ""} ">${esc(ALT_PLANS.find((x) => x.key === k).short)}<small>${kg(k)}</small></span>`).join("")}
-          ${Parts.SLOTS.filter((sl) => sl.id !== "fork")
+          ${Parts.SLOTS.filter((sl) => sl.id !== "fork" && sl.id !== "cages")
             .map((sl) => {
+              // バーテープとボトルケージは「小物」として1行にまとめる(データと3Dでは別のまま)
+              if (sl.id === "bartape") {
+                const ri2 = ranks.findIndex((x) => !x.plan && (x.slot === "bartape" || x.slot === "cages"));
+                let nc = smallCell("next");
+                if (ri2 >= 0) nc = nc.replace('class="mx-cell', `class="mx-cell mx-pick ${RK[ri2][0]}`).replace("</button>", `<i class="mx-pick-tag">${RK[ri2][1]}</i></button>`);
+                const si = ranks.findIndex((x) => x.plan === "rankS" && (x.slot === "bartape" || x.slot === "cages"));
+                return `<span class="mx-slot">${sl.icon}<small>小物</small></span>${smallCell("current")}${nc}${alts
+                  .map((k) => {
+                    const c = smallCell(k, true);
+                    return k === "rankS" && si >= 0 ? c.replace('class="mx-cell', `class="mx-cell mx-pick ${RK[si][0]}`).replace("</button>", `<i class="mx-pick-tag">${RK[si][1]}</i></button>`) : c;
+                  })
+                  .join("")}`;
+              }
               const nextCell = sl.id === "frame" ? frameSetCell("next") : cellHtml(sl.id, "next");
               // 次にカスタムすべき部位は、NEW のマスを赤で囲む
               // 次にカスタムすべき順: 1番=赤、2番=ピンク、3番=黄色の枠
@@ -1267,6 +1298,7 @@
           </div>
           ${slot === "groupset" && k !== "current" ? groupRecHtml() : ""}
           ${inBar || off ? "" : partInfoHtml(k, slot)}
+          ${slot === "bartape" ? `<p class="muted small">小物の一部: ボトルケージ「${esc((G.builds[k].parts.cages || {}).name || "")}」<button class="link" type="button" data-cell="cages" data-k="${k}">ケージを替える</button></p>` : slot === "cages" ? `<p class="muted small">小物の一部です。<button class="link" type="button" data-cell="bartape" data-k="${k}">バーテープに戻る</button></p>` : ""}
           ${slot === "frame" ? forkInSet(k) : slot === "fork" ? `<p class="muted small">フレームセットの一部です。<button class="link" type="button" data-cell="frame" data-k="${k}">フレームセットに戻る</button></p>` : ""}
           ${wrong
             .map(
