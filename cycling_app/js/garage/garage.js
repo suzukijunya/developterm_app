@@ -167,7 +167,7 @@
     // リムブレーキの TCR ADVANCED SL(中古): リムのパーツをそのまま、フレームだけ最上位のカーボンに
     {
       key: "rimSL",
-      id: "rimSL-2026-11-19",
+      id: "rimSL-2026-11-19b",
       chip: "リムTCR SL",
       short: "リムTCR SL",
       fixed: true,
@@ -1074,6 +1074,18 @@
         <h2>アセンブル表</h2>
         <p class="muted small">マスをタップすると、その部位を付け替えられます(付けていないマイパーツやおすすめから選べます)。</p>
         <div class="mx-scroll"><div class="mx-grid ${alts.length ? "has-alt" : ""}" style="--alt:${alts.length}">
+          ${(() => {
+            // 列の上に、リムブレーキ / ディスクブレーキの区分(続いている列をまとめる)
+            const cols = ["current", "next", ...alts];
+            const kind = (k) => (/ディスク|DISC/i.test(((G.builds[k].parts.groupset || {}).name || "") + ((G.builds[k].parts.frame || {}).name || "")) ? "disc" : "rim");
+            const groups = [];
+            for (const k of cols) {
+              const t = kind(k), last = groups[groups.length - 1];
+              if (last && last.t === t) last.n++;
+              else groups.push({ t, n: 1 });
+            }
+            return `<span class="mx-corner"></span>` + groups.map((g) => `<span class="mx-brake ${g.t}" style="grid-column: span ${g.n}">${g.t === "disc" ? "ディスクブレーキ" : "リムブレーキ"}</span>`).join("");
+          })()}
           <span class="mx-corner"></span>
           <span class="mx-col ${G.active === "current" ? "on" : ""}">装着済み<small>${kg("current")}</small></span>
           <span class="mx-col ${G.active === "next" ? "on" : ""}">NEW<small>${kg("next")}</small></span>

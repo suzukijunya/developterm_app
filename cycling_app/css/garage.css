@@ -1638,3 +1638,8 @@ button.mx-cell.mx-alt { cursor: pointer; text-align: left; font: inherit; color:
 .gr-ok li::marker { content: "✓ "; color: #7be08a; }
 .gr-warn li::marker { content: "! "; color: #ffb36b; }
 .gr-tot { font-size: 0.85rem; margin: 6px 0 0; }
+/* 列の上の区分: リムブレーキ / ディスクブレーキ */
+.mx-brake { display: block; text-align: center; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; padding: 3px 0; border-radius: 6px 6px 0 0; }
+.mx-brake.rim { color: #ffd7a8; background: rgba(255, 154, 46, 0.14); border-bottom: 2px solid #ff9a2e; }
+.mx-brake.disc { color: #bfe4ff; background: rgba(57, 135, 229, 0.16); border-bottom: 2px solid #3987e5; }
+.mx-grid.has-alt .mx-brake { position: static; }
