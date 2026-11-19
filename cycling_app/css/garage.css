@@ -1605,3 +1605,18 @@ button.mx-cell.mx-alt { cursor: pointer; text-align: left; font: inherit; color:
 .mx-cell.mx-cand { border-style: dashed !important; }
 .mx-candbox { margin: 4px 0 10px; padding: 10px 12px; border: 2px dashed #ffd23d; border-radius: 8px; background: rgba(255, 210, 61, 0.06); }
 .mx-candbox > small { color: #ffd23d; font-weight: 800; }
+.mx-col.mx-plan3 { color: #ffd23d; border-bottom: 3px solid #ffd23d; }
+.mx-year { display: block; font-size: 0.66rem; color: #8fd0ff; font-weight: 700; }
+.mx-merit { margin: 4px 0 8px; padding: 8px 10px; border-left: 3px solid #ffb36b; background: rgba(255, 179, 107, 0.08); border-radius: 0 6px 6px 0; }
+.mx-merit small { color: #ffb36b; font-weight: 800; }
+.mx-merit p { margin: 2px 0; font-size: 0.85rem; }
+.mx-merit-up { color: #7be08a; font-weight: 700; }
+.mx-pc { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 6px 0 10px; }
+.mx-pc > div { padding: 8px 10px; border-radius: 6px; }
+.mx-pc small { font-weight: 800; font-size: 0.72rem; }
+.mx-pc p { margin: 3px 0; font-size: 0.82rem; line-height: 1.45; }
+.mx-pc-pro { background: rgba(123, 224, 138, 0.08); border-left: 3px solid #7be08a; }
+.mx-pc-pro small { color: #7be08a; }
+.mx-pc-con { background: rgba(255, 140, 120, 0.08); border-left: 3px solid #ff8c78; }
+.mx-pc-con small { color: #ff8c78; }
+@media (max-width: 600px) { .mx-pc { grid-template-columns: 1fr; } }
