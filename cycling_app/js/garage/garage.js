@@ -1068,7 +1068,35 @@
     </button>`;
   }
 
+  // ディスクブレーキのバイクに持っていけるか(リムブレーキの列のマスに印を付ける)
+  // ok: そのまま / cond: 条件つき / no: 持っていけない
+  function diskCarry(slot, name) {
+    name = name || "";
+    if (slot === "frame" || slot === "fork") return ["no", "フレームセットごと替わる"];
+    if (slot === "wheels") return /DISC|ディスク/i.test(name) ? ["ok", "ディスク用のホイール"] : ["no", "リムブレーキ用。ディスク車はローターと12mmの太い軸(スルーアクスル)が要る。チタンQRも使えない"];
+    if (slot === "seatpost" && /シートマスト|TCR/.test(name)) return ["no", "このフレーム専用の形なので、ほかのフレームには使えない"];
+    if (slot === "stem" && /OverDrive2|OD2/i.test(name)) return ["ok", "OD2用なので、TCR(ディスク)にもそのまま付く"];
+    if (slot === "seatpost") return ["cond", "丸い27.2mmが入るフレームなら使える。TCRは専用の形(VARIANT・シートマスト)なので使えない"];
+    if (slot === "handlebar") return ["cond", "太さ31.8mmなら付く。ホースをハンドルの中に通すフレームは専用品が必要"];
+    if (slot === "stem") return ["cond", "TCRはフォークの軸が太い(OD2)ので、OD2用か変換が要る"];
+    if (slot === "groupset") return /油圧ディスク|ディスク/.test(name) ? ["ok", "ディスク用のコンポ"] : ["cond", "変速機・クランク(24mm軸)・チェーンは使える。レバー(ST)とブレーキ(ミニV・キャリパー)は使えない。段数(10速)も合わせる必要あり"];
+    return ["ok", "ブレーキと関係ないので、そのまま使える"];
+  }
   function matrixHtml() {
+    const html = matrixHtml0();
+    const isRim = (k) => !/ディスク|DISC/i.test(((G.builds[k].parts.groupset || {}).name || "") + ((G.builds[k].parts.frame || {}).name || ""));
+    const LBL = { ok: "ディスク◎", cond: "ディスク△", no: "ディスク×" };
+    return html.replace(/<button class="(mx-cell[^"]*)"([^>]*)>([\s\S]*?)<\/button>/g, (all, cls, attrs, body) => {
+      const sl = (/data-cell="(\w+)"/.exec(attrs) || [])[1], k = (/data-k="(\w+)"/.exec(attrs) || [])[1];
+      if (!sl || !k || !G.builds[k] || !isRim(k) || /\bsame\b/.test(cls)) return all;
+      const cand = (/data-cand="([^"]+)"/.exec(attrs) || [])[1];
+      const it = cand && Catalog.byId(cand);
+      const name = it ? it.name : (G.builds[k].parts[sl] || {}).name;
+      const [c, why] = diskCarry(sl, name);
+      return `<button class="${cls} has-dc"${attrs}>${body}<i class="mx-dc ${c}" title="${esc(why)}">${LBL[c]}</i></button>`;
+    }).replace('<p class="muted small">値段は中古の想定', '<p class="muted small mx-dc-legend">リムブレーキの列の印: <i class="mx-dc ok">ディスク◎</i> ディスクのバイクにそのまま持っていける <i class="mx-dc cond">ディスク△</i> 条件つき(マスを押すと理由) <i class="mx-dc no">ディスク×</i> 持っていけない</p>\n        <p class="muted small">値段は中古の想定');
+  }
+  function matrixHtml0() {
     const kg = (k) => kgTxt(bikeGrams(G.builds[k]) / 1000);
     const alts = altKeys();
     const ranks = pickRank();
@@ -1288,6 +1316,13 @@
       <div class="mx-sheet" id="mxsheet">
         <div class="mx-panel">
           <div class="mx-top"><strong>${sl.icon} ${sl.name} <small>・ ${k === "current" ? "装着済み" : k === "next" ? "NEW" : esc((ALT_PLANS.find((x) => x.key === k) || {}).chip || "")}</small></strong><button class="mx-x" data-cell-close aria-label="閉じる">×</button></div>
+          ${(() => {
+            // ディスクのバイクに持っていけるか(リムブレーキの構成のとき)
+            if (/ディスク|DISC/i.test(((G.builds[k].parts.groupset || {}).name || "") + ((G.builds[k].parts.frame || {}).name || ""))) return "";
+            const ci = cell.cand && Catalog.byId(cell.cand);
+            const [c, why] = diskCarry(slot === "fork" ? "frame" : slot, ci ? ci.name : p.name);
+            return `<p class="small mx-dc-why"><i class="mx-dc ${c}">${{ ok: "ディスク◎", cond: "ディスク△", no: "ディスク×" }[c]}</i> ${esc(why)}</p>`;
+          })()}
           ${cell.cand ? candSheet(cell.cand) : ""}
           <div class="mx-now">
             ${it && it.photoId ? photoTag(it.photoId, "mx-thumb big") : `<span class="mx-thumb big empty">${sl.icon}</span>`}
