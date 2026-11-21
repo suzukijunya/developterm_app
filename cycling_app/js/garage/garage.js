@@ -3133,7 +3133,7 @@
         const p = src && src.parts[c.slot];
         const it = c.item || (p && p.shop && p.shop.id && Catalog.byId(p.shop.id));
         if (it && hidden.has(it.id)) return "";
-        if (it && ids.length === 1) return partCard(it).replace('<article class="g-pc', `<article class="g-pc g-pc-top r${i + 1}`).replace('<div class="g-pc-img"', `${tag}<div class="g-pc-img"`);
+        if (it && ids.length === 1) return partCard(it).replace('loading="lazy"', 'loading="eager"').replace('<article class="g-pc', `<article class="g-pc g-pc-top r${i + 1}`).replace('<div class="g-pc-img"', `${tag}<div class="g-pc-img"`);
         // 図鑑にないパーツ(S狙いの構成のフレームセットなど)
         const parts = ids.map((k) => src.parts[k]).filter((x) => x && x.mounted !== false);
         const name = parts.filter((x, j) => !j || (+x.g > 0 && !/含む/.test(x.name))).map((x) => x.name).join(" + ");
@@ -3145,7 +3145,7 @@
         return `<article class="g-pc g-pc-top r${i + 1}">${tag}
           <div class="g-pc-img">${part3d(c.slot === "groupset" ? "groupset" : c.slot)}${(() => {
             const ph = webPhoto(name);
-            return ph ? `<img class="g-pc-web" src="${esc(ph[0])}" alt="${esc(name)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()" /><a class="g-pc-src" href="${esc(ph[1])}" target="_blank" rel="noopener">${esc(ph[2])}</a>` : "";
+            return ph ? `<img class="g-pc-web" src="${esc(ph[0])}" alt="${esc(name)}" referrerpolicy="no-referrer" onerror="this.remove()" /><a class="g-pc-src" href="${esc(ph[1])}" target="_blank" rel="noopener">${esc(ph[2])}</a>` : "";
           })()}</div>
           <div class="g-pc-body">
             <small class="g-pc-slot">${esc(head)}${c.plan ? "・S狙いから" : ""}</small>
