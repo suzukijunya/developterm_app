@@ -1752,7 +1752,7 @@
       ${cell ? sheetHtml() : ""}
       ${comparePanel()}
       ${"" /* チャットのおすすめの案内は出さない(NEWの中身はそのまま) */}
-      ${rankHtml()}
+      ${"" /* 「ランクA・Sの構成」のカードは出さない */}
       ${pcatHtml()}
       ${foldCard("reg", "📷 パーツを登録する・マイパーツ", "写真から登録、表の読み込み、バックアップ", quickHtml() + libraryHtml(), quick.entries.length > 0 || dataOpen || pasteOpen)}
       ${foldCard("model", "📦 自分のバイクの3Dスキャン", "スキャンアプリのGLBを読み込む", scanHtml(), false)}
