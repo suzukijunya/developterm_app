@@ -1679,3 +1679,35 @@ button.mx-cell.mx-alt { cursor: pointer; text-align: left; font: inherit; color:
 .dc-eol { fill: rgba(217, 89, 38, 0.1); }
 .dc-eol-t { fill: #d95926; font-weight: 700; }
 .dc-eol-note { color: #d95926; }
+
+/* 整備メモ: 自分で整備 */
+.g-diy-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 6px 0 8px; }
+.g-diy-kpis > div { border: 1px solid rgba(127, 127, 127, 0.3); border-radius: 8px; padding: 8px 10px; min-width: 0; }
+.g-diy-kpis small, .g-diy-kpis span { display: block; font-size: 0.72rem; opacity: 0.75; }
+.g-diy-kpis b { display: block; font-size: 1.1rem; margin: 2px 0; }
+.g-diy-kpis .ok b { color: #199e70; }
+.g-diy-bar { height: 6px; border-radius: 3px; background: rgba(127, 127, 127, 0.25); overflow: hidden; margin-bottom: 8px; }
+.g-diy-bar i { display: block; height: 100%; background: #199e70; }
+.g-diy-tools summary, .g-diy-how summary { cursor: pointer; font-size: 0.82rem; }
+.g-diy-tl { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px; margin: 8px 0; }
+.g-diy-tool { display: flex; align-items: center; gap: 8px; text-align: left; padding: 6px 8px; border-radius: 8px; border: 1px solid rgba(127, 127, 127, 0.35); background: transparent; color: inherit; font: inherit; font-size: 0.8rem; cursor: pointer; }
+.g-diy-tool i { flex: none; width: 18px; height: 18px; border-radius: 4px; border: 1.5px solid currentColor; display: grid; place-items: center; font-style: normal; font-size: 0.75rem; opacity: 0.7; }
+.g-diy-tool.on { border-color: #199e70; }
+.g-diy-tool.on i { background: #199e70; border-color: #199e70; color: #fff; opacity: 1; }
+.g-diy-tool span { flex: 1; min-width: 0; }
+.g-diy-tool small { opacity: 0.7; }
+.g-diy-tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 3px 0; }
+.g-diy-tags em { font-style: normal; font-size: 0.68rem; padding: 1px 6px; border-radius: 4px; background: rgba(127, 127, 127, 0.18); }
+.g-diy-tags em.lv1 { background: rgba(25, 158, 112, 0.2); }
+.g-diy-tags em.lv2 { background: rgba(224, 177, 0, 0.22); }
+.g-diy-tags em.lv3 { background: rgba(217, 89, 38, 0.22); }
+.g-diy-tags em.miss { background: rgba(217, 89, 38, 0.18); }
+.g-diy-tags em.have { background: rgba(25, 158, 112, 0.18); }
+.g-diy-how p { margin: 4px 0; }
+.g-maint-btns { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; }
+.g-diy-tool small { font-size: 0.75rem; white-space: nowrap; }
+@media (max-width: 640px) {
+  .g-diy-kpis { grid-template-columns: 1fr; gap: 5px; }
+  .g-diy-kpis > div { display: grid; grid-template-columns: 1fr auto; align-items: baseline; column-gap: 8px; padding: 6px 10px; }
+  .g-diy-kpis b { grid-column: 2; grid-row: 1 / span 2; font-size: 1.05rem; }
+}

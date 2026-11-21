@@ -1073,7 +1073,7 @@
   function diskCarry(slot, name) {
     name = name || "";
     if (slot === "frame" || slot === "fork") return ["no", "フレームセットごと替わる"];
-    if (slot === "wheels") return /DISC|ディスク/i.test(name) ? ["ok", "ディスク用のホイール"] : ["no", "リムブレーキ用。ディスク車はローターと12mmの太い軸(スルーアクスル)が要る。チタンQRも使えない"];
+    if (slot === "wheels") return /DISC|ディスク/i.test(name) ? ["ok", "ディスク用のホイール"] : ["no", "リムブレーキ用で、ディスク車には付かない(ディスク車はローターと12mmの太い軸=スルーアクスル)。チタンQRもディスク車では使えない。R3ではどちらも問題なく使える"];
     if (slot === "seatpost" && /シートマスト|TCR/.test(name)) return ["no", "このフレーム専用の形なので、ほかのフレームには使えない"];
     if (slot === "stem" && /OverDrive2|OD2/i.test(name)) return ["ok", "OD2用なので、TCR(ディスク)にもそのまま付く"];
     if (slot === "seatpost") return ["cond", "丸い27.2mmが入るフレームなら使える。TCRは専用の形(VARIANT・シートマスト)なので使えない"];
@@ -3221,19 +3221,60 @@
         ${"" /* 消したパーツは出さない */}
       </section>`;
   }
+  // 自分で整備するための工具(持っているものはチェック)
+  const DIY_TOOLS = [
+    ["pump", "空気圧計つきのフロアポンプ(仏式)", 4000],
+    ["hex", "六角レンチのセット(2〜8mm)", 2000],
+    ["torque", "トルクレンチ(2〜15N·m)", 6000],
+    ["lever", "タイヤレバー・パンク修理キット", 1000],
+    ["checker", "チェーンチェッカー", 1000],
+    ["cutter", "チェーンカッター+10速ミッシングリンク", 3000],
+    ["wirecut", "ワイヤーカッター", 2500],
+    ["stand", "作業スタンド", 6000],
+    ["clean", "チェーンオイル・ディグリーザー・ウエス", 2000],
+  ];
+  const LV = ["", "かんたん", "ふつう", "むずかしい"];
+  function diyHtml(c) {
+    const owned = new Set(c.tools || []);
+    const log = c.diyLog || [];
+    const saved = log.reduce((a, x) => a + (x.yen || 0), 0);
+    const toolCost = DIY_TOOLS.filter(([id]) => owned.has(id)).reduce((a, t) => a + t[2], 0);
+    const allCost = DIY_TOOLS.reduce((a, t) => a + t[2], 0);
+    const pct = toolCost ? Math.min(100, Math.round((saved / toolCost) * 100)) : 0;
+    return `<div class="g-diy">
+        <div class="g-diy-kpis">
+          <div><small>自分でやって浮いた工賃</small><b>${Catalog.yen(saved)}</b><span>${log.length}回</span></div>
+          <div><small>工具代(持っている分)</small><b>${Catalog.yen(toolCost)}</b><span>全部そろえると ${Catalog.yen(allCost)}</span></div>
+          <div class="${toolCost && saved >= toolCost ? "ok" : ""}"><small>工具代の回収</small><b>${toolCost ? (saved >= toolCost ? "回収済み 🎉" : pct + "%") : "—"}</b><span>${toolCost && saved < toolCost ? `あと ${Catalog.yen(toolCost - saved)}` : toolCost ? `+${Catalog.yen(saved - toolCost)} の得` : "工具にチェックを入れると出ます"}</span></div>
+        </div>
+        ${toolCost ? `<div class="g-diy-bar"><i style="width:${pct}%"></i></div>` : ""}
+        <details class="g-diy-tools" data-fold="diytools" ${openFolds.has("diytools") ? "open" : ""}><summary>🧰 工具(持っているものにチェック) ${owned.size}/${DIY_TOOLS.length}</summary>
+          <div class="g-diy-tl">${DIY_TOOLS.map(([id, name, yen]) => `<button type="button" class="g-diy-tool ${owned.has(id) ? "on" : ""}" data-diy-tool="${id}"><i>${owned.has(id) ? "✓" : ""}</i><span>${esc(name)}</span><small>${Catalog.yen(yen)}</small></button>`).join("")}</div>
+          <p class="muted small">お店に任せるもの: ホイールの振れ取り・ヘッドパーツ・(ディスクにしたら)油圧ブレーキのエア抜き。初めての作業は、終わったあとに一度お店で見てもらうと安心です。</p>
+        </details>
+      </div>`;
+  }
   function foldHtml() {
     const c = clerkState();
     const ms = Clerk.maintenance(Store.rides, c.maint);
+    const owned = new Set(c.tools || []);
+    const toolName = (id) => (DIY_TOOLS.find((t) => t[0] === id) || [, id])[1];
     const maintHtml = `
       <section class="card g-maint">
         <h2>🔧 メカニックの整備メモ <span class="g-total">${Math.round(Clerk.totalKm(Store.rides)).toLocaleString()}km</span></h2>
+        ${diyHtml(c)}
         ${ms
-          .map(
-            (m) => `<div class="g-maint-row ${m.due ? "due" : ""}"><div><strong>${m.label}</strong><small>${m.never ? "まだ記録がありません" : m.km ? `前回から ${Math.round(m.sinceKm)}km / 目安 ${m.km.toLocaleString()}km` : `前回から ${Math.floor(m.sinceDays)}日 / 目安 ${m.days}日`}</small></div>
-              <button class="btn sub" data-maint="${m.id}">${m.due ? "やった" : "やった"}</button></div>`
-          )
+          .map((m) => {
+            const miss = (m.tools || []).filter((t) => !owned.has(t));
+            return `<div class="g-maint-row ${m.due ? "due" : ""}"><div><strong>${m.label}</strong>
+              <span class="g-diy-tags"><em class="lv${m.lv || 1}">自分で: ${LV[m.lv || 1]}</em>${m.fee ? `<em>お店の工賃 約${Catalog.yen(m.fee)}</em>` : ""}${miss.length ? `<em class="miss" title="${esc(miss.map(toolName).join("、"))}">工具が足りない ${miss.length}</em>` : (m.tools || []).length ? `<em class="have">工具そろってる</em>` : ""}</span>
+              <small>${m.never ? "まだ記録がありません" : m.km ? `前回から ${Math.round(m.sinceKm)}km / 目安 ${m.km.toLocaleString()}km` : `前回から ${Math.floor(m.sinceDays)}日 / 目安 ${m.days}日`}</small>
+              <details class="g-diy-how" data-fold="how-${m.id}" ${openFolds.has("how-" + m.id) ? "open" : ""}><summary>やり方</summary><p class="small">${esc(m.how)}</p>${(m.tools || []).length ? `<p class="small muted">工具: ${m.tools.map((t) => `${owned.has(t) ? "✓" : "・"}${esc(toolName(t))}`).join(" ")}</p>` : ""}
+                <p class="small"><a href="https://www.youtube.com/results?search_query=${encodeURIComponent(m.q || m.label)}" target="_blank" rel="noopener">▶ 動画で見る</a>　<a href="https://si.shimano.com/ja/" target="_blank" rel="noopener">📘 シマノの説明書</a></p></details></div>
+              <div class="g-maint-btns"><button class="btn sub" data-maint-self="${m.id}">自分でやった</button>${m.fee ? `<button class="link" data-maint="${m.id}">お店でやった</button>` : ""}</div></div>`;
+          })
           .join("")}
-        <p class="muted small">距離は、このアプリで記録したライドの合計です。</p>
+        <p class="muted small">距離は、このアプリで記録したライドの合計です。工賃はお店によって違う目安です。</p>
       </section>`;
     return `<details class="card g-fold-card g-tools" id="g-fold" ${foldOpen ? "open" : ""}><summary>🔧 整備メモ・近くのお店<small>空気圧やチェーンの時期、荻窪まわりのショップ</small></summary>${maintHtml}${shopsHtml()}</details>`;
   }
@@ -3773,6 +3814,22 @@
       renderAll();
       if (has3D) View3D.highlight(selected, true);
       return;
+    }
+    if (t.dataset.maintSelf) {
+      const c = clerkState(), id = t.dataset.maintSelf;
+      const m = Clerk.MAINT.find((x) => x.id === id) || {};
+      c.maint[id] = { km: Clerk.totalKm(Store.rides), at: Date.now(), self: true };
+      if (m.fee) (c.diyLog = c.diyLog || []).push({ id, at: Date.now(), yen: m.fee });
+      changed(false);
+      return renderPanel();
+    }
+    if (t.dataset.diyTool) {
+      const c = clerkState(), id = t.dataset.diyTool;
+      const set = new Set(c.tools || []);
+      set.has(id) ? set.delete(id) : set.add(id);
+      c.tools = [...set];
+      changed(false);
+      return renderPanel();
     }
     if (t.dataset.maint) {
       clerkState().maint[t.dataset.maint] = { km: Clerk.totalKm(Store.rides), at: Date.now() };
