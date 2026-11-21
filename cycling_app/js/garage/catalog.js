@@ -184,8 +184,8 @@ const Catalog = (() => {
     "t-gp5000-28": ["https://www.continental-tires.com/adobe/dynamicmedia/deliver/dm-aid--8c817406-8057-41af-8c3a-0d432fbf37fb/Continental_Grand-Prix-5000_ProductPicture_30.png?width=600", "https://www.continental-tires.com/products/b2c/bicycle/tires/grand-prix-5000/"],
     "u-purple": ["https://panaracer.com/wp/wp-content/uploads/2026/05/purplelite_45-1024x646.webp", "https://panaracer.com/en/products/tube_en/other_en/purple_lite"],
     "u-conti-tpu": ["https://www.continental-tires.com/adobe/dynamicmedia/deliver/dm-aid--09a41d10-18a5-4be5-ba20-181ebc1c87cb/Continental_BC_TPU-Tubes.png?width=600", "https://www.continental-tires.com/products/bicycle/tpu-tubes/"],
-    "s-power-comp": ["https://resources.specialized.com/image/27116-180_SDDL_POWER-COMP_BLK-SQUARE?bg=ffffff&w=800&h=800&q=75", "https://www.specialized.com/us/en/power-comp/p/155836"],
-    "s-power-expert": ["https://resources.specialized.com/image/27123-860_SDDL_POWER-EXPERT-MIRROR-SADDLE-BLK-143_HERO-SQUARE?bg=ffffff&w=800&h=800&q=75", "https://www.specialized.com/us/en/power-expert-with-mirror/p/1000148806"],
+    "s-power-comp-old": ["https://resources.specialized.com/image/27116-180_SDDL_POWER-COMP_BLK-SQUARE?bg=ffffff&w=800&h=800&q=75", "https://www.specialized.com/us/en/power-comp/p/155836"],
+    "s-power-expert-old": ["https://resources.specialized.com/image/27123-860_SDDL_POWER-EXPERT-MIRROR-SADDLE-BLK-143_HERO-SQUARE?bg=ffffff&w=800&h=800&q=75", "https://www.specialized.com/us/en/power-expert-with-mirror/p/1000148806"],
     "s-slr-boost": ["https://cdn11.bigcommerce.com/s-ubg9970srq/products/129/images/2083/041A620ICA011_SLR_Boost_Kit_Carbonio_Superflow_S_THREE_QUARTER_copia__46444.1793257478.386.513.jpg?c=1", "https://www.selleitalia.com/slr-boost-kit-carbonio-superflow/"],
   };
   // メーカーのサイトから取れないもの(Shimano・廃番など)は、楽天市場のショップの商品写真を参照する。
@@ -206,6 +206,8 @@ const Catalog = (() => {
     "w-racing3": R("verygood-store/cabinet/cpt81/cpt-2603230907_1.jpg", "フルクラム Racing 3"),
     "w-racing5": R("luggstore/cabinet/13721562/imgrc0187708231.jpg", "フルクラム Racing 5"),
     "d-m8100": R("worldcycle/cabinet/itiran73/shi-n-epdm8100.jpg", "PD-M8100"),
+    "s-power-comp": R("wattmann/cabinet/item20261108/9307010007786-1.jpg", "SPECIALIZED POWER COMP サドル"),
+    "s-power-expert": R("verygood-store/cabinet/cpt111/cps-2609264025_1.jpg", "SPECIALIZED POWER EXPERT サドル"),
     "g-fc5700": R("cycly/cabinet/0352/dw388r2_0.jpg", "FC-5700"),
   });
   for (const it of ITEMS) if (IMGS[it.id]) (it.img = IMGS[it.id][0]), (it.imgPage = IMGS[it.id][1]), (it.imgLabel = IMGS[it.id][2] || "メーカーの写真");
