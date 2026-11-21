@@ -1643,3 +1643,21 @@ button.mx-cell.mx-alt { cursor: pointer; text-align: left; font: inherit; color:
 .mx-brake.rim { color: #ffd7a8; background: rgba(255, 154, 46, 0.14); border-bottom: 2px solid #ff9a2e; }
 .mx-brake.disc { color: #bfe4ff; background: rgba(57, 135, 229, 0.16); border-bottom: 2px solid #3987e5; }
 .mx-grid.has-alt .mx-brake { position: static; }
+
+/* パーツ図鑑の見出し: カスタムおすすめ TOP5 */
+.g-pc-topsec { margin: 8px 0 14px; padding: 10px 12px 12px; border-radius: 10px; background: rgba(255, 59, 59, 0.06); border: 1px solid rgba(255, 59, 59, 0.25); }
+.g-pc-tophead { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.g-pc-tophead small { opacity: 0.7; font-size: 0.75rem; }
+.g-pc-top { position: relative; border-width: 2px; }
+.g-pc-top.r1 { border-color: #ff3b3b; box-shadow: 0 0 14px rgba(255, 59, 59, 0.3); }
+.g-pc-top.r2 { border-color: #ff5fb4; box-shadow: 0 0 14px rgba(255, 95, 180, 0.3); }
+.g-pc-top.r3 { border-color: #ffd23d; box-shadow: 0 0 14px rgba(255, 210, 61, 0.3); }
+.g-pc-top.r4, .g-pc-top.r5 { border-color: rgba(127, 127, 127, 0.55); }
+.g-pc-rank { position: absolute; top: 0; left: 0; z-index: 2; padding: 3px 10px; font-style: normal; font-size: 0.72rem; font-weight: 800; color: #fff; background: #555; border-bottom-right-radius: 8px; }
+.g-pc-rank.r1 { background: #d92b2b; }
+.g-pc-rank.r2 { background: #d63d8f; }
+.g-pc-rank.r3 { background: #e0b100; color: #1a1400; }
+@media (max-width: 640px) {
+  .g-pc-topsec .g-pc-grid { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 6px; }
+  .g-pc-topsec .g-pc-top { flex: 0 0 78%; scroll-snap-align: start; }
+}

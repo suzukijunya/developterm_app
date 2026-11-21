@@ -882,7 +882,7 @@
   };
   // カスタムする順番(3つ): 1つ付けたら、それを付けた状態から次を選ぶ(積み上げ)。
   // 選び方は「速さ・軽さの点の上がり ÷ 中古の値段」。候補は NEW で替える部位。3つに足りなければ図鑑から足す
-  function pickRank() {
+  function pickRank(n = 3) {
     const cur = G.builds.current, nx = G.builds.next;
     if (!cur || !nx) return [];
     const hid = new Set(G.catalogHidden || []);
@@ -892,7 +892,7 @@
       if (sl.id === "fork") continue;
       const ids = sl.id === "frame" ? ["frame", "fork"] : [sl.id];
       if (ids.every((k) => JSON.stringify(cur.parts[k] || {}) === JSON.stringify(nx.parts[k] || {}))) continue;
-      cands.push({ slot: sl.id, yen: ids.reduce((a, k) => a + ((upCost("next", k) || {}).yen || 0), 0), apply: (t) => ids.forEach((k) => (t.parts[k] = JSON.parse(JSON.stringify(nx.parts[k])))) });
+      cands.push({ slot: sl.id, ids, yen: ids.reduce((a, k) => a + ((upCost("next", k) || {}).yen || 0), 0), apply: (t) => ids.forEach((k) => (t.parts[k] = JSON.parse(JSON.stringify(nx.parts[k])))) });
     }
     // NEW で替える分のあとは、S狙いの構成のパーツから(優先度の高いもの)。図鑑から足すのは、S狙いがないときだけ
     const sb = G.builds.rankS;
@@ -905,7 +905,7 @@
         if (ids.every((k) => JSON.stringify(nx.parts[k] || {}) === JSON.stringify(sb.parts[k] || {}))) continue;
         const yen = ids.reduce((a, k) => a + ((upCost("rankS", k) || {}).yen || 0), 0);
         if (!yen) continue; // 値段のわからない変更(付けないだけ等)は除く
-        cands.push({ slot: sl.id, plan: "rankS", yen, apply: (t) => ids.forEach((k) => (t.parts[k] = JSON.parse(JSON.stringify(sb.parts[k])))) });
+        cands.push({ slot: sl.id, ids, plan: "rankS", yen, apply: (t) => ids.forEach((k) => (t.parts[k] = JSON.parse(JSON.stringify(sb.parts[k])))) });
       }
     for (const it of switchNext ? [] : Catalog.ITEMS) {
       if (hid.has(it.id) || cands.some((c) => c.slot === it.slot) || Catalog.installed(cur, it) || Catalog.installed(nx, it)) continue;
@@ -913,7 +913,7 @@
     }
     const out = [];
     let t = JSON.parse(JSON.stringify(cur));
-    while (out.length < 3) {
+    while (out.length < n) {
       const base = focusScore(t), g0 = bikeGrams(t);
       let best = null;
       for (const c of cands) {
@@ -3096,12 +3096,56 @@
     </details>`;
   }
 
+  // カスタムおすすめ TOP5(図鑑の見出し。図鑑と同じカード)
+  function topPicksHtml(hidden) {
+    let ranks = [];
+    try {
+      ranks = pickRank(5);
+    } catch (e) {
+      console.error(e);
+    }
+    const RKN = ["① 次にカスタム", "② その次", "③ その次の次", "④", "⑤"];
+    const cards = ranks
+      .map((c, i) => {
+        const tag = `<i class="g-pc-rank r${i + 1}">${RKN[i]}</i>`;
+        const src = c.item ? null : G.builds[c.plan || "next"];
+        const ids = c.ids || [c.slot];
+        const p = src && src.parts[c.slot];
+        const it = c.item || (p && p.shop && p.shop.id && Catalog.byId(p.shop.id));
+        if (it && hidden.has(it.id)) return "";
+        if (it && ids.length === 1) return partCard(it).replace('<article class="g-pc', `<article class="g-pc g-pc-top r${i + 1}`).replace('<div class="g-pc-img"', `${tag}<div class="g-pc-img"`);
+        // 図鑑にないパーツ(S狙いの構成のフレームセットなど)
+        const parts = ids.map((k) => src.parts[k]).filter((x) => x && x.mounted !== false);
+        const name = parts.filter((x, j) => !j || (+x.g > 0 && !/含む/.test(x.name))).map((x) => x.name).join(" + ");
+        const g = parts.reduce((a, x) => a + (+x.g || 0), 0);
+        const dg = -Math.round((c.w || 0) * 1000);
+        const head = c.slot === "frame" ? "フレームセット" : c.slot === "handlebar" ? "ハンドル+ステム" : c.slot === "tires" ? "タイヤ+チューブ" : Parts.slotName(c.slot);
+        const pl = c.plan && ALT_PLANS.find((x) => x.key === c.plan);
+        const year = c.slot === "frame" && pl && pl.frameYear ? `<dl class="g-pc-spec"><dt>狙う年代</dt><dd>${esc(pl.frameYear)}</dd></dl>` : "";
+        return `<article class="g-pc g-pc-top r${i + 1}">${tag}
+          <div class="g-pc-img"><svg viewBox="0 0 100 100" class="g-pc-svg" aria-hidden="true">${PART_SVG[c.slot] || PART_SVG.accessories}</svg></div>
+          <div class="g-pc-body">
+            <small class="g-pc-slot">${esc(head)}${c.plan ? "・S狙いから" : ""}</small>
+            <strong class="g-pc-name">${esc(name)}</strong>
+            <div class="g-pc-nums"><b>${g.toLocaleString()}g</b>${dg ? `<em class="${dg < 0 ? "good" : "bad"}">${dg < 0 ? "−" : "+"}${Math.abs(dg).toLocaleString()}g</em>` : ""}</div>
+            <div class="g-pc-price">${c.yen ? `<span>中古 ${Catalog.yen(c.yen)}</span>` : ""}</div>
+            ${year}
+            <div class="g-pc-btns"><a class="g-chip2" href="${esc(mercariUrl(parts[0] ? parts[0].name : name))}" target="_blank" rel="noopener">メルカリ</a>
+              <a class="g-chip2" href="https://www.google.com/search?tbm=isch&q=${encodeURIComponent(parts[0] ? parts[0].name : name)}" target="_blank" rel="noopener">🔎 画像</a></div>
+          </div></article>`;
+      })
+      .filter(Boolean);
+    if (!cards.length) return "";
+    return `<div class="g-pc-sec g-pc-topsec"><p class="g-pc-tophead"><b>🔥 カスタムおすすめ TOP${cards.length}</b><small>この順番で替えると速さ・軽さがいちばん上がる</small></p>
+      <div class="g-pc-grid">${cards.join("")}</div></div>`;
+  }
   function pcatHtml() {
     const hidden = new Set(G.catalogHidden || []); // 図鑑から消したパーツ(戻せる)
     return `
       <section class="card g-pcat">
         <h2>🛒 パーツ図鑑</h2>
         <p class="muted small">重さの差は「装着済み」と比べた値。重さ・価格は目安です。</p>
+        ${topPicksHtml(hidden)}
         ${CAT_TABS.map(([k, l]) => {
           const items = Catalog.ITEMS.filter((it) => it.slot === k && !hidden.has(it.id));
           if (!items.length) return "";
@@ -3109,7 +3153,7 @@
           return `<details class="g-pc-sec" data-cat-sec="${k}" ${catOpen.has(k) ? "open" : ""}><summary><b>${l}</b><small>${items.length}点${best < 0 ? `・最大 −${Math.abs(best)}g` : ""}</small></summary>
             <div class="g-pc-grid">${items.map(partCard).join("")}</div></details>`;
         }).join("")}
-        ${hidden.size ? `<p class="small g-pc-hidden">消したパーツ ${hidden.size}点: ${[...hidden].map((id) => Catalog.byId(id)).filter(Boolean).map((it) => `<button class="g-chip2" data-cat-restore="${it.id}" title="図鑑に戻す">↩ ${esc(it.name)}</button>`).join("")}</p>` : ""}
+        ${"" /* 消したパーツは出さない */}
       </section>`;
   }
   function foldHtml() {
