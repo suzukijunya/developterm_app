@@ -1020,7 +1020,8 @@ const View3D = (() => {
     const parts = build.parts;
     const at = (id) => (parts[id] && parts[id].attrs) || {};
     // GIANT TCR のフレーム(乗り換えの構成): つや消しの黒・前下がりのトップチューブ(コンパクト)・太いダウンチューブ
-    const tcr = /TCR/i.test((parts.frame && parts.frame.name) || "");
+    // (どの構成でもこの見た目にする。フレームの名前で分けていたのをやめた)
+    const tcr = true;
     const color = tcr ? "#0b0c0e" : build.color || "#0a3d91";
     const frameMat = paint(new THREE.Color(color), tcr ? FINISH.matte : FINISH[build.finish] || {});
     const aero = at("frame").aero === "aero";
