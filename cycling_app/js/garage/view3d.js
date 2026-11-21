@@ -2961,6 +2961,56 @@ const View3D = (() => {
     return true;
   }
 
+  // ---------- 写真から作ったバイク(コマ画像) ----------
+  // 3Dのバイクを隠して、カメラから見た角度のコマを板に貼って立てる(BikeSpin のコマ画像)。
+  // 分解・部位の選択・写真モードの間は、3Dのバイクに戻す
+  const pb = { on: false, mesh: null, tex: null, forGroup: null };
+  function setPhotoBike(on) {
+    pb.on = !!on;
+    photo.dirty = true;
+  }
+  function updatePhotoBike() {
+    const THREE = T();
+    const show = pb.on && typeof BikeSpin !== "undefined" && state && bikeGroup && !photo.on && !highlightId && anim.exploded < 0.01 && anim.explodeTarget === 0 && !(scanGroup && scanGroup.visible);
+    if (!show) {
+      if (pb.mesh && pb.mesh.visible) {
+        pb.mesh.visible = false;
+        if (bikeGroup) bikeGroup.visible = true;
+      }
+      return;
+    }
+    const S = BikeSpin.SHEET;
+    if (!pb.mesh) {
+      pb.tex = new THREE.TextureLoader().load(S.src);
+      if ("colorSpace" in pb.tex) pb.tex.colorSpace = THREE.SRGBColorSpace;
+      else pb.tex.encoding = THREE.sRGBEncoding;
+      pb.tex.repeat.set(1 / S.cols, 1 / S.rows);
+      pb.tex.generateMipmaps = false;
+      pb.tex.minFilter = THREE.LinearFilter;
+      pb.mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: pb.tex, alphaTest: 0.4, side: THREE.DoubleSide, toneMapped: false }));
+      pb.mesh.userData.impostor = true;
+    }
+    if (pb.mesh.parent !== root) root.add(pb.mesh);
+    if (pb.forGroup !== bikeGroup) {
+      // 大きさと位置: もとの動画で車輪の半径は150px、1コマは 780×550px、回る軸の足もとは下から70px
+      pb.forGroup = bikeGroup;
+      const m = state.fit.bike.R / 150;
+      pb.mesh.scale.set(780 * m, 550 * m, 1);
+      bikeGroup.visible = true;
+      root.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(groups.tires || bikeGroup);
+      const lo = root.worldToLocal(new THREE.Vector3((box.min.x + box.max.x) / 2, box.min.y, (box.min.z + box.max.z) / 2));
+      pb.mesh.position.set(lo.x, lo.y + (550 / 2 - 70) * m, lo.z);
+    }
+    bikeGroup.visible = false;
+    pb.mesh.visible = true;
+    const v = root.worldToLocal(camera.position.clone());
+    const a = Math.atan2(v.x - pb.mesh.position.x, v.z - pb.mesh.position.z); // 右横(+z)から見て0、正面(+x)から見て90度
+    pb.mesh.rotation.y = a;
+    const f = ((Math.round((a / (Math.PI * 2)) * S.n) % S.n) + S.n) % S.n;
+    pb.tex.offset.set((f % S.cols) / S.cols, 1 - (Math.floor(f / S.cols) + 1) / S.rows);
+  }
+
   // ---------- 毎フレーム ----------
   function loop() {
     raf = requestAnimationFrame(loop);
@@ -3061,6 +3111,7 @@ const View3D = (() => {
       cam.target.z + cam.dist * Math.cos(cam.az) * Math.cos(cam.el)
     );
     camera.lookAt(cam.target);
+    updatePhotoBike();
     // カメラが動いたか
     const key = [camera.position.x, camera.position.y, camera.position.z, cam.target.x, cam.target.y, cam.target.z].map((x) => x.toFixed(4)).join(",");
     if (key !== photo.last) (photo.last = key), (moving = true);
@@ -3382,5 +3433,5 @@ const View3D = (() => {
     if (renderer) renderer.dispose();
   }
 
-  return { bikeObj: () => bikeGroup, headless, tick, poseAt, hasRig, wheelRadius, partIcons, setScan, updateScan, hasScan, startMovie, stopMovie, partBox, equipFx, setPhotoreal, onClerk, waveClerk, create, setModel, setRider, setFlow, setPedaling, setExploded, highlight, clearHighlight, animateMount, setView, resize, dispose };
+  return { setPhotoBike, bikeObj: () => bikeGroup, headless, tick, poseAt, hasRig, wheelRadius, partIcons, setScan, updateScan, hasScan, startMovie, stopMovie, partBox, equipFx, setPhotoreal, onClerk, waveClerk, create, setModel, setRider, setFlow, setPedaling, setExploded, highlight, clearHighlight, animateMount, setView, resize, dispose };
 })();

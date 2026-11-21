@@ -477,10 +477,16 @@
     <nav class="g-tabs" id="tabs"></nav>
     <main class="main g-main" id="panel"></main>`;
 
+  // 左のガレージのバイクを、写真から作ったバイク(GIANT TCR)にする
+  let pbikeOn = true;
+  try {
+    pbikeOn = localStorage.getItem("garage_pbike") !== "0";
+  } catch (e) {}
   const stage = document.getElementById("stage");
   if (has3D) {
     try {
       View3D.create(stage);
+      View3D.setPhotoBike(pbikeOn);
       View3D.onClerk(() => openClerk());
       setTimeout(scanInit, 800);
       if (typeof MonsterArt !== "undefined") MonsterArt.load().then(() => renderPanel());
@@ -549,6 +555,7 @@
       <button class="g-tool ${pedaling ? "on" : ""}" data-tool="pedal">${pedaling ? "⏸" : "▶"} ペダル</button>
       <button class="g-tool ${flow ? "on" : ""}" data-tool="flow" ${mode === "ride" ? "" : "disabled"}>💨 流れ</button>
       <button class="g-tool" data-tool="view">👁 ${VIEWS[viewIdx].label}</button>
+      ${has3D && typeof BikeSpin !== "undefined" ? `<button class="g-tool ${pbikeOn ? "on" : ""}" data-tool="pbike" title="写真から作ったバイク(GIANT TCR)。オフにすると、パーツを組んだ3Dのバイク">🚲 実写</button>` : ""}
       ${has3D ? `<button class="g-tool ${photoOn ? "on" : ""}" data-tool="photo">📸 写真</button><button class="g-tool" data-tool="movie">🎬 動画</button>` : ""}
       ${has3D && scan.blob ? `<button class="g-tool ${G.scan && G.scan.on ? "on" : ""}" data-tool="scan">📦 スキャン</button>` : ""}
       <button class="g-tool" data-tool="sound" aria-label="効果音">${Sfx.muted ? "🔇" : "🔊"}</button>`;
@@ -1748,7 +1755,7 @@
       ${libForm ? libFormHtml() : ""}
       ${importRev ? importHtml() : ""}
       ${matrixHtml()}
-      ${typeof BikeSpin !== "undefined" ? `<section class="card g-spin"><h2>🚲 乗り換え候補を回して見る</h2><p class="muted small">${esc(BikeSpin.NAME)}。左右に引くと、好きな角度から見られます。</p>${BikeSpin.card()}</section>` : ""}
+      ${"" /* 写真から作ったバイクは、左のガレージに直接出す(View3D.setPhotoBike) */}
       ${cell ? sheetHtml() : ""}
       ${comparePanel()}
       ${"" /* チャットのおすすめの案内は出さない(NEWの中身はそのまま) */}
@@ -4015,6 +4022,13 @@
         if (has3D) View3D.setView(VIEWS[viewIdx].id);
       }
       if (k === "sound") Sfx.setMuted(!Sfx.muted);
+      if (k === "pbike" && has3D) {
+        pbikeOn = !pbikeOn;
+        try {
+          localStorage.setItem("garage_pbike", pbikeOn ? "1" : "0");
+        } catch (e) {}
+        View3D.setPhotoBike(pbikeOn);
+      }
       if (k === "photo" && has3D) {
         photoOn = !photoOn;
         // 写真モードは止まった姿を描く(ペダル・空気の流れは止める)
