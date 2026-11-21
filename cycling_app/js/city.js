@@ -2615,6 +2615,54 @@ const City = (() => {
     for (const c of meFallback.g.children) c.visible = false;
     meFallback.g.add(root);
     meFallback.pose = () => {};
+    // 写真から作ったバイク(コマ画像)に差し替える: 3Dのバイクは隠し、カメラから見た角度のコマを板に貼って立てる。
+    // ライダーは3Dのまま。ライバルはガレージの3Dのバイク(赤)のまま
+    let imp = null, bikeG = null;
+    try {
+      let on = true;
+      try {
+        on = localStorage.getItem("city_tcr") !== "0";
+      } catch (e) {}
+      bikeG = View3D.bikeObj && View3D.bikeObj();
+      if (on && bikeG && typeof BikeSpin !== "undefined") {
+        const S = BikeSpin.SMALL, Rw = View3D.wheelRadius();
+        const m = Rw / 150; // もとの動画で、車輪の半径は150px
+        const W = 780 * m, H = 550 * m; // 切り出した1コマは 780×550px、地面(回る軸の足もと)は下から70px
+        root.updateMatrixWorld(true);
+        // 前後のタイヤの真ん中に立てる(地面はタイヤの接地点)
+        let tiresObj = null;
+        bikeG.traverse((o) => !tiresObj && o.userData && o.userData.slot === "tires" && (tiresObj = o));
+        const box = new THREE.Box3().setFromObject(tiresObj || bikeG);
+        const ctr = root.worldToLocal(box.getCenter(new THREE.Vector3()));
+        const tex = new THREE.TextureLoader().load(S.src);
+        if ("colorSpace" in tex) tex.colorSpace = THREE.SRGBColorSpace;
+        else tex.encoding = THREE.sRGBEncoding;
+        tex.repeat.set(1 / S.cols, 1 / S.rows);
+        tex.generateMipmaps = false;
+        tex.minFilter = THREE.LinearFilter;
+        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshBasicMaterial({ map: tex, alphaTest: 0.45, side: THREE.DoubleSide }));
+        mesh.position.set(ctr.x, -root.position.y + (550 / 2 - 70) * m, ctr.z);
+        mesh.userData.impostor = true;
+        root.add(mesh);
+        bikeG.visible = false;
+        const v = new THREE.Vector3();
+        imp = {
+          mesh,
+          face(cam) {
+            if (!cam) return;
+            v.copy(cam.position);
+            root.worldToLocal(v);
+            const a = Math.atan2(v.x - mesh.position.x, v.z - mesh.position.z); // 右横(+z)から見て0、正面(+x)から見て90度
+            mesh.rotation.y = a;
+            const f = ((Math.round((a / (Math.PI * 2)) * S.n) % S.n) + S.n) % S.n;
+            tex.offset.set((f % S.cols) / S.cols, 1 - (Math.floor(f / S.cols) + 1) / S.rows);
+          },
+        };
+      }
+    } catch (e) {
+      console.error(e);
+      imp = null;
+    }
     const R = View3D.wheelRadius();
     const st = { crank: 90, wheel: 0, rCrank: 270, rWheel: 0, drop: 0, rDrop: 0, clone: null, src: null, dst: null, busy: false };
     async function makeRival() {
@@ -2666,10 +2714,12 @@ const City = (() => {
             b[i].position.copy(a[i].position);
             b[i].quaternion.copy(a[i].quaternion);
             b[i].scale.copy(a[i].scale);
-            b[i].visible = a[i].visible;
+            // ライバルは3Dのバイクのまま(写真のバイクの板は出さない)
+            b[i].visible = imp && a[i] === bikeG ? true : imp && a[i] === imp.mesh ? false : a[i].visible;
           }
         }
         View3D.poseAt(st.crank, st.wheel, st.drop);
+        if (imp) imp.face(camera);
       },
     };
   }
@@ -3701,6 +3751,16 @@ const City = (() => {
     };
     $("ct-plateau").onchange = (e) => setPlateau(e.target.checked);
     $("ct-plateau0").onchange = (e) => setPlateau(e.target.checked);
+    if ($("ct-tcr0")) {
+      try {
+        $("ct-tcr0").checked = localStorage.getItem("city_tcr") !== "0";
+      } catch (e) {}
+      $("ct-tcr0").onchange = (e) => {
+        try {
+          localStorage.setItem("city_tcr", e.target.checked ? "1" : "0");
+        } catch (er) {}
+      };
+    }
     $("ct-photo").onchange = (e) => {
       photoOn = e.target.checked;
       if (sim) photoStyle(), wantPhotos(sim.along);

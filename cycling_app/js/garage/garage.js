@@ -1748,6 +1748,7 @@
       ${libForm ? libFormHtml() : ""}
       ${importRev ? importHtml() : ""}
       ${matrixHtml()}
+      ${typeof BikeSpin !== "undefined" ? `<section class="card g-spin"><h2>🚲 乗り換え候補を回して見る</h2><p class="muted small">${esc(BikeSpin.NAME)}。左右に引くと、好きな角度から見られます。</p>${BikeSpin.card()}</section>` : ""}
       ${cell ? sheetHtml() : ""}
       ${comparePanel()}
       ${"" /* チャットのおすすめの案内は出さない(NEWの中身はそのまま) */}

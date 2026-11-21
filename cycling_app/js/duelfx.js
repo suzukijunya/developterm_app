@@ -92,7 +92,7 @@ const DuelFx = (() => {
           <div class="df-monster">
             <div class="df-m-name">${esc(monster.name)}</div>
             <div class="df-m-stars">${"★".repeat(monster.stars)}</div>
-            <div class="df-m-art">🚴</div>
+            <div class="df-m-art">${typeof BikeSpin !== "undefined" ? BikeSpin.html({ auto: true, speed: 5 }) : "🚴"}</div>
             <div class="df-m-type">【シンクロ／機械族】</div>
             <div class="df-m-stat">ATK/${monster.atk.toLocaleString()}　DEF/${monster.def.toLocaleString()}</div>
           </div>

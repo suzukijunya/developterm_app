@@ -3382,5 +3382,5 @@ const View3D = (() => {
     if (renderer) renderer.dispose();
   }
 
-  return { headless, tick, poseAt, hasRig, wheelRadius, partIcons, setScan, updateScan, hasScan, startMovie, stopMovie, partBox, equipFx, setPhotoreal, onClerk, waveClerk, create, setModel, setRider, setFlow, setPedaling, setExploded, highlight, clearHighlight, animateMount, setView, resize, dispose };
+  return { bikeObj: () => bikeGroup, headless, tick, poseAt, hasRig, wheelRadius, partIcons, setScan, updateScan, hasScan, startMovie, stopMovie, partBox, equipFx, setPhotoreal, onClerk, waveClerk, create, setModel, setRider, setFlow, setPedaling, setExploded, highlight, clearHighlight, animateMount, setView, resize, dispose };
 })();

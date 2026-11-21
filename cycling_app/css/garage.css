@@ -1727,3 +1727,4 @@ button.mx-cell.mx-alt { cursor: pointer; text-align: left; font: inherit; color:
 .g-svc-items li small { display: block; opacity: 0.8; font-size: 0.76rem; }
 .g-svc-l { margin: 6px 0 2px; }
 ol.g-svc-l { padding-left: 1.4em; }
+.g-spin .bspin-wrap { max-width: 760px; margin: 0 auto; }
