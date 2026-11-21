@@ -1019,8 +1019,10 @@ const View3D = (() => {
     const bk = fit.bike;
     const parts = build.parts;
     const at = (id) => (parts[id] && parts[id].attrs) || {};
-    const color = build.color || "#0a3d91";
-    const frameMat = paint(new THREE.Color(color), FINISH[build.finish] || {});
+    // GIANT TCR のフレーム(乗り換えの構成): つや消しの黒・前下がりのトップチューブ(コンパクト)・太いダウンチューブ
+    const tcr = /TCR/i.test((parts.frame && parts.frame.name) || "");
+    const color = tcr ? "#0b0c0e" : build.color || "#0a3d91";
+    const frameMat = paint(new THREE.Color(color), tcr ? FINISH.matte : FINISH[build.finish] || {});
     const aero = at("frame").aero === "aero";
     const k = aero ? 1.2 : 1; // エアロフレームは太め
     const flat = aero ? 0.55 : 1;
@@ -1030,14 +1032,45 @@ const View3D = (() => {
 
     // フレーム: 先細りのパイプと、つなぎ目の丸み
     const gf = group("frame");
-    const ttBack = lerp3(bb, bk.stTop, 0.97);
-    gf.add(tube(bk.ttFront, ttBack, 0.017 * k, frameMat, flat, 0.015 * k));
-    gf.add(tube(bk.dtFront, bb, 0.022 * k, frameMat, flat, 0.026 * k));
-    gf.add(tube(bb, bk.stTop, 0.02 * k, frameMat, flat, 0.016 * k));
-    gf.add(tube(bk.htBot, bk.htTop, 0.026 * k, frameMat, 1, 0.021 * k));
+    const ttBack = lerp3(bb, bk.stTop, tcr ? 0.8 : 0.97);
+    if (tcr) {
+      // トップチューブは前が太く後ろが細い平たい形、ダウンチューブは太い角ばった形、シートチューブは後輪に沿う薄い形
+      gf.add(tube(bk.ttFront, ttBack, 0.017, frameMat, 1.3, 0.011));
+      gf.add(tube(bk.dtFront, bb, 0.028, frameMat, 0.9, 0.032));
+      gf.add(tube(bb, bk.stTop, 0.022, frameMat, 0.7, 0.016));
+      gf.add(tube(bk.htBot, bk.htTop, 0.031, frameMat, 1, 0.024));
+    } else {
+      gf.add(tube(bk.ttFront, ttBack, 0.017 * k, frameMat, flat, 0.015 * k));
+      gf.add(tube(bk.dtFront, bb, 0.022 * k, frameMat, flat, 0.026 * k));
+      gf.add(tube(bb, bk.stTop, 0.02 * k, frameMat, flat, 0.016 * k));
+      gf.add(tube(bk.htBot, bk.htTop, 0.026 * k, frameMat, 1, 0.021 * k));
+    }
+    if (tcr) {
+      // ダウンチューブの文字(灰色)
+      try {
+        const cv = document.createElement("canvas");
+        cv.width = 512;
+        cv.height = 96;
+        const c2 = cv.getContext("2d");
+        c2.fillStyle = "#8d9096";
+        c2.font = "italic 900 78px Arial, Helvetica, sans-serif";
+        c2.textAlign = "center";
+        c2.textBaseline = "middle";
+        c2.fillText("TCR", 256, 52);
+        const tx = new THREE.CanvasTexture(cv);
+        const mid = lerp3(bk.dtFront, bb, 0.48);
+        const ang = Math.atan2(bk.dtFront.y - bb.y, bk.dtFront.x - bb.x);
+        for (const sd of [1, -1]) {
+          const lab = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.049), new THREE.MeshStandardMaterial({ map: tx, transparent: true, roughness: 0.8, depthWrite: false }));
+          lab.position.set(mid.x, mid.y, sd * 0.0282);
+          lab.rotation.set(0, sd > 0 ? 0 : Math.PI, sd > 0 ? ang : -ang);
+          gf.add(lab);
+        }
+      } catch (e) {}
+    }
     for (const p of [bk.ttFront, bk.dtFront]) gf.add(ball(p, 0.021 * k, frameMat));
     gf.add(ball(ttBack, 0.017 * k, frameMat));
-    const stJoin = lerp3(bb, bk.stTop, 0.9);
+    const stJoin = lerp3(bb, bk.stTop, tcr ? 0.76 : 0.9);
     for (const s of [-1, 1]) {
       const drop = { x: bk.rearAxle.x, y: bk.rearAxle.y, z: s * 0.065 };
       gf.add(tube({ x: stJoin.x, y: stJoin.y, z: s * 0.014 }, drop, 0.0095 * k, frameMat, 1, 0.007));
