@@ -1661,3 +1661,4 @@ button.mx-cell.mx-alt { cursor: pointer; text-align: left; font: inherit; color:
   .g-pc-topsec .g-pc-grid { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 6px; }
   .g-pc-topsec .g-pc-top { flex: 0 0 78%; scroll-snap-align: start; }
 }
+.g-pc-img .g-pc-3d { width: 70%; height: 70%; object-fit: contain; }

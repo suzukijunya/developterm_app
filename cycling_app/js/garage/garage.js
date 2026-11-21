@@ -2978,10 +2978,30 @@
     groupset: '<circle cx="42" cy="50" r="30" fill="none" stroke="currentColor" stroke-width="5" stroke-dasharray="3 2"/><circle cx="42" cy="50" r="8" fill="currentColor"/><line x1="42" y1="50" x2="86" y2="74" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>',
     accessories: '<line x1="15" y1="50" x2="80" y2="50" stroke="currentColor" stroke-width="4"/><path d="M80 38 L92 50 L80 62Z" fill="currentColor"/><circle cx="18" cy="50" r="7" fill="currentColor"/>',
   };
+  // 図鑑にないパーツ(乗り換えプラン・NEWの部品)の写真。楽天市場のショップの商品写真を参照する
+  // (出品が終わると写真が消えることがある。そのときは3Dのアイコンに戻る)
+  const WEB_PHOTOS = [
+    [/S-WORKS Aethos/i, "luggstore/cabinet/13555194/imgrc0185734735.jpg", "S-WORKS AETHOS フレームセット"],
+    [/R9270/, "uemura-cycle-parts/cabinet/items/folder8/smn-0000009355y.jpg", "DURA-ACE Di2 R9270"],
+    [/R8170/, "uemura-cycle-parts/cabinet/items/folder8/smn-0000009487y.jpg", "ULTEGRA Di2 R8170"],
+    [/Obermayer/i, "luggstore/cabinet/12606308/imgrc0177011600.jpg", "Lightweight Obermayer"],
+    [/一体型エアロハンドル/, "vision-stores/cabinet/13816686/36474963_4.jpg", "カーボン 一体型 エアロハンドル"],
+    [/TCR ADVANCED SL DISC/i, "luggstore/cabinet/12578999/imgrc0176787883.jpg", "TCR ADVANCED SL DISC フレームセット"],
+    [/SLR 1 42/i, "cycly/cabinet/0305/dw37n25_0.jpg", "GIANT SLR 1 ホイール"],
+    [/CONTACT SLR ハンドル/i, "verygood-store/cabinet/cpo71/cpo-2608095102_1.jpg", "GIANT CONTACT SLR ハンドル"],
+    [/FC-5700|105クランク/, "cycly/cabinet/0352/dw388r2_0.jpg", "FC-5700"],
+    [/WH-9000-C24/, "cycly/cabinet/0367/dw385q7_0.jpg", "WH-9000 C24"],
+  ];
+  const webPhoto = (name) => {
+    const m = WEB_PHOTOS.find(([re]) => re.test(name || ""));
+    return m ? ["https://tshop.r10s.jp/" + m[1] + "?fitin=600:600", "https://search.rakuten.co.jp/search/mall/" + encodeURIComponent(m[2]) + "/", "ショップの写真"] : null;
+  };
+  // 写真がないときは、ガレージの3Dモデルから描き出したアイコン
+  const part3d = (slot) => `<img class="g-pc-3d" src="assets/parts/${Parts.SLOTS.some((x) => x.id === slot) ? slot : "accessories"}.png" alt="" />`;
   function partPhoto(it) {
     const own = ownPhotos[it.id];
     const ai = AI.cachedImage(it.id);
-    const svg = `<svg viewBox="0 0 100 100" class="g-pc-svg" aria-hidden="true">${PART_SVG[it.slot] || PART_SVG.accessories}</svg>`;
+    const svg = part3d(it.slot);
     if (own) return `<img src="${own}" alt="" />`;
     // メーカーの製品写真(読めなかったら絵に戻す)
     const url = it.img || (ai && ai.url);
@@ -3123,7 +3143,10 @@
         const pl = c.plan && ALT_PLANS.find((x) => x.key === c.plan);
         const year = c.slot === "frame" && pl && pl.frameYear ? `<dl class="g-pc-spec"><dt>狙う年代</dt><dd>${esc(pl.frameYear)}</dd></dl>` : "";
         return `<article class="g-pc g-pc-top r${i + 1}">${tag}
-          <div class="g-pc-img"><svg viewBox="0 0 100 100" class="g-pc-svg" aria-hidden="true">${PART_SVG[c.slot] || PART_SVG.accessories}</svg></div>
+          <div class="g-pc-img">${part3d(c.slot === "groupset" ? "groupset" : c.slot)}${(() => {
+            const ph = webPhoto(name);
+            return ph ? `<img class="g-pc-web" src="${esc(ph[0])}" alt="${esc(name)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()" /><a class="g-pc-src" href="${esc(ph[1])}" target="_blank" rel="noopener">${esc(ph[2])}</a>` : "";
+          })()}</div>
           <div class="g-pc-body">
             <small class="g-pc-slot">${esc(head)}${c.plan ? "・S狙いから" : ""}</small>
             <strong class="g-pc-name">${esc(name)}</strong>

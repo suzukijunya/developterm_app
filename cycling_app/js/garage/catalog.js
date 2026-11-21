@@ -201,6 +201,12 @@ const Catalog = (() => {
     "d-me700": R("bike-king/cabinet/shimano2/smn-pdme700.jpg", "PD-ME700"),
     "g-chain": R("uemura-cycle-parts/cabinet/items/folder1/smn-0000001974y.jpg", "CN-HG95"),
     "a-ti-qr": R("auc-nijibashibic/cabinet/img7/titanqr-bk.jpg", "チタン クイックリリース ロード"),
+    "w-9000c24": R("cycly/cabinet/0367/dw385q7_0.jpg", "WH-9000 C24"),
+    "w-rs81": R("cycly/cabinet/0366/dw2jqa6_0.jpg", "WH-RS81 C24"),
+    "w-racing3": R("verygood-store/cabinet/cpt81/cpt-2603230907_1.jpg", "フルクラム Racing 3"),
+    "w-racing5": R("luggstore/cabinet/13721562/imgrc0187708231.jpg", "フルクラム Racing 5"),
+    "d-m8100": R("worldcycle/cabinet/itiran73/shi-n-epdm8100.jpg", "PD-M8100"),
+    "g-fc5700": R("cycly/cabinet/0352/dw388r2_0.jpg", "FC-5700"),
   });
   for (const it of ITEMS) if (IMGS[it.id]) (it.img = IMGS[it.id][0]), (it.imgPage = IMGS[it.id][1]), (it.imgLabel = IMGS[it.id][2] || "メーカーの写真");
 
