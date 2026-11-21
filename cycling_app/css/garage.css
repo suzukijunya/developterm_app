@@ -1676,3 +1676,6 @@ button.mx-cell.mx-alt { cursor: pointer; text-align: left; font: inherit; color:
 .g-pc-dc { position: absolute; top: 4px; right: 4px; z-index: 2; font-size: 0.68rem; padding: 3px 6px; }
 .g-pc-dcwhy { margin: 6px 0 4px; display: flex; gap: 6px; align-items: baseline; opacity: 0.9; line-height: 1.4; }
 .g-pc-dcwhy .mx-dc { flex: none; }
+.dc-eol { fill: rgba(217, 89, 38, 0.1); }
+.dc-eol-t { fill: #d95926; font-weight: 700; }
+.dc-eol-note { color: #d95926; }
