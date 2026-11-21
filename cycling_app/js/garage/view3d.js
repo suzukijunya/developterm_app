@@ -2971,7 +2971,7 @@ const View3D = (() => {
   }
   function updatePhotoBike() {
     const THREE = T();
-    const show = pb.on && typeof BikeSpin !== "undefined" && state && bikeGroup && !photo.on && !highlightId && anim.exploded < 0.01 && anim.explodeTarget === 0 && !(scanGroup && scanGroup.visible);
+    const show = pb.on && typeof BikeSpin !== "undefined" && state && bikeGroup && !photo.on && !highlightId && anim.exploded < 0.01 && anim.explodeTarget === 0 && !(scanGroup && scanGroup.visible) && Math.abs(cam.el) < 0.4; // 上から見ると板に見えるので、そのときは3Dに戻す
     if (!show) {
       if (pb.mesh && pb.mesh.visible) {
         pb.mesh.visible = false;

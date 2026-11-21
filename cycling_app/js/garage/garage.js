@@ -478,9 +478,10 @@
     <main class="main g-main" id="panel"></main>`;
 
   // 左のガレージのバイクを、写真から作ったバイク(GIANT TCR)にする
-  let pbikeOn = true;
+  // (最初はオフ: パーツを組んだ3Dのバイク。上から見ると板に見えてしまうため)
+  let pbikeOn = false;
   try {
-    pbikeOn = localStorage.getItem("garage_pbike") !== "0";
+    pbikeOn = localStorage.getItem("garage_pbike2") === "1";
   } catch (e) {}
   const stage = document.getElementById("stage");
   if (has3D) {
@@ -4025,7 +4026,7 @@
       if (k === "pbike" && has3D) {
         pbikeOn = !pbikeOn;
         try {
-          localStorage.setItem("garage_pbike", pbikeOn ? "1" : "0");
+          localStorage.setItem("garage_pbike2", pbikeOn ? "1" : "0");
         } catch (e) {}
         View3D.setPhotoBike(pbikeOn);
       }
