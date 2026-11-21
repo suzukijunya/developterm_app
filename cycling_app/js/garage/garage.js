@@ -3235,7 +3235,29 @@
     ["wirecut", "ワイヤーカッター", 2500],
     ["stand", "作業スタンド", 6000],
     ["clean", "チェーンオイル・ディグリーザー・ウエス", 2000],
+    ["sprocket", "スプロケット外し+チェーンウィップ", 3000],
   ];
+  // お店で整備したときの記録(言われたこと)。st: fixed=直してもらった / watch=様子見
+  const SERVICE_LOG = [
+    {
+      date: "2026-11-21", shop: "トキノさん", yen: 40000,
+      items: [
+        ["watch", "ディレイラーハンガーが少し曲がっている", "交換すると工賃・パーツ代が上がるので今のまま。月1回、変速機とスポークのすき間を見る"],
+        ["fixed", "変速ワイヤーの通し方(後ろの変速機の手前)", "フレームの内側を通っていた → 外側が正解"],
+        ["fixed", "スプロケットのスペーサー", "抜け・入れ違いがあり、ちゃんとはまっていなくて、チェーンに引かれて斜めになっていた"],
+        ["fixed", "Vブレーキのバネ", "バネの端がフレームの穴にはまっておらず、ガバガバになっていた"],
+        ["fixed", "STIが戻らない", "STIのところのアウターキャップがなく、変速が戻らなくなっていた"],
+      ],
+      lessons: ["外す前に写真を撮る(ワイヤーの通り道・部品の順番)", "スプロケットは順番どおり、ロックリングは約40N·m。11速ホイールには1.85mmスペーサー", "アウターの両端に必ずキャップ", "ブレーキは作業後、左右のアームの戻りを確認", "いちばん軽いギアで変速機とスポークのすき間を見る"],
+    },
+  ];
+  function serviceLogHtml() {
+    return `<details class="g-svc" data-fold="svclog" ${openFolds.has("svclog") ? "open" : ""}><summary>📋 整備の記録(お店で言われたこと)<small>${SERVICE_LOG.length}回</small></summary>
+      ${SERVICE_LOG.map((r) => `<div class="g-svc-rec"><p class="g-svc-head"><b>${esc(r.date)}</b> ${esc(r.shop)}<span>整備費用 ${Catalog.yen(r.yen)}</span></p>
+        <ul class="g-svc-items">${r.items.map(([st, t, d]) => `<li class="${st}"><em>${st === "watch" ? "様子見" : "直した"}</em><div><b>${esc(t)}</b><small>${esc(d)}</small></div></li>`).join("")}</ul>
+        <p class="small g-svc-l"><b>自分で整備するときの教訓</b></p><ol class="small g-svc-l">${r.lessons.map((l) => `<li>${esc(l)}</li>`).join("")}</ol></div>`).join("")}
+    </details>`;
+  }
   const LV = ["", "かんたん", "ふつう", "むずかしい"];
   function diyHtml(c) {
     const owned = new Set(c.tools || []);
@@ -3266,6 +3288,7 @@
       <section class="card g-maint">
         <h2>🔧 メカニックの整備メモ <span class="g-total">${Math.round(Clerk.totalKm(Store.rides)).toLocaleString()}km</span></h2>
         ${diyHtml(c)}
+        ${serviceLogHtml()}
         ${ms
           .map((m) => {
             const miss = (m.tools || []).filter((t) => !owned.has(t));

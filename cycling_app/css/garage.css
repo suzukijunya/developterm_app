@@ -1714,3 +1714,16 @@ button.mx-cell.mx-alt { cursor: pointer; text-align: left; font: inherit; color:
 .mx-rank { display: block; width: max-content; margin: 0 auto 2px; font-style: normal; font-size: 0.62rem; font-weight: 800; padding: 1px 6px; border-radius: 4px; letter-spacing: 0.05em; }
 .mx-rank.rA { background: #3987e5; color: #fff; }
 .mx-rank.rS { background: linear-gradient(90deg, #e0b100, #ff7a3d); color: #1a1400; }
+.g-svc { margin: 8px 0; }
+.g-svc summary { cursor: pointer; font-size: 0.85rem; }
+.g-svc summary small { margin-left: 6px; opacity: 0.7; }
+.g-svc-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; margin: 8px 0 4px; }
+.g-svc-head span { margin-left: auto; font-size: 0.8rem; opacity: 0.8; }
+.g-svc-items { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.g-svc-items li { display: flex; gap: 8px; align-items: flex-start; padding: 6px 8px; border-radius: 8px; background: rgba(127, 127, 127, 0.08); }
+.g-svc-items li em { flex: none; font-style: normal; font-size: 0.68rem; font-weight: 800; padding: 2px 6px; border-radius: 4px; background: #199e70; color: #fff; }
+.g-svc-items li.watch em { background: #e0b100; color: #1a1400; }
+.g-svc-items li b { display: block; font-size: 0.85rem; }
+.g-svc-items li small { display: block; opacity: 0.8; font-size: 0.76rem; }
+.g-svc-l { margin: 6px 0 2px; }
+ol.g-svc-l { padding-left: 1.4em; }
