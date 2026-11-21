@@ -227,9 +227,9 @@
     {
       key: "rankA",
       id: "rankA-2026-11-19",
-      chip: "ランクA",
+      chip: "A: TCR SL+CADEX",
       aim: "A",
-      short: "RANK A",
+      short: "TCR SL+CADEX",
       fixed: true,
       title: "ランクA構成: TCR SL+チューブレス28C",
       frameYear: "2021〜2024年モデル(第9世代)",
@@ -252,9 +252,9 @@
     {
       key: "rankS",
       id: "rankS-2026-11-19",
-      chip: "ランクS狙い",
+      chip: "S: S-WORKS Aethos",
       aim: "S",
-      short: "S狙い",
+      short: "S-WORKS Aethos",
       fixed: true,
       title: "ランクS構成: S-WORKS Aethos 6.5kg",
       frameYear: "2021〜2024年モデル(初代)",
@@ -1104,7 +1104,7 @@
     const sMark = (slotId, html) => {
       const i = ranks.findIndex((x) => x.plan === "rankS" && (x.slot === slotId || (slotId === "frame" && x.slot === "fork")));
       if (i < 0) return html;
-      return html.replace('class="mx-cell', `class="mx-cell mx-pick ${RK[i][0]}`).replace("</button>", `<i class="mx-pick-tag" title="NEWのあとは、S狙いのパーツから">${RK[i][1]}</i></button>`);
+      return html.replace('class="mx-cell', `class="mx-cell mx-pick ${RK[i][0]}`).replace("</button>", `<i class="mx-pick-tag" title="NEWのあとは、S-WORKS Aethos(ランクS)構成のパーツから">${RK[i][1]}</i></button>`);
     };
     const RK = [["mx-pick", "① 次にカスタム"], ["mx-pick2", "② その次"], ["mx-pick3", "③ その次の次"]];
     // 乗り換えプランの列(見るだけ。装着済みとの重さの差を出す)
@@ -1135,7 +1135,10 @@
           <span class="mx-corner"></span>
           <span class="mx-col ${G.active === "current" ? "on" : ""}">装着済み<small>${kg("current")}</small></span>
           <span class="mx-col ${G.active === "next" ? "on" : ""}">NEW<small>${kg("next")}</small></span>
-          ${alts.map((k) => `<span class="mx-col mx-alt ${G.active === k ? "on" : ""} ">${esc(ALT_PLANS.find((x) => x.key === k).short)}<small>${kg(k)}</small></span>`).join("")}
+          ${alts.map((k) => {
+            const pl = ALT_PLANS.find((x) => x.key === k);
+            return `<span class="mx-col mx-alt ${G.active === k ? "on" : ""} ">${pl.aim ? `<em class="mx-rank r${pl.aim}">ランク${pl.aim}</em>` : ""}${esc(pl.short)}<small>${kg(k)}</small></span>`;
+          }).join("")}
           ${Parts.SLOTS.filter((sl) => sl.id !== "fork" && sl.id !== "cages")
             .map((sl) => {
               // バーテープとボトルケージは「小物」として1行にまとめる(データと3Dでは別のまま)
@@ -3171,7 +3174,7 @@
         // ディスクのバイクに持っていけるか(アセンブル表と同じ印)
         const planDisc = c.plan && /ディスク|DISC/i.test(((G.builds[c.plan].parts.groupset || {}).name || "") + ((G.builds[c.plan].parts.frame || {}).name || ""));
         let [dc, why] = diskCarry(c.slot, it ? it.name : p && p.name);
-        if (planDisc && dc !== "ok") (dc = "ok"), (why = "ディスクのバイク(S狙いの構成)用のパーツ");
+        if (planDisc && dc !== "ok") (dc = "ok"), (why = "ディスクのバイク(S-WORKS Aethos 構成)用のパーツ");
         tag += `<i class="mx-dc g-pc-dc ${dc}" title="${esc(why)}">${{ ok: "ディスク◎", cond: "ディスク△", no: "ディスク×" }[dc]}</i>`;
         const whyHtml = `<p class="g-pc-dcwhy small"><i class="mx-dc ${dc}">${{ ok: "ディスク◎", cond: "ディスク△", no: "ディスク×" }[dc]}</i> ${esc(why)}</p>`;
         if (it && ids.length === 1) return partCard(it).replace('loading="lazy"', 'loading="eager"').replace('<article class="g-pc', `<article class="g-pc g-pc-top r${i + 1}`).replace('<div class="g-pc-img"', `${tag}<div class="g-pc-img"`).replace('<div class="g-pc-btns">', `${whyHtml}<div class="g-pc-btns">`);
@@ -3189,7 +3192,7 @@
             return ph ? `<img class="g-pc-web" src="${esc(ph[0])}" alt="${esc(name)}" referrerpolicy="no-referrer" onerror="this.remove()" /><a class="g-pc-src" href="${esc(ph[1])}" target="_blank" rel="noopener">${esc(ph[2])}</a>` : "";
           })()}</div>
           <div class="g-pc-body">
-            <small class="g-pc-slot">${esc(head)}${c.plan ? "・S狙いから" : ""}</small>
+            <small class="g-pc-slot">${esc(head)}${c.plan ? "・S-WORKS Aethos 構成から" : ""}</small>
             <strong class="g-pc-name">${esc(name)}</strong>
             <div class="g-pc-nums"><b>${g.toLocaleString()}g</b>${dg ? `<em class="${dg < 0 ? "good" : "bad"}">${dg < 0 ? "−" : "+"}${Math.abs(dg).toLocaleString()}g</em>` : ""}</div>
             <div class="g-pc-price">${c.yen ? `<span>中古 ${Catalog.yen(c.yen)}</span>` : ""}</div>

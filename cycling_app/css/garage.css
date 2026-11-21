@@ -1711,3 +1711,6 @@ button.mx-cell.mx-alt { cursor: pointer; text-align: left; font: inherit; color:
   .g-diy-kpis > div { display: grid; grid-template-columns: 1fr auto; align-items: baseline; column-gap: 8px; padding: 6px 10px; }
   .g-diy-kpis b { grid-column: 2; grid-row: 1 / span 2; font-size: 1.05rem; }
 }
+.mx-rank { display: block; width: max-content; margin: 0 auto 2px; font-style: normal; font-size: 0.62rem; font-weight: 800; padding: 1px 6px; border-radius: 4px; letter-spacing: 0.05em; }
+.mx-rank.rA { background: #3987e5; color: #fff; }
+.mx-rank.rS { background: linear-gradient(90deg, #e0b100, #ff7a3d); color: #1a1400; }
