@@ -3162,13 +3162,19 @@
     const RKN = ["① 次にカスタム", "② その次", "③ その次の次", "④", "⑤"];
     const cards = ranks
       .map((c, i) => {
-        const tag = `<i class="g-pc-rank r${i + 1}">${RKN[i]}</i>`;
+        let tag = `<i class="g-pc-rank r${i + 1}">${RKN[i]}</i>`;
         const src = c.item ? null : G.builds[c.plan || "next"];
         const ids = c.ids || [c.slot];
         const p = src && src.parts[c.slot];
         const it = c.item || (p && p.shop && p.shop.id && Catalog.byId(p.shop.id));
         if (it && hidden.has(it.id)) return "";
-        if (it && ids.length === 1) return partCard(it).replace('loading="lazy"', 'loading="eager"').replace('<article class="g-pc', `<article class="g-pc g-pc-top r${i + 1}`).replace('<div class="g-pc-img"', `${tag}<div class="g-pc-img"`);
+        // ディスクのバイクに持っていけるか(アセンブル表と同じ印)
+        const planDisc = c.plan && /ディスク|DISC/i.test(((G.builds[c.plan].parts.groupset || {}).name || "") + ((G.builds[c.plan].parts.frame || {}).name || ""));
+        let [dc, why] = diskCarry(c.slot, it ? it.name : p && p.name);
+        if (planDisc && dc !== "ok") (dc = "ok"), (why = "ディスクのバイク(S狙いの構成)用のパーツ");
+        tag += `<i class="mx-dc g-pc-dc ${dc}" title="${esc(why)}">${{ ok: "ディスク◎", cond: "ディスク△", no: "ディスク×" }[dc]}</i>`;
+        const whyHtml = `<p class="g-pc-dcwhy small"><i class="mx-dc ${dc}">${{ ok: "ディスク◎", cond: "ディスク△", no: "ディスク×" }[dc]}</i> ${esc(why)}</p>`;
+        if (it && ids.length === 1) return partCard(it).replace('loading="lazy"', 'loading="eager"').replace('<article class="g-pc', `<article class="g-pc g-pc-top r${i + 1}`).replace('<div class="g-pc-img"', `${tag}<div class="g-pc-img"`).replace('<div class="g-pc-btns">', `${whyHtml}<div class="g-pc-btns">`);
         // 図鑑にないパーツ(S狙いの構成のフレームセットなど)
         const parts = ids.map((k) => src.parts[k]).filter((x) => x && x.mounted !== false);
         const name = parts.filter((x, j) => !j || (+x.g > 0 && !/含む/.test(x.name))).map((x) => x.name).join(" + ");
@@ -3188,6 +3194,7 @@
             <div class="g-pc-nums"><b>${g.toLocaleString()}g</b>${dg ? `<em class="${dg < 0 ? "good" : "bad"}">${dg < 0 ? "−" : "+"}${Math.abs(dg).toLocaleString()}g</em>` : ""}</div>
             <div class="g-pc-price">${c.yen ? `<span>中古 ${Catalog.yen(c.yen)}</span>` : ""}</div>
             ${year}
+            ${whyHtml}
             <div class="g-pc-btns"><a class="g-chip2" href="${esc(mercariUrl(parts[0] ? parts[0].name : name))}" target="_blank" rel="noopener">メルカリ</a>
               <a class="g-chip2" href="https://www.google.com/search?tbm=isch&q=${encodeURIComponent(parts[0] ? parts[0].name : name)}" target="_blank" rel="noopener">🔎 画像</a></div>
           </div></article>`;
