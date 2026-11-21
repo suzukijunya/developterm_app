@@ -1712,7 +1712,7 @@
       ${matrixHtml()}
       ${cell ? sheetHtml() : ""}
       ${comparePanel()}
-      ${chatRecHtml()}
+      ${"" /* チャットのおすすめの案内は出さない(NEWの中身はそのまま) */}
       ${rankHtml()}
       ${pcatHtml()}
       ${foldCard("reg", "📷 パーツを登録する・マイパーツ", "写真から登録、表の読み込み、バックアップ", quickHtml() + libraryHtml(), quick.entries.length > 0 || dataOpen || pasteOpen)}
