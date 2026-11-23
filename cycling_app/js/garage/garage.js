@@ -3257,7 +3257,9 @@
   // 持っている工具(セットの分 + 1つずつチェックした分)
   const ownedTools = (c) => {
     // 「持っている」と聞いた工具を、最初の1回だけチェックしておく(あとから外せる)
-    if (!c.seedPump) (c.tools = [...new Set([...(c.tools || []), "pump"])]), (c.seedPump = 1);
+    const done = new Set(c.seedTools || (c.seedPump ? ["pump"] : []));
+    const add = ["pump", "torque"].filter((id) => !done.has(id));
+    if (add.length) (c.tools = [...new Set([...(c.tools || []), ...add])]), (c.seedTools = [...done, ...add]);
     return new Set([...(c.tools || []), ...setCovered(c)]);
   };
   // お店で整備したときの記録(言われたこと)。st: fixed=直してもらった / watch=様子見
