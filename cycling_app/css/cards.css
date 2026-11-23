@@ -1,0 +1,35 @@
+/* カード図鑑 */
+:root { color-scheme: dark; }
+body { margin: 0; background: #0a0f1c; color: #e8edf3; font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif; }
+.cd-head { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px; padding: calc(env(safe-area-inset-top, 0px) + 10px) 14px 10px; background: rgba(10, 15, 28, 0.94); border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+.cd-head h1 { margin: 0; font-size: 1.05rem; }
+.cd-head small { font-weight: 400; opacity: 0.7; font-size: 0.75rem; margin-left: 6px; }
+.cd-back { color: #8fc4ff; text-decoration: none; font-size: 0.9rem; }
+.cd-deck { margin: 12px 14px; padding: 12px; border-radius: 12px; background: #131b2e; border: 1px solid rgba(255, 255, 255, 0.1); }
+.cd-deck h2 { margin: 0 0 4px; font-size: 0.95rem; }
+.cd-deck p { margin: 2px 0; font-size: 0.8rem; opacity: 0.85; }
+.cd-deck .cd-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.cd-deck button, .cd-more button, .cd-modal button { font: inherit; font-size: 0.85rem; font-weight: 700; padding: 8px 14px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.25); background: #1d2942; color: #fff; cursor: pointer; }
+.cd-deck button.on, .cd-modal button.go { background: #e8a020; border-color: #e8a020; color: #1a1200; }
+.cd-decklist { margin-top: 8px; font-size: 0.76rem; line-height: 1.7; opacity: 0.9; }
+.cd-decklist span { display: inline-block; margin-right: 8px; white-space: nowrap; }
+.cd-filter { margin: 0 14px; }
+.cd-filter input, .cd-filter select { font: inherit; font-size: 0.9rem; padding: 9px 10px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.2); background: #131b2e; color: #fff; box-sizing: border-box; }
+.cd-filter input { width: 100%; }
+.cd-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.cd-row select { flex: 1 1 130px; min-width: 0; }
+.cd-count { margin: 8px 2px; font-size: 0.8rem; opacity: 0.8; }
+.cd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; padding: 4px 14px 16px; }
+.cd-card { position: relative; cursor: pointer; }
+.cd-card .cd-rar { position: absolute; left: 4px; top: -6px; z-index: 2; font-size: 0.62rem; font-weight: 900; padding: 1px 6px; border-radius: 4px; background: #5a6577; color: #fff; }
+.cd-rar.R { background: #2f7de0; } .cd-rar.SR { background: #b04ae0; } .cd-rar.UR { background: linear-gradient(90deg, #ffb020, #ff5a8a, #7a6cff); }
+.cd-card .cd-no { display: block; text-align: center; font-size: 0.66rem; opacity: 0.6; margin-top: 2px; }
+.cd-more { text-align: center; padding: 0 0 calc(env(safe-area-inset-bottom, 0px) + 28px); }
+.cd-modal { position: fixed; inset: 0; z-index: 20; background: rgba(0, 0, 0, 0.82); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.cd-modal[hidden] { display: none; }
+.cd-modal .cd-box { width: min(92vw, 380px); max-height: 94vh; overflow: auto; }
+.cd-modal .cd-big { width: min(78vw, 300px); margin: 0 auto; }
+.cd-modal .cd-info { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: #131b2e; font-size: 0.88rem; line-height: 1.6; }
+.cd-modal .cd-info b { color: #ffd27a; }
+.cd-modal .cd-btns { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
+@media (max-width: 480px) { .cd-grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px 8px; } }

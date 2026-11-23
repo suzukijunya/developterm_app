@@ -19,7 +19,7 @@ const TCard = (() => {
     if (c.synchro || c.kind === "synchro") return "synchro";
     if (side === "opp") return "opp";
     if (c.tuner) return "tuner";
-    if (c.fx || c.need) return "effect";
+    if (c.fx || c.need || (c.e && c.e.length)) return "effect";
     return "normal";
   }
   // カード番号と通し番号(名前から決まる。印字の細部として出す)

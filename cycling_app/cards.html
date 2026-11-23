@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="Cache-Control" content="no-cache" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>カード図鑑 - ライドカロリー</title>
+<meta name="theme-color" content="#0a1a3a" />
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+<link rel="stylesheet" href="css/tcard.css?v=2026.12.20" />
+<link rel="stylesheet" href="css/cards.css?v=2026.12.20" />
+</head>
+<body>
+<header class="cd-head">
+  <a class="cd-back" href="index.html">← 戻る</a>
+  <h1>カード図鑑 <small id="cd-total"></small></h1>
+</header>
+<section class="cd-deck" id="cd-deck"></section>
+<section class="cd-filter">
+  <input type="search" id="cd-q" placeholder="名前・効果で探す(例: ドロー、破壊、ドラゴン)" />
+  <div class="cd-row">
+    <select id="cd-th" aria-label="テーマ"></select>
+    <select id="cd-kind" aria-label="種類">
+      <option value="">種類: すべて</option><option value="monster">モンスター</option><option value="tuner">チューナー</option><option value="synchro">シンクロ</option><option value="spell">スピード・スペル</option><option value="trap">罠</option>
+    </select>
+    <select id="cd-rar" aria-label="レア度">
+      <option value="">レア度: すべて</option><option>UR</option><option>SR</option><option>R</option><option>N</option>
+    </select>
+    <select id="cd-fx" aria-label="効果"></select>
+    <select id="cd-sort" aria-label="並び順">
+      <option value="no">番号順</option><option value="atk">攻撃力が高い順</option><option value="lv">レベルが高い順</option><option value="rar">レア度が高い順</option>
+    </select>
+  </div>
+  <p class="cd-count" id="cd-count"></p>
+</section>
+<main class="cd-grid" id="cd-grid"></main>
+<div class="cd-more"><button id="cd-more" type="button">もっと見る</button></div>
+<div class="cd-modal" id="cd-modal" hidden></div>
+
+<script src="js/physics.js?v=2026.12.20"></script>
+<script src="js/eta.js?v=2026.12.20"></script>
+<script src="js/duel.js?v=2026.12.20"></script>
+<script src="js/cardgen.js?v=2026.12.20"></script>
+<script src="js/battle.js?v=2026.12.20"></script>
+<script src="js/tcard.js?v=2026.12.20"></script>
+<script src="js/cards.js?v=2026.12.20"></script>
+</body>
+</html>
