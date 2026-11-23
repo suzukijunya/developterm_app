@@ -3659,6 +3659,10 @@ const City = (() => {
     renderer.setSize(el.clientWidth, el.clientHeight);
   }
 
+  let viewMode = "auto";
+  try {
+    viewMode = localStorage.getItem("city_view") || "auto";
+  } catch (e) {}
   function loop() {
     if (!running) return;
     raf = requestAnimationFrame(loop);
@@ -3692,14 +3696,20 @@ const City = (() => {
     if (s.waiting && !s.wasWaiting) banner("信号待ち", 1.6);
     s.wasWaiting = s.waiting;
     // 追いかけるカメラ(後ろ上から。速いほど少し引いて、視野を広げる)
-    const back = 6.5 + s.v * 0.18, up = 2.9 + s.v * 0.05;
+    // 視点: 近く(すぐ後ろ)/上から(ドローンのように)/空から。Googleの3Dは空から撮った街なので、
+    // 道のすぐ上から見ると溶けたように見える。「おまかせ」では、Googleの3Dのときだけ上から見る
+    const vm = viewMode === "auto" ? (G3.on() ? "high" : "near") : viewMode;
+    const VW = { near: [6.5 + s.v * 0.18, 2.9 + s.v * 0.05, 9], high: [30, 26, 16], sky: [60, 75, 22] }[vm];
+    s.vw = s.vw || VW.slice();
+    for (let i = 0; i < 3; i++) s.vw[i] += (VW[i] - s.vw[i]) * Math.min(1, real * 2.2); // 切り替えはなめらかに
+    const back = s.vw[0], up = s.vw[1];
     const want = new THREE.Vector3(p.x - p.tx * back, p.y + up, p.z - p.tz * back);
     if (!s.camPos) s.camPos = want.clone();
     // 早送りでもカメラが遅れないように、追いつく速さも倍速に合わせる
     s.camPos.lerp(want, 1 - Math.exp(-real * 3.2 * Math.max(1, s.speedX)));
     if (s.camPos.distanceTo(want) > 30) s.camPos.copy(want);
     camera.position.copy(s.camPos);
-    camera.lookAt(p.x + p.tx * 9, p.y + 1.2, p.z + p.tz * 9);
+    camera.lookAt(p.x + p.tx * s.vw[2], p.y + 1.2, p.z + p.tz * s.vw[2]);
     camera.fov = 58 + Math.min(16, s.v * 1.1);
     camera.updateProjectionMatrix();
     updateGround(p);
@@ -3902,6 +3912,15 @@ const City = (() => {
     };
     $("ct-google0").onchange = (e) => setGoogle(e.target.checked);
     $("ct-google").onchange = (e) => setGoogle(e.target.checked);
+    if ($("ct-view-sel")) {
+      $("ct-view-sel").value = viewMode;
+      $("ct-view-sel").onchange = (e) => {
+        viewMode = e.target.value;
+        try {
+          localStorage.setItem("city_view", viewMode);
+        } catch (err) {}
+      };
+    }
     $("ct-plateau").checked = plateauOn;
     $("ct-plateau0").checked = plateauOn;
     const setPlateau = (on) => {
