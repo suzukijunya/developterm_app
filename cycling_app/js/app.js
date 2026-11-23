@@ -2111,7 +2111,7 @@ print("このファイルをスマホに送って(AirDrop など)、アプリの
     const left = Math.max(0, Math.ceil((b.nextAt - ride.distance) / 10) * 10);
     const nextMine = (b.turn + 1) % 2 === 1;
     el.className = "duel-bar field";
-    el.innerHTML = `
+    const html = `
       <div class="duel-top"><div class="spc"><span>SPC</span><b>${spc}</b><div class="spc-pips">${pips}</div></div>
       <div class="lp"><span>${foe.icon} ${esc(foe.name)}</span><b class="foe-deck">${esc(foe.deckName)}</b>
         <small>山札 ${b.you.deck.length}/40・${b.wins || 0}勝${b.losses || 0}敗${g ? `・ゴースト ${g.diff >= 0 ? "+" : "−"}${Math.round(Math.abs(g.diff))}m` : ""}</small></div></div>
@@ -2121,6 +2121,34 @@ print("このファイルをスマホに送って(AirDrop など)、アプリの
         .map(Battle.cardOf)
         .map((c) => `<span class="mini ${c.kind}" title="${esc(c.text || "")}">${c.icon} ${esc(c.name)}</span>`)
         .join("") || `<small>手札なし</small>`}</div>`;
+    morph(el, html);
+  }
+  // 中身を作り直さずに、変わった所だけ書き換える。
+  // (毎秒まるごと入れ替えると、流れる車線や揺れる動きが毎回はじめからやり直しになって、カクカクして見える)
+  function morph(el, html) {
+    if (el._html === html) return;
+    el._html = html;
+    if (!el.firstChild) return void (el.innerHTML = html);
+    const t = document.createElement("template");
+    t.innerHTML = html;
+    const sync = (a, b) => {
+      // a=いまの画面 b=新しい内容
+      if (a.nodeType !== b.nodeType || a.nodeName !== b.nodeName) return a.replaceWith(b.cloneNode(true));
+      if (a.nodeType !== 1) {
+        if (a.nodeValue !== b.nodeValue) a.nodeValue = b.nodeValue;
+        return;
+      }
+      if (a.classList.contains("bspin")) return; // 回っているバイクはそのまま
+      for (const at of [...a.attributes]) if (!b.hasAttribute(at.name)) a.removeAttribute(at.name);
+      for (const at of b.attributes) if (a.getAttribute(at.name) !== at.value) a.setAttribute(at.name, at.value);
+      const an = [...a.childNodes], bn = [...b.childNodes];
+      // 子の数が違うときは、その中身だけ入れ替える
+      if (an.length !== bn.length) return void (a.innerHTML = b.innerHTML);
+      for (let i = 0; i < an.length; i++) sync(an[i], bn[i]);
+    };
+    const an = [...el.childNodes], bn = [...t.content.childNodes];
+    if (an.length !== bn.length) return void (el.innerHTML = html);
+    for (let i = 0; i < an.length; i++) sync(an[i], bn[i]);
   }
 
   // 目的地までの推定を更新する。半分まで来たときの予測と、到着した時点の記録を残しておき、
@@ -2473,7 +2501,7 @@ print("このファイルをスマホに送って(AirDrop など)、アプリの
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2026.12.18";
+  const APP_VERSION = "2026.12.19";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });

@@ -56,7 +56,7 @@ self.onmessage = async (e) => {
       const out = await tile(d.buf);
       out.id = d.id;
       const tr = [];
-      for (const g of out.groups) tr.push(g.pos.buffer, g.nor.buffer, g.uv.buffer, g.col.buffer);
+      for (const g of out.groups) tr.push(g.pos.buffer, g.nor.buffer, g.uv.buffer, g.col.buffer, g.anc.buffer);
       for (const im of out.images) tr.push(im.bitmap || im.bytes);
       self.postMessage(out, tr);
     } catch (err) {
@@ -290,9 +290,65 @@ function build(parts, center, bt) {
     else if (pt.color) pt.g = G("c", "c", null, pt.idx.length);
     else {
       pt.g = null;
-      for (let k = 0; k < 3; k++) (PG[k] = G("p" + k, "p", null, pt.idx.length)), (PG[k].style = k);
+      // (屋根を足すぶん、少し多めに場所を取る)
+      for (let k = 0; k < 3; k++) (PG[k] = G("p" + k, "p", null, pt.idx.length * 3)), (PG[k].style = k);
     }
-  for (const g of groups.values()) Object.assign(g, { pos: new Float32Array(g.cap * 3), nor: new Int8Array(g.cap * 3), uv: new Float32Array(g.cap * 2), col: new Uint8Array(g.cap * 3) });
+  // anc: その頂点が属する建物の「中心x・足もとy・中心z」。近づくと建物ごとに立ち上がる動きに使う
+  for (const g of groups.values()) Object.assign(g, { pos: new Float32Array(g.cap * 3), nor: new Int8Array(g.cap * 3), uv: new Float32Array(g.cap * 2), col: new Uint8Array(g.cap * 3), anc: new Float32Array(g.cap * 3) });
+  // 戸建ての屋根: 箱のまま(屋根が平ら)の小さな家には、寄棟(よせむね)の屋根をのせる
+  const house = new Uint8Array(NB), hx = new Float32Array(NB * 7); // 軸x, 軸z, 中心x, 中心z, 棟の半分の長さ, 屋根の高さ, 壁の高さ
+  {
+    const slope = new Uint8Array(NB), other = new Uint8Array(NB), top = Array.from({ length: NB }, () => null);
+    let b0 = 0;
+    for (const pt of parts) {
+      const ix = pt.idx, plain = pt.img == null && !pt.color;
+      for (let t = 0; t < ix.length; t += 3) {
+        const ia = b0 + ix[t], ib = b0 + ix[t + 1], ic = b0 + ix[t + 2], b = B[ia];
+        if (skip[b]) continue;
+        if (!plain) { other[b] = 1; continue; }
+        if (style[b] !== 0) continue;
+        const ux = P[ib * 3] - P[ia * 3], uy = P[ib * 3 + 1] - P[ia * 3 + 1], uz = P[ib * 3 + 2] - P[ia * 3 + 2];
+        const vx = P[ic * 3] - P[ia * 3], vy = P[ic * 3 + 1] - P[ia * 3 + 1], vz = P[ic * 3 + 2] - P[ia * 3 + 2];
+        const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx, L = Math.hypot(nx, ny, nz) || 1;
+        const a = Math.abs(ny / L);
+        if (a <= 0.55) continue;
+        if (a < 0.97) { slope[b] = 1; continue; }
+        for (const i of [ia, ib, ic]) if (P[i * 3 + 1] >= maxY[b] - 0.05) (top[b] || (top[b] = [])).push(P[i * 3], P[i * 3 + 2]);
+      }
+      b0 += pt.pos.length / 3;
+    }
+    for (let b = 0; b < NB; b++) {
+      const q = top[b], h = maxY[b] - minY[b];
+      if (!q || q.length < 6 || slope[b] || other[b] || h < 2.6 || h > 10.5 || bx1[b] - bx0[b] > 24 || bz1[b] - bz0[b] > 24) continue;
+      // 屋根の点の広がりから、家の長い向き(棟の向き)を出す
+      let mx = 0, mz = 0;
+      const n = q.length / 2;
+      for (let i = 0; i < q.length; i += 2) (mx += q[i]), (mz += q[i + 1]);
+      (mx /= n), (mz /= n);
+      let sxx = 0, szz = 0, sxz = 0;
+      for (let i = 0; i < q.length; i += 2) {
+        const dx = q[i] - mx, dz = q[i + 1] - mz;
+        (sxx += dx * dx), (szz += dz * dz), (sxz += dx * dz);
+      }
+      const ang = 0.5 * Math.atan2(2 * sxz, sxx - szz);
+      let ax = Math.cos(ang), az = Math.sin(ang);
+      let a0 = 1e9, a1 = -1e9, p0 = 1e9, p1 = -1e9;
+      for (let i = 0; i < q.length; i += 2) {
+        const dx = q[i] - mx, dz = q[i + 1] - mz, a = dx * ax + dz * az, pp = -dx * az + dz * ax;
+        if (a < a0) a0 = a;
+        if (a > a1) a1 = a;
+        if (pp < p0) p0 = pp;
+        if (pp > p1) p1 = pp;
+      }
+      let hl = (a1 - a0) / 2, hw = (p1 - p0) / 2;
+      const ca = (a0 + a1) / 2, cp = (p0 + p1) / 2;
+      const cxb = mx + ax * ca - az * cp, czb = mz + az * ca + ax * cp;
+      if (hw > hl) [ax, az, hl, hw] = [-az, ax, hw, hl];
+      if (hw < 1.2) continue;
+      house[b] = 1;
+      hx.set([ax, az, cxb, czb, Math.max(0, hl - hw), Math.min(2.6, Math.max(0.9, hw * 0.55)), h], b * 7);
+    }
+  }
   let base = 0;
   // 外壁の色(写真のない建物)。東京の住宅地に多い色から選ぶ
   const WALL = [
@@ -314,8 +370,9 @@ function build(parts, center, bt) {
       const b = B[ia];
       if (skip[b]) continue;
       const g = pt.g || PG[style[b]];
-      const { pos, nor, uv, col } = g;
+      const { pos, nor, uv, col, anc } = g;
       let w = g.w;
+      const ancX = (bx0[b] + bx1[b]) / 2, ancY = TERRAIN ? minY[b] : 0, ancZ = (bz0[b] + bz1[b]) / 2;
       const ax = P[ia * 3], ay = P[ia * 3 + 1] - minY[b], az = P[ia * 3 + 2];
       const bx = P[ib * 3], by = P[ib * 3 + 1] - minY[b], bz = P[ib * 3 + 2];
       const qx = P[ic * 3], qy = P[ic * 3 + 1] - minY[b], qz = P[ic * 3 + 2];
@@ -328,6 +385,9 @@ function build(parts, center, bt) {
       nz /= L;
       const c = g.kind === "p" ? colors[b] || (colors[b] = pal(b)) : null;
       const roof = Math.abs(ny) > 0.55;
+      const hs = house[b] && g.kind === "p", wallH = hx[b * 7 + 6];
+      // 屋根をのせる家: もとの平らな屋根は出さない
+      if (hs && roof && ay >= wallH - 0.05 && by >= wallH - 0.05 && qy >= wallH - 0.05) continue;
       // 屋根: 傾いた屋根は瓦・金属の色、平らな屋根はコンクリートの色
       const rc = roof && g.kind === "p" ? (ny < 0.97 ? ROOF[Math.floor(hash(b * 31 + 7) * ROOF.length)] : [150, 150, 146]) : null;
       const vi = [ix[t], ix[t + 1], ix[t + 2]];
@@ -337,6 +397,9 @@ function build(parts, center, bt) {
         pos[w * 3] = X;
         pos[w * 3 + 1] = Y + (TERRAIN ? minY[b] : 0); // 坂のあるとき: 建物の足もとの本当の高さのまま
         pos[w * 3 + 2] = Z;
+        anc[w * 3] = ancX;
+        anc[w * 3 + 1] = ancY;
+        anc[w * 3 + 2] = ancZ;
         nor[w * 3] = Math.round(nx * 127);
         nor[w * 3 + 1] = Math.round(ny * 127);
         nor[w * 3 + 2] = Math.round(nz * 127);
@@ -365,6 +428,51 @@ function build(parts, center, bt) {
         }
         w++;
       }
+      // 寄棟の屋根: 壁の上の辺から、棟(むね)へ向かう面を張る
+      if (hs && !roof) {
+        const T = [];
+        for (let j = 0; j < 3; j++) if (V[j * 3 + 1] >= wallH - 0.05) T.push(j);
+        if (T.length === 2) {
+          const o7 = b * 7, rx = hx[o7], rz = hx[o7 + 1], ccx = hx[o7 + 2], ccz = hx[o7 + 3], rl = hx[o7 + 4], rh = hx[o7 + 5];
+          const yA = wallH + (TERRAIN ? minY[b] : 0), yR = yA + rh;
+          const ridge = (X, Z) => {
+            const sg = Math.max(-rl, Math.min(rl, (X - ccx) * rx + (Z - ccz) * rz));
+            return [ccx + rx * sg, ccz + rz * sg];
+          };
+          const A = [V[T[0] * 3], V[T[0] * 3 + 2]], Bq = [V[T[1] * 3], V[T[1] * 3 + 2]];
+          const ra = ridge(A[0], A[1]), rb = ridge(Bq[0], Bq[1]);
+          const rcol = ROOF[Math.floor(hash(b * 31 + 7) * ROOF.length)];
+          const tri = (p1, y1, p2, y2, p3, y3) => {
+            let ex = p2[0] - p1[0], ey = y2 - y1, ez = p2[1] - p1[1], fx = p3[0] - p1[0], fy = y3 - y1, fz = p3[1] - p1[1];
+            let mx = ey * fz - ez * fy, my = ez * fx - ex * fz, mz = ex * fy - ey * fx;
+            const ml = Math.hypot(mx, my, mz);
+            if (ml < 1e-4) return;
+            let pp = [p1, p2, p3], yy = [y1, y2, y3];
+            if (my < 0) (pp = [p1, p3, p2]), (yy = [y1, y3, y2]), (mx = -mx), (my = -my), (mz = -mz);
+            for (let j = 0; j < 3; j++) {
+              pos[w * 3] = pp[j][0];
+              pos[w * 3 + 1] = yy[j];
+              pos[w * 3 + 2] = pp[j][1];
+              anc[w * 3] = ancX;
+              anc[w * 3 + 1] = ancY;
+              anc[w * 3 + 2] = ancZ;
+              nor[w * 3] = Math.round((mx / ml) * 127);
+              nor[w * 3 + 1] = Math.round((my / ml) * 127);
+              nor[w * 3 + 2] = Math.round((mz / ml) * 127);
+              uv[w * 2] = RUV[0][0];
+              uv[w * 2 + 1] = RUV[0][1];
+              // 棟に近いほど少し明るく(面の向きが見えるように)
+              const sh = yy[j] > yA + 0.01 ? 1.08 : 0.9;
+              col[w * 3] = Math.min(255, rcol[0] * sh);
+              col[w * 3 + 1] = Math.min(255, rcol[1] * sh);
+              col[w * 3 + 2] = Math.min(255, rcol[2] * sh);
+              w++;
+            }
+          };
+          tri(A, yA, Bq, yA, ra, yR);
+          tri(Bq, yA, rb, yR, ra, yR);
+        }
+      }
       g.w = w;
     }
     base += pt.pos.length / 3;
@@ -372,7 +480,7 @@ function build(parts, center, bt) {
   const lm = [];
   for (let b = 0; b < NB; b++) if (names[b] && !skip[b] && pts[b].length) lm.push({ name: String(names[b]), x: (bx0[b] + bx1[b]) / 2, z: (bz0[b] + bz1[b]) / 2, h: maxY[b] - minY[b] });
   const out = [];
-  for (const g of groups.values()) if (g.w) out.push({ kind: g.kind, img: g.img, style: g.style, pos: g.pos.slice(0, g.w * 3), nor: g.nor.slice(0, g.w * 3), uv: g.uv.slice(0, g.w * 2), col: g.col.slice(0, g.w * 3) });
+  for (const g of groups.values()) if (g.w) out.push({ kind: g.kind, img: g.img, style: g.style, pos: g.pos.slice(0, g.w * 3), nor: g.nor.slice(0, g.w * 3), uv: g.uv.slice(0, g.w * 2), col: g.col.slice(0, g.w * 3), anc: g.anc.slice(0, g.w * 3) });
   // 地面の高さ合わせ用: 建物の足もと(楕円体高 = hc + minY)と場所を、いくつか返す
   const feet = [];
   for (let b = 0; b < NB && feet.length < 80; b += Math.max(1, Math.floor(NB / 80))) if (pts[b].length && !skip[b]) feet.push([(bx0[b] + bx1[b]) / 2, (bz0[b] + bz1[b]) / 2, hc + minY[b]]);

@@ -509,6 +509,35 @@ const City = (() => {
   }
 
   // ---------- 1枚ぶんの街を作る ----------
+  // 実物の建物: 読み込めたら、建物ごとに地面からばねのように立ち上がる(急にパッと出ない)。
+  // anc = 建物の中心x・足もとy・中心z・出はじめる時刻(秒)。頂点シェーダーで高さを 0→1 に伸ばす
+  const popU = { uPopT: { value: 0 } };
+  function popMat(m, photo) {
+    m.onBeforeCompile = (sh) => {
+      sh.uniforms.uPopT = popU.uPopT;
+      sh.vertexShader = "attribute vec4 anc;\nuniform float uPopT;\n" + sh.vertexShader.replace("#include <begin_vertex>", `#include <begin_vertex>
+        float popT = clamp((uPopT - anc.w) / 0.95, 0.0, 1.0);
+        float popK = popT >= 1.0 ? 1.0 : (popT <= 0.0 ? 0.0 : 1.0 - exp(-6.0 * popT) * cos(8.0 * popT));
+        transformed.y = anc.y + (transformed.y - anc.y) * popK - (1.0 - min(popK, 1.0)) * 1.5;`);
+      // 壁の写真は暗く写っていることが多いので、少し明るく起こす
+      if (photo) sh.fragmentShader = sh.fragmentShader.replace("#include <map_fragment>", "#include <map_fragment>\n diffuseColor.rgb = pow(diffuseColor.rgb, vec3(0.78)) * 1.12;");
+    };
+    m.customProgramCacheKey = () => "pop" + (photo ? 1 : 0);
+    return m;
+  }
+  // anc の4つ目(出はじめる時刻)を入れる。建物ごとに少しずつずらす
+  function popAttr(geo, anc) {
+    const n = anc.length / 3, a = new Float32Array(n * 4), t0 = popU.uPopT.value + 0.05;
+    for (let i = 0; i < n; i++) {
+      const x = anc[i * 3], z = anc[i * 3 + 2];
+      a[i * 4] = x;
+      a[i * 4 + 1] = anc[i * 3 + 1];
+      a[i * 4 + 2] = z;
+      const hsh = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453;
+      a[i * 4 + 3] = t0 + (hsh - Math.floor(hsh)) * 0.9;
+    }
+    geo.setAttribute("anc", new (T().BufferAttribute)(a, 4));
+  }
   // 街のタイルを作る。1コマで使う時間を決めて、何コマかに分けて作る(作っている間に画面が止まらないように)
   const slicer = (ms) => {
     let t0 = performance.now();
@@ -1022,6 +1051,7 @@ const City = (() => {
               geo.setAttribute("normal", new THREE.BufferAttribute(g.nor, 3, true));
               geo.setAttribute("uv", new THREE.BufferAttribute(g.uv, 2));
               geo.setAttribute("color", new THREE.BufferAttribute(g.col, 3, true));
+              if (g.anc) popAttr(geo, g.anc);
               geo.computeBoundingSphere();
               const fm = new THREE.Mesh(geo, mats.fac[g.style] || mats.bld);
               fm.castShadow = fm.receiveShadow = true;
@@ -1033,12 +1063,13 @@ const City = (() => {
             geo.setAttribute("normal", new THREE.BufferAttribute(g.nor, 3, true));
             geo.setAttribute("uv", new THREE.BufferAttribute(g.uv, 2));
             geo.setAttribute("color", new THREE.BufferAttribute(g.col, 3, true));
+            if (g.anc) popAttr(geo, g.anc);
             geo.computeBoundingSphere();
             let mat = mats.bld;
             if (g.kind === "t") {
               const tx = texs[g.img];
               // 写真は光の当たり方まで写っているので、ライトの影響を受けない材質でそのまま見せる
-              mat = tx ? new THREE.MeshBasicMaterial({ map: tx, color: photoTint }) : mats.pcol;
+              mat = tx ? popMat(new THREE.MeshBasicMaterial({ map: tx, color: photoTint }), true) : mats.pcol;
             } else if (g.kind === "c") mat = mats.pcol;
             const mesh = new THREE.Mesh(geo, mat);
             mesh.castShadow = true;
@@ -2414,9 +2445,10 @@ const City = (() => {
       const [z, x, y] = key.split("/").map(Number), n = 2 ** z;
       const lonOf = (v) => (v / n) * 360 - 180, latOf = (v) => (Math.atan(Math.sinh(Math.PI * (1 - (2 * v) / n))) * 180) / Math.PI;
       const a = project(latOf(y), lonOf(x)), b = project(latOf(y), lonOf(x + 1)), c = project(latOf(y + 1), lonOf(x + 1)), d = project(latOf(y + 1), lonOf(x));
-      const h = z === 18 ? 0.014 : z === 17 ? 0.01 : 0.006;
-      // 坂にそわせるため、8×8 に分けて高さをつける
-      const N = 8, P = [], U = [];
+      const h = z === 18 ? -0.03 : z === 17 ? -0.04 : -0.05;
+      // 坂にそわせるため、細かく分けて高さをつける(標高の目の細かさ=約4mに合わせる。
+      // 粗いと、でこぼこした所で写真の地面が道や自転車より上に出て、埋もれて見える)
+      const N = z === 18 ? 30 : 32, P = [], U = [];
       const pt = (i, j) => {
         const u = i / N, v = j / N;
         const x = a[0] + (b[0] - a[0]) * u + (d[0] - a[0]) * v, z = a[1] + (b[1] - a[1]) * u + (d[1] - a[1]) * v;
@@ -2432,7 +2464,7 @@ const City = (() => {
       const geo = new THREE.BufferGeometry();
       geo.setAttribute("position", new THREE.Float32BufferAttribute(P, 3));
       geo.setAttribute("uv", new THREE.Float32BufferAttribute(U, 2));
-      const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xa9aec4 }));
+      const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xa9aec4, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 6 }));
       mesh.visible = false;
       mesh.userData.g3hide = true;
       photos.set(key, mesh);
@@ -3077,6 +3109,7 @@ const City = (() => {
       pm.dispose();
     } catch (e) {}
     buildMats();
+    for (const m of [mats.bld, mats.pcol, ...mats.fac]) popMat(m);
     setTime(timeMode);
     clock = new THREE.Clock();
     const resize = () => {
@@ -3572,7 +3605,7 @@ const City = (() => {
     (res.t = 0), (res.n = 0), (res.slow = 0);
     if (document.hidden || res.cool > 0) return;
     let pr = res.pr;
-    if (fps < 50 || slow > 0.15) pr = Math.max(0.75, pr * (fps < 35 ? 0.78 : 0.88));
+    if (fps < 50 || slow > 0.15) pr = Math.max(Math.min(1, max), pr * (fps < 35 ? 0.78 : 0.88)); // 等倍より粗くはしない(ぼやけて見えるため)
     else if (fps > 57 && slow < 0.03 && pr < max) pr = Math.min(max, pr * 1.07), (res.cool = 4);
     if (Math.abs(pr - res.pr) < 0.01) return;
     res.pr = pr;
@@ -3625,7 +3658,10 @@ const City = (() => {
     camera.fov = 58 + Math.min(16, s.v * 1.1);
     camera.updateProjectionMatrix();
     updateGround(p);
-    if (lights.sun.castShadow) {
+    popU.uPopT.value = performance.now() / 1000;
+    // 影の地図は2コマに1回だけ作り直す。光の位置も同じコマでだけ動かす(ずれると影がガタガタ揺れる)
+    s.frameN = (s.frameN || 0) + 1;
+    if (lights.sun.castShadow && s.frameN % 2 === 0) {
       const d = lights.sun.userData.dir || [0, 1, 0];
       lights.sun.position.set(p.x + d[0] * 150, p.y + d[1] * 150, p.z + d[2] * 150);
       lights.sun.target.position.set(p.x, p.y, p.z);
@@ -3635,7 +3671,7 @@ const City = (() => {
     G3.update(real);
     riseUpdate(real);
     // 影は2コマに1回だけ作り直す(見た目はほぼ同じで、描く量が減る)
-    if (renderer.shadowMap.enabled) (renderer.shadowMap.autoUpdate = false), (renderer.shadowMap.needsUpdate = (s.frameN = (s.frameN || 0) + 1) % 2 === 0);
+    if (renderer.shadowMap.enabled) (renderer.shadowMap.autoUpdate = false), (renderer.shadowMap.needsUpdate = s.frameN % 2 === 0);
     renderer.render(scene, camera);
     autoRes(real);
     if ((s.hudT = (s.hudT || 0) + real) > 0.12) (s.hudT = 0), hud();

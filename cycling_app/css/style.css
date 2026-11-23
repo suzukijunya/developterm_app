@@ -1413,8 +1413,8 @@ a.tab {
 .dv-edge { position: absolute; top: 0; bottom: 0; width: 1.6%; }
 .dv-edge.l { left: 36%; background: #3db8ff; box-shadow: 0 0 22px 6px #3db8ff; }
 .dv-edge.r { right: 36%; background: #ff3d6a; box-shadow: 0 0 22px 6px #ff3d6a; }
-.dv-center { position: absolute; top: 0; bottom: 0; left: 49.4%; width: 1.2%; background: repeating-linear-gradient(0deg, #e8edf3 0 70px, transparent 70px 170px); animation: dv-run 0.45s linear infinite; }
-@keyframes dv-run { from { background-position: 0 0; } to { background-position: 0 170px; } }
+.dv-center { position: absolute; top: -170px; bottom: 0; left: 49.4%; width: 1.2%; background: repeating-linear-gradient(0deg, #e8edf3 0 70px, transparent 70px 170px); animation: dv-run 0.45s linear infinite; will-change: transform; }
+@keyframes dv-run { from { transform: translateY(0); } to { transform: translateY(170px); } }
 .dv-streaks i { position: absolute; top: 46%; width: 2px; height: 0; background: linear-gradient(180deg, transparent, #cfe6ff); animation: dv-streak 0.7s linear infinite; opacity: 0.7; }
 .dv-streaks i:nth-child(1) { left: 12%; } .dv-streaks i:nth-child(2) { left: 30%; animation-delay: 0.25s; } .dv-streaks i:nth-child(3) { left: 70%; animation-delay: 0.4s; } .dv-streaks i:nth-child(4) { left: 88%; animation-delay: 0.1s; }
 @keyframes dv-streak { 0% { height: 0; transform: translateY(0); opacity: 0; } 40% { opacity: 0.8; } 100% { height: 70px; transform: translateY(150px); opacity: 0; } }
