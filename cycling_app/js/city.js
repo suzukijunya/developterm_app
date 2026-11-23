@@ -2311,7 +2311,12 @@ const City = (() => {
         tiles = new lib.TilesRenderer();
         tiles.registerPlugin(new plug.GoogleCloudAuthPlugin({ apiToken: getKey(), autoRefreshToken: true }));
         // 細かさ(小さいほど細かい)。スマホは軽めに
-        tiles.errorTarget = innerWidth < 900 ? 16 : 8;
+        tiles.errorTarget = innerWidth < 900 ? 12 : 6;
+        // 同時に取りに行く数・ほどく数を増やす(はじめの粗い形から、細かい形に早く切り替わるように)
+        try {
+          tiles.downloadQueue.maxJobs = innerWidth < 900 ? 12 : 24;
+          tiles.parseQueue.maxJobs = innerWidth < 900 ? 3 : 6;
+        } catch (e) {}
         tiles.lruCache.minSize = innerWidth < 900 ? 300 : 900;
         tiles.lruCache.maxSize = innerWidth < 900 ? 500 : 1600;
         const draco = new DRACOLoader();
@@ -2421,6 +2426,16 @@ const City = (() => {
         return on;
       },
       on: () => on && !!tiles,
+      // 細かい形まで届いたか(取りに行っているものがなくなって1秒たった)。走り出す前に待つのに使う
+      ready() {
+        if (!on || err) return true;
+        if (!tiles) return false;
+        const st = tiles.stats || {};
+        const busy = (st.downloading || 0) + (st.parsing || 0);
+        if (busy || models < 30) return (ray.idle = 0), false;
+        if (!ray.idle) ray.idle = Date.now();
+        return Date.now() - ray.idle > 1000;
+      },
       update,
       credits,
       rivalY: () => ray.rival,
@@ -3207,10 +3222,11 @@ const City = (() => {
     wait.hidden = false;
     const t0 = Date.now();
     const iv = setInterval(() => {
-      const ok = [...tiles.values()].some((t) => t.state === "ok") && Plateau.ready();
+      const g3 = $("ct-google") && $("ct-google").checked;
+      const ok = [...tiles.values()].some((t) => t.state === "ok") && Plateau.ready() && (!g3 || G3.ready());
       const sec = Math.round((Date.now() - t0) / 1000);
-      wait.querySelector("small").textContent = `${sec}秒${lastErr ? " ・地図サーバー: " + lastErr + "(やり直し中)" : ""}`;
-      if (ok || sec >= 40) {
+      wait.querySelector("small").textContent = `${sec}秒${g3 && !G3.ready() ? ` ・Googleの3Dを読み込み中(${G3.models()}個)` : ""}${lastErr ? " ・地図サーバー: " + lastErr + "(やり直し中)" : ""}`;
+      if (ok || sec >= (g3 ? 75 : 40)) {
         clearInterval(iv);
         wait.hidden = true;
         sim.paused = false;
