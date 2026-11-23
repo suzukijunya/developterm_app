@@ -224,7 +224,7 @@ const Clerk = (() => {
 
     // 整備
     const ms = maintenance(ctx.rides, ctx.maint, now);
-    for (const m of ms.filter((x) => x.due).sort((a, b) => b.ratio - a.ratio)) {
+    for (const m of ms.filter((x) => x.due && ((x.lv || 1) >= 2 || x.id === "hanger")).sort((a, b) => b.ratio - a.ratio)) {
       const when = m.never ? "まだ記録がありません" : m.km ? `前回から${Math.round(m.sinceKm)}km走りました` : `前回から${Math.floor(m.sinceDays)}日たちました`;
       out.push({ pri: 70 + Math.min(20, m.ratio * 5), text: `🔧 ${m.label}の時期です(${when})。${m.how}` });
       if (out.length > 1) break;

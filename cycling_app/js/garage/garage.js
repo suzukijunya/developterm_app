@@ -3321,6 +3321,8 @@
     const ms = Clerk.maintenance(Store.rides, c.maint);
     const owned = ownedTools(c);
     const toolName = (id) => (DIY_TOOLS.find((t) => t[0] === id) || [, id])[1];
+    // かんたんな整備はたたんでおく。ハンガーの曲がりは様子見なので出しておく
+    const hard = (m) => (m.lv || 1) >= 2 || m.id === "hanger";
     const maintHtml = `
       <section class="card g-maint">
         <h2>🔧 メカニックの整備メモ <span class="g-total">${Math.round(Clerk.totalKm(Store.rides)).toLocaleString()}km</span></h2>
@@ -3328,7 +3330,14 @@
         ${diyHtml(c)}
         ${serviceLogHtml()}
         ${ms
-          .map((m) => {
+          .filter(hard)
+          .map(rowHtml)
+          .join("")}
+        <details class="g-maint-easy" data-fold="easy" ${openFolds.has("easy") ? "open" : ""}><summary>かんたんな整備(自分でできるもの) ${ms.filter((m) => !hard(m)).length}件</summary>${ms.filter((m) => !hard(m)).map(rowHtml).join("")}</details>
+        <p class="muted small">距離は、このアプリで記録したライドの合計です。工賃はお店によって違う目安です。</p>
+      </section>`;
+    return `<details class="card g-fold-card g-tools" id="g-fold" ${foldOpen ? "open" : ""}><summary>🔧 整備メモ・近くのお店<small>ふつう以上の整備の時期、荻窪まわりのショップ</small></summary>${maintHtml}${shopsHtml()}</details>`;
+    function rowHtml(m) {
             const miss = (m.tools || []).filter((t) => !owned.has(t));
             return `<div class="g-maint-row ${m.due ? "due" : ""}"><div><strong>${m.label}</strong>
               <span class="g-diy-tags"><em class="lv${m.lv || 1}">自分で: ${LV[m.lv || 1]}</em>${m.fee ? `<em>お店の工賃 約${Catalog.yen(m.fee)}</em>` : ""}${miss.length ? `<em class="miss" title="${esc(miss.map(toolName).join("、"))}">工具が足りない ${miss.length}</em>` : (m.tools || []).length ? `<em class="have">工具そろってる</em>` : ""}</span>
@@ -3336,11 +3345,7 @@
               <details class="g-diy-how" data-fold="how-${m.id}" ${openFolds.has("how-" + m.id) ? "open" : ""}><summary>やり方</summary><p class="small">${esc(m.how)}</p>${(m.tools || []).length ? `<p class="small muted">工具: ${m.tools.map((t) => `${owned.has(t) ? "✓" : "・"}${esc(toolName(t))}`).join(" ")}</p>` : ""}
                 <p class="small"><a href="https://www.youtube.com/results?search_query=${encodeURIComponent(m.q || m.label)}" target="_blank" rel="noopener">▶ 動画で見る</a>　<a href="https://si.shimano.com/ja/" target="_blank" rel="noopener">📘 シマノの説明書</a></p></details></div>
               <div class="g-maint-btns"><button class="btn sub" data-maint-self="${m.id}">自分でやった</button>${m.fee ? `<button class="link" data-maint="${m.id}">お店でやった</button>` : ""}</div></div>`;
-          })
-          .join("")}
-        <p class="muted small">距離は、このアプリで記録したライドの合計です。工賃はお店によって違う目安です。</p>
-      </section>`;
-    return `<details class="card g-fold-card g-tools" id="g-fold" ${foldOpen ? "open" : ""}><summary>🔧 整備メモ・近くのお店<small>空気圧やチェーンの時期、荻窪まわりのショップ</small></summary>${maintHtml}${shopsHtml()}</details>`;
+    }
   }
 
   // ---------- 近くのメンテナンス店 ----------

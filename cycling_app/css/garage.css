@@ -1740,3 +1740,5 @@ ol.g-svc-l { padding-left: 1.4em; }
 .g-sale.now em { background: #e03c3c; color: #fff; }
 .g-diy-tool.set { border-style: solid; }
 .g-diy-tool.inset { opacity: 0.75; cursor: default; }
+.g-maint-easy { margin-top: 10px; }
+.g-maint-easy > summary { cursor: pointer; font-size: 0.85rem; opacity: 0.85; }
