@@ -145,3 +145,13 @@ body.city { margin: 0; overflow: hidden; background: #050608; color: #fff; font-
 .ct-sig .sig.r { background: #ff2a2a; color: #ff2a2a; }
 .ct-left .ct-sig small { font-size: 0.75rem; }
 .ct-g3how a { color: #8fc4ff; } .ct-g3how summary { cursor: pointer; font-size: 0.85rem; } .ct-g3how ol { padding-left: 1.4em; } .ct-g3how li { margin: 4px 0; }
+
+/* ストリートビュー */
+.ct-sv { position: absolute; inset: 0; z-index: 2; background: #0a0f1c; pointer-events: none; }
+.ct-sv[hidden] { display: none; }
+.ct-sv-pano { position: absolute; inset: 0; }
+.ct-sv-bike { position: absolute; left: 50%; bottom: 9%; width: min(34vw, 300px); aspect-ratio: 320 / 226; transform: translateX(-50%); background: url(../assets/bikes/tcr-spin-s.webp) 0% 100% / 800% 400% no-repeat; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.55)); }
+.ct-sv-rival { position: absolute; left: 56%; bottom: 34%; width: min(34vw, 300px); transform-origin: 50% 100%; text-align: center; }
+.ct-sv-rival i { display: block; aspect-ratio: 320 / 226; background: url(../assets/bikes/tcr-spin-s.webp) 0% 100% / 800% 400% no-repeat; filter: hue-rotate(140deg) saturate(2.5) drop-shadow(0 0 8px #ff3d6a); }
+.ct-sv-rival b { display: block; font-size: 2.4rem; color: #fff; text-shadow: 0 0 8px #ff3d6a, 2px 2px 0 #000; }
+.ct-sv-msg { position: absolute; left: 50%; top: 30%; transform: translateX(-50%); margin: 0; padding: 8px 14px; border-radius: 8px; background: rgba(0, 0, 0, 0.7); color: #fff; font-size: 0.9rem; }

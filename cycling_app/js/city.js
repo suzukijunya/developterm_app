@@ -2443,6 +2443,120 @@ const City = (() => {
       models: () => models,
     };
   })();
+  // ---------- ストリートビュー(道の目線の、本物の写真)で走る ----------
+  // Google の地図の部品(Maps JavaScript API)のストリートビューを画面いっぱいに出し、走った分だけ写真を先へ進める。
+  // 写真は十数mおきにしかないので、景色は数秒ごとに切り替わる(なめらかな3Dにはならない)。
+  // 料金は「ストリートビューを開いた回数」で数えるはずなので、1回のライドで1回だけ開く。この端末では1日20回・月450回で止める。
+  const SV = (() => {
+    let on = false, pano = null, svc = null, loading = null, err = "", el = null, lastAlong = -1e9, busy = false, lastId = "", hdg = null, povT = 0, miss = 0;
+    const CAP_M = 450, CAP_D = 20;
+    const usage = () => {
+      const d = new Date(), m = d.getFullYear() + "-" + (d.getMonth() + 1), day = m + "-" + d.getDate();
+      let u = null;
+      try {
+        u = JSON.parse(localStorage.getItem("city_svuse") || "null");
+      } catch (e) {}
+      if (!u || u.m !== m) u = { m, n: 0, day, dn: 0 };
+      if (u.day !== day) (u.day = day), (u.dn = 0);
+      return u;
+    };
+    const over = () => {
+      const u = usage();
+      return u.n >= CAP_M ? `今月の上限(${CAP_M}回)に達しました` : u.dn >= CAP_D ? `今日の上限(${CAP_D}回)に達しました` : "";
+    };
+    function load() {
+      if (loading) return loading;
+      loading = new Promise((res, rej) => {
+        if (window.google && google.maps && google.maps.StreetViewPanorama) return res();
+        window.__svReady = () => res();
+        window.gm_authFailure = () => {
+          err = "キーが使えません。Google Cloud で「Maps JavaScript API」を有効にして、キーの「APIの制限」にも加えてください";
+          stop();
+        };
+        const sc = document.createElement("script");
+        sc.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(G3.getKey()) + "&v=weekly&loading=async&callback=__svReady";
+        sc.onerror = () => rej(new Error("読み込めませんでした"));
+        document.head.appendChild(sc);
+      });
+      return loading;
+    }
+    async function start() {
+      err = "";
+      if (!G3.getKey()) return (err = "APIキーを入れてください"), false;
+      if (!pano && over()) return (err = over() + "。料金がかからないように止めています"), false;
+      try {
+        await load();
+      } catch (e) {
+        loading = null;
+        return (err = "Google の地図の部品を読み込めませんでした"), false;
+      }
+      if (!el) {
+        el = document.createElement("div");
+        el.className = "ct-sv";
+        el.innerHTML = `<div class="ct-sv-pano"></div><div class="ct-sv-rival" hidden><i></i><b></b></div><div class="ct-sv-bike"></div><p class="ct-sv-msg" hidden></p>`;
+        $("ct-view").appendChild(el);
+      }
+      if (!pano) {
+        const u = usage();
+        u.n++;
+        u.dn++;
+        try {
+          localStorage.setItem("city_svuse", JSON.stringify(u));
+        } catch (e) {}
+        pano = new google.maps.StreetViewPanorama(el.firstChild, { disableDefaultUI: true, clickToGo: false, linksControl: false, panControl: false, zoomControl: false, addressControl: false, fullscreenControl: false, motionTracking: false, motionTrackingControl: false, scrollwheel: false, showRoadLabels: true, zoom: 0.4, visible: true });
+        svc = new google.maps.StreetViewService();
+      }
+      el.hidden = false;
+      on = true;
+      lastAlong = -1e9;
+      return true;
+    }
+    function stop() {
+      on = false;
+      if (el) el.hidden = true;
+      const c = $("ct-sv");
+      if (c) c.checked = false;
+    }
+    // 走っている向き(北=0・東=90)
+    const heading = (p) => ((Math.atan2(p.tx, -p.tz) * 180) / Math.PI + 360) % 360;
+    function update(dt, p, s) {
+      if (!on || !pano) return;
+      // 向き: 道の向きへ、なめらかに回す
+      const want = heading(p);
+      if (hdg == null) hdg = want;
+      hdg = (hdg + ((((want - hdg) % 360) + 540) % 360 - 180) * Math.min(1, dt * 2.5) + 360) % 360;
+      if ((povT += dt) > 0.1) (povT = 0), pano.setPov({ heading: hdg, pitch: -4 });
+      // 写真を先へ進める: 15mごと(速いときは、1.5秒に1回までに間引く)
+      const step = Math.max(15, s.v * s.speedX * 1.5);
+      if (!busy && Math.abs(s.along - lastAlong) >= step) {
+        lastAlong = s.along;
+        busy = true;
+        const q = at(s.along + 6);
+        const loc = { lat: route.lat0 - q.z / route.kz, lng: route.lon0 + q.x / route.kx };
+        svc.getPanorama({ location: loc, radius: 35, preference: google.maps.StreetViewPreference.NEAREST, sources: [google.maps.StreetViewSource.OUTDOOR] })
+          .then((r) => {
+            const id = r.data.location.pano;
+            miss = 0;
+            if (id !== lastId) (lastId = id), pano.setPano(id);
+          })
+          .catch(() => miss++)
+          .finally(() => (busy = false));
+      }
+      const msg = el.querySelector(".ct-sv-msg");
+      msg.hidden = miss < 3;
+      if (miss >= 3) msg.textContent = "このあたりはストリートビューの写真がありません";
+      // ライバル: 前にいるときだけ、距離に合わせた大きさで出す
+      const d = s.rAlong - s.along, rv = el.querySelector(".ct-sv-rival");
+      rv.hidden = !(d > 4 && d < 120);
+      if (!rv.hidden) {
+        const k = Math.min(1, 9 / d);
+        rv.style.transform = `translate(-50%, 0) scale(${k.toFixed(3)})`;
+        rv.lastChild.textContent = `${Math.round(d)}m`;
+      }
+    }
+    return { start, stop, update, on: () => on, err: () => err, usage: () => Object.assign(usage(), { capM: CAP_M, capD: CAP_D, over: over() }) };
+  })();
+
   // 地図の区画のうち、施設の看板だけは残す(Googleの3Dでも、どこを走っているかわかるように)
   function hideOwnCity(group, g) {
     for (const ch of group.children) if (!ch.userData.sign) ch.visible = !g;
@@ -3659,6 +3773,7 @@ const City = (() => {
     renderer.setSize(el.clientWidth, el.clientHeight);
   }
 
+  let setSVfn = null, starting = false;
   let viewMode = "auto";
   try {
     viewMode = localStorage.getItem("city_view") || "auto";
@@ -3723,6 +3838,12 @@ const City = (() => {
       lights.sun.target.updateMatrixWorld();
     }
     Roads.update(s.along, real);
+    SV.update(real, p, s);
+    // ストリートビューのときは、3Dの街は描かない(下に隠れて見えないので、その分軽くする)
+    if (SV.on()) {
+      if ((s.hudT = (s.hudT || 0) + real) > 0.12) (s.hudT = 0), hud();
+      return;
+    }
     G3.update(real);
     riseUpdate(real);
     // 影は2コマに1回だけ作り直す(見た目はほぼ同じで、描く量が減る)
@@ -3813,6 +3934,7 @@ const City = (() => {
     start({ rivalKmh: +$("ct-rival").value, auto: $("ct-auto0").checked });
     $("ct-google").checked = $("ct-google0").checked;
     if ($("ct-google0").checked) G3.set(true).then(syncGoogle);
+    if ($("ct-sv0") && $("ct-sv0").checked && setSVfn) (starting = true), setSVfn(true);
     $("ct-auto").checked = sim.auto;
   }
   function bind() {
@@ -3912,6 +4034,28 @@ const City = (() => {
     };
     $("ct-google0").onchange = (e) => setGoogle(e.target.checked);
     $("ct-google").onchange = (e) => setGoogle(e.target.checked);
+    // ストリートビュー
+    const setSV = async (v) => {
+      try {
+        localStorage.setItem("city_sv", v ? "1" : "0");
+      } catch (err) {}
+      for (const id of ["ct-sv", "ct-sv0"]) if ($(id)) $(id).checked = v;
+      if (!running && !starting) return; // スタート画面では、チェックを覚えるだけ
+      if (v) {
+        const ok = await SV.start();
+        if (!ok) {
+          for (const id of ["ct-sv", "ct-sv0"]) if ($(id)) $(id).checked = false;
+          ticker("ストリートビュー: " + SV.err(), "opp");
+        }
+      } else SV.stop();
+    };
+    setSVfn = setSV;
+    for (const id of ["ct-sv", "ct-sv0"]) if ($(id)) $(id).onchange = (e) => setSV(e.target.checked);
+    try {
+      if ($("ct-sv0")) $("ct-sv0").checked = localStorage.getItem("city_sv") === "1" && !!G3.getKey();
+    } catch (err) {}
+    const su = SV.usage();
+    if ($("ct-svuse")) $("ct-svuse").textContent = `ストリートビューを開いた回数(この端末): 今月 ${su.n}/${su.capM}回・今日 ${su.dn}/${su.capD}回`;
     if ($("ct-view-sel")) {
       $("ct-view-sel").value = viewMode;
       $("ct-view-sel").onchange = (e) => {
