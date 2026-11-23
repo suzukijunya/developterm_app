@@ -198,6 +198,22 @@ const Clerk = (() => {
     return out.join("・");
   }
 
+  // ---------- 買いどきメモ(お店のセール) ----------
+  // 日付は「このあたり」の目安。お店の案内が出たら直す。
+  const SALES = [
+    { id: "tokino-bf-2027", shop: "トキノさん", label: "ブラックフライデーセール", from: "2027-11-01", to: "2027-11-30", peak: "2027-11-26",
+      off: 30, what: "店に展示している商品", note: "2026年11月にお店で聞いた話。日にちと対象は、2027年の秋にお店で確かめる" },
+  ];
+  // 今日から見た状態。st: far=まだ先 / soon=60日前から / now=期間中 / past=終わった
+  function sales(now = Date.now()) {
+    const t = (s) => new Date(s + "T00:00:00").getTime();
+    return SALES.map((s) => {
+      const a = t(s.from), b = t(s.to) + 86400000;
+      const days = Math.ceil((a - now) / 86400000);
+      return Object.assign({}, s, { days, st: now >= b ? "past" : now >= a ? "now" : days <= 60 ? "soon" : "far" });
+    });
+  }
+
   // ---------- 毎日のひとこと ----------
   // ctx: { current, next, body, rides, maint, plan, torso, bikeKg, nextKg, now }
   function comments(ctx) {
@@ -244,6 +260,12 @@ const Clerk = (() => {
     if (ctx.bikeKg && ctx.nextKg && ctx.nextKg < ctx.bikeKg - 0.05)
       out.push({ pri: 35, text: `⚖️ 今のバイクは${ctx.bikeKg.toFixed(2)}kg。NEWの構成なら${ctx.nextKg.toFixed(2)}kg(−${Math.round((ctx.bikeKg - ctx.nextKg) * 1000)}g)です` });
 
+    // セール
+    for (const s of sales(now)) {
+      if (s.st === "now") out.push({ pri: 95, text: `🏷 ${s.shop}の${s.label}の時期です。${s.what}が${s.off}%オフ。狙っているパーツの展示があるか、お店で見てみましょう` });
+      else if (s.st === "soon") out.push({ pri: 92, text: `🏷 あと${s.days}日くらいで${s.shop}の${s.label}(${s.what}が${s.off}%オフ)。欲しいパーツを決めて、日にちをお店で確かめておきましょう` });
+    }
+
     // 季節
     const mo = d.getMonth() + 1;
     if (mo >= 10 || mo <= 2) out.push({ pri: 20, text: "🔦 日が短い季節です。帰りが暗くなる日は、前後のライトの充電を確かめておきましょう" });
@@ -261,7 +283,7 @@ const Clerk = (() => {
     return out.sort((a, b) => b.pri - a.pri || ((a.text.length + day) % 3) - ((b.text.length + day) % 3)).map((x) => x.text);
   }
 
-  return { GOALS, BUDGETS, MAINT, keyOf, plan, ladder, maintenance, comments, blocked, totalKm };
+  return { GOALS, BUDGETS, MAINT, keyOf, plan, ladder, maintenance, comments, blocked, totalKm, sales };
 })();
 
 if (typeof module !== "undefined") module.exports = Clerk;

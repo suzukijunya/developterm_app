@@ -3267,6 +3267,15 @@
         <p class="small g-svc-l"><b>自分で整備するときの教訓</b></p><ol class="small g-svc-l">${r.lessons.map((l) => `<li>${esc(l)}</li>`).join("")}</ol></div>`).join("")}
     </details>`;
   }
+  // 買いどきメモ(お店のセールの予定)
+  function salesHtml() {
+    const ss = Clerk.sales().filter((s) => s.st !== "past");
+    if (!ss.length) return "";
+    const md = (d) => d.replace(/^(\d+)-0?(\d+)-0?(\d+)$/, "$1年$2月");
+    return ss.map((s) => `<div class="g-sale ${s.st}"><span class="g-sale-ic">🏷</span><div><b>${md(s.from)} ${esc(s.shop)} ${esc(s.label)}</b>
+        <small>${esc(s.what)}が <strong>${s.off}%オフ</strong>。${esc(s.note)}</small></div>
+        <em>${s.st === "now" ? "開催中" : `あと約${s.days}日`}</em></div>`).join("");
+  }
   const LV = ["", "かんたん", "ふつう", "むずかしい"];
   function diyHtml(c) {
     const owned = new Set(c.tools || []);
@@ -3296,6 +3305,7 @@
     const maintHtml = `
       <section class="card g-maint">
         <h2>🔧 メカニックの整備メモ <span class="g-total">${Math.round(Clerk.totalKm(Store.rides)).toLocaleString()}km</span></h2>
+        ${salesHtml()}
         ${diyHtml(c)}
         ${serviceLogHtml()}
         ${ms

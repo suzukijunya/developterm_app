@@ -1728,3 +1728,13 @@ button.mx-cell.mx-alt { cursor: pointer; text-align: left; font: inherit; color:
 .g-svc-l { margin: 6px 0 2px; }
 ol.g-svc-l { padding-left: 1.4em; }
 .g-spin .bspin-wrap { max-width: 760px; margin: 0 auto; }
+
+/* 買いどきメモ */
+.g-sale { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; padding: 8px 10px; margin: 6px 0 8px; border-radius: 10px; border: 1px dashed rgba(224, 177, 0, 0.6); background: rgba(224, 177, 0, 0.08); }
+.g-sale > div { flex: 1 1 11em; min-width: 0; }
+.g-sale-ic { flex: none; }
+.g-sale b { display: block; font-size: 0.86rem; }
+.g-sale small { display: block; font-size: 0.74rem; opacity: 0.85; }
+.g-sale em { flex: none; font-style: normal; font-size: 0.72rem; font-weight: 800; padding: 3px 8px; border-radius: 999px; background: #e0b100; color: #1a1400; }
+.g-sale.now { border-style: solid; background: rgba(224, 60, 60, 0.12); border-color: #e03c3c; }
+.g-sale.now em { background: #e03c3c; color: #fff; }
