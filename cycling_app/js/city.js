@@ -509,9 +509,24 @@ const City = (() => {
   }
 
   // ---------- 1枚ぶんの街を作る ----------
-  function buildTile(data) {
+  // 街のタイルを作る。1コマで使う時間を決めて、何コマかに分けて作る(作っている間に画面が止まらないように)
+  const slicer = (ms) => {
+    let t0 = performance.now();
+    return async () => {
+      if (performance.now() - t0 < ms) return;
+      await new Promise((res) => {
+        let done = false;
+        const go = () => done || ((done = true), res());
+        requestAnimationFrame(go);
+        setTimeout(go, 80); // 画面が裏にあるときも進める
+      });
+      t0 = performance.now();
+    };
+  };
+  async function buildTile(data) {
     const THREE = T();
     const group = new THREE.Group();
+    const rest = slicer(5);
     // 建物(250m の塊ごとに別のメッシュにする。実物の建物=PLATEAU が届いた塊は隠す)
     {
       const chunks = new Map();
@@ -530,6 +545,7 @@ const City = (() => {
       };
       const PAL = [[0.82, 0.8, 0.76], [0.7, 0.72, 0.76], [0.86, 0.84, 0.8], [0.62, 0.6, 0.6], [0.78, 0.7, 0.62], [0.66, 0.7, 0.72]];
       for (const [id, h0, ll] of data.b) {
+        await rest();
         if (!isNear(project(ll[0], ll[1]))) continue;
         const pts = [];
         for (let i = 0; i < ll.length; i += 2) pts.push(project(ll[i], ll[i + 1]));
@@ -573,6 +589,7 @@ const City = (() => {
       group.userData.chunks = [];
       for (const ch of chunks.values()) {
         if (!ch.pos.length) continue;
+        await rest();
         const geo = new THREE.BufferGeometry();
         geo.setAttribute("position", new THREE.Float32BufferAttribute(ch.pos, 3));
         geo.setAttribute("normal", new THREE.Float32BufferAttribute(ch.nor, 3));
@@ -589,6 +606,7 @@ const City = (() => {
     {
       const pos = [], nor = [], uv = [], col = [];
       for (const [id, kind, ll, tunnel] of data.r) {
+        await rest();
         if (tunnel) continue;
         const rail = kind === "rail";
         const w = rail ? 3.6 : ROAD_W[kind] || 4, big = w >= 9, walk = w <= 3 && !rail;
@@ -643,6 +661,7 @@ const City = (() => {
       const pos = [], col = [];
       const COL = { water: [0.16, 0.36, 0.62], park: [0.2, 0.42, 0.24], campus: [0.42, 0.38, 0.3], hospital: [0.44, 0.32, 0.34], rail: [0.26, 0.24, 0.24] };
       for (const [kind, ll] of data.a || []) {
+        await rest();
         const pts = [];
         for (let i = 0; i < ll.length; i += 2) pts.push(project(ll[i], ll[i + 1]));
         if (pts.length > 3 && pts[0][0] === pts[pts.length - 1][0] && pts[0][1] === pts[pts.length - 1][1]) pts.pop();
@@ -676,6 +695,7 @@ const City = (() => {
     }
     const got = new Set();
     for (const [nm0, cls, sub, la, lo, rank] of data.poi || []) {
+      await rest();
       const lm = landmark(nm0, cls, sub, rank);
       if (!lm) continue;
       const q = project(la, lo);
@@ -2442,6 +2462,29 @@ const City = (() => {
     }
   }
 
+  // 新しくできた建物は、地面からばねのように立ち上がる(急にパッと出ない)
+  const rising = [];
+  function riseIn(group) {
+    let i = 0;
+    for (const ch of group.userData.chunks || []) {
+      if (!ch.mesh.visible) continue;
+      ch.mesh.position.y = -45;
+      rising.push({ m: ch.mesh, y: -45, v: 0, wait: 0.12 * i++ });
+    }
+  }
+  function riseUpdate(dt) {
+    for (let i = rising.length - 1; i >= 0; i--) {
+      const r = rising[i];
+      if ((r.wait -= dt) > 0) continue;
+      // ばね(少し行きすぎて戻る)。こまかく刻んで、コマ落ちしても同じ動きにする
+      for (let n = Math.max(1, Math.ceil(dt * 120)), h = dt / n, k = 0; k < n; k++) {
+        r.v += (-38 * r.y - 9.5 * r.v) * h;
+        r.y += r.v * h;
+      }
+      if (Math.abs(r.y) < 0.02 && Math.abs(r.v) < 0.05) (r.y = 0), rising.splice(i, 1);
+      r.m.position.y = r.y;
+    }
+  }
   async function pump() {
     if (loading) return;
     if (!queue.length) return prefetch();
@@ -2452,12 +2495,14 @@ const City = (() => {
     hudMap();
     try {
       const data = await fetchTile(t.ix, t.iy);
-      if (tiles.get(key) === t) {
-        t.group = buildTile(data);
+      const g = tiles.get(key) === t ? await buildTile(data) : null;
+      if (g && tiles.get(key) === t) {
+        t.group = g;
         t.state = "ok";
         if (G3.on()) hideOwnCity(t.group, true);
+        riseIn(t.group);
         scene.add(t.group);
-      }
+      } else if (g) g.traverse((o) => o.geometry && o.geometry.dispose());
     } catch (e) {
       // 3回までやり直す(混んでいるだけのことが多い)
       t.tries = (t.tries || 0) + 1;
@@ -3036,6 +3081,7 @@ const City = (() => {
     clock = new THREE.Clock();
     const resize = () => {
       const w = el.clientWidth, h = el.clientHeight;
+      if (!w || !h) return;
       renderer.setSize(w, h);
       camera.aspect = w / Math.max(1, h);
       camera.updateProjectionMatrix();
@@ -3492,6 +3538,16 @@ const City = (() => {
   // side: 走る位置(車道の左端から約0.9m)から、さらに右へ何m
   function riderPos(along, side) {
     const p = at(along), r = Roads.ride(along), o = (r ? r.off : 0) - side;
+    // 向きは、少し後ろ〜少し先の向きをならして使う(道の折れ目でカクッと向きが変わらないように)
+    {
+      let tx = 0, tz = 0;
+      for (const [d, w] of [[-3, 1], [-1.5, 2], [0, 3], [1.5, 3], [3, 2], [5, 1]]) {
+        const q = at(along + d);
+        (tx += q.tx * w), (tz += q.tz * w);
+      }
+      const L = Math.hypot(tx, tz);
+      if (L > 1e-3) (p.tx = tx / L), (p.tz = tz / L);
+    }
     const x = p.x + p.tz * o, z = p.z - p.tx * o;
     return { x, z, y: H(x, z), tx: p.tx, tz: p.tz };
   }
@@ -3501,6 +3557,28 @@ const City = (() => {
     b.g.rotation.y = -Math.atan2(p.tz, p.tx);
     b.pose(pedaling ? dt * 9 : 0, (v * dt) / 0.34);
     return p;
+  }
+
+  // 画面の細かさを、端末の速さに合わせて上げ下げする(コマ数が落ちたら少し粗くして、なめらかさを優先)
+  const res = { t: 0, n: 0, slow: 0, cool: 0 };
+  function autoRes(dt) {
+    const max = Math.min(2, window.devicePixelRatio || 1);
+    if (res.pr == null) res.pr = renderer.getPixelRatio();
+    (res.t += dt), res.n++;
+    if (dt > 0.034) res.slow++;
+    res.cool -= dt;
+    if (res.t < 1.2) return;
+    const fps = res.n / res.t, slow = res.slow / res.n;
+    (res.t = 0), (res.n = 0), (res.slow = 0);
+    if (document.hidden || res.cool > 0) return;
+    let pr = res.pr;
+    if (fps < 50 || slow > 0.15) pr = Math.max(0.75, pr * (fps < 35 ? 0.78 : 0.88));
+    else if (fps > 57 && slow < 0.03 && pr < max) pr = Math.min(max, pr * 1.07), (res.cool = 4);
+    if (Math.abs(pr - res.pr) < 0.01) return;
+    res.pr = pr;
+    renderer.setPixelRatio(pr);
+    const el = $("ct-view");
+    renderer.setSize(el.clientWidth, el.clientHeight);
   }
 
   function loop() {
@@ -3555,7 +3633,11 @@ const City = (() => {
     }
     Roads.update(s.along, real);
     G3.update(real);
+    riseUpdate(real);
+    // 影は2コマに1回だけ作り直す(見た目はほぼ同じで、描く量が減る)
+    if (renderer.shadowMap.enabled) (renderer.shadowMap.autoUpdate = false), (renderer.shadowMap.needsUpdate = (s.frameN = (s.frameN || 0) + 1) % 2 === 0);
     renderer.render(scene, camera);
+    autoRes(real);
     if ((s.hudT = (s.hudT || 0) + real) > 0.12) (s.hudT = 0), hud();
   }
 
@@ -3775,5 +3857,5 @@ const City = (() => {
   }
 
   if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", bind);
-  return { at, turnAhead, readTile, _state: () => ({ sim, route, tiles, failed, camera, Plateau, Roads, scene, me, Traffic, Signals }), ride: (a) => Roads.ride(a) };
+  return { at, turnAhead, readTile, _state: () => ({ sim, route, tiles, failed, camera, Plateau, Roads, scene, me, Traffic, Signals, renderer }), ride: (a) => Roads.ride(a) };
 })();
