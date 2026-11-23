@@ -3255,7 +3255,11 @@
   const ownedSets = (c) => TOOL_SETS.filter((s) => (c.toolSets ? c.toolSets.includes(s.id) : s.own));
   const setCovered = (c) => new Set(ownedSets(c).flatMap((s) => s.covers));
   // 持っている工具(セットの分 + 1つずつチェックした分)
-  const ownedTools = (c) => new Set([...(c.tools || []), ...setCovered(c)]);
+  const ownedTools = (c) => {
+    // 「持っている」と聞いた工具を、最初の1回だけチェックしておく(あとから外せる)
+    if (!c.seedPump) (c.tools = [...new Set([...(c.tools || []), "pump"])]), (c.seedPump = 1);
+    return new Set([...(c.tools || []), ...setCovered(c)]);
+  };
   // お店で整備したときの記録(言われたこと)。st: fixed=直してもらった / watch=様子見
   const SERVICE_LOG = [
     {
