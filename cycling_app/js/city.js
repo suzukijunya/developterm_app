@@ -2271,8 +2271,35 @@ const City = (() => {
         return "";
       }
     };
+    // 使った回数(この端末・今月と今日)。Googleの料金は「開始1回」ごとに数えるので、無料の範囲(月1,000回)を
+    // 超えないように、この端末では 月450回・1日20回 で止める(PCとスマホの2台で使っても900回まで)
+    const CAP_M = 450, CAP_D = 20;
+    const usage = () => {
+      const d = new Date(), m = d.getFullYear() + "-" + (d.getMonth() + 1), day = m + "-" + d.getDate();
+      let u = null;
+      try {
+        u = JSON.parse(localStorage.getItem("city_g3use") || "null");
+      } catch (e) {}
+      if (!u || u.m !== m) u = { m, n: 0, day, dn: 0 };
+      if (u.day !== day) (u.day = day), (u.dn = 0);
+      return u;
+    };
+    const overCap = () => {
+      const u = usage();
+      return u.n >= CAP_M ? `今月の上限(${CAP_M}回)に達しました` : u.dn >= CAP_D ? `今日の上限(${CAP_D}回)に達しました` : "";
+    };
+    const countUse = () => {
+      const u = usage();
+      u.n++;
+      u.dn++;
+      try {
+        localStorage.setItem("city_g3use", JSON.stringify(u));
+      } catch (e) {}
+    };
     async function start() {
       if (tiles || starting) return starting;
+      if (overCap()) return (err = overCap() + "。料金がかからないように、Googleの3Dを止めています"), null;
+      countUse();
       starting = (async () => {
         const THREE = T();
         const [lib, plug, { GLTFLoader }, { DRACOLoader }] = await Promise.all([
@@ -2379,6 +2406,7 @@ const City = (() => {
       return list.join(" ・ ");
     }
     return {
+      usage: () => Object.assign(usage(), { capM: CAP_M, capD: CAP_D, over: overCap() }),
       getKey,
       setKey(k) {
         try {
@@ -2388,6 +2416,7 @@ const City = (() => {
       async set(v) {
         on = v && !!getKey();
         if (on) await start();
+        if (on && !tiles && !starting) on = false; // 上限で始められなかった
         if (tiles) tiles.group.visible = on;
         return on;
       },
@@ -3849,6 +3878,8 @@ const City = (() => {
         syncGoogle();
       }
     };
+    const gu = G3.usage();
+    if ($("ct-g3use")) $("ct-g3use").textContent = `この端末で使った回数: 今月 ${gu.n}/${gu.capM}回・今日 ${gu.dn}/${gu.capD}回${gu.over ? `(${gu.over}。Googleの3Dは止まります)` : ""}`;
     gk.onchange = () => {
       G3.setKey(gk.value);
       if (gk.value.trim()) setGoogle(true);

@@ -144,3 +144,4 @@ body.city { margin: 0; overflow: hidden; background: #050608; color: #fff; font-
 .ct-sig .sig.y { background: #ffb21a; color: #ffb21a; }
 .ct-sig .sig.r { background: #ff2a2a; color: #ff2a2a; }
 .ct-left .ct-sig small { font-size: 0.75rem; }
+.ct-g3how a { color: #8fc4ff; } .ct-g3how summary { cursor: pointer; font-size: 0.85rem; } .ct-g3how ol { padding-left: 1.4em; } .ct-g3how li { margin: 4px 0; }

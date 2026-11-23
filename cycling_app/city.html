@@ -8,12 +8,12 @@
 <meta name="theme-color" content="#050608" />
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-<link rel="stylesheet" href="css/style.css?v=2026.12.20" />
-<link rel="stylesheet" href="css/duelist.css?v=2026.12.20" />
-<link rel="stylesheet" href="css/cinema.css?v=2026.12.20" />
-<link rel="stylesheet" href="css/board.css?v=2026.12.20" />
-<link rel="stylesheet" href="css/tcard.css?v=2026.12.20" />
-<link rel="stylesheet" href="css/city.css?v=2026.12.20" />
+<link rel="stylesheet" href="css/style.css?v=2026.12.21" />
+<link rel="stylesheet" href="css/duelist.css?v=2026.12.21" />
+<link rel="stylesheet" href="css/cinema.css?v=2026.12.21" />
+<link rel="stylesheet" href="css/board.css?v=2026.12.21" />
+<link rel="stylesheet" href="css/tcard.css?v=2026.12.21" />
+<link rel="stylesheet" href="css/city.css?v=2026.12.21" />
 </head>
 <body class="city">
 <div id="ct-view"></div>
@@ -36,7 +36,20 @@
     <summary>Googleの3D(Googleマップの3Dと同じ写真の街)</summary>
     <label class="ct-check"><input type="checkbox" id="ct-google0" /> Googleの3Dで走る<small>Google Maps Platform の APIキーが要ります。月1,000回の開始までは無料、超えると1,000回あたり約6ドル(Googleの料金)</small></label>
     <label>APIキー(この端末にだけ保存。同期しません)<input type="password" id="ct-gkey" autocomplete="off" placeholder="AIza..." /></label>
-    <p class="ct-note">キーの作り方: Google Cloud でプロジェクトを作り、「Map Tiles API」を有効にして APIキーを作成(請求先の登録が必要)。キーは「HTTPリファラー」で suzukijunya.github.io に制限しておくと安全です。</p>
+    <p class="ct-note" id="ct-g3use"></p>
+    <p class="ct-note">料金がかからないように、この端末では <b>月450回・1日20回</b> で自動的に止めます(数えるのは「Googleの3Dで走り始めた回数」)。確実に止めるには、Google Cloud 側でも1日の上限を決めてください。</p>
+    <details class="ct-g3how"><summary>APIキーの取り方(5分)</summary>
+      <ol class="ct-note">
+        <li><a href="https://console.cloud.google.com/" target="_blank" rel="noopener">Google Cloud コンソール</a>を開き、プロジェクトを作る(名前は何でもよい)。</li>
+        <li>「お支払い」で請求先アカウントを登録する(クレジットカードが必要。登録だけでは課金されません)。</li>
+        <li>「APIとサービス」→「ライブラリ」で <b>Map Tiles API</b> を探して「有効にする」。</li>
+        <li>「APIとサービス」→「認証情報」→「認証情報を作成」→「APIキー」。</li>
+        <li>作ったキーを開き、「アプリケーションの制限」を<b>ウェブサイト</b>にして <code>https://suzukijunya.github.io/*</code> を追加。「APIの制限」は <b>Map Tiles API</b> だけにして保存。</li>
+        <li><b>上限を決める(大事)</b>: 「APIとサービス」→「Map Tiles API」→「割り当てとシステム上限」で、Photorealistic 3D Tiles の <b>Root 〜 per day</b> を <b>30</b> に下げる(30回×31日=930回で、月1,000回を超えません)。</li>
+        <li>「お支払い」→「予算とアラート」で、予算 <b>100円</b> のアラートを作っておく(万一のときにメールが来ます)。</li>
+        <li>キー(AIza… で始まる文字)を上の欄に貼る。</li>
+      </ol>
+    </details>
   </details>
   <button class="btn start" id="ct-go">スタート</button>
   <p id="ct-msg" class="ct-msg"></p>
@@ -98,27 +111,27 @@
 } }
 </script>
 <script src="https://unpkg.com/three@0.149.0/build/three.min.js"></script>
-<script src="js/vendor/gltf-loader.js?v=2026.12.20"></script>
-<script src="js/garage/parts.js?v=2026.12.20"></script>
-<script src="js/garage/fit.js?v=2026.12.20"></script>
-<script src="js/garage/view3d.js?v=2026.12.20"></script>
-<script src="js/store.js?v=2026.12.20"></script>
-<script src="js/nav.js?v=2026.12.20"></script>
-<script src="js/physics.js?v=2026.12.20"></script>
-<script src="js/eta.js?v=2026.12.20"></script>
-<script src="js/duel.js?v=2026.12.20"></script>
-<script src="js/cardgen.js?v=2026.12.20"></script>
-<script src="js/battle.js?v=2026.12.20"></script>
-<script src="js/tcard.js?v=2026.12.20"></script>
-<script src="js/bikespin.js?v=2026.12.20"></script>
-<script src="js/duelfx.js?v=2026.12.20"></script>
-<script src="js/cinema.js?v=2026.12.20"></script>
-<script src="js/board.js?v=2026.12.20"></script>
-<script src="js/monart.js?v=2026.12.20"></script>
-<script src="js/voice.js?v=2026.12.20"></script>
-<script src="js/duellines.js?v=2026.12.20"></script>
-<script src="js/plateau-roads.js?v=2026.12.20"></script>
-<script src="js/plateau-index.js?v=2026.12.20"></script>
-<script src="js/city.js?v=2026.12.20"></script>
+<script src="js/vendor/gltf-loader.js?v=2026.12.21"></script>
+<script src="js/garage/parts.js?v=2026.12.21"></script>
+<script src="js/garage/fit.js?v=2026.12.21"></script>
+<script src="js/garage/view3d.js?v=2026.12.21"></script>
+<script src="js/store.js?v=2026.12.21"></script>
+<script src="js/nav.js?v=2026.12.21"></script>
+<script src="js/physics.js?v=2026.12.21"></script>
+<script src="js/eta.js?v=2026.12.21"></script>
+<script src="js/duel.js?v=2026.12.21"></script>
+<script src="js/cardgen.js?v=2026.12.21"></script>
+<script src="js/battle.js?v=2026.12.21"></script>
+<script src="js/tcard.js?v=2026.12.21"></script>
+<script src="js/bikespin.js?v=2026.12.21"></script>
+<script src="js/duelfx.js?v=2026.12.21"></script>
+<script src="js/cinema.js?v=2026.12.21"></script>
+<script src="js/board.js?v=2026.12.21"></script>
+<script src="js/monart.js?v=2026.12.21"></script>
+<script src="js/voice.js?v=2026.12.21"></script>
+<script src="js/duellines.js?v=2026.12.21"></script>
+<script src="js/plateau-roads.js?v=2026.12.21"></script>
+<script src="js/plateau-index.js?v=2026.12.21"></script>
+<script src="js/city.js?v=2026.12.21"></script>
 </body>
 </html>
