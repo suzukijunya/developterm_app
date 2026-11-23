@@ -3249,8 +3249,8 @@
   // 工具セット(まとめて買ったもの)。covers: このセットでまかなえる工具。
   // 何も選んでいないとき(初めて)は own:true のセットを持っている扱いにする。
   const TOOL_SETS = [
-    { id: "cyclists23", name: "CYCLISTS 自転車専用工具セット 23点", yen: 12980, own: true, covers: ["hex", "lever", "cutter", "sprocket"],
-      note: "六角レンチ・タイヤレバー・チェーンカッター・スプロケット外し+チェーンウィップ・クランク/BB/ペダル用の工具が入っています。10速のミッシングリンクは別売り。空気入れ・トルクレンチ・ワイヤーカッター・スタンド・オイルは入っていません(中身は一般的な23点セットの構成で、実物と違っていたら直します)" },
+    { id: "cyclists23", name: "CYCLISTS 自転車専用工具セット 23点", yen: 12980, own: true, covers: ["hex", "lever", "checker", "cutter", "sprocket"],
+      note: "六角レンチ・タイヤレバー・チェーンチェッカー・チェーンカッター・スプロケット外し+チェーンウィップ・クランク/BB/ペダル用の工具が入っています。10速のミッシングリンクは別売り。空気入れ・トルクレンチ・ワイヤーカッター・スタンド・オイルは入っていません(中身は一般的な23点セットの構成で、実物と違っていたら直します)" },
   ];
   const ownedSets = (c) => TOOL_SETS.filter((s) => (c.toolSets ? c.toolSets.includes(s.id) : s.own));
   const setCovered = (c) => new Set(ownedSets(c).flatMap((s) => s.covers));
