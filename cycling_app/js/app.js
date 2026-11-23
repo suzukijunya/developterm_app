@@ -2473,7 +2473,7 @@ print("このファイルをスマホに送って(AirDrop など)、アプリの
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2026.12.16";
+  const APP_VERSION = "2026.12.17";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });
@@ -2505,7 +2505,16 @@ print("このファイルをスマホに送って(AirDrop など)、アプリの
     });
 
   restoreActive();
+  // リンクから目的地を登録する: index.html#place=名前&q=住所
+  // (住所はリンクの中だけにあり、コードには書かない。開くと設定画面で検索まで進む)
+  const placeLink = /^#place=/.test(location.hash) ? new URLSearchParams(location.hash.slice(1)) : null;
+  if (placeLink && placeLink.get("q")) {
+    history.replaceState(null, "", location.pathname + location.search);
+    view = "settings";
+    placeForm = { name: (placeLink.get("place") || "").slice(0, 20), query: placeLink.get("q").slice(0, 120), results: [], status: "", pick: null };
+  }
   render();
+  if (placeLink && placeLink.get("q")) searchPlace().then(() => { const el = document.getElementById("place-form"); if (el) el.scrollIntoView({ block: "center" }); });
   updateWake();
   // YouTube で伸びているロードバイク動画: 開いたときに裏で探し直す(ガレージの「📺 動画」で見る)
   if (typeof YT !== "undefined") YT.onOpen();
