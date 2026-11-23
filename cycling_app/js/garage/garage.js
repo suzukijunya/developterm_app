@@ -3246,6 +3246,16 @@
     ["clean", "チェーンオイル・ディグリーザー・ウエス", 2000],
     ["sprocket", "スプロケット外し+チェーンウィップ", 3000],
   ];
+  // 工具セット(まとめて買ったもの)。covers: このセットでまかなえる工具。
+  // 何も選んでいないとき(初めて)は own:true のセットを持っている扱いにする。
+  const TOOL_SETS = [
+    { id: "cyclists23", name: "CYCLISTS 自転車専用工具セット 23点", yen: 12980, own: true, covers: ["hex", "lever", "cutter", "sprocket"],
+      note: "六角レンチ・タイヤレバー・チェーンカッター・スプロケット外し+チェーンウィップ・クランク/BB/ペダル用の工具が入っています。10速のミッシングリンクは別売り。空気入れ・トルクレンチ・ワイヤーカッター・スタンド・オイルは入っていません(中身は一般的な23点セットの構成で、実物と違っていたら直します)" },
+  ];
+  const ownedSets = (c) => TOOL_SETS.filter((s) => (c.toolSets ? c.toolSets.includes(s.id) : s.own));
+  const setCovered = (c) => new Set(ownedSets(c).flatMap((s) => s.covers));
+  // 持っている工具(セットの分 + 1つずつチェックした分)
+  const ownedTools = (c) => new Set([...(c.tools || []), ...setCovered(c)]);
   // お店で整備したときの記録(言われたこと)。st: fixed=直してもらった / watch=様子見
   const SERVICE_LOG = [
     {
@@ -3278,11 +3288,12 @@
   }
   const LV = ["", "かんたん", "ふつう", "むずかしい"];
   function diyHtml(c) {
-    const owned = new Set(c.tools || []);
+    const owned = ownedTools(c), inSet = setCovered(c), sets = ownedSets(c);
     const log = c.diyLog || [];
     const saved = log.reduce((a, x) => a + (x.yen || 0), 0);
-    const toolCost = DIY_TOOLS.filter(([id]) => owned.has(id)).reduce((a, t) => a + t[2], 0);
-    const allCost = DIY_TOOLS.reduce((a, t) => a + t[2], 0);
+    // セットで持っている工具はセットの値段で数える
+    const toolCost = sets.reduce((a, x) => a + x.yen, 0) + DIY_TOOLS.filter(([id]) => owned.has(id) && !inSet.has(id)).reduce((a, t) => a + t[2], 0);
+    const allCost = sets.reduce((a, x) => a + x.yen, 0) + DIY_TOOLS.filter(([id]) => !inSet.has(id)).reduce((a, t) => a + t[2], 0);
     const pct = toolCost ? Math.min(100, Math.round((saved / toolCost) * 100)) : 0;
     return `<div class="g-diy">
         <div class="g-diy-kpis">
@@ -3292,7 +3303,9 @@
         </div>
         ${toolCost ? `<div class="g-diy-bar"><i style="width:${pct}%"></i></div>` : ""}
         <details class="g-diy-tools" data-fold="diytools" ${openFolds.has("diytools") ? "open" : ""}><summary>🧰 工具(持っているものにチェック) ${owned.size}/${DIY_TOOLS.length}</summary>
-          <div class="g-diy-tl">${DIY_TOOLS.map(([id, name, yen]) => `<button type="button" class="g-diy-tool ${owned.has(id) ? "on" : ""}" data-diy-tool="${id}"><i>${owned.has(id) ? "✓" : ""}</i><span>${esc(name)}</span><small>${Catalog.yen(yen)}</small></button>`).join("")}</div>
+          <div class="g-diy-tl">${TOOL_SETS.map((x) => { const on = sets.includes(x); return `<button type="button" class="g-diy-tool set ${on ? "on" : ""}" data-diy-set="${x.id}"><i>${on ? "✓" : ""}</i><span>🧰 ${esc(x.name)}</span><small>${Catalog.yen(x.yen)}</small></button>`; }).join("")}</div>
+          ${sets.map((x) => `<p class="muted small">${esc(x.name)}: ${esc(x.note)}</p>`).join("")}
+          <div class="g-diy-tl">${DIY_TOOLS.map(([id, name, yen]) => `<button type="button" class="g-diy-tool ${owned.has(id) ? "on" : ""} ${inSet.has(id) ? "inset" : ""}" data-diy-tool="${id}" ${inSet.has(id) ? "disabled" : ""}><i>${owned.has(id) ? "✓" : ""}</i><span>${esc(name)}</span><small>${inSet.has(id) ? "セットに入っている" : Catalog.yen(yen)}</small></button>`).join("")}</div>
           <p class="muted small">お店に任せるもの: ホイールの振れ取り・ヘッドパーツ・(ディスクにしたら)油圧ブレーキのエア抜き。初めての作業は、終わったあとに一度お店で見てもらうと安心です。</p>
         </details>
       </div>`;
@@ -3300,7 +3313,7 @@
   function foldHtml() {
     const c = clerkState();
     const ms = Clerk.maintenance(Store.rides, c.maint);
-    const owned = new Set(c.tools || []);
+    const owned = ownedTools(c);
     const toolName = (id) => (DIY_TOOLS.find((t) => t[0] === id) || [, id])[1];
     const maintHtml = `
       <section class="card g-maint">
@@ -3865,6 +3878,14 @@
       const m = Clerk.MAINT.find((x) => x.id === id) || {};
       c.maint[id] = { km: Clerk.totalKm(Store.rides), at: Date.now(), self: true };
       if (m.fee) (c.diyLog = c.diyLog || []).push({ id, at: Date.now(), yen: m.fee });
+      changed(false);
+      return renderPanel();
+    }
+    if (t.dataset.diySet) {
+      const c = clerkState(), id = t.dataset.diySet;
+      const set = new Set(ownedSets(c).map((x) => x.id));
+      set.has(id) ? set.delete(id) : set.add(id);
+      c.toolSets = [...set];
       changed(false);
       return renderPanel();
     }

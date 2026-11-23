@@ -1738,3 +1738,5 @@ ol.g-svc-l { padding-left: 1.4em; }
 .g-sale em { flex: none; font-style: normal; font-size: 0.72rem; font-weight: 800; padding: 3px 8px; border-radius: 999px; background: #e0b100; color: #1a1400; }
 .g-sale.now { border-style: solid; background: rgba(224, 60, 60, 0.12); border-color: #e03c3c; }
 .g-sale.now em { background: #e03c3c; color: #fff; }
+.g-diy-tool.set { border-style: solid; }
+.g-diy-tool.inset { opacity: 0.75; cursor: default; }
