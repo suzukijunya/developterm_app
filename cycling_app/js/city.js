@@ -1444,12 +1444,59 @@ const City = (() => {
         const v = abs(route.lat0 - p.z / route.kz, route.lon0 + p.x / route.kx);
         raw[i] = isNaN(v) ? (i ? raw[i - 1] : 0) : v - base;
       }
+      // 橋や水路: 標高のデータは川底の高さなので、道が急に落ちこむ。幅60mまでのくぼみは、前後の高さでならして埋める
+      const fill = raw.slice();
+      for (let i = 0; i < n; i++) for (const k of [2, 3]) if (i - k >= 0 && i + k < n) fill[i] = Math.max(fill[i], (raw[i - k] + raw[i + k]) / 2);
       prof = new Float32Array(n);
       for (let i = 0; i < n; i++) {
         let sum = 0, k = 0;
-        for (let j = Math.max(0, i - 3); j <= Math.min(n - 1, i + 3); j++) (sum += raw[j]), k++;
+        for (let j = Math.max(0, i - 3); j <= Math.min(n - 1, i + 3); j++) (sum += fill[j]), k++;
         prof[i] = sum / k;
       }
+      // ルートの点を、48mのマス目に入れておく(近くの点をすぐ探せるように)
+      pts = [];
+      grid = new Map();
+      for (let i = 0; i < n; i++) {
+        const p = at(i * 10);
+        pts.push(p.x, p.z);
+        const key = Math.floor(p.x / CELL) + ":" + Math.floor(p.z / CELL);
+        let a = grid.get(key);
+        if (!a) grid.set(key, (a = []));
+        a.push(i);
+      }
+    }
+    // ルートのそば(走る道とそのまわり)の高さ。道にそって、なめらかな1本の坂にする。
+    // 標高のデータ(約4mの目)をそのまま使うと、細かいでこぼこや川のくぼみで、道の面と自転車の高さがずれて、道に埋もれて見える。
+    // 戻り値: [ルートからの距離, 高さ]。45mより遠ければ null
+    const CELL = 48;
+    let pts = [], grid = null;
+    const seg = [0, 0];
+    function corridor(x, z) {
+      if (!grid) return null;
+      const cx = Math.floor(x / CELL), cz = Math.floor(z / CELL);
+      let best = 2025, bi = -1;
+      for (let dx = -1; dx <= 1; dx++)
+        for (let dz = -1; dz <= 1; dz++) {
+          const a = grid.get(cx + dx + ":" + (cz + dz));
+          if (!a) continue;
+          for (let k = 0; k < a.length; k++) {
+            const i = a[k], d = (pts[i * 2] - x) ** 2 + (pts[i * 2 + 1] - z) ** 2;
+            if (d < best) (best = d), (bi = i);
+          }
+        }
+      if (bi < 0) return null;
+      // いちばん近い点の前後の線分に下ろして、距離と高さを細かく出す
+      let bd = best, bh = prof[bi];
+      for (const j of [bi - 1, bi]) {
+        if (j < 0 || j + 1 >= prof.length) continue;
+        const ax = pts[j * 2], az = pts[j * 2 + 1], ex = pts[j * 2 + 2] - ax, ez = pts[j * 2 + 3] - az, L2 = ex * ex + ez * ez;
+        if (L2 < 1e-6) continue;
+        const t = Math.max(0, Math.min(1, ((x - ax) * ex + (z - az) * ez) / L2)), d = (ax + ex * t - x) ** 2 + (az + ez * t - z) ** 2;
+        if (d <= bd) (bd = d), (bh = prof[j] + (prof[j + 1] - prof[j]) * t);
+      }
+      seg[0] = Math.sqrt(bd);
+      seg[1] = bh;
+      return seg;
     }
     // 標高がわからない所は、いちばん近いルート上の高さを使う(出発地点の高さにすると、下った先で地面が浮く)
     function nearRoute(x, z) {
@@ -1464,7 +1511,12 @@ const City = (() => {
     function h(x, z) {
       if (!ok) return 0;
       const v = abs(route.lat0 - z / route.kz, route.lon0 + x / route.kx);
-      return isNaN(v) ? nearRoute(x, z) : v - base;
+      const c = corridor(x, z);
+      if (!c) return isNaN(v) ? nearRoute(x, z) : v - base;
+      if (isNaN(v) || c[0] <= 14) return c[1]; // 道から14mまでは、道の坂そのまま
+      // 14〜45m: 道の坂から、まわりの地形へなだらかにつなぐ
+      const w = 1 - (c[0] - 14) / 31, sm = w * w * (3 - 2 * w);
+      return v - base + (c[1] - (v - base)) * sm;
     }
     // 勾配(%)。前後20mの高さの差から
     function grade(along) {
@@ -1902,7 +1954,7 @@ const City = (() => {
         const emit = (ax, az, bx, bz, cx, cz, d) => {
           const ab = (bx - ax) ** 2 + (bz - az) ** 2, bc = (cx - bx) ** 2 + (cz - bz) ** 2, ca = (ax - cx) ** 2 + (az - cz) ** 2;
           const mx = Math.max(ab, bc, ca);
-          if (mx <= 30.25 || d > 9) { // 辺が5.5m以下
+          if (mx <= 64 || d > 8) { // 辺が8m以下(道のまわりの高さはなめらかにしてあるので、これで足りる)
             q(key, [ax, y + H(ax, az), az, bx, y + H(bx, bz), bz, cx, y + H(cx, cz), cz], [ax / sc, az / sc, bx / sc, bz / sc, cx / sc, cz / sc]);
             return;
           }
@@ -4168,7 +4220,10 @@ const City = (() => {
     const rg = Terrain.grade(s.rAlong);
     const target = Math.min(rmax, Signals.limit(s.rAlong, s.t, s.rV), s.rivalV * Math.max(0.45, Math.min(1.3, 1 - rg * 0.07)) * (1 + 0.09 * Math.sin(s.t / 37) + 0.05 * Math.sin(s.t / 11 + 2)));
     s.rV += Math.max(-4, Math.min(0.55, target - s.rV)) * Math.min(1, dt * 1.2);
-    if (target === 0 && s.rV < 0.3) s.rV = 0;
+    // 赤信号・黄色: 自分と同じように、停止線までに必ず止まる(ゆっくり減速するだけだと、止まりきれずに通り抜けていた)
+    const rsig = Signals.limit(s.rAlong, s.t, s.rV);
+    if (s.rV > rsig) s.rV = Math.max(rsig, s.rV - 5 * dt);
+    if (rsig === 0 && s.rV < 0.3) s.rV = 0;
     s.rAlong = Math.min(route.length, s.rAlong + s.rV * dt);
     s.t += dt;
   }
@@ -5021,5 +5076,5 @@ const City = (() => {
   }
 
   if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", bind);
-  return { at, turnAhead, readTile, _state: () => ({ sim, route, tiles, failed, camera, Plateau, Roads, scene, me, Traffic, Signals, renderer, Perf }), ride: (a) => Roads.ride(a) };
+  return { at, turnAhead, readTile, _H: (x, z) => H(x, z), _state: () => ({ sim, route, tiles, failed, camera, Plateau, Roads, scene, me, Traffic, Signals, renderer, Perf }), ride: (a) => Roads.ride(a) };
 })();
