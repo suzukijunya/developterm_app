@@ -1627,6 +1627,158 @@ const City = (() => {
       };
       return M;
     }
+    // 道ばたの物の材質と絵(1回だけ作る)
+    let PM = null;
+    function propMats() {
+      if (PM) return PM;
+      const THREE = T();
+      const cvs = (w, h, draw) => {
+        const cv = document.createElement("canvas");
+        cv.width = w;
+        cv.height = h;
+        draw(cv.getContext("2d"), w, h);
+        const t = new THREE.CanvasTexture(cv);
+        t.encoding = THREE.sRGBEncoding;
+        t.anisotropy = 4;
+        return t;
+      };
+      const sign = (draw) => new THREE.MeshBasicMaterial({ map: cvs(128, 128, draw), transparent: true, alphaTest: 0.5, side: THREE.DoubleSide });
+      PM = {
+        // 自販機の正面
+        vend: new THREE.MeshBasicMaterial({
+          map: cvs(128, 256, (c, w, h) => {
+            c.fillStyle = "#f3f3f0";
+            c.fillRect(0, 0, w, h);
+            const gr = c.createLinearGradient(0, 14, 0, 130);
+            gr.addColorStop(0, "#eef4f7");
+            gr.addColorStop(1, "#b9c6ce");
+            c.fillStyle = gr;
+            c.fillRect(8, 14, w - 16, 118);
+            const col = ["#d83a3a", "#2f7dd0", "#e8b020", "#3aa860", "#f4f4f0", "#7a4ab0", "#e07030", "#20a0a8"];
+            for (let r = 0; r < 3; r++) for (let q = 0; q < 8; q++) ((c.fillStyle = col[(q + r * 3) % 8]), c.fillRect(13 + q * 13, 22 + r * 37, 9, 26)), ((c.fillStyle = "rgba(255,255,255,0.75)"), c.fillRect(13 + q * 13, 50 + r * 37, 9, 4));
+            c.fillStyle = "#2a2d31";
+            c.fillRect(86, 142, 30, 44);
+            c.fillStyle = "#9aa0a6";
+            c.fillRect(92, 150, 18, 6);
+            c.fillStyle = "#16181b";
+            c.fillRect(12, 198, w - 24, 40);
+            c.fillStyle = "#d0d4d8";
+            c.fillRect(14, 142, 60, 44);
+          }),
+        }),
+        body: new THREE.MeshLambertMaterial({ color: 0xffffff }),
+        metal: new THREE.MeshLambertMaterial({ color: 0xb4b8bc }),
+        orange: new THREE.MeshLambertMaterial({ color: 0xe8791c }),
+        mirror: new THREE.MeshStandardMaterial({ color: 0xdde6ee, metalness: 1, roughness: 0.04, envMapIntensity: 1.5 }),
+        pot: new THREE.MeshLambertMaterial({ color: 0xffffff }),
+        // 電柱の黄色と黒のしま
+        tiger: new THREE.MeshLambertMaterial({
+          map: cvs(64, 32, (c, w, h) => {
+            c.fillStyle = "#f2c81e";
+            c.fillRect(0, 0, w, h);
+            c.fillStyle = "#1a1a1a";
+            for (let x = -h; x < w; x += 16) {
+              c.beginPath();
+              c.moveTo(x, h);
+              c.lineTo(x + h, 0);
+              c.lineTo(x + h + 8, 0);
+              c.lineTo(x + 8, h);
+              c.fill();
+            }
+          }),
+        }),
+        // 標識: 止まれ・最高速度30・一方通行
+        stop: sign((c) => {
+          c.fillStyle = "#fff";
+          c.beginPath();
+          c.moveTo(4, 8);
+          c.lineTo(124, 8);
+          c.lineTo(64, 122);
+          c.fill();
+          c.fillStyle = "#d21f1f";
+          c.beginPath();
+          c.moveTo(14, 14);
+          c.lineTo(114, 14);
+          c.lineTo(64, 110);
+          c.fill();
+          c.fillStyle = "#fff";
+          c.font = "900 27px sans-serif";
+          c.textAlign = "center";
+          c.fillText("止まれ", 64, 52);
+        }),
+        s30: sign((c) => {
+          c.fillStyle = "#d21f1f";
+          c.beginPath();
+          c.arc(64, 64, 60, 0, 7);
+          c.fill();
+          c.fillStyle = "#fff";
+          c.beginPath();
+          c.arc(64, 64, 45, 0, 7);
+          c.fill();
+          c.fillStyle = "#1c3f94";
+          c.font = "900 54px sans-serif";
+          c.textAlign = "center";
+          c.fillText("30", 64, 84);
+        }),
+        oneway: sign((c) => {
+          c.fillStyle = "#1c57b4";
+          c.fillRect(2, 38, 124, 52);
+          c.fillStyle = "#fff";
+          c.fillRect(22, 56, 54, 16);
+          c.beginPath();
+          c.moveTo(72, 44);
+          c.lineTo(110, 64);
+          c.lineTo(72, 84);
+          c.fill();
+        }),
+      };
+      return PM;
+    }
+    // 道ばたの物を置く。同じ形はまとめて描く(数が多くても重くならない)
+    function streetProps(g, props, poles) {
+      const THREE = T(), pm = propMats();
+      const mt = new THREE.Matrix4(), ro = new THREE.Matrix4(), tr = new THREE.Matrix4(), c = new THREE.Color();
+      // 向き: 自分の +z を、道の外向き(ox, oz)に合わせる
+      const at = (p, lx, ly, lz, extraY = 0) => mt.makeTranslation(p.x, H(p.x, p.z) + 0.05, p.z).multiply(ro.makeRotationY(Math.atan2(p.ox, p.oz))).multiply(tr.makeTranslation(lx, ly, lz)).multiply(ro.makeRotationY(extraY));
+      const inst = (geo, mat, list, fn, colors) => {
+        if (!list.length) return null;
+        const im = new THREE.InstancedMesh(geo, mat, list.length);
+        list.forEach((p, i) => {
+          im.setMatrixAt(i, fn(p, i));
+          if (colors) im.setColorAt(i, c.set(colors(p, i)));
+        });
+        im.castShadow = true;
+        g.add(im);
+        return im;
+      };
+      // 自販機(白・赤・青)
+      const vend = props.filter((p) => p.kind === "vend");
+      inst(new THREE.BoxGeometry(1.0, 1.83, 0.7), pm.body, vend, (p) => at(p, 0, 0.915, 0.2), (p) => (p.r < 0.5 ? 0xf2f2ee : p.r < 0.75 ? 0xc8262a : 0x2a5fb0));
+      inst(new THREE.PlaneGeometry(0.94, 1.76), pm.vend, vend, (p) => at(p, 0, 0.92, -0.155, Math.PI));
+      // カーブミラー(オレンジの柱と、ふちつきの丸い鏡)
+      const mir = props.filter((p) => p.kind === "mirror");
+      inst(new THREE.CylinderGeometry(0.045, 0.045, 2.9, 8), pm.orange, mir, (p) => at(p, 0, 1.45, 0.1));
+      const disc = new THREE.CylinderGeometry(0.36, 0.36, 0.05, 20);
+      disc.rotateX(Math.PI / 2);
+      inst(disc, pm.orange, mir, (p) => at(p, 0, 2.75, 0.02).multiply(ro.makeRotationX(0.25)));
+      const glassD = new THREE.CircleGeometry(0.31, 20);
+      inst(glassD, pm.mirror, mir, (p) => at(p, 0, 2.75, -0.012, Math.PI).multiply(ro.makeRotationX(-0.25)));
+      // 標識(柱と板。板は道の向きに立てて、走ってくる人から見えるように)
+      const signs = props.filter((p) => p.kind === "stop" || p.kind === "s30" || p.kind === "oneway");
+      inst(new THREE.CylinderGeometry(0.03, 0.03, 2.7, 6), pm.metal, signs, (p) => at(p, 0, 1.35, 0.1));
+      for (const k of ["stop", "s30", "oneway"]) {
+        const sz = k === "stop" ? 0.8 : 0.6;
+        inst(new THREE.PlaneGeometry(sz, sz), pm[k], signs.filter((p) => p.kind === k), (p) => at(p, 0.035, 2.35, 0.1, Math.PI / 2));
+      }
+      // 植木ばち(鉢と葉)
+      const pl = props.filter((p) => p.kind === "plant");
+      inst(new THREE.CylinderGeometry(0.2, 0.15, 0.34, 8), pm.pot, pl, (p) => at(p, 0, 0.17, 0.12), (p) => (p.r < 0.4 ? 0xa8623e : p.r < 0.7 ? 0x8c8e90 : 0xd8d2c4));
+      inst(new THREE.IcosahedronGeometry(0.3, 0), pm.pot, pl, (p) => at(p, 0, 0.55 + p.r * 0.1, 0.12).multiply(tr.makeScale(1, 1.1 + p.r * 0.5, 1)), (p) => c.setHSL(0.27 + p.r * 0.08, 0.45, 0.24 + p.r * 0.08).getHex());
+      // 電柱: 足もとの黄色と黒のしま、広告の板(色だけ)
+      const pp = poles.map((q) => ({ x: q.x, z: q.z, ox: Math.sin(q.ang), oz: -Math.cos(q.ang), r: hash(Math.round(q.x * 9) + Math.round(q.z * 4)) }));
+      inst(new THREE.CylinderGeometry(0.19, 0.2, 0.9, 10), pm.tiger, pp.filter((q) => q.r < 0.55), (p) => at(p, 0, 1.0, 0));
+      inst(new THREE.BoxGeometry(0.42, 1.2, 0.04), pm.body, pp.filter((q) => q.r > 0.35), (p) => at(p, 0, 2.9, -0.22), (p) => [0x1f5fae, 0x2f8a4e, 0xf4f4f0, 0xb3261e, 0xe8b020][Math.floor(p.r * 97) % 5]);
+    }
     function buildTile(polys, rect) {
       const THREE = T();
       const m = mats();
@@ -1678,7 +1830,8 @@ const City = (() => {
         const ha = H(ax, az) + y, hb = H(bx, bz) + y;
         q(key, [ax - nx, ha, az - nz, bx - nx, hb, bz - nz, bx + nx, hb, bz + nz, ax - nx, ha, az - nz, bx + nx, hb, bz + nz, ax + nx, ha, az + nz], [0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1]);
       };
-      const poles = [], trees = [], posts = [], rails = [[], []];
+      const poles = [], trees = [], posts = [], rails = [[], []], props = [];
+      let propRun = 0;
       const edges = (p, fn) => {
         for (const r of p.rings)
           for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) {
@@ -1711,6 +1864,13 @@ const City = (() => {
               lastPole = poles[poles.length - 1];
             }
             poleRun = (poleRun + L) % 32;
+            // 道ばたの物(19mごとに、場所から決まる確率で): 自販機・カーブミラー・標識・植木
+            for (let t = (19 - propRun) % 19; t < L; t += 19) {
+              const px = ax + ex * t, pz = az + ez * t, hx = hash(Math.round(px * 7) * 13 + Math.round(pz * 5) * 29);
+              const kind = hx < 0.1 ? "vend" : hx < 0.16 ? "mirror" : hx < 0.21 ? "stop" : hx < 0.27 ? "s30" : hx < 0.31 ? "oneway" : hx < 0.45 ? "plant" : null;
+              if (kind) props.push({ kind, x: px + ox * 0.18, z: pz + oz * 0.18, ox, oz, ex, ez, r: hash(Math.round(px * 3) + Math.round(pz * 11)) });
+            }
+            propRun = (propRun + L) % 19;
           });
         } else if (p.f === 0 || p.f === 1) {
           flat(p, p.f === 1 ? 0.065 : 0.06, "asph", 3);
@@ -1779,20 +1939,30 @@ const City = (() => {
         rg.computeVertexNormals();
         g.add(new THREE.Mesh(rg, m.rail));
       }
-      // 街路樹
+      // 街路樹: 幹と、葉のかたまり4つ(大きさ・位置・色を少しずつ変えて、こんもりした形にする)と、根もとの植え込み
       if (trees.length) {
-        const trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.1, 0.14, 2.8, 6), m.trunk, trees.length);
-        const leaf = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1.5, 1), m.leaf, trees.length);
-        const mt = new THREE.Matrix4(), c = new THREE.Color();
+        const K = 4;
+        const trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.09, 0.15, 3.0, 7), m.trunk, trees.length);
+        const leaf = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), m.leaf, trees.length * K);
+        const bush = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.5, 0), m.leaf, trees.length);
+        const mt = new THREE.Matrix4(), sc = new THREE.Matrix4(), c = new THREE.Color();
         trees.forEach(([x, z], i) => {
-          const s = 0.8 + hash(Math.round(x * 5) + Math.round(z * 3)) * 0.5, h = H(x, z);
-          trunk.setMatrixAt(i, mt.makeTranslation(x, h + 1.4 * s + 0.17, z).multiply(new THREE.Matrix4().makeScale(s, s, s)));
-          leaf.setMatrixAt(i, mt.makeTranslation(x, h + 3.4 * s + 0.17, z).multiply(new THREE.Matrix4().makeScale(s * 1.1, s * 1.25, s * 1.1)));
-          leaf.setColorAt(i, c.setHSL(0.26 + hash(i * 7 + Math.round(x)) * 0.06, 0.42, 0.26 + hash(i * 3) * 0.1));
+          const hs = (n) => hash(Math.round(x * 5) * 3 + Math.round(z * 3) * 7 + n * 131);
+          const s = 0.8 + hs(0) * 0.5, h = H(x, z) + 0.17, hue = 0.25 + hs(1) * 0.07;
+          trunk.setMatrixAt(i, mt.makeTranslation(x, h + 1.5 * s, z).multiply(sc.makeScale(s, s, s)));
+          for (let k = 0; k < K; k++) {
+            const a = hs(10 + k) * 6.28, r = k ? 0.75 * s : 0, yy = k ? 3.2 + hs(20 + k) * 0.9 : 3.9, rs = (k ? 0.95 + hs(30 + k) * 0.45 : 1.35) * s;
+            leaf.setMatrixAt(i * K + k, mt.makeTranslation(x + Math.cos(a) * r, h + yy * s, z + Math.sin(a) * r).multiply(sc.makeScale(rs, rs * 0.9, rs)));
+            leaf.setColorAt(i * K + k, c.setHSL(hue + (hs(40 + k) - 0.5) * 0.03, 0.4 + hs(50 + k) * 0.12, 0.2 + hs(60 + k) * 0.11 + (k ? 0 : 0.04)));
+          }
+          bush.setMatrixAt(i, mt.makeTranslation(x, h + 0.22, z).multiply(sc.makeScale(1.5, 0.7, 1.1)));
+          bush.setColorAt(i, c.setHSL(hue + 0.02, 0.45, 0.2));
         });
         trunk.castShadow = leaf.castShadow = true;
-        g.add(trunk, leaf);
+        g.add(trunk, leaf, bush);
       }
+      // 道ばたの物
+      if (props.length) streetProps(g, props, poles);
       // 電柱と電線
       if (poles.length) {
         const n = poles.length;
