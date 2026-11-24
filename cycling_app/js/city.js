@@ -393,7 +393,8 @@ const City = (() => {
       g.fillStyle = "#000";
       g.fillRect(0, 0, S, S);
       draw(w, g);
-      const m = new THREE.MeshLambertMaterial({ map: tex(a), emissiveMap: tex(b), emissive: 0xffffff, emissiveIntensity: 0, vertexColors: true });
+      // 窓ガラスには、まわりの景色が本当に映る(下の facMat で、ガラスの所だけ鏡のようにする)
+      const m = new THREE.MeshStandardMaterial({ map: tex(a), emissiveMap: tex(b), emissive: 0xffffff, emissiveIntensity: 0, vertexColors: true, roughness: 0.92, metalness: 0, envMapIntensity: 1 });
       const gf = groundFloor(kind);
       m.userData.fac = { mask: lin(k), ground: tex(gf.cv), gmask: lin(gf.mk), gw: gf.gw, fw: [7, 7.2, 6][kind] };
       kind++;
@@ -691,15 +692,13 @@ const City = (() => {
         #endif`)
           .replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>
         if (vWall > 0.5 && vFh < 3.2) totalEmissiveRadiance *= 0.0;`)
-          .replace("#include <output_fragment>", `if (facGlass > 0.02) {
-          vec3 facV = normalize(vViewPosition);
-          vec3 facR = inverseTransformDirection(reflect(-facV, normal), viewMatrix);
-          float facF = 0.2 + 0.8 * pow(1.0 - clamp(dot(normal, facV), 0.0, 1.0), 3.0);
-          outgoingLight = mix(outgoingLight, mix(uHor, uZen, clamp(facR.y * 1.4 + 0.15, 0.0, 1.0)), facGlass * facF * uRefl);
-        }
-        #include <output_fragment>`);
+          // ガラスの所: つるつるで、鏡に近い(まわりの景色が映る)。色も暗いガラスの色にする
+          .replace("#include <metalnessmap_fragment>", `#include <metalnessmap_fragment>
+        roughnessFactor = mix(roughnessFactor, 0.05, facGlass);
+        metalnessFactor = mix(metalnessFactor, 0.92 * uRefl, facGlass);
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.52, 0.6, 0.68), facGlass * 0.7);`);
     };
-    m.customProgramCacheKey = () => "fac";
+    m.customProgramCacheKey = () => "fac2";
     return m;
   }
   // anc の4つ目(出はじめる時刻)を入れる。建物ごとに少しずつずらす
@@ -1592,15 +1591,83 @@ const City = (() => {
         t.anisotropy = 8;
         return t;
       };
-      const asph = tex((c) => {
-        c.fillStyle = "#5b5e62";
-        c.fillRect(0, 0, 256, 256);
-        for (let i = 0; i < 9000; i++) {
-          const v = 70 + Math.floor(hash(i) * 70);
-          c.fillStyle = `rgba(${v},${v},${v + 4},0.5)`;
-          c.fillRect(hash(i + 1e4) * 256, hash(i + 2e4) * 256, 1 + hash(i + 3e4) * 1.5, 1 + hash(i + 4e4) * 1.5);
+      // アスファルト: 細かい石の粒、色むら、補修のつぎはぎ、ひび。でこぼこ(法線の絵)も一緒に作って、光の当たり方でざらつきが見えるようにする
+      const AS = 512, hgt = new Float32Array(AS * AS);
+      const acv = document.createElement("canvas");
+      acv.width = acv.height = AS;
+      {
+        const c = acv.getContext("2d");
+        c.fillStyle = "#54575b";
+        c.fillRect(0, 0, AS, AS);
+        // 大きな色むら
+        for (let i = 0; i < 26; i++) {
+          const x = hash(i * 3 + 1) * AS, y = hash(i * 5 + 2) * AS, r = 40 + hash(i * 7) * 90, d = hash(i * 11) < 0.5;
+          const g = c.createRadialGradient(x, y, 0, x, y, r);
+          g.addColorStop(0, d ? "rgba(0,0,0,0.16)" : "rgba(255,255,255,0.07)");
+          g.addColorStop(1, "rgba(0,0,0,0)");
+          c.fillStyle = g;
+          for (const [ox, oy] of [[0, 0], [AS, 0], [-AS, 0], [0, AS], [0, -AS]]) c.fillRect(x - r + ox, y - r + oy, r * 2, r * 2);
         }
-      });
+        // 石の粒
+        for (let i = 0; i < 52000; i++) {
+          const x = Math.floor(hash(i + 1e4) * AS), y = Math.floor(hash(i + 2e4) * AS), k = hash(i), sz = k < 0.06 ? 2 : 1;
+          const v = k < 0.5 ? 40 + Math.floor(hash(i + 5e4) * 40) : 110 + Math.floor(hash(i + 6e4) * 80);
+          c.fillStyle = `rgba(${v},${v},${v + 3},${k < 0.06 ? 0.85 : 0.5})`;
+          c.fillRect(x, y, sz, sz);
+          for (let a = 0; a < sz; a++) for (let b = 0; b < sz; b++) hgt[((y + b) % AS) * AS + ((x + a) % AS)] += v > 100 ? 0.9 : -0.7;
+        }
+        // 補修のつぎはぎ(少し暗い四角と、ふちの線)
+        for (let i = 0; i < 2; i++) {
+          const x = 40 + hash(i * 17 + 3) * 300, y = 60 + hash(i * 19 + 4) * 300, w = 70 + hash(i * 23) * 90, h = 40 + hash(i * 29) * 70;
+          c.fillStyle = "rgba(20,22,24,0.09)";
+          c.fillRect(x, y, w, h);
+          c.strokeStyle = "rgba(15,15,16,0.22)";
+          c.lineWidth = 1.5;
+          c.strokeRect(x, y, w, h);
+          for (let yy = Math.floor(y); yy < y + h; yy++) for (const xx of [Math.floor(x), Math.floor(x + w)]) hgt[(yy % AS) * AS + (xx % AS)] -= 4;
+          for (let xx = Math.floor(x); xx < x + w; xx++) for (const yy of [Math.floor(y), Math.floor(y + h)]) hgt[(yy % AS) * AS + (xx % AS)] -= 4;
+        }
+        // ひび
+        c.strokeStyle = "rgba(12,12,13,0.6)";
+        c.lineWidth = 1;
+        for (let i = 0; i < 5; i++) {
+          let x = hash(i * 31 + 7) * AS, y = hash(i * 37 + 9) * AS, a = hash(i * 41) * 6.28;
+          c.beginPath();
+          c.moveTo(x, y);
+          for (let k = 0; k < 26; k++) {
+            a += (hash(i * 43 + k * 7) - 0.5) * 1.3;
+            x += Math.cos(a) * 6;
+            y += Math.sin(a) * 6;
+            c.lineTo(x, y);
+            const xi = ((Math.floor(x) % AS) + AS) % AS, yi = ((Math.floor(y) % AS) + AS) % AS;
+            hgt[yi * AS + xi] -= 6;
+          }
+          c.stroke();
+        }
+      }
+      const asph = new THREE.CanvasTexture(acv);
+      asph.wrapS = asph.wrapT = THREE.RepeatWrapping;
+      asph.encoding = THREE.sRGBEncoding;
+      asph.anisotropy = 8;
+      // 高さ → 法線の絵
+      const ncv = document.createElement("canvas");
+      ncv.width = ncv.height = AS;
+      {
+        const c = ncv.getContext("2d"), im = c.createImageData(AS, AS);
+        const hAt = (x, y) => hgt[((y + AS) % AS) * AS + ((x + AS) % AS)];
+        for (let y = 0; y < AS; y++)
+          for (let x = 0; x < AS; x++) {
+            const dx = (hAt(x + 1, y) - hAt(x - 1, y)) * 0.5, dy = (hAt(x, y + 1) - hAt(x, y - 1)) * 0.5, l = Math.hypot(dx, dy, 1), o = (y * AS + x) * 4;
+            im.data[o] = 128 - (dx / l) * 127;
+            im.data[o + 1] = 128 + (dy / l) * 127;
+            im.data[o + 2] = 128 + (1 / l) * 127;
+            im.data[o + 3] = 255;
+          }
+        c.putImageData(im, 0, 0);
+      }
+      const asphN = new THREE.CanvasTexture(ncv);
+      asphN.wrapS = asphN.wrapT = THREE.RepeatWrapping;
+      asphN.anisotropy = 4;
       const walk = tex((c) => {
         c.fillStyle = "#b9b3a8";
         c.fillRect(0, 0, 256, 256);
@@ -1612,7 +1679,7 @@ const City = (() => {
           }
       });
       M = {
-        asph: new THREE.MeshLambertMaterial({ map: asph, color: 0xffffff }),
+        asph: new THREE.MeshStandardMaterial({ map: asph, normalMap: asphN, normalScale: new THREE.Vector2(0.9, 0.9), roughness: 0.78, metalness: 0, envMapIntensity: 0.55 }),
         walk: new THREE.MeshLambertMaterial({ map: walk }),
         curb: new THREE.MeshLambertMaterial({ color: 0xa4a39e }),
         isl: new THREE.MeshLambertMaterial({ color: 0x6f8a5a }),
@@ -1622,6 +1689,31 @@ const City = (() => {
         wire: new THREE.LineBasicMaterial({ color: 0x1c1c1e }),
         trunk: new THREE.MeshLambertMaterial({ color: 0x5a4632 }),
         leaf: new THREE.MeshLambertMaterial({ color: 0xffffff }),
+        // 葉のかたまりの絵(すき間のある葉むら)。板に貼って、いろいろな向きに重ねる
+        leafCard: new THREE.MeshLambertMaterial({
+          map: (() => {
+            const cv = document.createElement("canvas");
+            cv.width = cv.height = 256;
+            const c = cv.getContext("2d");
+            for (let i = 0; i < 420; i++) {
+              const a = hash(i * 3) * 6.28, r = Math.sqrt(hash(i * 5 + 1)) * 112, x = 128 + Math.cos(a) * r, y = 128 + Math.sin(a) * r * 0.92;
+              const l = 150 + Math.floor(hash(i * 7) * 90), sh = 0.55 + (1 - y / 256) * 0.5;
+              c.fillStyle = `rgb(${Math.floor(l * 0.62 * sh)},${Math.floor(l * sh)},${Math.floor(l * 0.5 * sh)})`;
+              c.save();
+              c.translate(x, y);
+              c.rotate(hash(i * 11) * 6.28);
+              c.beginPath();
+              c.ellipse(0, 0, 9 + hash(i * 13) * 7, 4 + hash(i * 17) * 3, 0, 0, 6.28);
+              c.fill();
+              c.restore();
+            }
+            const t = new THREE.CanvasTexture(cv);
+            t.encoding = THREE.sRGBEncoding;
+            t.anisotropy = 4;
+            return t;
+          })(),
+          alphaTest: 0.45, side: THREE.DoubleSide, color: 0xffffff,
+        }),
         rail: new THREE.MeshLambertMaterial({ color: 0xf4f4f0, side: THREE.DoubleSide }),
         stripe: new THREE.MeshBasicMaterial({ color: 0x35d6ff, transparent: true, opacity: 0.42, depthWrite: false, side: THREE.DoubleSide }),
       };
@@ -1941,25 +2033,46 @@ const City = (() => {
       }
       // 街路樹: 幹と、葉のかたまり4つ(大きさ・位置・色を少しずつ変えて、こんもりした形にする)と、根もとの植え込み
       if (trees.length) {
-        const K = 4;
-        const trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.09, 0.15, 3.0, 7), m.trunk, trees.length);
-        const leaf = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), m.leaf, trees.length * K);
+        // 幹は枝分かれした1つの形(幹 + 太い枝3本)。葉は、葉むらの絵を貼った板を 18枚、いろいろな向きに重ねる。
+        // 中に暗い緑のかたまりを1つ入れて、すき間から向こうが見えすぎないようにする
+        const K = 18;
+        const tg = [];
+        const cyl = (r0, r1, len, px, py, pz, rx, rz) => {
+          const q = new THREE.CylinderGeometry(r0, r1, len, 6);
+          q.translate(0, len / 2, 0);
+          q.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(px, py, pz), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, 0, rz)), new THREE.Vector3(1, 1, 1)));
+          return q.toNonIndexed();
+        };
+        tg.push(cyl(0.085, 0.16, 2.5, 0, 0, 0, 0, 0), cyl(0.05, 0.085, 1.5, 0, 2.4, 0, 0.5, 0.25), cyl(0.045, 0.08, 1.4, 0, 2.3, 0, -0.45, -0.4), cyl(0.04, 0.075, 1.3, 0, 2.5, 0, 0.1, 0.6), cyl(0.04, 0.07, 1.2, 0, 2.5, 0, -0.2, -0.55));
+        const tpos = [], tnor = [];
+        for (const q of tg) (tpos.push(...q.attributes.position.array), tnor.push(...q.attributes.normal.array));
+        const trunkG = new THREE.BufferGeometry();
+        trunkG.setAttribute("position", new THREE.Float32BufferAttribute(tpos, 3));
+        trunkG.setAttribute("normal", new THREE.Float32BufferAttribute(tnor, 3));
+        const trunk = new THREE.InstancedMesh(trunkG, m.trunk, trees.length);
+        const card = new THREE.InstancedMesh(new THREE.PlaneGeometry(2.3, 2.3), m.leafCard, trees.length * K);
+        const core = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), m.leaf, trees.length);
         const bush = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.5, 0), m.leaf, trees.length);
-        const mt = new THREE.Matrix4(), sc = new THREE.Matrix4(), c = new THREE.Color();
+        const mt = new THREE.Matrix4(), sc = new THREE.Matrix4(), ro = new THREE.Matrix4(), c = new THREE.Color(), eu = new THREE.Euler();
         trees.forEach(([x, z], i) => {
           const hs = (n) => hash(Math.round(x * 5) * 3 + Math.round(z * 3) * 7 + n * 131);
-          const s = 0.8 + hs(0) * 0.5, h = H(x, z) + 0.17, hue = 0.25 + hs(1) * 0.07;
-          trunk.setMatrixAt(i, mt.makeTranslation(x, h + 1.5 * s, z).multiply(sc.makeScale(s, s, s)));
+          const s = 0.85 + hs(0) * 0.5, h = H(x, z) + 0.17, hue = 0.24 + hs(1) * 0.08, yaw = hs(2) * 6.28;
+          trunk.setMatrixAt(i, mt.makeTranslation(x, h, z).multiply(ro.makeRotationY(yaw)).multiply(sc.makeScale(s, s, s)));
           for (let k = 0; k < K; k++) {
-            const a = hs(10 + k) * 6.28, r = k ? 0.75 * s : 0, yy = k ? 3.2 + hs(20 + k) * 0.9 : 3.9, rs = (k ? 0.95 + hs(30 + k) * 0.45 : 1.35) * s;
-            leaf.setMatrixAt(i * K + k, mt.makeTranslation(x + Math.cos(a) * r, h + yy * s, z + Math.sin(a) * r).multiply(sc.makeScale(rs, rs * 0.9, rs)));
-            leaf.setColorAt(i * K + k, c.setHSL(hue + (hs(40 + k) - 0.5) * 0.03, 0.4 + hs(50 + k) * 0.12, 0.2 + hs(60 + k) * 0.11 + (k ? 0 : 0.04)));
+            // 葉むらは、木の上のほうの丸い範囲に散らす
+            const a = hs(10 + k) * 6.28, el = (hs(20 + k) - 0.35) * 1.5, rr = (0.55 + hs(30 + k) * 0.75) * s;
+            const px = Math.cos(a) * Math.cos(el) * rr * 1.15, py = 3.75 * s + Math.sin(el) * rr * 0.95, pz = Math.sin(a) * Math.cos(el) * rr * 1.15, rs = (0.75 + hs(40 + k) * 0.5) * s;
+            card.setMatrixAt(i * K + k, mt.makeTranslation(x + px, h + py, z + pz).multiply(ro.makeRotationFromEuler(eu.set((hs(50 + k) - 0.5) * 1.6, hs(60 + k) * 6.28, (hs(70 + k) - 0.5) * 1.2))).multiply(sc.makeScale(rs, rs, rs)));
+            // 上の葉は明るく、下と内側は暗く
+            card.setColorAt(i * K + k, c.setHSL(hue + (hs(80 + k) - 0.5) * 0.04, 0.3 + hs(90 + k) * 0.12, 0.2 + Math.max(0, Math.sin(el)) * 0.13 + hs(95 + k) * 0.06));
           }
+          core.setMatrixAt(i, mt.makeTranslation(x, h + 3.7 * s, z).multiply(sc.makeScale(1.05 * s, 0.9 * s, 1.05 * s)));
+          core.setColorAt(i, c.setHSL(hue, 0.4, 0.13));
           bush.setMatrixAt(i, mt.makeTranslation(x, h + 0.22, z).multiply(sc.makeScale(1.5, 0.7, 1.1)));
           bush.setColorAt(i, c.setHSL(hue + 0.02, 0.45, 0.2));
         });
-        trunk.castShadow = leaf.castShadow = true;
-        g.add(trunk, leaf, bush);
+        trunk.castShadow = card.castShadow = core.castShadow = true;
+        g.add(trunk, card, core, bush);
       }
       // 道ばたの物
       if (props.length) streetProps(g, props, poles);
@@ -2162,6 +2275,7 @@ const City = (() => {
         scene.add(t.group);
         t.state = "ok";
       } catch (e) {
+        console.error("道を作れませんでした", e);
         fails++;
         t.state = "fail";
       }
@@ -3725,6 +3839,52 @@ const City = (() => {
       return "day";
     }
   })();
+  // ---------- 本格的な映り込み: 自分のまわりの景色を、6方向ぶん撮って「映り込み用の絵」にする ----------
+  // 車の塗装・窓ガラス・カーブミラー・路面に、まわりの建物や空が実際に映る。重いので、1コマおきに1方向ずつ撮る
+  // (6方向そろうのに12コマ=約0.2秒)。コマ数が足りない端末では自動でやめる。
+  const Refl = (() => {
+    let rt = null, cube = null, face = 0, tick = 0, on = true, used = false;
+    try {
+      on = localStorage.getItem("city_refl") !== "0";
+    } catch (e) {}
+    function update(p) {
+      if (!on || !renderer) return;
+      const THREE = T();
+      if (!rt) {
+        rt = new THREE.WebGLCubeRenderTarget(256, { generateMipmaps: false });
+        cube = new THREE.CubeCamera(1.8, 700, rt);
+      }
+      if (tick++ % 2) return;
+      if (face === 0) {
+        cube.position.set(p.x, p.y + 2.3, p.z);
+        cube.updateMatrixWorld(true);
+      }
+      const tm = renderer.toneMapping, vis = me && me.g.visible;
+      renderer.toneMapping = THREE.NoToneMapping;
+      if (me) me.g.visible = false; // 自分は映さない(撮る場所が自分の中なので)
+      renderer.setRenderTarget(rt, face);
+      renderer.render(scene, cube.children[face]);
+      renderer.setRenderTarget(null);
+      if (me) me.g.visible = vis;
+      renderer.toneMapping = tm;
+      if (++face >= 6) {
+        face = 0;
+        rt.texture.needsPMREMUpdate = true;
+        if (!used) (scene.environment = rt.texture), (used = true);
+      }
+    }
+    return {
+      update,
+      on: () => on,
+      set(v, keep) {
+        on = v;
+        if (!keep)
+          try {
+            localStorage.setItem("city_refl", v ? "1" : "0");
+          } catch (e) {}
+      },
+    };
+  })();
   const TIMES = {
     day: { sky: [[0, "#3f7fd0"], [0.5, "#8fbbe8"], [0.7, "#d6e4f0"], [1, "#e4ebf0"]], fog: 0xc9d6e2, near: 220, far: 1100, hemi: [0xe6efff, 0x8a8478, 1.05], sun: [0xfff4e2, 1.1, [-0.35, 0.8, 0.45]], glow: 0, win: 0, ground: 0x3b3d40, photo: 0xffffff },
     dusk: { sky: [[0, "#0b1230"], [0.45, "#27306a"], [0.62, "#b0567a"], [0.72, "#f0a060"], [1, "#f0a060"]], fog: 0x6a4a66, near: 120, far: 620, hemi: [0xaab4ff, 0x3a3038, 0.85], sun: [0xffb070, 0.9, [-0.6, 0.35, 0.5]], glow: 0.85, win: 0.75, ground: 0x23272b, photo: 0xb8aab4 },
@@ -4350,6 +4510,15 @@ const City = (() => {
     let pr = res.pr;
     // いちばん粗くしてもコマ数が足りないときは、影をやめる(見た目より、なめらかさを優先)
     const floor = Math.min(1, max);
+    // まず本格的な映り込みをやめる(次に影)
+    if (pr <= floor + 0.01 && fps < 42 && Refl.on()) {
+      if ((res.lowR = (res.lowR || 0) + 1) >= 3) {
+        Refl.set(false, true);
+        if ($("ct-refl")) $("ct-refl").checked = false;
+        ticker("動きを優先して、映り込みを軽くしました", "opp");
+      }
+      return;
+    }
     if (pr <= floor + 0.01 && fps < 45 && renderer.shadowMap.enabled) {
       if ((res.low = (res.low || 0) + 1) >= 3) {
         renderer.shadowMap.enabled = false;
@@ -4509,6 +4678,8 @@ const City = (() => {
     riseUpdate(real);
     revealStep();
     Perf.lap("Google3D");
+    Refl.update(p);
+    Perf.lap("映り込み");
     // 影は2コマに1回だけ作り直す(見た目はほぼ同じで、描く量が減る)
     if (renderer.shadowMap.enabled) (renderer.shadowMap.autoUpdate = false), (renderer.shadowMap.needsUpdate = s.frameN % 2 === 0);
     renderer.render(scene, camera);
@@ -4637,7 +4808,15 @@ const City = (() => {
         localStorage.setItem("city_last", JSON.stringify({ from: (list[+$("ct-from").value] || {}).name, to: (list[+$("ct-to").value] || {}).name }));
       } catch (e) {}
     };
-    $("ct-from").onchange = $("ct-to").onchange = saveLast;
+    const showVia = () => {
+      const el = $("ct-via");
+      if (!el) return;
+      const list = placeOptions(), to = list[+$("ct-to").value], from = list[+$("ct-from").value];
+      const via = (to && to.via && to.via.length ? to.via : ((from && from.via) || []).slice().reverse()) || [];
+      el.innerHTML = via.length ? `経由地: ${via.map((v) => esc(v.name)).join(" → ")}` : `経由地: なし <a href="index.html">(走る画面の 設定 → 目的地 →「経由地」で登録できます)</a>`;
+    };
+    $("ct-from").onchange = $("ct-to").onchange = () => (saveLast(), showVia());
+    showVia();
     // 自宅の登録: 住所を国土地理院の住所検索で緯度経度にして、この端末に保存
     const hm = homeOf();
     $("ct-home-now").textContent = hm ? `登録済み: ${hm.label || ""}` : "未登録";
@@ -4734,6 +4913,10 @@ const City = (() => {
     const su = SV.usage();
     if ($("ct-svuse")) $("ct-svuse").textContent = `ストリートビューを開いた回数(この端末): 今月 ${su.n}/${su.capM}回・今日 ${su.dn}/${su.capD}回`;
     if ($("ct-perf0")) $("ct-perf0").onchange = (e) => ($("ct-perf").hidden = !e.target.checked);
+    if ($("ct-refl")) {
+      $("ct-refl").checked = Refl.on();
+      $("ct-refl").onchange = (e) => Refl.set(e.target.checked);
+    }
     // すっきり表示: カードや記録の表示を隠して、景色を広く見る
     if ($("ct-clean")) {
       let cl = false;

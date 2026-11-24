@@ -8,12 +8,12 @@
 <meta name="theme-color" content="#050608" />
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-<link rel="stylesheet" href="css/style.css?v=2027.1.3" />
-<link rel="stylesheet" href="css/duelist.css?v=2027.1.3" />
-<link rel="stylesheet" href="css/cinema.css?v=2027.1.3" />
-<link rel="stylesheet" href="css/board.css?v=2027.1.3" />
-<link rel="stylesheet" href="css/tcard.css?v=2027.1.3" />
-<link rel="stylesheet" href="css/city.css?v=2027.1.3" />
+<link rel="stylesheet" href="css/style.css?v=2027.1.4" />
+<link rel="stylesheet" href="css/duelist.css?v=2027.1.4" />
+<link rel="stylesheet" href="css/cinema.css?v=2027.1.4" />
+<link rel="stylesheet" href="css/board.css?v=2027.1.4" />
+<link rel="stylesheet" href="css/tcard.css?v=2027.1.4" />
+<link rel="stylesheet" href="css/city.css?v=2027.1.4" />
 </head>
 <body class="city">
 <div id="ct-view"></div>
@@ -28,6 +28,7 @@
   </details>
   <label>出発<select id="ct-from"></select></label>
   <label>目的地<select id="ct-to"></select></label>
+  <p class="ct-note" id="ct-via"></p>
   <label>ライバルの速さ<select id="ct-rival"><option value="22">ゆっくり(22km/h)</option><option value="25" selected>ふつう(25km/h)</option><option value="28">速い(28km/h)</option><option value="32">とても速い(32km/h)</option></select></label>
   <label class="ct-check"><input type="checkbox" id="ct-auto0" /> 自動でこぐ(見るだけ)</label>
   <label class="ct-check"><input type="checkbox" id="ct-plateau0" checked /> 実物の建物(PLATEAU・国交省の3D都市モデル)<small>東京都内。壁の写真つき・区画ごとに数MBを読み込みます</small></label>
@@ -92,6 +93,7 @@
     <label><input type="checkbox" id="ct-google" /> Googleの3D</label>
     <label><input type="checkbox" id="ct-sv" /> ストリートビュー</label>
     <label><input type="checkbox" id="ct-clean" /> すっきり表示</label>
+    <label><input type="checkbox" id="ct-refl" checked /> 本格的な映り込み</label>
     <label><input type="checkbox" id="ct-perf0" /> 性能を表示</label>
     <label>視点 <select id="ct-view-sel"><option value="auto">おまかせ</option><option value="close">すぐ後ろ</option><option value="near">少し後ろ</option><option value="high">上から</option><option value="sky">空から</option></select></label>
     <label>時間 <select id="ct-time"><option value="day">昼</option><option value="dusk">夕方</option><option value="night">夜</option></select></label>
@@ -119,28 +121,28 @@
 } }
 </script>
 <script src="https://unpkg.com/three@0.149.0/build/three.min.js"></script>
-<script src="js/vendor/gltf-loader.js?v=2027.1.3"></script>
-<script src="js/garage/parts.js?v=2027.1.3"></script>
-<script src="js/garage/fit.js?v=2027.1.3"></script>
-<script src="js/garage/view3d.js?v=2027.1.3"></script>
-<script src="js/store.js?v=2027.1.3"></script>
-<script src="js/nav.js?v=2027.1.3"></script>
-<script src="js/physics.js?v=2027.1.3"></script>
-<script src="js/eta.js?v=2027.1.3"></script>
-<script src="js/duel.js?v=2027.1.3"></script>
-<script src="js/cardgen.js?v=2027.1.3"></script>
-<script src="js/battle.js?v=2027.1.3"></script>
-<script src="js/tcard.js?v=2027.1.3"></script>
-<script src="js/bikespin.js?v=2027.1.3"></script>
-<script src="js/duelfx.js?v=2027.1.3"></script>
-<script src="js/cinema.js?v=2027.1.3"></script>
-<script src="js/board.js?v=2027.1.3"></script>
-<script src="js/monart.js?v=2027.1.3"></script>
-<script src="js/voice.js?v=2027.1.3"></script>
-<script src="js/duellines.js?v=2027.1.3"></script>
-<script src="js/plateau-roads.js?v=2027.1.3"></script>
-<script src="js/plateau-index.js?v=2027.1.3"></script>
-<script src="js/city.js?v=2027.1.3"></script>
-<script src="js/update.js?v=2027.1.3"></script>
+<script src="js/vendor/gltf-loader.js?v=2027.1.4"></script>
+<script src="js/garage/parts.js?v=2027.1.4"></script>
+<script src="js/garage/fit.js?v=2027.1.4"></script>
+<script src="js/garage/view3d.js?v=2027.1.4"></script>
+<script src="js/store.js?v=2027.1.4"></script>
+<script src="js/nav.js?v=2027.1.4"></script>
+<script src="js/physics.js?v=2027.1.4"></script>
+<script src="js/eta.js?v=2027.1.4"></script>
+<script src="js/duel.js?v=2027.1.4"></script>
+<script src="js/cardgen.js?v=2027.1.4"></script>
+<script src="js/battle.js?v=2027.1.4"></script>
+<script src="js/tcard.js?v=2027.1.4"></script>
+<script src="js/bikespin.js?v=2027.1.4"></script>
+<script src="js/duelfx.js?v=2027.1.4"></script>
+<script src="js/cinema.js?v=2027.1.4"></script>
+<script src="js/board.js?v=2027.1.4"></script>
+<script src="js/monart.js?v=2027.1.4"></script>
+<script src="js/voice.js?v=2027.1.4"></script>
+<script src="js/duellines.js?v=2027.1.4"></script>
+<script src="js/plateau-roads.js?v=2027.1.4"></script>
+<script src="js/plateau-index.js?v=2027.1.4"></script>
+<script src="js/city.js?v=2027.1.4"></script>
+<script src="js/update.js?v=2027.1.4"></script>
 </body>
 </html>
