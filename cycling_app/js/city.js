@@ -2460,8 +2460,28 @@ const City = (() => {
           const ahead = list.find((o) => o !== e && o.kind === "car" && o.dir > 0 && o.along > e.along && o.along - e.along < 12 && Math.abs(o.lane - e.lane) < 0.3);
           if (ahead) v = Math.min(v, ahead.v);
         }
+        // 車は自転車(自分)をひかない: 後ろから来た車は、横に1m以上あけて追い越す。あけられない狭い道では、後ろについて走る。
+        // 前を走る車に自分が追いついたら、車のほうが先へ逃げる
+        let r = Roads.ride(e.along), off = laneOff(e, r);
+        if (e.kind === "car" && e.dir > 0) {
+          const rel0 = e.along - s.along, half = (e.obj.userData.size ? e.obj.userData.size[1] / 1.5 : 1.75) / 2;
+          const myOff0 = (r ? r.off : 0) - (s.dodge || 0), need = half + 0.3 + 1.0; // 車の半分 + 自分の半分 + あける幅
+          if (rel0 > -14 && rel0 < 7) {
+            const W = r ? r.W : 4, Lf = r ? r.off + (W >= 4.5 ? 0.9 : Math.max(0.6, W * 0.22)) : 2;
+            const minOff = Lf - W + half + 0.15; // 道の右端いっぱい
+            const want = Math.min(off, myOff0 - need);
+            if (want >= minOff) e.shift = (e.shift || 0) + (want - off - (e.shift || 0)) * Math.min(1, dt * 3);
+            else {
+              // よけきれない: 追い越さない
+              e.shift = (e.shift || 0) + (Math.max(minOff, want) - off - (e.shift || 0)) * Math.min(1, dt * 3);
+              if (rel0 < 0) v = Math.min(v, rel0 > -7 ? Math.max(0, s.v - 0.5) : s.v + 2);
+              else v = Math.max(v, s.v + 2);
+            }
+          } else e.shift = (e.shift || 0) * Math.max(0, 1 - dt * 1.5);
+          off += e.shift || 0;
+        }
         e.along += e.dir * v * dt;
-        const r = Roads.ride(e.along), off = laneOff(e, r);
+        r = Roads.ride(e.along);
         const p = at(e.along);
         const x = p.x + p.tz * off, z = p.z - p.tx * off;
         e.obj.position.set(x, H(x, z) + (e.kind === "ped" && W5(r) ? 0.17 : 0), z);
