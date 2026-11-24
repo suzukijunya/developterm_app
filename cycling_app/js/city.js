@@ -1366,6 +1366,28 @@ const City = (() => {
 
   // ---------- 地面の高さと勾配(国土地理院の標高タイル: 5mメッシュ、なければ10mメッシュ) ----------
   // 走り出す前に、ルートのまわりの標高を読んでおく。高さは「出発地点=0」からの差(m)
+  // 画像(地面の航空写真・標高)を、端末に保存して使い回す。同じ道を走るときは、2回目から通信しない。
+  // 戻り値: 画像に使えるURL(保存してあるものは端末の中のURL)。無い画像だとわかっているものは null。保存できない端末では、もとのURL
+  const savedMiss = new Set();
+  async function savedImg(url) {
+    if (savedMiss.has(url)) return null;
+    try {
+      const c = await caches.open("city-img-v1");
+      let hit = await c.match(url);
+      if (!hit) {
+        const res = await fetch(url, { mode: "cors" });
+        if (res.status === 404) return savedMiss.add(url), c.put(url, new Response("", { status: 200, headers: { "x-miss": "1" } })).catch(() => {}), null;
+        if (!res.ok) return url;
+        c.put(url, res.clone()).catch(() => {});
+        hit = res;
+      }
+      if (hit.headers.get("x-miss")) return savedMiss.add(url), null;
+      return URL.createObjectURL(await hit.blob());
+    } catch (e) {
+      return url;
+    }
+  }
+  const savedDone = (src) => src && src.startsWith("blob:") && URL.revokeObjectURL(src);
   const Terrain = (() => {
     const Z = 15, NT = 2 ** Z;
     const tiles = new Map(); // "x:y" → Float32Array(256*256) (NaN=なし)
@@ -1383,14 +1405,17 @@ const City = (() => {
       }
       return out;
     }
-    const loadImg = (url) =>
-      new Promise((res) => {
+    const loadImg = async (url) => {
+      const src = await savedImg(url);
+      if (!src) return null; // 前に「無い」とわかった所
+      return new Promise((res) => {
         const im = new Image();
         im.crossOrigin = "anonymous";
-        im.onload = () => res(im);
-        im.onerror = () => res(null);
-        im.src = url;
+        im.onload = () => (savedDone(src), res(im));
+        im.onerror = () => (savedDone(src), res(null));
+        im.src = src;
       });
+    };
     async function loadTile(x, y) {
       let im = await loadImg(`https://cyberjapandata.gsi.go.jp/xyz/dem5a_png/${Z}/${x}/${y}.png`);
       let a = im ? decode(im) : null;
@@ -3392,20 +3417,25 @@ const City = (() => {
       mesh.userData.g3hide = true;
       photos.set(key, mesh);
       scene.add(mesh);
-      const ld = new THREE.TextureLoader();
-      ld.setCrossOrigin("anonymous");
-      ld.load(
-        `https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/${key}.jpg`,
-        (tex) => {
-          tex.encoding = THREE.sRGBEncoding;
-          tex.anisotropy = 8;
-          mesh.material.map = tex;
-          mesh.material.needsUpdate = true;
-          mesh.visible = !G3.on();
-        },
-        undefined,
-        () => {}
-      );
+      savedImg(`https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/${key}.jpg`).then((src) => {
+        if (!src || photos.get(key) !== mesh) return savedDone(src);
+        const ld = new THREE.TextureLoader();
+        ld.setCrossOrigin("anonymous");
+        ld.load(
+          src,
+          (tex) => {
+            savedDone(src);
+            if (photos.get(key) !== mesh) return tex.dispose();
+            tex.encoding = THREE.sRGBEncoding;
+            tex.anisotropy = 8;
+            mesh.material.map = tex;
+            mesh.material.needsUpdate = true;
+            mesh.visible = !G3.on();
+          },
+          undefined,
+          () => savedDone(src)
+        );
+      });
     }
     if (photoMore) return; // まだ作り終えていない間は、古い写真を消さない
     for (const [key, mesh] of photos) {
