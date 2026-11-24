@@ -3226,6 +3226,10 @@ const City = (() => {
     renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
     renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     renderer.outputEncoding = THREE.sRGBEncoding;
+    // 明るい所が白く飛ばず、影がしまる(映画のフィルムに近い色の出し方)
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.25;
+    orbitInit(renderer.domElement);
     el.appendChild(renderer.domElement);
     scene = new THREE.Scene();
     scene.fog = new THREE.Fog(0x6a4a66, 120, 620);
@@ -3239,7 +3243,7 @@ const City = (() => {
       const sh = lights.sun.shadow;
       lights.sun.castShadow = true;
       sh.mapSize.set(2048, 2048);
-      Object.assign(sh.camera, { left: -70, right: 70, top: 70, bottom: -70, near: 1, far: 400 });
+      Object.assign(sh.camera, { left: -48, right: 48, top: 48, bottom: -48, near: 1, far: 400 }); // 近くの影をくっきり(1点 約5cm)
       sh.bias = -0.0008;
       sh.normalBias = 0.04;
     }
@@ -3774,6 +3778,20 @@ const City = (() => {
   }
 
   let setSVfn = null, starting = false;
+  const orbit = { yaw: 0, pit: 0, down: false, hold: 0, x: 0, y: 0 };
+  function orbitInit(el) {
+    el.style.touchAction = "none";
+    el.addEventListener("pointerdown", (e) => ((orbit.down = true), (orbit.x = e.clientX), (orbit.y = e.clientY), el.setPointerCapture && el.setPointerCapture(e.pointerId)));
+    el.addEventListener("pointermove", (e) => {
+      if (!orbit.down) return;
+      orbit.yaw = Math.max(-Math.PI, Math.min(Math.PI, orbit.yaw + ((e.clientX - orbit.x) / Math.max(200, innerWidth)) * 4.5));
+      orbit.pit = Math.max(-0.25, Math.min(0.9, orbit.pit + ((e.clientY - orbit.y) / Math.max(200, innerHeight)) * 2));
+      (orbit.x = e.clientX), (orbit.y = e.clientY);
+    });
+    const up = () => ((orbit.down = false), (orbit.hold = performance.now() + 2500));
+    el.addEventListener("pointerup", up);
+    el.addEventListener("pointercancel", up);
+  }
   let viewMode = "auto";
   try {
     viewMode = localStorage.getItem("city_view") || "auto";
@@ -3813,19 +3831,29 @@ const City = (() => {
     // 追いかけるカメラ(後ろ上から。速いほど少し引いて、視野を広げる)
     // 視点: 近く(すぐ後ろ)/上から(ドローンのように)/空から。Googleの3Dは空から撮った街なので、
     // 道のすぐ上から見ると溶けたように見える。「おまかせ」では、Googleの3Dのときだけ上から見る
-    const vm = viewMode === "auto" ? (G3.on() ? "high" : "near") : viewMode;
-    const VW = { near: [6.5 + s.v * 0.18, 2.9 + s.v * 0.05, 9], high: [30, 26, 16], sky: [60, 75, 22] }[vm];
-    s.vw = s.vw || VW.slice();
-    for (let i = 0; i < 3; i++) s.vw[i] += (VW[i] - s.vw[i]) * Math.min(1, real * 2.2); // 切り替えはなめらかに
-    const back = s.vw[0], up = s.vw[1];
-    const want = new THREE.Vector3(p.x - p.tx * back, p.y + up, p.z - p.tz * back);
+    // 「すぐ後ろ」は、乗り手の肩ごしに近くから見る(3人称のゲームのような見え方)。
+    const vm = viewMode === "auto" ? (G3.on() ? "high" : "close") : viewMode;
+    const VW = { close: [3.7 + s.v * 0.09, 1.75 + s.v * 0.02, 7, 0.45, 50], near: [6.5 + s.v * 0.18, 2.9 + s.v * 0.05, 9, 0, 58], high: [30, 26, 16, 0, 58], sky: [60, 75, 22, 0, 58] }[vm] || [6.5, 2.9, 9, 0, 58];
+    s.vw = s.vw && s.vw.length === 5 ? s.vw : VW.slice();
+    for (let i = 0; i < 5; i++) s.vw[i] += (VW[i] - s.vw[i]) * Math.min(1, real * 2.2); // 切り替えはなめらかに
+    // 画面を引くと、乗り手のまわりを回って見られる。手を離して少したつと、後ろに戻る
+    if (!orbit.down && performance.now() > orbit.hold) {
+      const k = Math.min(1, real * 2.5);
+      (orbit.yaw -= orbit.yaw * k), (orbit.pit -= orbit.pit * k);
+    }
+    const oy = orbit.yaw, cs = Math.cos(oy), sn = Math.sin(oy);
+    const bx = -(p.tx * cs - p.tz * sn), bz = -(p.tx * sn + p.tz * cs); // 後ろ向きを、回した分だけ回す
+    const back = s.vw[0], up = Math.max(0.5, s.vw[1] + back * Math.tan(orbit.pit)), side = s.vw[3] * Math.max(0, 1 - Math.abs(oy) * 2);
+    const want = new THREE.Vector3(p.x + bx * back + p.tz * side, p.y + up, p.z + bz * back - p.tx * side);
     if (!s.camPos) s.camPos = want.clone();
     // 早送りでもカメラが遅れないように、追いつく速さも倍速に合わせる
-    s.camPos.lerp(want, 1 - Math.exp(-real * 3.2 * Math.max(1, s.speedX)));
+    s.camPos.lerp(want, 1 - Math.exp(-real * (orbit.down ? 14 : vm === "close" ? 5 : 3.2) * Math.max(1, s.speedX)));
     if (s.camPos.distanceTo(want) > 30) s.camPos.copy(want);
     camera.position.copy(s.camPos);
-    camera.lookAt(p.x + p.tx * s.vw[2], p.y + 1.2, p.z + p.tz * s.vw[2]);
-    camera.fov = 58 + Math.min(16, s.v * 1.1);
+    // 回して見ているときは乗り手を、ふだんは少し先を見る
+    const la = s.vw[2] * Math.max(0, 1 - Math.abs(oy) * 1.5);
+    camera.lookAt(p.x + p.tx * la, p.y + 1.2, p.z + p.tz * la);
+    camera.fov = s.vw[4] + Math.min(16, s.v * 1.1);
     camera.updateProjectionMatrix();
     updateGround(p);
     popU.uPopT.value = performance.now() / 1000;
@@ -4056,6 +4084,21 @@ const City = (() => {
     } catch (err) {}
     const su = SV.usage();
     if ($("ct-svuse")) $("ct-svuse").textContent = `ストリートビューを開いた回数(この端末): 今月 ${su.n}/${su.capM}回・今日 ${su.dn}/${su.capD}回`;
+    // すっきり表示: カードや記録の表示を隠して、景色を広く見る
+    if ($("ct-clean")) {
+      let cl = false;
+      try {
+        cl = localStorage.getItem("city_clean") === "1";
+      } catch (err) {}
+      $("ct-clean").checked = cl;
+      $("ct-hud").classList.toggle("clean", cl);
+      $("ct-clean").onchange = (e) => {
+        $("ct-hud").classList.toggle("clean", e.target.checked);
+        try {
+          localStorage.setItem("city_clean", e.target.checked ? "1" : "0");
+        } catch (err) {}
+      };
+    }
     if ($("ct-view-sel")) {
       $("ct-view-sel").value = viewMode;
       $("ct-view-sel").onchange = (e) => {
