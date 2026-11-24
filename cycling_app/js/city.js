@@ -1896,28 +1896,59 @@ const City = (() => {
           return;
         }
         const all = outer.concat(...holes);
-        for (const t of tri)
-          for (const i of [t[0], t[2], t[1]]) {
-            const v = all[i];
-            q(key, [v.x, y + H(v.x, v.y), v.y], [v.x / sc, v.y / sc]);
+        // 大きな三角形は、辺が5.5m以下になるまで細かく割って、1点ずつ地面の高さに合わせる。
+        // (割らないと、坂やでこぼこの所で道の面が本当の地面より上に出て、自転車が道に埋もれて見える)
+        // 「長い辺は必ず真ん中で割る」決まりなので、となりの三角形と割れ目の位置がそろい、すき間はできない
+        const emit = (ax, az, bx, bz, cx, cz, d) => {
+          const ab = (bx - ax) ** 2 + (bz - az) ** 2, bc = (cx - bx) ** 2 + (cz - bz) ** 2, ca = (ax - cx) ** 2 + (az - cz) ** 2;
+          const mx = Math.max(ab, bc, ca);
+          if (mx <= 30.25 || d > 9) { // 辺が5.5m以下
+            q(key, [ax, y + H(ax, az), az, bx, y + H(bx, bz), bz, cx, y + H(cx, cz), cz], [ax / sc, az / sc, bx / sc, bz / sc, cx / sc, cz / sc]);
+            return;
           }
+          if (mx === ab) {
+            const px = (ax + bx) / 2, pz = (az + bz) / 2;
+            emit(ax, az, px, pz, cx, cz, d + 1), emit(px, pz, bx, bz, cx, cz, d + 1);
+          } else if (mx === bc) {
+            const px = (bx + cx) / 2, pz = (bz + cz) / 2;
+            emit(ax, az, bx, bz, px, pz, d + 1), emit(ax, az, px, pz, cx, cz, d + 1);
+          } else {
+            const px = (cx + ax) / 2, pz = (cz + az) / 2;
+            emit(ax, az, bx, bz, px, pz, d + 1), emit(px, pz, bx, bz, cx, cz, d + 1);
+          }
+        };
+        for (const t of tri) {
+          const a = all[t[0]], b = all[t[2]], c = all[t[1]];
+          emit(a.x, a.y, b.x, b.y, c.x, c.y, 0);
+        }
       };
       // 縁石: 多角形のふちに、低い壁
       const walls = (p, y0, y1) => {
         for (const r of p.rings)
           for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) {
             const ax = r[j], az = r[j + 1], bx = r[i], bz = r[i + 1];
-            const L = Math.hypot(bx - ax, bz - az);
-            if (L < 0.05) continue;
-            const ha = H(ax, az), hb = H(bx, bz);
-            q("curb", [ax, y0 + ha, az, bx, y0 + hb, bz, bx, y1 + hb, bz, ax, y0 + ha, az, bx, y1 + hb, bz, ax, y1 + ha, az], [0, 0, L, 0, L, 1, 0, 0, L, 1, 0, 1]);
-            q("curb", [ax, y0 + ha, az, bx, y1 + hb, bz, bx, y0 + hb, bz, ax, y0 + ha, az, ax, y1 + ha, az, bx, y1 + hb, bz], [0, 0, L, 1, L, 0, 0, 0, 0, 1, L, 1]);
+            const L0 = Math.hypot(bx - ax, bz - az);
+            if (L0 < 0.05) continue;
+            // 長い辺は4.5mごとに区切って、地面の高さにそわせる
+            const nS = Math.max(1, Math.ceil(L0 / 4.5));
+            for (let k = 0; k < nS; k++) {
+              const x0 = ax + ((bx - ax) * k) / nS, z0 = az + ((bz - az) * k) / nS, x1 = ax + ((bx - ax) * (k + 1)) / nS, z1 = az + ((bz - az) * (k + 1)) / nS, L = L0 / nS;
+              const ha = H(x0, z0), hb = H(x1, z1);
+              q("curb", [x0, y0 + ha, z0, x1, y0 + hb, z1, x1, y1 + hb, z1, x0, y0 + ha, z0, x1, y1 + hb, z1, x0, y1 + ha, z0], [0, 0, L, 0, L, 1, 0, 0, L, 1, 0, 1]);
+              q("curb", [x0, y0 + ha, z0, x1, y1 + hb, z1, x1, y0 + hb, z1, x0, y0 + ha, z0, x0, y1 + ha, z0, x1, y1 + hb, z1], [0, 0, L, 1, L, 0, 0, 0, 0, 1, L, 1]);
+            }
           }
       };
       // 細い帯(白線など): a → b を幅 w で
       const band = (ax, az, bx, bz, w, y, key = "line") => {
         const L = Math.hypot(bx - ax, bz - az);
         if (L < 0.05) return;
+        if (L > 5) {
+          // 長い線は区切って、地面の高さにそわせる
+          const n = Math.ceil(L / 4.5);
+          for (let k = 0; k < n; k++) band(ax + ((bx - ax) * k) / n, az + ((bz - az) * k) / n, ax + ((bx - ax) * (k + 1)) / n, az + ((bz - az) * (k + 1)) / n, w, y, key);
+          return;
+        }
         const nx = (-(bz - az) / L) * (w / 2), nz = ((bx - ax) / L) * (w / 2);
         const ha = H(ax, az) + y, hb = H(bx, bz) + y;
         q(key, [ax - nx, ha, az - nz, bx - nx, hb, bz - nz, bx + nx, hb, bz + nz, ax - nx, ha, az - nz, bx + nx, hb, bz + nz, ax + nx, ha, az + nz], [0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1]);
@@ -2594,6 +2625,16 @@ const City = (() => {
           } else e.shift = (e.shift || 0) * Math.max(0, 1 - dt * 1.5);
           off += e.shift || 0;
         }
+        // 信号: 車・人・ほかの自転車も、赤と(止まれる)黄色では停止線で止まる
+        if (e.dir > 0) v = Math.min(v, Signals.limit(e.along, s.t, v));
+        else
+          for (const sg of Signals.list()) {
+            const d = e.along - (sg.along + 6); // 向こうから来るものは、交差点の向こう側の停止線
+            if (d < -1 || d > 70) continue;
+            const st = Signals.stateAt(sg, s.t);
+            if (st === "g" || (st === "y" && d < (v * v) / 6 - 1)) continue;
+            v = Math.min(v, d <= 0.3 ? 0 : Math.sqrt(5 * Math.max(0, d)));
+          }
         e.along += e.dir * v * dt;
         r = Roads.ride(e.along);
         const p = at(e.along);
@@ -4073,6 +4114,7 @@ const City = (() => {
     wantPhotos(0);
     Plateau.want(0);
     Roads.want(0);
+    Traffic._tpl(); // 車と人の形は、待っている間に作っておく(走り出してから作ると、その瞬間に引っかかる)
     hudDuel();
     // 最初の街が出るまで待つ(長くても40秒。出なければ道の線だけで走り出す)
     sim.paused = true;
