@@ -744,7 +744,7 @@
     if (reason === "reroute") speak("ルートを外れました。ルートを引き直します");
     renderLive();
     try {
-      const route = await Nav.fetchRoute({ lat: pos.lat, lon: pos.lon, heading: ride && ride.heading }, place);
+      const route = await Nav.fetchRoute({ lat: pos.lat, lon: pos.lon, heading: ride && ride.heading }, place, place.via);
       if (!ride || ride.placeId !== place.id) return; // 待っている間に目的地が変わった
       nav = Object.assign(freshNav(), { route, placeId: place.id, lastFetch: nav.lastFetch });
       nav.hint = Nav.snap(route, pos, null);
@@ -1077,6 +1077,42 @@
       },
       { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }
     );
+  }
+
+  // いつも通る道にするための「経由地」。駅名・交差点名・住所か「35.xxx, 139.xxx」を、通る順に「、」で区切って入れる
+  async function editVia(id) {
+    const p = placeById(id);
+    if (!p) return;
+    const cur = (p.via || []).map((v) => v.name).join("、");
+    const text = prompt(`「${p.name}」へ行くときに通る場所を、通る順に「、」で区切って入れてください(5つまで)。\n例: 東中野駅、中井駅\n空にすると、経由地なし(おまかせの道)に戻ります`, cur);
+    if (text == null) return;
+    const names = text.split(/[、,，\n]+/).map((x) => x.trim()).filter(Boolean).slice(0, 5);
+    const via = [], miss = [];
+    // 「35.7, 139.6」の形は「、」で分かれてしまうので、数字2つが続いたらつなぎ直す
+    const items = [];
+    for (let i = 0; i < names.length; i++) {
+      if (/^-?\d+(\.\d+)?$/.test(names[i]) && /^-?\d+(\.\d+)?$/.test(names[i + 1] || "")) items.push(names[i] + "," + names[++i]);
+      else items.push(names[i]);
+    }
+    for (const q of items) {
+      const old = (p.via || []).find((v) => v.name === q);
+      if (old) {
+        via.push(old);
+        continue;
+      }
+      try {
+        const r = (await Geocode.search(q, { lat: p.lat, lon: p.lon }))[0];
+        if (r) via.push({ name: q.slice(0, 20), lat: r.lat, lon: r.lon });
+        else miss.push(q);
+      } catch (e) {
+        miss.push(q);
+      }
+    }
+    if (miss.length) alert(`見つからなかった場所: ${miss.join("、")}\n駅名や交差点名にするか、Googleマップで長押しして出る「35.xxx, 139.xxx」を入れてください`);
+    p.via = via;
+    Store.savePlaces();
+    nav.route = null; // 次に道を引くとき、経由地を使う
+    render();
   }
 
   function renamePlace(id) {
@@ -1892,10 +1928,12 @@ print("このファイルをスマホに送って(AirDrop など)、アプリの
         const info = L
           ? `到着${L.n}回を学習・信号込みの平均${fmt.kmh(L.speed)}km/h${acc ? `・予測のずれ 平均${acc.minutes.toFixed(1)}分` : ""}`
           : "まだ学習していません(到着するたびに学習します)";
+        const via = (p.via || []).length ? `<br />経由: ${p.via.map((v) => esc(v.name)).join(" → ")}` : "";
         return `
           <div class="place">
-            <div><strong>🏁 ${esc(p.name)}</strong><small>${p.label ? esc(p.label) + "<br />" : ""}${info}</small></div>
+            <div><strong>🏁 ${esc(p.name)}</strong><small>${p.label ? esc(p.label) + "<br />" : ""}${info}${via}</small></div>
             <div class="place-actions">
+              <button class="link" data-viaplace="${p.id}">経由地</button>
               <button class="link" data-renameplace="${p.id}">名前</button>
               <button class="link danger" data-delplace="${p.id}">削除</button>
             </div>
@@ -2404,6 +2442,7 @@ print("このファイルをスマホに送って(AirDrop など)、アプリの
       Promise.resolve(p.addrPromise).then(() => savePlaceFromForm(p.lat, p.lon, p.label || `緯度 ${p.lat.toFixed(5)}, 経度 ${p.lon.toFixed(5)}`));
     });
     app.querySelectorAll("[data-renameplace]").forEach((b) => b.addEventListener("click", () => renamePlace(b.dataset.renameplace)));
+    app.querySelectorAll("[data-viaplace]").forEach((b) => b.addEventListener("click", () => editVia(b.dataset.viaplace)));
     app.querySelectorAll("[data-delplace]").forEach((b) =>
       b.addEventListener("click", () => {
         if (!confirm("この目的地と、学習した所要時間を削除しますか?")) return;
@@ -2502,7 +2541,7 @@ print("このファイルをスマホに送って(AirDrop など)、アプリの
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2026.12.27";
+  const APP_VERSION = "2026.12.28";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });

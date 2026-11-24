@@ -81,14 +81,20 @@ const Nav = (() => {
   };
 
   function fromValhalla(json) {
-    const leg = json.trip.legs[0];
-    const points = decodePolyline(leg.shape, 6);
+    // 経由地があっても1本の道にまとめる(区間ごとに分かれて届くことがある)
+    let points = [];
+    const marks = [];
+    json.trip.legs.forEach((leg, li) => {
+      const pts = decodePolyline(leg.shape, 6), base = points.length ? points.length - 1 : 0;
+      points = points.length ? points.concat(pts.slice(1)) : pts;
+      for (const m of leg.maneuvers) marks.push({ m, i: base + m.begin_shape_index, last: li === json.trip.legs.length - 1 });
+    });
     const cum = withCumulative(points);
     const steps = [];
-    for (const m of leg.maneuvers) {
+    for (const { m, i, last } of marks) {
       const kind = VALHALLA_TYPES[m.type];
-      if (!kind) continue; // 出発(1〜3)などは案内しない
-      const at = cum[Math.min(m.begin_shape_index, cum.length - 1)];
+      if (!kind || (kind === "arrive" && !last)) continue; // 出発(1〜3)や、経由地への「到着」は案内しない
+      const at = cum[Math.min(i, cum.length - 1)];
       steps.push({ at, kind, street: (m.street_names || [])[0] || "" });
     }
     return finish(points, cum, steps, "Valhalla");
@@ -110,11 +116,13 @@ const Nav = (() => {
     const cum = withCumulative(points);
     const steps = [];
     let at = 0;
-    for (const s of r.legs[0].steps) {
-      const kind = osrmKind(s.maneuver);
-      if (kind) steps.push({ at: Math.min(at, cum[cum.length - 1]), kind, street: s.name || "" });
-      at += s.distance;
-    }
+    r.legs.forEach((leg, li) => {
+      for (const s of leg.steps) {
+        const kind = osrmKind(s.maneuver);
+        if (kind && !(kind === "arrive" && li < r.legs.length - 1)) steps.push({ at: Math.min(at, cum[cum.length - 1]), kind, street: s.name || "" });
+        at += s.distance;
+      }
+    });
     return finish(points, cum, steps, "OSRM");
   }
 
@@ -125,13 +133,22 @@ const Nav = (() => {
   }
 
   // ---------- ルートの取得 ----------
-  // from: { lat, lon, heading? }  to: { lat, lon }
-  async function fetchRoute(from, to) {
+  // from: { lat, lon, heading? }  to: { lat, lon }  via: 経由地 [{ lat, lon }](いつも通る道にするため。順番どおりに通る)
+  // すでに通りすぎた経由地(自分のほうが目的地に近い)は外す。走っている途中で道を引き直しても、戻らされないように
+  function aheadVia(from, to, via) {
+    const d = (a, b) => Math.hypot((a.lat - b.lat) * 111000, (a.lon - b.lon) * 91000);
+    const me = d(from, to);
+    let list = (via || []).filter((v) => v && v.lat && v.lon);
+    while (list.length && d(list[0], to) >= me - 150) list = list.slice(1);
+    return list;
+  }
+  async function fetchRoute(from, to, via) {
+    const vs = aheadVia(from, to, via);
     try {
       const loc0 = { lat: from.lat, lon: from.lon };
       if (from.heading != null) Object.assign(loc0, { heading: Math.round(from.heading), heading_tolerance: 60 });
       const req = {
-        locations: [loc0, { lat: to.lat, lon: to.lon }],
+        locations: [loc0, ...vs.map((v) => ({ lat: v.lat, lon: v.lon, type: "through", radius: 30 })), { lat: to.lat, lon: to.lon }],
         costing: "bicycle",
         costing_options: { bicycle: { bicycle_type: "Road", use_roads: 0.5, use_hills: 0.3 } },
         directions_options: { units: "kilometers" },
@@ -143,7 +160,7 @@ const Nav = (() => {
       // OSRM で再試行
     }
     const res = await fetch(
-      `https://routing.openstreetmap.de/routed-bike/route/v1/bike/${from.lon},${from.lat};${to.lon},${to.lat}?overview=full&geometries=geojson&steps=true`
+      `https://routing.openstreetmap.de/routed-bike/route/v1/bike/${[from, ...vs, to].map((q) => `${q.lon},${q.lat}`).join(";")}?overview=full&geometries=geojson&steps=true`
     );
     if (!res.ok) throw new Error(res.status);
     const json = await res.json();

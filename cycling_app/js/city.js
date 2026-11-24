@@ -4022,7 +4022,7 @@ const City = (() => {
     const home = homeOf();
     if (home && home.lat) list.unshift({ name: "🏠 自宅", lat: home.lat, lon: home.lon });
     const saved = (typeof Store !== "undefined" && Store.places) || [];
-    for (const p of saved) if (p.lat && p.lon) list.push({ name: "📍 " + p.name, lat: p.lat, lon: p.lon });
+    for (const p of saved) if (p.lat && p.lon) list.push({ name: "📍 " + p.name, lat: p.lat, lon: p.lon, via: p.via || [] });
     return list;
   }
   async function begin() {
@@ -4033,13 +4033,15 @@ const City = (() => {
     $("ct-go").disabled = true;
     msg.textContent = "ルートを調べています…";
     try {
-      const key = `city_route:${from.lat},${from.lon}:${to.lat},${to.lon}`;
+      // 行きは目的地の経由地を順に、帰り(登録した場所から出る)は逆の順に通る
+      const via = (to.via && to.via.length ? to.via : (from.via || []).slice().reverse()) || [];
+      const key = `city_route:${from.lat},${from.lon}:${to.lat},${to.lon}:${via.map((v) => v.lat.toFixed(4) + "," + v.lon.toFixed(4)).join("|")}`;
       let pts = null;
       try {
         pts = JSON.parse(localStorage.getItem(key) || "null");
       } catch (e) {}
       if (!pts) {
-        const r = await Nav.fetchRoute(from, to);
+        const r = await Nav.fetchRoute(from, to, via);
         pts = r.points;
         try {
           localStorage.setItem(key, JSON.stringify(pts));
