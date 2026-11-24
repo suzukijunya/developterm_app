@@ -1882,53 +1882,167 @@ const City = (() => {
     let tpl = null, score = 0, passed = 0, spawnT = 0, seed = 1;
     const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
     const KM = 1 / 3.6;
+    // 形をいくつか1つにまとめる(描く回数を減らす)。parts: [{ geo, m(置き場所), c(色) }]
+    function merge(parts) {
+      const THREE = T();
+      const pos = [], nor = [], col = [];
+      const cc = new THREE.Color();
+      for (const pt of parts) {
+        const g = pt.geo.index ? pt.geo.toNonIndexed() : pt.geo.clone();
+        if (pt.m) g.applyMatrix4(pt.m);
+        const a = g.attributes.position, n = g.attributes.normal;
+        cc.set(pt.c == null ? 0xffffff : pt.c).convertSRGBToLinear(); // 色は画面用の値なので、光の計算用に直す(直さないと白っぽくなる)
+        for (let k = 0; k < a.count; k++) {
+          pos.push(a.getX(k), a.getY(k), a.getZ(k));
+          nor.push(n.getX(k), n.getY(k), n.getZ(k));
+          col.push(cc.r, cc.g, cc.b);
+        }
+        g.dispose();
+      }
+      const out = new THREE.BufferGeometry();
+      out.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+      out.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3));
+      out.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+      return out;
+    }
     function templates() {
       if (tpl) return tpl;
       const THREE = T();
-      const M = (c, o) => new THREE.MeshLambertMaterial(Object.assign({ color: c }, o || {}));
-      const glass = M(0x2a3644), tire = M(0x151515), light = new THREE.MeshBasicMaterial({ color: 0xfff3c4 }), tail = new THREE.MeshBasicMaterial({ color: 0xc81e1e });
-      const box = (w, h, d, m, x, y, z) => {
-        const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
-        o.position.set(x, y, z);
-        o.castShadow = true;
-        return o;
+      const M4 = (x, y, z, rx, ry, rz, sx, sy, sz) => new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx || 0, ry || 0, rz || 0)), new THREE.Vector3(sx || 1, sy || sx || 1, sz || sx || 1));
+      // 材質: 塗装(つやがあって空が映る)・ガラス(暗くてよく映る)・つやなし(タイヤ・ライトなど、そのままの色)
+      const paint = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.35, roughness: 0.34, envMapIntensity: 0.8 });
+      const glassM = new THREE.MeshStandardMaterial({ color: 0x0d141b, metalness: 0.85, roughness: 0.06, envMapIntensity: 1.6 });
+      const flat = new THREE.MeshBasicMaterial({ vertexColors: true });
+      const cloth = new THREE.MeshLambertMaterial({ vertexColors: true });
+      // 足もとの丸い影(本物の影を使わない端末で、地面に浮いて見えないように)
+      const sc = document.createElement("canvas");
+      sc.width = sc.height = 64;
+      const sg = sc.getContext("2d"), gr = sg.createRadialGradient(32, 32, 4, 32, 32, 31);
+      gr.addColorStop(0, "rgba(0,0,0,0.75)");
+      gr.addColorStop(0.6, "rgba(0,0,0,0.35)");
+      gr.addColorStop(1, "rgba(0,0,0,0)");
+      sg.fillStyle = gr;
+      sg.fillRect(0, 0, 64, 64);
+      const blobM = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(sc), transparent: true, depthWrite: false, opacity: 0.8 });
+      const blobG = new THREE.PlaneGeometry(1, 1);
+      blobG.rotateX(-Math.PI / 2);
+      const blob = (lx, lz) => {
+        const b = new THREE.Mesh(blobG, blobM);
+        b.scale.set(lx, 1, lz);
+        b.position.y = 0.04;
+        b.renderOrder = 1;
+        b.userData.blob = true;
+        return b;
       };
-      // 車(前が +x): 乗用車・軽・バン・タクシー
-      const car = (color, len, wid, hgt, cabin, roof) => {
-        const g = new THREE.Group(), body = M(color);
-        g.add(box(len, hgt * 0.5, wid, body, 0, 0.32 + hgt * 0.25, 0));
-        g.add(box(len * cabin, hgt * 0.45, wid * 0.92, glass, -len * 0.05, 0.32 + hgt * 0.72, 0));
-        g.add(box(len * cabin * 0.96, 0.06, wid * 0.88, body, -len * 0.05, 0.32 + hgt * 0.95, 0));
-        if (roof) g.add(box(0.5, 0.18, 0.3, M(0xffd23d), -len * 0.05, 0.32 + hgt + 0.06, 0));
-        for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-          const w = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.31, 0.22, 12), tire);
-          w.rotation.x = Math.PI / 2;
-          w.position.set(sx * len * 0.32, 0.31, sz * wid * 0.45);
-          g.add(w);
-        }
-        for (const sz of [-1, 1]) {
-          g.add(box(0.05, 0.12, 0.3, light, len / 2, 0.32 + hgt * 0.32, sz * wid * 0.32));
-          g.add(box(0.05, 0.12, 0.26, tail, -len / 2, 0.32 + hgt * 0.32, sz * wid * 0.34));
-        }
+      const useBlob = () => !(lights.sun && lights.sun.castShadow);
+      // 横から見た輪郭(前が +x)を、幅の方向に押し出して角を丸める
+      const extr = (pts, wid, bev) => {
+        const sh = new THREE.Shape();
+        pts.forEach((q, k) => {
+          if (!k) sh.moveTo(q[0], q[1]);
+          else if (q.length === 4) sh.quadraticCurveTo(q[2], q[3], q[0], q[1]);
+          else sh.lineTo(q[0], q[1]);
+        });
+        const g = new THREE.ExtrudeGeometry(sh, { depth: wid - bev * 2, bevelEnabled: true, bevelSize: bev, bevelThickness: bev, bevelSegments: 2, curveSegments: 5 });
+        g.translate(0, 0, -(wid - bev * 2) / 2);
         return g;
       };
+      const boxG = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+      // 車(前が +x)。o: 長さL・幅W・高さH・窓の下の線 belt・ボンネットの高さ hood・後ろの高さ trunk・
+      //   客室の後ろ/前 cabR/cabF・窓の傾き rakeR/rakeF・タイヤの半径 wr・色・屋根の行灯 sign・荷台/箱 cargo
+      const car = (o) => {
+        const { L, W, H: Ht, belt, hood, trunk, cabR, cabF, rakeR, rakeF, wr, color } = o;
+        const cl = 0.19, x0 = -L / 2, x1 = L / 2;
+        const body = [], gl = [], fl = [];
+        // 下半分の車体
+        body.push({ geo: extr([[x0 + 0.12, cl], [x0, cl + 0.22, x0, cl], [x0 + 0.03, trunk - 0.08], [x0 + 0.18, trunk, x0 + 0.03, trunk], [cabR, belt], [cabF, belt], [x1 - 0.25, hood, (cabF + x1) / 2, belt - 0.02], [x1, hood - 0.2, x1, hood], [x1 - 0.02, cl + 0.2], [x1 - 0.14, cl, x1, cl]], W, 0.09), c: color });
+        if (!o.cargo) {
+          // 窓(客室)と屋根
+          gl.push({ geo: extr([[cabR, belt - 0.02], [cabR + rakeR, Ht - 0.04], [cabF - rakeF, Ht - 0.04], [cabF, belt - 0.02]], W * 0.88, 0.06) });
+          body.push({ geo: extr([[cabR + rakeR - 0.03, Ht - 0.07], [cabR + rakeR + 0.02, Ht, cabR + rakeR - 0.03, Ht], [cabF - rakeF - 0.04, Ht], [cabF - rakeF + 0.04, Ht - 0.07, cabF - rakeF + 0.04, Ht]], W * 0.86, 0.05), c: color });
+          // 柱(前・中・後ろ)
+          const mid = (cabR + cabF) / 2 - 0.1;
+          body.push({ geo: boxG(0.07, Ht - belt - 0.05, W * 0.885), m: M4(mid, (Ht + belt) / 2 - 0.03, 0), c: color });
+          for (const [xa, xb] of [[cabR + 0.02, cabR + rakeR], [cabF - 0.02, cabF - rakeF]]) {
+            const ang = Math.atan2(Ht - 0.06 - belt, xb - xa), len = Math.hypot(Ht - 0.06 - belt, xb - xa);
+            body.push({ geo: boxG(len, 0.06, W * 0.885), m: M4((xa + xb) / 2, (Ht - 0.06 + belt) / 2, 0, 0, 0, ang), c: color });
+          }
+        } else {
+          // 運転席(前)と、荷台か箱
+          const cf = x1 - 0.25, cr = cf - 1.25;
+          gl.push({ geo: extr([[cr, belt - 0.02], [cr + 0.03, Ht - 0.05], [cf - 0.35, Ht - 0.05], [cf, belt - 0.02]], W * 0.9, 0.05) });
+          body.push({ geo: extr([[cr, Ht - 0.08], [cr, Ht], [cf - 0.36, Ht], [cf - 0.3, Ht - 0.08]], W * 0.88, 0.04), c: color });
+          body.push({ geo: boxG(0.07, Ht - belt, W * 0.905), m: M4(cr + 0.03, (Ht + belt) / 2 - 0.02, 0), c: color });
+          if (o.cargo === "box") body.push({ geo: extr([[x0 + 0.05, belt - 0.2], [x0 + 0.05, o.boxH], [cr - 0.08, o.boxH], [cr - 0.08, belt - 0.2]], W * 1.02, 0.03), c: 0xf2f2ee });
+          else {
+            for (const sz of [-1, 1]) body.push({ geo: boxG(cr - x0 - 0.12, 0.3, 0.04), m: M4((x0 + cr) / 2, belt + 0.1, sz * (W / 2 - 0.03)), c: color });
+            body.push({ geo: boxG(0.04, 0.3, W - 0.06), m: M4(x0 + 0.06, belt + 0.1, 0), c: color });
+          }
+        }
+        if (o.sign) fl.push({ geo: boxG(0.42, 0.14, 0.2), m: M4((cabR + cabF) / 2, Ht + 0.07, 0), c: o.sign });
+        // 下まわり(黒)・グリル・ナンバー・ライト
+        fl.push({ geo: boxG(L * 0.9, 0.12, W * 0.9), m: M4(0, cl + 0.03, 0), c: 0x121314 });
+        fl.push({ geo: boxG(0.03, 0.14, W * 0.5), m: M4(x1 + 0.005, hood - 0.33, 0), c: 0x16181a });
+        fl.push({ geo: boxG(0.02, 0.11, 0.33), m: M4(x1 + 0.012, cl + 0.2, 0), c: 0xf4f4f0 });
+        fl.push({ geo: boxG(0.02, 0.11, 0.33), m: M4(x0 - 0.012, trunk - 0.32, 0), c: 0xf4f4f0 });
+        for (const sz of [-1, 1]) {
+          fl.push({ geo: boxG(0.05, 0.11, W * 0.2), m: M4(x1 - 0.03, hood - 0.16, sz * W * 0.33), c: 0xfff6d8 });
+          fl.push({ geo: boxG(0.05, 0.1, W * 0.22), m: M4(x0 + 0.015, trunk - 0.14, sz * W * 0.32), c: 0xd0181c });
+          fl.push({ geo: boxG(0.12, 0.07, 0.05), m: M4(cabF - 0.25, belt + 0.07, sz * (W / 2 + 0.03)), c: 0x18191b }); // ミラー
+        }
+        // タイヤとホイール
+        const tg = new THREE.CylinderGeometry(wr, wr, 0.2, 16), rg = new THREE.CylinderGeometry(wr * 0.62, wr * 0.62, 0.21, 12), hg = new THREE.CylinderGeometry(wr * 0.2, wr * 0.2, 0.22, 8);
+        for (const wx of [x0 + L * 0.19, x1 - L * 0.18])
+          for (const sz of [-1, 1]) {
+            const m = M4(wx, wr, sz * (W / 2 - 0.075), Math.PI / 2, 0, 0); // 車体より少し外に出す
+            fl.push({ geo: tg, m, c: 0x0e0e0f }, { geo: rg, m, c: 0xaab0b6 }, { geo: hg, m, c: 0x54585c });
+            // タイヤの上の黒いふち(タイヤハウス)
+            body.push({ geo: new THREE.TorusGeometry(wr + 0.06, 0.04, 6, 14, Math.PI), m: M4(wx, wr, sz * (W / 2 - 0.01)), c: 0x101112 });
+          }
+        const g = new THREE.Group();
+        g.add(new THREE.Mesh(merge(body), paint), new THREE.Mesh(merge(gl), glassM), new THREE.Mesh(merge(fl), flat));
+        g.userData.size = [L * 1.25, W * 1.5];
+        return g;
+      };
+      const sedan = (c, sign) => car({ L: 4.6, W: 1.78, H: 1.45, belt: 0.92, hood: 0.84, trunk: 0.95, cabR: -1.45, cabF: 0.85, rakeR: 0.55, rakeF: 0.8, wr: 0.32, color: c, sign });
+      const hatch = (c) => car({ L: 4.0, W: 1.7, H: 1.5, belt: 0.92, hood: 0.84, trunk: 0.98, cabR: -1.85, cabF: 0.75, rakeR: 0.3, rakeF: 0.75, wr: 0.31, color: c });
+      const kei = (c) => car({ L: 3.4, W: 1.48, H: 1.72, belt: 0.95, hood: 0.9, trunk: 1.0, cabR: -1.62, cabF: 1.0, rakeR: 0.08, rakeF: 0.42, wr: 0.28, color: c });
+      const van = (c) => car({ L: 4.8, W: 1.8, H: 1.86, belt: 1.0, hood: 0.92, trunk: 1.05, cabR: -2.3, cabF: 1.45, rakeR: 0.1, rakeF: 0.75, wr: 0.33, color: c });
+      const suv = (c) => car({ L: 4.5, W: 1.84, H: 1.68, belt: 1.02, hood: 0.98, trunk: 1.08, cabR: -2.05, cabF: 0.8, rakeR: 0.28, rakeF: 0.65, wr: 0.36, color: c });
+      const ktruck = (c) => car({ L: 3.4, W: 1.48, H: 1.78, belt: 0.95, hood: 0.95, trunk: 0.72, cabR: -1.6, cabF: 1.45, rakeR: 0, rakeF: 0, wr: 0.28, color: c, cargo: "bed" });
+      const box2t = (c) => car({ L: 4.7, W: 1.75, H: 2.0, belt: 1.05, hood: 1.05, trunk: 0.8, cabR: -2.2, cabF: 2.1, rakeR: 0, rakeF: 0, wr: 0.34, color: c, cargo: "box", boxH: 2.55 });
+      // 歩行者: 胴・頭・髪・腕をまとめた1つと、歩く脚2本
+      const SKIN = [0xe8b896, 0xd9a27e, 0xc68e6a, 0xf0c8a8], HAIR = [0x1a1512, 0x2a1e16, 0x3a2a1c, 0x555555, 0x101010];
       const person = (shirt, pants) => {
         const g = new THREE.Group();
-        const sk = M(0xd9a27e);
-        const torso = box(0.26, 0.55, 0.36, M(shirt), 0, 1.2, 0);
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), sk);
-        head.position.set(0, 1.62, 0);
-        const legL = box(0.14, 0.8, 0.14, M(pants), 0, 0.45, -0.1), legR = box(0.14, 0.8, 0.14, M(pants), 0, 0.45, 0.1);
-        legL.geometry.translate(0, -0.35, 0);
-        legR.geometry.translate(0, -0.35, 0);
-        legL.position.y = legR.position.y = 0.85;
-        g.add(torso, head, legL, legR);
+        const sk = SKIN[Math.floor(rnd() * SKIN.length)], hr = HAIR[Math.floor(rnd() * HAIR.length)], tall = 0.94 + rnd() * 0.12, wide = 0.92 + rnd() * 0.2;
+        const cap = (r, l) => new THREE.CapsuleGeometry(r, l, 4, 10);
+        const parts = [
+          { geo: cap(0.15, 0.32), m: M4(0, 1.2, 0, 0, 0, 0, 0.8 * wide, 1, 1.22 * wide), c: shirt }, // 胴
+          { geo: cap(0.13, 0.08), m: M4(0, 0.93, 0, 0, 0, 0, 0.82 * wide, 1, 1.15 * wide), c: pants }, // 腰
+          { geo: new THREE.CylinderGeometry(0.045, 0.05, 0.08, 8), m: M4(0, 1.5, 0), c: sk },
+          { geo: new THREE.SphereGeometry(0.108, 14, 10), m: M4(0.005, 1.62, 0, 0, 0, 0, 1, 1.12, 0.94), c: sk },
+          { geo: new THREE.SphereGeometry(0.114, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), m: M4(-0.012, 1.635, 0, 0, 0, 0.25, 1, 1.1, 0.97), c: hr }, // 髪
+        ];
+        for (const sz of [-1, 1]) {
+          parts.push({ geo: cap(0.045, 0.24), m: M4(0.02 * sz, 1.25, sz * 0.215 * wide, 0, 0, 0.12 * sz), c: shirt }); // 上腕
+          parts.push({ geo: cap(0.038, 0.22), m: M4(0.07 * sz, 0.98, sz * 0.225 * wide, 0, 0, 0.3 * sz), c: sk }); // 前腕
+        }
+        const body = new THREE.Mesh(merge(parts), cloth);
+        const legG = merge([{ geo: cap(0.068, 0.62), m: M4(0, -0.39, 0), c: pants }, { geo: boxG(0.24, 0.07, 0.1), m: M4(0.05, -0.8, 0), c: 0x202024 }]);
+        const legL = new THREE.Mesh(legG, cloth), legR = new THREE.Mesh(legG, cloth);
+        legL.position.set(0, 0.86, -0.085 * wide);
+        legR.position.set(0, 0.86, 0.085 * wide);
+        g.add(body, legL, legR);
+        g.scale.setScalar(tall);
         g.userData.legs = [legL, legR];
+        g.userData.size = [0.75, 0.75];
         return g;
       };
       tpl = {
-        cars: [car(0xf4f4f2, 4.5, 1.75, 1.45, 0.55), car(0x2b2f36, 4.6, 1.8, 1.45, 0.55), car(0x9aa4ad, 4.4, 1.75, 1.45, 0.55), car(0xc8d4e2, 3.4, 1.48, 1.65, 0.62), car(0x1d4f8c, 4.7, 1.7, 1.95, 0.75), car(0xe9c43a, 4.6, 1.7, 1.5, 0.55, true), car(0x7a1f26, 4.5, 1.75, 1.45, 0.55)],
-        person,
+        cars: [sedan(0xf2f2ee), sedan(0x24272c), sedan(0x9aa3ab), sedan(0x7a1c22), hatch(0xe8e9e6), hatch(0x2c5f9e), hatch(0xb9bfc4), kei(0xdfe7ee), kei(0xf0d9a8), kei(0x8fb7a8), van(0xf4f4f1), van(0x30343a), suv(0x1e2226), suv(0xe6e6e2), ktruck(0xf1f1ee), box2t(0x3a6ea8),
+          sedan(0x16181b, 0x3ec46a), sedan(0xe9c43a, 0xffffff), sedan(0x1d4f3c, 0xffe27a)],
+        person, blob, useBlob,
       };
       return tpl;
     }
@@ -1953,6 +2067,11 @@ const City = (() => {
         w = 0.6;
       }
       obj.traverse((o) => o.isMesh && (o.castShadow = true));
+      // 足もとの丸い影(本物の影がない端末だけ)
+      if (t.useBlob()) {
+        const sz = obj.userData.size || [1.9, 0.8];
+        obj.add(t.blob(sz[0], sz[1]));
+      }
       scene.add(obj);
       const e = { kind, dir, along, v, w, obj, lane: rnd(), rel0: null, seen: false };
       list.push(e);
@@ -2056,7 +2175,7 @@ const City = (() => {
       }
       return Math.min(1.2, Math.max(0, d));
     }
-    return { update, dodge, score: () => score, passed: () => passed };
+    return { update, dodge, score: () => score, passed: () => passed, _tpl: templates };
   })();
 
   // ---------- 信号と交差点 ----------
@@ -2614,6 +2733,39 @@ const City = (() => {
   function revealStep() {
     for (let i = 0; i < 2 && reveal.length; i++) reveal.shift().visible = true;
   }
+  // 地面の航空写真は、近くで見るとぼやける。細かいざらつき(砂・アスファルトの粒)を重ねて、近くでも面に見えるようにする
+  let detailTex = null;
+  function groundDetail(mat, tileM) {
+    const THREE = T();
+    if (!detailTex) {
+      const cv = document.createElement("canvas");
+      cv.width = cv.height = 256;
+      const c = cv.getContext("2d"), im = c.createImageData(256, 256);
+      let sd = 7;
+      const r = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
+      for (let i = 0; i < 65536; i++) {
+        const v = 128 + (r() - 0.5) * 120 + (r() < 0.04 ? 60 : 0) - (r() < 0.05 ? 70 : 0);
+        im.data[i * 4] = im.data[i * 4 + 1] = im.data[i * 4 + 2] = Math.max(0, Math.min(255, v));
+        im.data[i * 4 + 3] = 255;
+      }
+      c.putImageData(im, 0, 0);
+      detailTex = new THREE.CanvasTexture(cv);
+      detailTex.wrapS = detailTex.wrapT = THREE.RepeatWrapping;
+      detailTex.anisotropy = 4;
+    }
+    const rep = Math.max(8, Math.round(tileM / 2.2)); // 1枚の模様が約2.2m
+    mat.onBeforeCompile = (sh) => {
+      sh.uniforms.uDetail = { value: detailTex };
+      sh.uniforms.uDetailRep = { value: rep };
+      sh.fragmentShader = "uniform sampler2D uDetail;\nuniform float uDetailRep;\n" + sh.fragmentShader.replace("#include <map_fragment>", `#include <map_fragment>
+        #ifdef USE_MAP
+          float dA = texture2D(uDetail, vUv * uDetailRep).r, dB = texture2D(uDetail, vUv * uDetailRep * 0.23 + 0.37).r;
+          diffuseColor.rgb *= 0.8 + 0.28 * dA + 0.14 * dB;
+        #endif`);
+    };
+    mat.customProgramCacheKey = () => "gdetail" + rep;
+    return mat;
+  }
   let photoMore = 0;
   function wantPhotos(along) {
     const THREE = T();
@@ -2661,7 +2813,7 @@ const City = (() => {
       const geo = new THREE.BufferGeometry();
       geo.setAttribute("position", new THREE.Float32BufferAttribute(P, 3));
       geo.setAttribute("uv", new THREE.Float32BufferAttribute(U, 2));
-      const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xa9aec4, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 6 }));
+      const mesh = new THREE.Mesh(geo, groundDetail(new THREE.MeshBasicMaterial({ color: 0xa9aec4, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 6 }), Math.hypot(b[0] - a[0], b[1] - a[1])));
       mesh.visible = false;
       mesh.userData.g3hide = true;
       photos.set(key, mesh);
