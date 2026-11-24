@@ -2894,9 +2894,9 @@ const City = (() => {
     // ライダーは3Dのまま。ライバルはガレージの3Dのバイク(赤)のまま
     let imp = null, bikeG = null;
     try {
-      let on = true;
+      let on = false;
       try {
-        on = localStorage.getItem("city_tcr") !== "0";
+        on = localStorage.getItem("city_tcr2") === "1"; // 初めはオフ(体の位置と合わないため)
       } catch (e) {}
       bikeG = View3D.bikeObj && View3D.bikeObj();
       if (on && bikeG && typeof BikeSpin !== "undefined") {
@@ -4232,11 +4232,11 @@ const City = (() => {
     $("ct-plateau0").onchange = (e) => setPlateau(e.target.checked);
     if ($("ct-tcr0")) {
       try {
-        $("ct-tcr0").checked = localStorage.getItem("city_tcr") !== "0";
+        $("ct-tcr0").checked = localStorage.getItem("city_tcr2") === "1";
       } catch (e) {}
       $("ct-tcr0").onchange = (e) => {
         try {
-          localStorage.setItem("city_tcr", e.target.checked ? "1" : "0");
+          localStorage.setItem("city_tcr2", e.target.checked ? "1" : "0");
         } catch (er) {}
       };
     }
