@@ -2871,16 +2871,32 @@ const City = (() => {
   let GB = null;
   function garageBikers(meFallback, rivalFallback) {
     const THREE = T();
-    let root = null;
+    let root = null, spriteOn = false;
     try {
       const G = typeof Store !== "undefined" && Store.garage;
       if (typeof View3D === "undefined" || typeof Fit === "undefined" || !G || !G.builds) return null;
       const b = G.builds[G.active] || G.builds.current;
       if (!b || !b.geo || !G.body) return null;
       const tire = (b.parts.tires && b.parts.tires.attrs && b.parts.tires.attrs.width) || 28;
-      const fit = Fit.compute({ geo: b.geo, pos: b.pos, aero: Parts.aeroOf(b.parts), wheelRadius: 0.311 + tire / 1000 }, G.body);
       // ガレージの保存データを書き換えないよう、複製して使う
       const bc = JSON.parse(JSON.stringify(b));
+      // 写真から作ったバイクで走るときは、乗り手の姿勢をそのバイクの形に合わせる。
+      // (絵のバイクは、ガレージのバイクとサドル・ブラケットの位置が違う。そのままだと手が届かず、サドルから浮く)
+      try {
+        spriteOn = localStorage.getItem("city_tcr2") === "1" && typeof BikeSpin !== "undefined";
+      } catch (e) {}
+      if (spriteOn) {
+        // 絵(横向きのコマ)の中で測った位置。BB を原点に、前が+x・上が+y。単位は「車輪の半径=150」のときの長さ
+        const K = (0.311 + tire / 1000) / 150;
+        const P = { saddle: [-93.4, 325], hood: [280.3, 298.2], rear: [-182.8, 40.6] };
+        const sd = P.saddle, rr = P.rear;
+        bc.geo = Object.assign({}, bc.geo, { seatAngle: (Math.atan2(sd[1], -sd[0]) * 180) / Math.PI, chainstay: Math.hypot(rr[0], rr[1]) * K, bbDrop: rr[1] * K });
+        bc.pos = Object.assign({}, bc.pos, { saddleHeight: Math.hypot(sd[0], sd[1]) * K, saddleSetback: 0, reachAdj: 0, dropAdj: 0 });
+        const h0 = Fit.bike(bc.geo, bc.pos, { radius: 0.311 + tire / 1000 }).grips.hoods.pt;
+        bc.pos.reachAdj = P.hood[0] * K - h0.x;
+        bc.pos.dropAdj = -(P.hood[1] * K - h0.y);
+      }
+      const fit = Fit.compute({ geo: bc.geo, pos: bc.pos, aero: Parts.aeroOf(b.parts), wheelRadius: 0.311 + tire / 1000 }, G.body);
       root = View3D.headless(fit, bc, G.body);
     } catch (e) {
       return null;
@@ -2894,10 +2910,7 @@ const City = (() => {
     // ライダーは3Dのまま。ライバルはガレージの3Dのバイク(赤)のまま
     let imp = null, bikeG = null;
     try {
-      let on = false;
-      try {
-        on = localStorage.getItem("city_tcr2") === "1"; // 初めはオフ(体の位置と合わないため)
-      } catch (e) {}
+      const on = spriteOn;
       bikeG = View3D.bikeObj && View3D.bikeObj();
       if (on && bikeG && typeof BikeSpin !== "undefined") {
         const S = BikeSpin.SMALL, Rw = View3D.wheelRadius();
@@ -2916,7 +2929,8 @@ const City = (() => {
         tex.generateMipmaps = false;
         tex.minFilter = THREE.LinearFilter;
         const mesh = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshBasicMaterial({ map: tex, alphaTest: 0.45, side: THREE.DoubleSide }));
-        mesh.position.set(ctr.x, -root.position.y + (550 / 2 - 70) * m, ctr.z);
+        // 絵の中の BB(中心から 40.6 後ろ・94.7 下)を、3Dの BB(原点)に重ねる
+        mesh.position.set(40.6 * m, 94.7 * m, ctr.z);
         mesh.userData.impostor = true;
         root.add(mesh);
         bikeG.visible = false;
