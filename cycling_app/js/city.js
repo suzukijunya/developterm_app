@@ -1041,6 +1041,26 @@ const City = (() => {
           const THREE = T();
           // 写真(壁や屋根のテクスチャ)
           const texs = await Promise.all((d.images || []).map(toTexture));
+          // 写真を描画の装置へ送るのは、1コマに1枚ずつ(まとめて送ると、その瞬間に画面が止まる)
+          for (const tx of texs) {
+            if (!tx || !renderer.initTexture) continue;
+            try {
+              renderer.initTexture(tx);
+            } catch (e) {}
+            await new Promise((res) => {
+              let done = false;
+              const go = () => done || ((done = true), res());
+              requestAnimationFrame(go);
+              setTimeout(go, 80);
+            });
+          }
+          if (loaded.get(L.key) !== t || !plateauOn) {
+            for (const tx of texs) tx && tx.dispose();
+            loaded.delete(L.key);
+            busy--;
+            return pump();
+          }
+          const pt0 = performance.now();
           t.mesh = new THREE.Group();
           t.texs = texs.filter(Boolean);
           for (const g of d.groups) {
@@ -1084,7 +1104,10 @@ const City = (() => {
           }
           t.state = "ok";
           t.names = d.names;
+          // 形のデータも、1コマに2つずつ見せていく(初めて描くときに装置へ送られるため)
+          for (const ch of t.mesh.children) (ch.visible = false), reveal.push(ch);
           scene.add(t.mesh);
+          Perf.span("実物の建物を置く", performance.now() - pt0);
           if (G3.on()) t.mesh.visible = false;
           syncPlaceholders();
         } else loaded.delete(L.key);
@@ -1785,7 +1808,9 @@ const City = (() => {
         t.rect = tileRect(x, y);
         t.polys = polys;
         measureRect(t.rect);
+        const rt0 = performance.now();
         t.group = buildTile(polys, t.rect);
+        Perf.span("道を作る", performance.now() - rt0);
         t.group.visible = visible;
         scene.add(t.group);
         t.state = "ok";
@@ -2584,6 +2609,12 @@ const City = (() => {
     mats.road.depthWrite = !photoOn;
     mats.area.visible = !photoOn;
   }
+  // これから見せる物(1コマに2つずつ)
+  const reveal = [];
+  function revealStep() {
+    for (let i = 0; i < 2 && reveal.length; i++) reveal.shift().visible = true;
+  }
+  let photoMore = 0;
   function wantPhotos(along) {
     const THREE = T();
     const need = new Set();
@@ -2598,8 +2629,16 @@ const City = (() => {
         for (let dx = -k; dx <= k; dx++) for (let dy = -k; dy <= k; dy++) if (Math.hypot(dx, dy) * size < R + size * 0.75) need.add(`${z}/${cx + dx}/${cy + dy}`);
       }
     }
+    // 走っている間は、1回に2枚まで作る(まとめて作ると、その瞬間に引っかかる)
+    let made = 0;
+    photoMore = 0;
     for (const key of need) {
       if (photos.has(key)) continue;
+      if (running && sim && !sim.paused && made >= 2) {
+        photoMore++;
+        continue;
+      }
+      made++;
       const [z, x, y] = key.split("/").map(Number), n = 2 ** z;
       const lonOf = (v) => (v / n) * 360 - 180, latOf = (v) => (Math.atan(Math.sinh(Math.PI * (1 - (2 * v) / n))) * 180) / Math.PI;
       const a = project(latOf(y), lonOf(x)), b = project(latOf(y), lonOf(x + 1)), c = project(latOf(y + 1), lonOf(x + 1)), d = project(latOf(y + 1), lonOf(x));
@@ -2642,6 +2681,7 @@ const City = (() => {
         () => {}
       );
     }
+    if (photoMore) return; // まだ作り終えていない間は、古い写真を消さない
     for (const [key, mesh] of photos) {
       if (need.has(key)) continue;
       scene.remove(mesh);
@@ -3768,6 +3808,15 @@ const City = (() => {
     (res.t = 0), (res.n = 0), (res.slow = 0);
     if (document.hidden || res.cool > 0) return;
     let pr = res.pr;
+    // いちばん粗くしてもコマ数が足りないときは、影をやめる(見た目より、なめらかさを優先)
+    const floor = Math.min(1, max);
+    if (pr <= floor + 0.01 && fps < 45 && renderer.shadowMap.enabled) {
+      if ((res.low = (res.low || 0) + 1) >= 3) {
+        renderer.shadowMap.enabled = false;
+        lights.sun.castShadow = false;
+        scene.traverse((o) => o.material && (Array.isArray(o.material) ? o.material.forEach((m) => (m.needsUpdate = true)) : (o.material.needsUpdate = true)));
+      }
+    } else res.low = 0;
     if (fps < 50 || slow > 0.15) pr = Math.max(Math.min(1, max), pr * (fps < 35 ? 0.78 : 0.88)); // 等倍より粗くはしない(ぼやけて見えるため)
     else if (fps > 57 && slow < 0.03 && pr < max) pr = Math.min(max, pr * 1.07), (res.cool = 4);
     if (Math.abs(pr - res.pr) < 0.01) return;
@@ -3777,6 +3826,41 @@ const City = (() => {
     renderer.setSize(el.clientWidth, el.clientHeight);
   }
 
+  // 性能の記録: 1コマの中の、どの部分にどれだけ時間がかかったか(引っかかりの原因を探すため)
+  const Perf = {
+    t: 0, sum: {}, max: {}, n: 0, gaps: [], last: 0,
+    begin() {
+      const now = performance.now();
+      if (this.last) {
+        const gap = now - this.last;
+        this.gaps.push(gap), this.gaps.length > 600 && this.gaps.shift();
+        // このアプリの処理以外で待った時間(画面に出すまでの待ち・ほかの仕事)
+        this.span("描画待ち・その他", gap - (this.loopMs || 0));
+      }
+      this.t0 = this.last = this.t = now;
+      this.n++;
+    },
+    lap(k) {
+      const now = performance.now(), d = now - this.t;
+      this.t = now;
+      this.sum[k] = (this.sum[k] || 0) + d;
+      if (d > (this.max[k] || 0)) this.max[k] = d;
+    },
+    // コマの外で動く仕事(街を作るなど)の長さ
+    span(k, ms) {
+      if (ms > (this.max[k] || 0)) this.max[k] = ms;
+    },
+    report() {
+      const g = this.gaps.slice().sort((a, b) => a - b), q = (p) => g[Math.floor((g.length - 1) * p)] || 0;
+      const top = Object.entries(this.max).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, v]) => `${k} ${v.toFixed(0)}`);
+      const avg = Object.entries(this.sum).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, v]) => `${k} ${(v / Math.max(1, this.n)).toFixed(1)}`);
+      const r = { fps: g.length ? 1000 / (g.reduce((a, b) => a + b, 0) / g.length) : 0, p50: q(0.5), p99: q(0.99), worst: q(1), slow: g.filter((x) => x > 34).length, n: g.length, top, avg };
+      return r;
+    },
+    reset() {
+      (this.sum = {}), (this.max = {}), (this.n = 0), (this.gaps = []);
+    },
+  };
   let setSVfn = null, starting = false;
   const orbit = { yaw: 0, pit: 0, down: false, hold: 0, x: 0, y: 0 };
   function orbitInit(el) {
@@ -3802,6 +3886,7 @@ const City = (() => {
     const THREE = T();
     const real = Math.min(0.1, clock.getDelta());
     const s = sim;
+    Perf.begin();
     if (!s.paused && !s.done) {
       const n = s.speedX;
       for (let i = 0; i < n; i++) {
@@ -3810,8 +3895,11 @@ const City = (() => {
         if (s.paused) break;
       }
       if (s.along >= route.length - 0.5) finish();
+      Perf.lap("対戦");
       if ((s.tileT = (s.tileT || 0) + real) > 1.5) (s.tileT = 0), wantTiles(s.along), Roads.want(s.along), G3.on() || (wantPhotos(s.along), Plateau.want(s.along));
     }
+    if (photoMore && !G3.on() && (s.phT = (s.phT || 0) + real) > 0.15) (s.phT = 0), wantPhotos(s.along);
+    Perf.lap("街の予約");
     // 道の端の人をよける(なめらかに右へ寄って、また左へ戻る)
     s.dodge = (s.dodge || 0) + (Traffic.dodge(s.along) - (s.dodge || 0)) * Math.min(1, real * s.speedX * 3);
     const p = placeBiker(me, s.along, s.dodge, real * s.speedX, s.v, (s.auto || s.pedal) && !s.brake && !s.paused);
@@ -3823,8 +3911,11 @@ const City = (() => {
     const rvSp = !s.paused && !s.done && (route.length - s.rAlong < 500 || s.rV > s.rivalV * 1.06);
     if (GB) GB.update(real * s.speedX, myPed, s.paused ? 0 : s.v, !s.paused && !s.done, s.paused ? 0 : s.rV, mySp, rvSp);
     Mons.update(real * Math.min(4, s.speedX));
+    Perf.lap("乗り手");
     Traffic.update(real * s.speedX);
+    Perf.lap("人と車");
     const sg = Signals.update(s.along, s.t);
+    Perf.lap("信号");
     if (sg && sg.name && sg.along - s.along < 70 && sg.along - s.along > 40 && sg.bannered !== true) (sg.bannered = true), banner(sg.name.replace(/交差点$/, "") + " 交差点", 2.2);
     if (s.waiting && !s.wasWaiting) banner("信号待ち", 1.6);
     s.wasWaiting = s.waiting;
@@ -3865,7 +3956,9 @@ const City = (() => {
       lights.sun.target.position.set(p.x, p.y, p.z);
       lights.sun.target.updateMatrixWorld();
     }
+    Perf.lap("カメラ・地面");
     Roads.update(s.along, real);
+    Perf.lap("道");
     SV.update(real, p, s);
     // ストリートビューのときは、3Dの街は描かない(下に隠れて見えないので、その分軽くする)
     if (SV.on()) {
@@ -3874,11 +3967,25 @@ const City = (() => {
     }
     G3.update(real);
     riseUpdate(real);
+    revealStep();
+    Perf.lap("Google3D");
     // 影は2コマに1回だけ作り直す(見た目はほぼ同じで、描く量が減る)
     if (renderer.shadowMap.enabled) (renderer.shadowMap.autoUpdate = false), (renderer.shadowMap.needsUpdate = s.frameN % 2 === 0);
     renderer.render(scene, camera);
+    Perf.lap("描く");
     autoRes(real);
     if ((s.hudT = (s.hudT || 0) + real) > 0.12) (s.hudT = 0), hud();
+    Perf.lap("表示");
+    Perf.loopMs = performance.now() - Perf.t0;
+    if ((s.perfT = (s.perfT || 0) + real) > 1) (s.perfT = 0), perfHud();
+  }
+  // 性能の表示(左上のパネルの「性能を表示」)。カクつくときに、何が重いかを見る
+  function perfHud() {
+    const el = $("ct-perf");
+    if (!el || el.hidden) return;
+    const r = Perf.report(), inf = renderer.info.render;
+    el.innerHTML = `<b>${r.fps.toFixed(0)}コマ/秒</b> 遅いコマ ${r.slow}/${r.n} ・最悪 ${r.worst.toFixed(0)}ms<br>描く量 ${(inf.triangles / 10000).toFixed(0)}万面・${inf.calls}回 ・細かさ×${renderer.getPixelRatio().toFixed(2)}${renderer.shadowMap.enabled ? "・影あり" : ""}<br>平均: ${r.avg.join(" / ")}<br>最悪: ${r.top.join(" / ")}`;
+    if ((Perf.resetT = (Perf.resetT || 0) + 1) >= 10) (Perf.resetT = 0), (Perf.max = {}), (Perf.sum = {}), (Perf.n = 0);
   }
 
   function finish() {
@@ -4084,6 +4191,7 @@ const City = (() => {
     } catch (err) {}
     const su = SV.usage();
     if ($("ct-svuse")) $("ct-svuse").textContent = `ストリートビューを開いた回数(この端末): 今月 ${su.n}/${su.capM}回・今日 ${su.dn}/${su.capD}回`;
+    if ($("ct-perf0")) $("ct-perf0").onchange = (e) => ($("ct-perf").hidden = !e.target.checked);
     // すっきり表示: カードや記録の表示を隠して、景色を広く見る
     if ($("ct-clean")) {
       let cl = false;
@@ -4146,5 +4254,5 @@ const City = (() => {
   }
 
   if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", bind);
-  return { at, turnAhead, readTile, _state: () => ({ sim, route, tiles, failed, camera, Plateau, Roads, scene, me, Traffic, Signals, renderer }), ride: (a) => Roads.ride(a) };
+  return { at, turnAhead, readTile, _state: () => ({ sim, route, tiles, failed, camera, Plateau, Roads, scene, me, Traffic, Signals, renderer, Perf }), ride: (a) => Roads.ride(a) };
 })();
