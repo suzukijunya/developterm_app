@@ -154,6 +154,75 @@ const City = (() => {
     } catch (e) {}
   }
 
+  // ---------- 組み立てた形の保存(建物・道) ----------
+  // PLATEAU から組み立てた形(頂点の配列)は、ワーカー(plateau-worker.js)が端末(IndexedDB)に保存する。
+  // 2回目からは保存を読むだけで、ダウンロード・展開・組み立てを飛ばす。版番号と上限はワーカー側(SHAPE_VER / SHAPE_MAX)。
+  // 形は「どの道を走るか」で変わる(座標の原点、走る道に重なる建物の除外)ので、キーにルートの印を入れる。
+  // Google のデータ(Googleの3D・ストリートビュー・写真の街)は、ここには一切入れない。
+  const Saved = (() => {
+    const stat = { bHit: 0, bNew: 0, rHit: 0, rNew: 0 };
+    // 文字列の短い印(FNV-1a)
+    const hash = (str) => {
+      let h = 2166136261;
+      for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619);
+      return (h >>> 0).toString(36);
+    };
+    let sigR = null, sigP = null;
+    // 座標の原点だけの印(道の形はこれだけで決まる)
+    const proj = () => sigP || (sigP = hash([route.lat0, route.lon0, route.kx, route.kz].join(",")));
+    // ルート全体の印(建物は、走る道に重なるものを外すので)
+    const routeSig = () => sigR || (sigR = hash(proj() + ":" + route.xy.map((p) => p[0].toFixed(2) + "," + p[1].toFixed(2)).join(";")));
+    function open() {
+      return new Promise((res) => {
+        try {
+          const rq = indexedDB.open("cycling_city_shapes", 1);
+          rq.onupgradeneeded = () => (rq.result.createObjectStore("data"), rq.result.createObjectStore("meta"));
+          rq.onsuccess = () => res(rq.result);
+          rq.onerror = rq.onblocked = () => res(null);
+        } catch (e) {
+          res(null);
+        }
+      });
+    }
+    // 保存してある形の合計(バイト)。わからなければ null
+    async function size() {
+      const d = await open();
+      if (!d) return null;
+      return new Promise((res) => {
+        try {
+          const rq = d.transaction("meta").objectStore("meta").getAll();
+          rq.onsuccess = () => (d.close(), res(rq.result.reduce((a, m) => a + ((m && m.size) || 0), 0)));
+          rq.onerror = () => (d.close(), res(null));
+        } catch (e) {
+          res(null);
+        }
+      });
+    }
+    // 保存を消す: 組み立てた形と、ダウンロードした元データ(PLATEAU・国土地理院・地図タイル)
+    async function clear() {
+      const d = await open();
+      if (d)
+        await new Promise((res) => {
+          try {
+            const tx = d.transaction(["data", "meta"], "readwrite");
+            tx.objectStore("data").clear();
+            tx.objectStore("meta").clear();
+            tx.oncomplete = tx.onerror = tx.onabort = () => res();
+          } catch (e) {
+            res();
+          }
+        }).then(() => d.close());
+      try {
+        for (const n of ["city-plateau-v1", "city-roads-v1", "city-img-v1"]) await caches.delete(n);
+      } catch (e) {}
+      try {
+        const t = await db();
+        if (t) t.transaction("tiles", "readwrite").objectStore("tiles").clear();
+      } catch (e) {}
+    }
+    return { stat, hash, proj, routeSig, size, clear };
+  })();
+
   // ---------- 街のデータ(OpenFreeMap の地図タイル。鍵なし・1枚 約2km四方) ----------
   const ROAD_W = { motorway: 16, trunk: 16, primary: 14, secondary: 11, tertiary: 9, unclassified: 6.5, residential: 6, living_street: 5, service: 4, pedestrian: 5, cycleway: 2.5, footway: 2.2, path: 2, steps: 2, track: 3 };
   const CLASS = { motorway: "motorway", trunk: "trunk", primary: "primary", secondary: "secondary", tertiary: "tertiary", minor: "residential", service: "service", track: "track", path: "footway", busway: "service" };
@@ -1627,6 +1696,7 @@ const City = (() => {
     const IDX = typeof PLATEAU_INDEX !== "undefined" ? PLATEAU_INDEX : [];
     let leaves = null, worker = null, waiting = new Map(), loaded = new Map(), queue = [], busy = 0, fails = 0, broken = false, prepared = null;
     const R = () => (innerWidth < 900 ? 230 : 330); // 読む範囲(m)
+    let keyBase = ""; // 保存のキーの頭(ルートの印と、ワーカーに渡した設定)
     const covers = (lat, lon) => !broken && IDX.some((c) => lon >= c[4] && lon <= c[6] && lat >= c[5] && lat <= c[7]);
     // (x, z) の場所の実物の建物が、もう出ているか
     function hasAt(x, z) {
@@ -1701,7 +1771,10 @@ const City = (() => {
       const me = document.querySelector('script[src*="js/city.js"]');
       const v = me && me.src.includes("?") ? "?" + me.src.split("?")[1] : "";
       worker = new Worker("js/plateau-worker.js" + v);
-      worker.postMessage({ type: "init", route: { xy: route.xy, lat0: route.lat0, lon0: route.lon0, kx: route.kx, kz: route.kz }, clear: CLEAR, texMax: innerWidth < 900 ? 2048 : 4096, terrain: Terrain.ok() });
+      const cfg = { clear: CLEAR, texMax: innerWidth < 900 ? 2048 : 4096, terrain: Terrain.ok() };
+      // 形はこの設定でも変わるので、保存のキーに入れる
+      keyBase = ["b", Saved.routeSig(), cfg.clear, cfg.texMax, cfg.terrain ? 1 : 0].join("|");
+      worker.postMessage(Object.assign({ type: "init", route: { xy: route.xy, lat0: route.lat0, lon0: route.lon0, kx: route.kx, kz: route.kz } }, cfg));
       worker.onmessage = (e) => {
         const d = e.data, w = waiting.get(d.id);
         waiting.delete(d.id);
@@ -1749,13 +1822,23 @@ const City = (() => {
       hudMap();
       try {
         startWorker();
-        const buf = await cached(L.url, "bin");
-        const id = Math.random();
-        const d = await new Promise((res) => {
-          waiting.set(id, res);
-          worker.postMessage({ type: "tile", id, buf }, [buf]);
-        });
+        // 保存してある形があれば、それを読むだけ(ダウンロードも組み立ても飛ばす)
+        const skey = keyBase + "|" + L.url;
+        const ask = (msg, tr) =>
+          new Promise((res) => {
+            const id = Math.random();
+            waiting.set(id, res);
+            worker.postMessage(Object.assign(msg, { id }), tr || []);
+          });
+        const lt0 = performance.now();
+        let d = await ask({ type: "load", kind: "tile", key: skey });
+        if (!d || d.miss || d.error || !d.groups) {
+          const buf = await cached(L.url, "bin");
+          d = await ask({ type: "tile", buf, key: skey }, [buf]);
+        }
         if (d.error) throw new Error(d.error);
+        d.saved ? Saved.stat.bHit++ : Saved.stat.bNew++;
+        Perf.span(d.saved ? "建物を読む(保存)" : "建物を組み立てる", performance.now() - lt0);
         const t = loaded.get(L.key);
         if (t && plateauOn) {
           const THREE = T();
@@ -2911,7 +2994,8 @@ const City = (() => {
         if (w) w(e.data);
       };
     }
-    async function get(url) {
+    // flag.soft: 「無い」と決まったわけではない失敗(通信の不調など)があった
+    async function get(url, flag) {
       try {
         const c = await caches.open("city-roads-v1");
         const hit = await c.match(url);
@@ -2926,7 +3010,7 @@ const City = (() => {
         return res.arrayBuffer();
       } catch (e) {
         const res = await fetch(url);
-        if (!res.ok) return null;
+        if (!res.ok) return flag && (flag.soft = true), null;
         return res.arrayBuffer();
       }
     }
@@ -2972,23 +3056,36 @@ const City = (() => {
       try {
         const [x, y] = key.split(":").map(Number);
         const lat = latOf(y + 0.5), lon = lonOf(x + 0.5);
-        const bufs = [];
+        const srcs = [];
         for (const c of IDX)
           for (const [u, b, mz, lod] of [[c[2], c[3], c[4], 2], [c[5], c[6], c[7], 1]]) {
             if (!u || !b || lon < b[0] - 0.01 || lon > b[2] + 0.01 || lat < b[1] - 0.01 || lat > b[3] + 0.01) continue;
             if (mz && mz < Z) continue;
-            const buf = await get(u.replace("{z}", Z).replace("{x}", x).replace("{y}", y));
-            if (buf) bufs.push({ buf, lod });
+            srcs.push({ url: u.replace("{z}", Z).replace("{x}", x).replace("{y}", y), lod });
           }
         let polys = [];
-        if (bufs.length) {
+        if (srcs.length) {
           startWorker();
-          const id = Math.random();
-          const d = await new Promise((res) => {
-            waiting.set(id, res);
-            worker.postMessage({ type: "mvt", id, bufs, z: Z, x, y }, bufs.map((b) => b.buf));
-          });
+          const ask = (msg, tr) =>
+            new Promise((res) => {
+              const id = Math.random();
+              waiting.set(id, res);
+              worker.postMessage(Object.assign(msg, { id }), tr || []);
+            });
+          // 保存してある道の形があれば、それを読むだけ
+          const skey = ["r", Saved.proj(), Saved.hash(srcs.map((q) => q.lod + q.url).join("|"))].join("|");
+          let d = await ask({ type: "load", kind: "mvt", key: skey });
+          if (!d || d.miss || d.error || !d.polys) {
+            const bufs = [], flag = {};
+            for (const q of srcs) {
+              const buf = await get(q.url, flag);
+              if (buf) bufs.push({ buf, lod: q.lod });
+            }
+            // 元データが無い区画も、空の結果として保存する(次から問い合わせない)。通信の不調で取れなかったときは保存しない
+            d = await ask({ type: "mvt", bufs, z: Z, x, y, key: flag.soft ? null : skey }, bufs.map((b) => b.buf));
+          }
           if (d.error) throw new Error(d.error);
+          d.saved ? Saved.stat.rHit++ : Saved.stat.rNew++;
           polys = d.polys;
         }
         for (const p of polys) addPoly(p);
@@ -4562,6 +4659,108 @@ const City = (() => {
   // ---------- ガレージと同じ3Dのバイクとライダー ----------
   // 自分: ガレージで組んだ「いま選んでいる構成」。ライバル: 同じモデルを複製して、フレームを赤に塗る
   let GB = null;
+  // ガレージのバイクは、部品1つ1つが別の物体(約130個)で、1コマに部品の数だけ「描く命令」が出る(影や映り込みでも、もう一度)。
+  // いっしょに動く部品(同じ部位・同じ回る軸の下)で、材質の中身が同じもの同士を1つの形にまとめる。
+  // 頂点の数も見た目も同じで、描く命令の数だけが減る。まとめられない部品(透ける物・写真を貼る物など)はそのまま。
+  function mergeBike(bikeG) {
+    const THREE = T();
+    const moving = (o) => !!(o.userData && (o.userData.spin || o.userData.crank || o.userData.pedal || o.userData.slot));
+    // 材質の中身を文字にする(同じ文字なら、同じ見た目)。比べられない物が入っていたら null
+    const matSig = (m) => {
+      const out = [m.type];
+      for (const k of Object.keys(m).sort()) {
+        if (k === "uuid" || k === "name" || k === "version") continue;
+        const v = m[k];
+        if (v == null || typeof v === "number" || typeof v === "string" || typeof v === "boolean") out.push(k + "=" + v);
+        else if (v.isColor) out.push(k + "=" + v.r + "," + v.g + "," + v.b);
+        else if (v.isTexture) out.push(k + "=t" + v.uuid);
+        else if (v.isVector2 || v.isVector3) out.push(k + "=" + v.toArray().join(","));
+        else if (Array.isArray(v) && v.every((x) => typeof x === "number")) out.push(k + "=[" + v.join(",") + "]");
+        else if (k === "defines" || k === "userData") {
+          for (const d of Object.keys(v)) if (typeof v[d] === "object" && v[d] !== null) return null;
+          out.push(k + "=" + JSON.stringify(v));
+        } else return null;
+      }
+      return out.join(";");
+    };
+    bikeG.updateMatrixWorld(true);
+    const sets = new Map();
+    bikeG.traverse((o) => {
+      if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || o.children.length || moving(o) || o.userData.decal) return;
+      const m = o.material, g = o.geometry;
+      if (!m || Array.isArray(m) || m.transparent || !g || !g.attributes.position || !g.attributes.normal) return;
+      if (Object.keys(g.morphAttributes || {}).length || g.drawRange.start !== 0 || g.drawRange.count !== Infinity) return;
+      const names = Object.keys(g.attributes).sort();
+      for (const n of names) {
+        const at = g.attributes[n];
+        if (!["position", "normal", "uv", "color"].includes(n) || at.isInterleavedBufferAttribute || at.normalized || !(at.array instanceof Float32Array)) return;
+      }
+      if (g.index && g.index.count % 3) return;
+      // いっしょに動く親(部位か、回る軸)を探す。途中に見えない物があれば、まとめない
+      let a = o;
+      while (a === o || !(a === bikeG || moving(a))) {
+        if (!a.visible || !a.parent) return;
+        a = a.parent;
+      }
+      const sig = matSig(m);
+      if (!sig) return;
+      const key = [a.uuid, sig, o.castShadow, o.receiveShadow, o.renderOrder, o.layers.mask, o.frustumCulled, names.map((n) => n + g.attributes[n].itemSize).join(",")].join("|");
+      if (!sets.has(key)) sets.set(key, { anchor: a, names, list: [] });
+      sets.get(key).list.push(o);
+    });
+    // まず全部の形を作ってから、最後に入れ替える(途中で失敗しても、もとのバイクのまま)
+    const jobs = [];
+    const inv = new THREE.Matrix4(), rel = new THREE.Matrix4(), nm = new THREE.Matrix3(), v = new THREE.Vector3();
+    for (const { anchor, names, list } of sets.values()) {
+      if (list.length < 2) continue;
+      inv.copy(anchor.matrixWorld).invert();
+      let nv = 0, ni = 0;
+      for (const o of list) (nv += o.geometry.attributes.position.count), (ni += o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count);
+      const arr = {};
+      for (const n of names) arr[n] = new Float32Array(nv * list[0].geometry.attributes[n].itemSize);
+      const idx = nv > 65535 ? new Uint32Array(ni) : new Uint16Array(ni);
+      let v0 = 0, i0 = 0;
+      for (const o of list) {
+        const g = o.geometry, cnt = g.attributes.position.count;
+        rel.multiplyMatrices(inv, o.matrixWorld);
+        nm.getNormalMatrix(rel);
+        const flip = rel.determinant() < 0; // 鏡うつしの部品は、面の表裏を入れ替える
+        for (const n of names) {
+          const at = g.attributes[n], sz = at.itemSize;
+          arr[n].set(at.array.subarray(0, cnt * sz), v0 * sz);
+        }
+        for (let i = v0; i < v0 + cnt; i++) {
+          v.fromArray(arr.position, i * 3).applyMatrix4(rel).toArray(arr.position, i * 3);
+          v.fromArray(arr.normal, i * 3).applyMatrix3(nm).normalize().toArray(arr.normal, i * 3);
+        }
+        const ix = g.index ? g.index.array : null, n3 = ix ? g.index.count : cnt;
+        for (let i = 0; i < n3; i += 3) {
+          const p = ix ? ix[i] : i, q = ix ? ix[i + 1] : i + 1, r = ix ? ix[i + 2] : i + 2;
+          idx[i0++] = v0 + p;
+          idx[i0++] = v0 + (flip ? r : q);
+          idx[i0++] = v0 + (flip ? q : r);
+        }
+        v0 += cnt;
+      }
+      const geo = new THREE.BufferGeometry();
+      for (const n of names) geo.setAttribute(n, new THREE.BufferAttribute(arr[n], list[0].geometry.attributes[n].itemSize));
+      geo.setIndex(new THREE.BufferAttribute(idx, 1));
+      const f = list[0], mesh = new THREE.Mesh(geo, f.material);
+      mesh.castShadow = f.castShadow;
+      mesh.receiveShadow = f.receiveShadow;
+      mesh.renderOrder = f.renderOrder;
+      mesh.layers.mask = f.layers.mask;
+      mesh.frustumCulled = f.frustumCulled;
+      jobs.push({ anchor, list, mesh });
+    }
+    let cut = 0;
+    for (const { anchor, list, mesh } of jobs) {
+      for (const o of list) o.parent.remove(o);
+      anchor.add(mesh);
+      cut += list.length - 1;
+    }
+    return cut;
+  }
   function garageBikers(meFallback, rivalFallback) {
     const THREE = T();
     let root = null, spriteOn = false;
@@ -4607,6 +4806,12 @@ const City = (() => {
     try {
       const on = spriteOn;
       bikeG = View3D.bikeObj && View3D.bikeObj();
+      // バイクの部品をまとめて、描く命令を減らす(失敗しても、もとのまま走れる)
+      try {
+        if (bikeG && !on) Perf.merged = mergeBike(bikeG);
+      } catch (e) {
+        console.error(e);
+      }
       if (on && bikeG && typeof BikeSpin !== "undefined") {
         const S = BikeSpin.SMALL, Rw = View3D.wheelRadius();
         const m = Rw / 150; // もとの動画で、車輪の半径は150px
@@ -5149,7 +5354,8 @@ const City = (() => {
         rt = new THREE.WebGLCubeRenderTarget(256, { generateMipmaps: false });
         cube = new THREE.CubeCamera(1.8, 700, rt);
       }
-      if (tick++ % 2) return;
+      // 1方向を撮るのは1秒に約30回(60Hzなら1コマおき、120Hzなら4コマに1回)。6方向そろう時間は画面の速さによらず同じ
+      if (tick++ % Rate.every()) return;
       if (face === 0) {
         cube.position.set(p.x, p.y + 2.3, p.z);
         cube.updateMatrixWorld(true);
@@ -6142,14 +6348,16 @@ const City = (() => {
     c.fillText("地理院地図", W - 47 * dpr, H - 3.5 * dpr);
   }
 
+  // 向きをならすときの [位置のずれ(m), 重み] の並び(毎コマ作り直さない)
+  const SMOOTH = [-3, 1, -1.5, 2, 0, 3, 1.5, 3, 3, 2, 5, 1];
   // side: 走る位置(車道の左端から約0.9m)から、さらに右へ何m
   function riderPos(along, side) {
     const p = at(along), r = Roads.ride(along), o = (r ? r.off : 0) - side;
     // 向きは、少し後ろ〜少し先の向きをならして使う(道の折れ目でカクッと向きが変わらないように)
     {
       let tx = 0, tz = 0;
-      for (const [d, w] of [[-3, 1], [-1.5, 2], [0, 3], [1.5, 3], [3, 2], [5, 1]]) {
-        const q = at(along + d);
+      for (let i = 0; i < 12; i += 2) {
+        const q = at(along + SMOOTH[i]), w = SMOOTH[i + 1];
         (tx += q.tx * w), (tz += q.tz * w);
       }
       const L = Math.hypot(tx, tz);
@@ -6188,13 +6396,47 @@ const City = (() => {
     return p;
   }
 
+  // 画面の書きかえの速さ(1秒に何回。60/90/120/144…)を、起動時に requestAnimationFrame の間隔から測る。
+  // 120Hz の画面なら120コマを目指す(下の autoRes の目標や、影・映り込みを作り直す間隔に使う)
+  const Rate = (() => {
+    const KNOWN = [48, 50, 60, 72, 75, 90, 100, 120, 144, 165, 180, 240];
+    let hz = 60, done = false;
+    function measure() {
+      if (typeof requestAnimationFrame !== "function") return;
+      const ts = [];
+      const step = (t) => {
+        ts.push(t);
+        if (ts.length < 50) return requestAnimationFrame(step);
+        // はじめの10コマは読み込みで乱れるので捨てて、間隔の真ん中の値を使う
+        const gaps = [];
+        for (let i = 11; i < ts.length; i++) gaps.push(ts[i] - ts[i - 1]);
+        gaps.sort((x, y) => x - y);
+        const raw = 1000 / Math.max(1, gaps[gaps.length >> 1]);
+        // 45より遅いのは、画面ではなく端末が重いだけ(測れていない)なので、60のままにする
+        if (raw >= 45) hz = KNOWN.reduce((best, k) => (Math.abs(k - raw) < Math.abs(best - raw) ? k : best), 60);
+        done = true;
+      };
+      requestAnimationFrame(step);
+    }
+    return {
+      measure,
+      hz: () => hz,
+      done: () => done,
+      goal: () => Math.round(hz * 0.9), // 目標のコマ数(画面の速さの約9割)
+      // 影と映り込みは1秒に約30回作り直す(60Hzで2コマに1回、120Hzで4コマに1回。見え方は60Hzのときと同じ)
+      every: () => Math.max(2, Math.round(hz / 30)),
+    };
+  })();
+
   // 画面の細かさを、端末の速さに合わせて上げ下げする(コマ数が落ちたら少し粗くして、なめらかさを優先)
+  // 目標は画面の速さの約9割(60Hzなら54、120Hzなら108コマ)。それを十分下回ると粗くし(約83%)、上回ると戻す(約95%)
   const res = { t: 0, n: 0, slow: 0, cool: 0 };
   function autoRes(dt) {
     const max = Math.min(2, window.devicePixelRatio || 1);
+    const k = Rate.hz() / 60; // 60Hzのときの数字を、画面の速さに合わせてのばす
     if (res.pr == null) res.pr = renderer.getPixelRatio();
     (res.t += dt), res.n++;
-    if (dt > 0.034) res.slow++;
+    if (dt > 0.034 / k) res.slow++;
     res.cool -= dt;
     if (res.t < 1.2) return;
     const fps = res.n / res.t, slow = res.slow / res.n;
@@ -6204,6 +6446,7 @@ const City = (() => {
     // いちばん粗くしてもコマ数が足りないときは、影をやめる(見た目より、なめらかさを優先)
     const floor = Math.min(1, max);
     // まず本格的な映り込みをやめる(次に影)
+    // 映り込みと影をやめるのは見た目が変わるので、画面が120Hzでも「本当に遅いとき(42・45コマ未満)」だけのまま
     if (pr <= floor + 0.01 && fps < 42 && Refl.on()) {
       if ((res.lowR = (res.lowR || 0) + 1) >= 3) {
         Refl.set(false, true);
@@ -6219,8 +6462,8 @@ const City = (() => {
         scene.traverse((o) => o.material && (Array.isArray(o.material) ? o.material.forEach((m) => (m.needsUpdate = true)) : (o.material.needsUpdate = true)));
       }
     } else res.low = 0;
-    if (fps < 50 || slow > 0.15) pr = Math.max(Math.min(1, max), pr * (fps < 35 ? 0.78 : 0.88)); // 等倍より粗くはしない(ぼやけて見えるため)
-    else if (fps > 57 && slow < 0.03 && pr < max) pr = Math.min(max, pr * 1.07), (res.cool = 4);
+    if (fps < 50 * k || slow > 0.15) pr = Math.max(Math.min(1, max), pr * (fps < 35 * k ? 0.78 : 0.88)); // 等倍より粗くはしない(ぼやけて見えるため)
+    else if (fps > 57 * k && slow < 0.03 && pr < max) pr = Math.min(max, pr * 1.07), (res.cool = 4);
     if (Math.abs(pr - res.pr) < 0.01) return;
     res.pr = pr;
     renderer.setPixelRatio(pr);
@@ -6256,7 +6499,12 @@ const City = (() => {
       const g = this.gaps.slice().sort((a, b) => a - b), q = (p) => g[Math.floor((g.length - 1) * p)] || 0;
       const top = Object.entries(this.max).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, v]) => `${k} ${v.toFixed(0)}`);
       const avg = Object.entries(this.sum).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, v]) => `${k} ${(v / Math.max(1, this.n)).toFixed(1)}`);
-      const r = { fps: g.length ? 1000 / (g.reduce((a, b) => a + b, 0) / g.length) : 0, p50: q(0.5), p99: q(0.99), worst: q(1), slow: g.filter((x) => x > 34).length, n: g.length, top, avg };
+      const ms = g.length ? g.reduce((a, b) => a + b, 0) / g.length : 0; // 1コマの平均時間
+      // work: そのうち、このアプリの処理(描く命令を出すまで)にかかった平均
+      const work = Object.entries(this.sum).reduce((a, [k, v]) => a + (k === "描画待ち・その他" ? 0 : v), 0) / Math.max(1, this.n);
+      // 遅いコマ: 画面の書きかえ2回ぶんより長くかかったコマ(60Hzなら34ms)
+      const lim = 34 * (60 / Rate.hz());
+      const r = { fps: ms ? 1000 / ms : 0, ms, work, p50: q(0.5), p99: q(0.99), worst: q(1), slow: g.filter((x) => x > lim).length, n: g.length, top, avg };
       return r;
     },
     reset() {
@@ -6282,6 +6530,7 @@ const City = (() => {
   try {
     viewMode = localStorage.getItem("city_view") || "auto";
   } catch (e) {}
+  let camWant = null; // カメラを置きたい場所(毎コマ作り直さない)
   function loop() {
     if (!running) return;
     raf = requestAnimationFrame(loop);
@@ -6342,7 +6591,7 @@ const City = (() => {
     const oy = orbit.yaw, cs = Math.cos(oy), sn = Math.sin(oy);
     const bx = -(p.tx * cs - p.tz * sn), bz = -(p.tx * sn + p.tz * cs); // 後ろ向きを、回した分だけ回す
     const back = s.vw[0], up = Math.max(0.5, s.vw[1] + back * Math.tan(orbit.pit)), side = s.vw[3] * Math.max(0, 1 - Math.abs(oy) * 2);
-    const want = new THREE.Vector3(p.x + bx * back + p.tz * side, p.y + up, p.z + bz * back - p.tx * side);
+    const want = (camWant || (camWant = new THREE.Vector3())).set(p.x + bx * back + p.tz * side, p.y + up, p.z + bz * back - p.tx * side);
     if (!s.camPos) s.camPos = want.clone();
     // 早送りでもカメラが遅れないように、追いつく速さも倍速に合わせる
     s.camPos.lerp(want, 1 - Math.exp(-real * (orbit.down ? 14 : vm === "close" ? 5 : 3.2) * Math.max(1, s.speedX)));
@@ -6356,9 +6605,10 @@ const City = (() => {
     updateGround(p);
     popU.uPopT.value = performance.now() / 1000;
     if (s.frameN % 30 === 0 || !popU.uShops.value) Shops.update(p.x, p.z);
-    // 影の地図は2コマに1回だけ作り直す。光の位置も同じコマでだけ動かす(ずれると影がガタガタ揺れる)
+    // 影の地図は1秒に約30回だけ作り直す(60Hzなら2コマに1回)。光の位置も同じコマでだけ動かす(ずれると影がガタガタ揺れる)
     s.frameN = (s.frameN || 0) + 1;
-    if (lights.sun.castShadow && s.frameN % 2 === 0) {
+    const shadowNow = s.frameN % Rate.every() === 0;
+    if (lights.sun.castShadow && shadowNow) {
       const d = lights.sun.userData.dir || [0, 1, 0];
       lights.sun.position.set(p.x + d[0] * 150, p.y + d[1] * 150, p.z + d[2] * 150);
       lights.sun.target.position.set(p.x, p.y, p.z);
@@ -6381,8 +6631,8 @@ const City = (() => {
     Perf.lap("Google3D");
     Refl.update(p);
     Perf.lap("映り込み");
-    // 影は2コマに1回だけ作り直す(見た目はほぼ同じで、描く量が減る)
-    if (renderer.shadowMap.enabled) (renderer.shadowMap.autoUpdate = false), (renderer.shadowMap.needsUpdate = s.frameN % 2 === 0);
+    // 影は数コマに1回だけ作り直す(上の shadowNow と同じコマ)
+    if (renderer.shadowMap.enabled) (renderer.shadowMap.autoUpdate = false), (renderer.shadowMap.needsUpdate = shadowNow);
     if (!PV.render(p, s, real)) renderer.render(scene, camera);
     Perf.lap("描く");
     autoRes(real);
@@ -6423,7 +6673,8 @@ const City = (() => {
     const el = $("ct-perf");
     if (!el || el.hidden) return;
     const r = Perf.report(), inf = renderer.info.render;
-    el.innerHTML = `<b>${r.fps.toFixed(0)}コマ/秒</b> 遅いコマ ${r.slow}/${r.n} ・最悪 ${r.worst.toFixed(0)}ms<br>描く量 ${(inf.triangles / 10000).toFixed(0)}万面・${inf.calls}回 ・細かさ×${renderer.getPixelRatio().toFixed(2)}${renderer.shadowMap.enabled ? "・影あり" : ""}<br>平均: ${r.avg.join(" / ")}<br>最悪: ${r.top.join(" / ")}${SV.on() ? `<br>ストリートビュー: ${SV.info()}` : ""}${PV.on() ? `<br>${PV.info()}` : ""}`;
+    const sv = Saved.stat;
+    el.innerHTML = `<b>${r.fps.toFixed(0)}コマ/秒</b> 目標 ${Rate.goal()}コマ(画面 ${Rate.hz()}Hz${Rate.done() ? "" : "・計測中"})・1コマ平均 ${r.ms.toFixed(1)}ms(うち処理 ${r.work.toFixed(1)}ms)<br>遅いコマ ${r.slow}/${r.n} ・最悪 ${r.worst.toFixed(0)}ms ・保存から読んだ形: 建物 ${sv.bHit}/${sv.bHit + sv.bNew}・道 ${sv.rHit}/${sv.rHit + sv.rNew}<br>描く量 ${(inf.triangles / 10000).toFixed(0)}万面・${inf.calls}回 ・細かさ×${renderer.getPixelRatio().toFixed(2)}${renderer.shadowMap.enabled ? "・影あり" : ""}<br>平均: ${r.avg.join(" / ")}<br>最悪: ${r.top.join(" / ")}${SV.on() ? `<br>ストリートビュー: ${SV.info()}` : ""}${PV.on() ? `<br>${PV.info()}` : ""}`;
     if ((Perf.resetT = (Perf.resetT || 0) + 1) >= 10) (Perf.resetT = 0), (Perf.max = {}), (Perf.sum = {}), (Perf.n = 0);
   }
 
@@ -6756,6 +7007,21 @@ const City = (() => {
       photoOn = e.target.checked;
       if (sim) photoStyle(), wantPhotos(sim.along);
     };
+    // 保存した街(組み立てた形)の大きさと、消すボタン
+    if ($("ct-saved")) {
+      const show = () =>
+        Saved.size().then((b) => {
+          $("ct-saved").textContent = b == null ? "保存した街: この端末では保存できません" : `保存した街: ${b < 1048576 && b > 0 ? "1MB未満" : Math.round(b / 1048576) + "MB"}`;
+        });
+      show();
+      $("ct-saved-clear").onclick = async () => {
+        if (!confirm("保存した街を消しますか?(次に走るとき、もう一度ダウンロードします)")) return;
+        $("ct-saved-clear").disabled = true;
+        await Saved.clear();
+        $("ct-saved-clear").disabled = false;
+        show();
+      };
+    }
     const keys = { " ": "pedal", ArrowUp: "pedal", ArrowDown: "brake", Shift: "sprint" };
     window.addEventListener("keydown", (e) => {
       if (sim && keys[e.key]) (sim[keys[e.key]] = true), e.key === "Shift" && (sim.pedal = true), e.preventDefault();
@@ -6765,6 +7031,6 @@ const City = (() => {
     });
   }
 
-  if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", bind);
-  return { at, turnAhead, readTile, _H: (x, z) => H(x, z), _state: () => ({ PV, Shops, Mons, G3, popU, clipU, sim, route, tiles, failed, camera, Plateau, Roads, scene, me, Traffic, Signals, renderer, Perf }), ride: (a) => Roads.ride(a) };
+  if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", bind), Rate.measure();
+  return { at, turnAhead, readTile, _H: (x, z) => H(x, z), _state: () => ({ PV, Shops, Mons, G3, popU, clipU, sim, route, tiles, failed, camera, Plateau, Roads, scene, me, Traffic, Signals, renderer, Perf, Saved, Rate }), ride: (a) => Roads.ride(a) };
 })();

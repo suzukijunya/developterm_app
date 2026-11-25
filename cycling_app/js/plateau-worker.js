@@ -1,6 +1,7 @@
 // PLATEAU(国交省の3D都市モデル)の建物タイル(3D Tiles の b3dm)を、シティデュエルの座標に直すワーカー。
 // 重い計算(Draco の展開・座標変換・走る道に重なる建物の除外)を、画面を止めずにここでやる。
-// 入力: { type: "init", route: { xy, lat0, lon0, kx, kz }, clear }  /  { type: "tile", id, buf }
+// 入力: { type: "init", route: { xy, lat0, lon0, kx, kz }, clear }  /  { type: "tile", id, buf, key }  /  { type: "load", id, key, kind }
+//   key つきの結果は端末に保存し、次からは load で読むだけにする(下の SHAPE_VER を参照)
 // 出力: { id, groups: [{ kind: "t"(写真)/"c"(色つき)/"p"(色なし), img(写真の番号), pos, nor, uv, col }], images: [{ bitmap | bytes, mime }], names, n, skipped }
 //   壁の写真つきの版(LOD2/3/4)は、写真をそのまま貼る(大きすぎる写真は texMax の幅に縮める)
 
@@ -15,6 +16,87 @@ let R = null; // 走るルート { xy, lat0, lon0, kx, kz, grid }
 let CLEAR = 3.5;
 let TEXMAX = 4096;
 let TERRAIN = false;
+
+// ---------- 組み立てた形の保存(IndexedDB) ----------
+// 2回目からは、ここで保存した形を読むだけにして、展開と組み立てを飛ばす。読み書きはワーカーの中でやる(画面を止めない)。
+// 保存するのは PLATEAU から自前で組み立てた結果だけ。
+// ★ 出力の形式や作り方(建物・道の形に関わる所)を変えたら、SHAPE_VER を上げる。古い版の保存は使われず、消される。
+const SHAPE_VER = 1;
+const SHAPE_MAX = 600 * 1048576; // 上限(約600MB)。超えたら、使っていない古い順に消す
+const Shapes = (() => {
+  const PRE = "s" + SHAPE_VER + ":";
+  let dbp = null;
+  // data: キー → 形 / meta: キー → { t: 最後に使った時刻, size: バイト数 }
+  function open() {
+    if (dbp) return dbp;
+    dbp = new Promise((res) => {
+      try {
+        const rq = indexedDB.open("cycling_city_shapes", 1);
+        rq.onupgradeneeded = () => (rq.result.createObjectStore("data"), rq.result.createObjectStore("meta"));
+        rq.onsuccess = () => res(rq.result);
+        rq.onerror = rq.onblocked = () => res(null);
+        setTimeout(() => res(null), 4000); // 返事が来ない端末では、保存なしで進む
+      } catch (e) {
+        res(null);
+      }
+    });
+    return dbp;
+  }
+  // 読み書きの終わりを待つ(返事が来ないときも、8秒であきらめて先へ進む)
+  const done = (tx) => new Promise((res) => ((tx.oncomplete = () => res(true)), (tx.onerror = tx.onabort = () => res(false)), setTimeout(() => res(false), 8000)));
+  async function get(key) {
+    const d = await open();
+    if (!d || !key) return null;
+    try {
+      const tx = d.transaction(["data", "meta"], "readwrite");
+      const rq = tx.objectStore("data").get(PRE + key);
+      rq.onsuccess = () => {
+        // 使った時刻を新しくする(古い順に消すため)
+        if (rq.result) tx.objectStore("meta").put({ t: Date.now(), size: rq.result.size || 0 }, PRE + key);
+      };
+      if (!(await done(tx))) return null;
+      return rq.result || null;
+    } catch (e) {
+      return null;
+    }
+  }
+  // 呼んだ時点で中身が写し取られる(このあと配列を画面側へ渡してしまってよい)。先に ready() を待っておくこと
+  let db0 = null;
+  const ready = async () => (db0 = await open());
+  function put(key, rec) {
+    if (!db0 || !key) return;
+    try {
+      const tx = db0.transaction(["data", "meta"], "readwrite");
+      tx.objectStore("data").put(rec, PRE + key);
+      tx.objectStore("meta").put({ t: Date.now(), size: rec.size || 0 }, PRE + key);
+      done(tx).then((ok) => trim(ok ? SHAPE_MAX : 0));
+    } catch (e) {}
+  }
+  // 古い版の保存と、上限を超えたぶん(古い順)を消す。max=0: 書けなかった(容量不足)ので、古い方から4分の1を消す
+  let trimming = false;
+  async function trim(max) {
+    if (trimming || !db0) return;
+    trimming = true;
+    try {
+      const tx = db0.transaction("meta");
+      const ks = tx.objectStore("meta").getAllKeys(), vs = tx.objectStore("meta").getAll();
+      await done(tx);
+      const all = (ks.result || []).map((k, i) => ({ k, t: (vs.result[i] || {}).t || 0, size: (vs.result[i] || {}).size || 0 }));
+      const kill = all.filter((e) => !String(e.k).startsWith(PRE));
+      const live = all.filter((e) => String(e.k).startsWith(PRE)).sort((a, b) => a.t - b.t);
+      let total = live.reduce((a, e) => a + e.size, 0);
+      const lim = max || total * 0.75;
+      while (live.length > 1 && total > lim) (total -= live[0].size), kill.push(live.shift());
+      if (kill.length) {
+        const tw = db0.transaction(["data", "meta"], "readwrite");
+        for (const e of kill) tw.objectStore("data").delete(e.k), tw.objectStore("meta").delete(e.k);
+        await done(tw);
+      }
+    } catch (e) {}
+    trimming = false;
+  }
+  return { get, put, ready };
+})();
 
 self.onmessage = async (e) => {
   const d = e.data;
@@ -38,13 +120,39 @@ self.onmessage = async (e) => {
     }
     return;
   }
+  if (d.type === "load") {
+    // 保存してある形を読む(なければ miss)。kind: "tile"(建物)/"mvt"(道)
+    try {
+      const rec = await Shapes.get(d.key);
+      if (!rec) return self.postMessage({ id: d.id, miss: true });
+      const tr = [];
+      if (d.kind === "mvt") {
+        for (const p of rec.polys) for (const r of p.rings) tr.push(r.buffer);
+        return self.postMessage({ id: d.id, polys: rec.polys, saved: true }, tr);
+      }
+      // 写真は、もとの画像のバイト列から、1回目と同じ手順で絵にする
+      const out = rec.out;
+      out.images = [];
+      for (const im of rec.raws) out.images.push(await toBitmap(im.raw, im.mime));
+      out.id = d.id;
+      out.saved = true;
+      for (const g of out.groups) tr.push(g.pos.buffer, g.nor.buffer, g.uv.buffer, g.col.buffer, g.anc.buffer);
+      for (const im of out.images) tr.push(im.bitmap || im.bytes);
+      self.postMessage(out, tr);
+    } catch (err) {
+      self.postMessage({ id: d.id, miss: true });
+    }
+    return;
+  }
   if (d.type === "mvt") {
     // 道路のベクトルタイル(PLATEAU の交通モデル)→ アプリ座標の多角形
     try {
       const polys = [];
       for (const it of d.bufs) readRoads(it.buf, it.lod, d.z, d.x, d.y, polys);
       const tr = [];
-      for (const p of polys) for (const r of p.rings) tr.push(r.buffer);
+      let size = 0;
+      for (const p of polys) for (const r of p.rings) tr.push(r.buffer), (size += r.byteLength);
+      if (d.key && (await Shapes.ready())) Shapes.put(d.key, { polys, size });
       self.postMessage({ id: d.id, polys }, tr);
     } catch (err) {
       self.postMessage({ id: d.id, error: String((err && err.message) || err) });
@@ -54,9 +162,20 @@ self.onmessage = async (e) => {
   if (d.type === "tile") {
     try {
       const out = await tile(d.buf);
-      out.id = d.id;
       const tr = [];
-      for (const g of out.groups) tr.push(g.pos.buffer, g.nor.buffer, g.uv.buffer, g.col.buffer, g.anc.buffer);
+      let size = 0;
+      for (const g of out.groups) tr.push(g.pos.buffer, g.nor.buffer, g.uv.buffer, g.col.buffer, g.anc.buffer), (size += g.pos.byteLength + g.nor.byteLength + g.uv.byteLength + g.col.byteLength + g.anc.byteLength);
+      // 保存: 形と、写真のもとの画像(縮める前のバイト列)。配列を画面側へ渡す前に写し取らせる
+      const raws = out.raws;
+      delete out.raws;
+      if (d.key && (await Shapes.ready())) {
+        for (const im of raws) size += im.raw.byteLength;
+        const images = out.images;
+        delete out.images;
+        Shapes.put(d.key, { out, raws, size });
+        out.images = images;
+      }
+      out.id = d.id;
       for (const im of out.images) tr.push(im.bitmap || im.bytes);
       self.postMessage(out, tr);
     } catch (err) {
@@ -111,6 +230,7 @@ async function tile(buf) {
   const out = build(parts, center, bt);
   // 写真を取り出して(必要なら縮めて)画像にする
   out.images = [];
+  out.raws = []; // 保存用: 写真のもとのバイト列
   const remap = new Map();
   for (const i of usedImg) {
     const im = gj.images[i];
@@ -119,6 +239,7 @@ async function tile(buf) {
     const bytes = buf.slice(binStart + (bv.byteOffset || 0), binStart + (bv.byteOffset || 0) + bv.byteLength);
     remap.set(i, out.images.length);
     out.images.push(await toBitmap(bytes, im.mimeType || "image/jpeg"));
+    out.raws.push({ raw: bytes, mime: im.mimeType || "image/jpeg" });
   }
   for (const g of out.groups) if (g.kind === "t") g.img = remap.has(g.img) ? remap.get(g.img) : -1;
   out.groups = out.groups.filter((g) => g.kind !== "t" || g.img >= 0);
