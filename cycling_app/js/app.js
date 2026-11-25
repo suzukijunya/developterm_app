@@ -1086,6 +1086,9 @@
     const cur = (p.via || []).map((v) => v.name).join("、");
     const text = prompt(`「${p.name}」へ行くときに通る場所を、通る順に「、」で区切って入れてください(5つまで)。\n例: 東中野駅、中井駅\n空にすると、経由地なし(おまかせの道)に戻ります`, cur);
     if (text == null) return;
+    return setVia(p, text);
+  }
+  async function setVia(p, text) {
     const names = text.split(/[、,，\n]+/).map((x) => x.trim()).filter(Boolean).slice(0, 5);
     const via = [], miss = [];
     // 「35.7, 139.6」の形は「、」で分かれてしまうので、数字2つが続いたらつなぎ直す
@@ -2541,7 +2544,7 @@ print("このファイルをスマホに送って(AirDrop など)、アプリの
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2027.1.16";
+  const APP_VERSION = "2027.1.17";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });
@@ -2580,6 +2583,16 @@ print("このファイルをスマホに送って(AirDrop など)、アプリの
     history.replaceState(null, "", location.pathname + location.search);
     view = "settings";
     placeForm = { name: (placeLink.get("place") || "").slice(0, 20), query: placeLink.get("q").slice(0, 120), results: [], status: "", pick: null };
+  }
+  // リンクから経由地を登録する: index.html#via=目的地の名前&list=東高円寺駅、中野駅
+  const viaLink = /^#via=/.test(location.hash) ? new URLSearchParams(location.hash.slice(1)) : null;
+  if (viaLink) {
+    history.replaceState(null, "", location.pathname + location.search);
+    const nm = viaLink.get("via") || "", list = viaLink.get("list") || "";
+    const pl = Store.places.find((x) => x.name === nm) || Store.places.find((x) => x.name.includes(nm) || nm.includes(x.name));
+    view = "settings";
+    if (!pl) setTimeout(() => alert(`目的地「${nm}」が登録されていません。先に目的地を登録してから、もう一度リンクを開いてください`), 300);
+    else setVia(pl, list).then(() => alert(`「${pl.name}」の経由地を登録しました: ${(pl.via || []).map((v) => v.name).join(" → ") || "なし"}`));
   }
   render();
   if (placeLink && placeLink.get("q")) searchPlace().then(() => { const el = document.getElementById("place-form"); if (el) el.scrollIntoView({ block: "center" }); });
