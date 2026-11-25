@@ -3384,7 +3384,7 @@ const City = (() => {
   // 写真は十数mおきにしかないので、景色は数秒ごとに切り替わる(なめらかな3Dにはならない)。
   // 料金は「ストリートビューを開いた回数」で数えるはずなので、1回のライドで1回だけ開く。この端末では1日20回・月450回で止める。
   const SV = (() => {
-    let on = false, pano = null, svc = null, loading = null, err = "", el = null, lastAlong = -1e9, busy = false, lastId = "", hdg = null, povT = 0, miss = 0, failed = false;
+    let on = false, pano = null, svc = null, loading = null, err = "", el = null, lastAlong = -1e9, busy = false, lastId = "", hdg = null, povT = 0, miss = 0, failed = false, tryAt = 0, why = "", told = false;
     const CAP_M = 450, CAP_D = 20;
     const usage = () => {
       const d = new Date(), m = d.getFullYear() + "-" + (d.getMonth() + 1), day = m + "-" + d.getDate();
@@ -3445,9 +3445,11 @@ const City = (() => {
         pano = new google.maps.StreetViewPanorama(el.firstChild, { disableDefaultUI: true, clickToGo: false, linksControl: false, panControl: false, zoomControl: false, addressControl: false, fullscreenControl: false, motionTracking: false, motionTrackingControl: false, scrollwheel: false, showRoadLabels: true, zoom: 0.4, visible: true });
         svc = new google.maps.StreetViewService();
       }
-      el.hidden = false;
+      el.hidden = true; // 最初の写真が届いてから出す
       on = true;
       lastAlong = -1e9;
+      lastId = "";
+      miss = 0;
       return true;
     }
     function stop() {
@@ -3467,18 +3469,28 @@ const City = (() => {
       if ((povT += dt) > 0.1) (povT = 0), pano.setPov({ heading: hdg, pitch: -4 });
       // 写真を先へ進める: 15mごと(速いときは、1.5秒に1回までに間引く)
       const step = Math.max(15, s.v * s.speedX * 1.5);
-      if (!busy && Math.abs(s.along - lastAlong) >= step) {
+      // まだ1枚も出せていない間(出発地点のそばに写真が無いなど)は、2秒おきに、範囲を広げて探し直す
+      const retry = (!lastId || miss > 0) && performance.now() - tryAt > 2000;
+      if (!busy && (Math.abs(s.along - lastAlong) >= step || retry)) {
         lastAlong = s.along;
+        tryAt = performance.now();
         busy = true;
         const q = at(s.along + 6);
         const loc = { lat: route.lat0 - q.z / route.kz, lng: route.lon0 + q.x / route.kx };
-        svc.getPanorama({ location: loc, radius: 35, preference: google.maps.StreetViewPreference.NEAREST, sources: [google.maps.StreetViewSource.OUTDOOR] })
+        const rq = { location: loc, radius: miss > 0 || !lastId ? 150 : 35, preference: google.maps.StreetViewPreference.NEAREST };
+        if (!(miss > 1)) rq.sources = [google.maps.StreetViewSource.OUTDOOR];
+        svc.getPanorama(rq)
           .then((r) => {
             const id = r.data.location.pano;
             miss = 0;
             if (id !== lastId) (lastId = id), pano.setPano(id);
           })
-          .catch(() => miss++)
+          .catch((e) => {
+            miss++;
+            why = String((e && (e.code || e.message)) || e || "").slice(0, 60);
+            // 3回続けて取れなかったら、理由を1度だけ知らせる
+            if (miss === 3 && !told) (told = true), ticker(`ストリートビューの写真を取れません(${why || "理由不明"})。3Dの街で走ります`, "opp");
+          })
           .finally(() => (busy = false));
       }
       // Google の部品が「エラーが発生しました」を出したら、やめて3Dの街に戻す(キーの設定が足りないとき)
@@ -3492,9 +3504,14 @@ const City = (() => {
         ticker("ストリートビューを表示できないので、3Dの街に戻しました。" + err, "opp");
         return;
       }
-      const msg = el.querySelector(".ct-sv-msg");
-      msg.hidden = miss < 3;
-      if (miss >= 3) msg.textContent = "このあたりはストリートビューの写真がありません";
+      // 写真を出せている間だけ、写真の画面にする。出せない間は、下の3Dの街を見せる(真っ黒にしない)
+      const show = !!lastId && miss < 3;
+      if (el.hidden === show) {
+        el.hidden = !show;
+        // 隠している間に作った画面は大きさが0なので、出すときに大きさを測り直させる
+        if (show) setTimeout(() => window.google && google.maps.event.trigger(pano, "resize"), 50);
+        if (!show && lastId) ticker("このあたりはストリートビューの写真がないので、3Dの街で走ります", "opp");
+      }
       // ライバル: 前にいるときだけ、距離に合わせた大きさで出す
       const d = s.rAlong - s.along, rv = el.querySelector(".ct-sv-rival");
       rv.hidden = !(d > 4 && d < 120);
@@ -3504,7 +3521,7 @@ const City = (() => {
         rv.lastChild.textContent = `${Math.round(d)}m`;
       }
     }
-    return { start, stop, update, on: () => on, err: () => err, usage: () => Object.assign(usage(), { capM: CAP_M, capD: CAP_D, over: over() }) };
+    return { start, stop, update, on: () => on, showing: () => on && !!el && !el.hidden, err: () => err, usage: () => Object.assign(usage(), { capM: CAP_M, capD: CAP_D, over: over() }) };
   })();
 
   // 地図の区画のうち、施設の看板だけは残す(Googleの3Dでも、どこを走っているかわかるように)
@@ -4416,7 +4433,7 @@ const City = (() => {
     wait.hidden = false;
     const t0 = Date.now();
     const iv = setInterval(() => {
-      const g3 = $("ct-google") && $("ct-google").checked;
+      const g3 = $("ct-google") && $("ct-google").checked && !SV.on();
       const ok = [...tiles.values()].some((t) => t.state === "ok") && Plateau.ready() && (!g3 || G3.ready());
       const sec = Math.round((Date.now() - t0) / 1000);
       wait.querySelector("small").textContent = `${sec}秒${g3 && !G3.ready() ? ` ・Googleの3Dを読み込み中(${G3.models()}個)` : ""}${lastErr ? " ・地図サーバー: " + lastErr + "(やり直し中)" : ""}`;
@@ -5010,7 +5027,7 @@ const City = (() => {
     Perf.lap("道");
     SV.update(real, p, s);
     // ストリートビューのときは、3Dの街は描かない(下に隠れて見えないので、その分軽くする)
-    if (SV.on()) {
+    if (SV.showing()) {
       if ((s.hudT = (s.hudT || 0) + real) > 0.12) (s.hudT = 0), hud();
       return;
     }
@@ -5121,8 +5138,10 @@ const City = (() => {
     G3.setKey($("ct-gkey").value);
     start({ rivalKmh: +$("ct-rival").value, auto: $("ct-auto0").checked });
     $("ct-google").checked = $("ct-google0").checked;
-    if ($("ct-google0").checked) G3.set(true).then(syncGoogle);
-    if ($("ct-sv0") && $("ct-sv0").checked && setSVfn) (starting = true), setSVfn(true);
+    // ストリートビューで走るときは、Googleの3Dは読まない(画面に出ないのに、回数だけ使ってしまう)
+    const sv0 = $("ct-sv0") && $("ct-sv0").checked && !!G3.getKey();
+    if ($("ct-google0").checked && !sv0) G3.set(true).then(syncGoogle);
+    if (sv0 && setSVfn) (starting = true), setSVfn(true);
     $("ct-auto").checked = sim.auto;
   }
   function bind() {
@@ -5243,7 +5262,11 @@ const City = (() => {
           for (const id of ["ct-sv", "ct-sv0"]) if ($(id)) $(id).checked = false;
           ticker("ストリートビュー: " + SV.err(), "opp");
         }
-      } else SV.stop();
+      } else {
+        SV.stop();
+        // ストリートビューをやめたら、Googleの3Dにチェックがあれば、そちらを始める
+        if ($("ct-google") && $("ct-google").checked && !G3.on()) G3.set(true).then(syncGoogle);
+      }
     };
     setSVfn = setSV;
     for (const id of ["ct-sv", "ct-sv0"]) if ($(id)) $(id).onchange = (e) => setSV(e.target.checked);

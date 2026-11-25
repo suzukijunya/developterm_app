@@ -161,3 +161,6 @@ body.city { margin: 0; overflow: hidden; background: #050608; color: #fff; font-
 .ct-perf { left: 50%; top: 30%; transform: translateX(-50%); max-width: 92vw; padding: 8px 12px; border-radius: 8px; background: rgba(0, 0, 0, 0.78); color: #d8ffe0; font: 12px/1.5 ui-monospace, Menlo, monospace; white-space: nowrap; overflow: hidden; }
 .ct-perf b { color: #fff; font-size: 14px; }
 .ct-setup .ct-check[hidden] { display: none; }
+/* Google の部品の中の重なり順が、上に重ねるバイクや文字より前に出ないようにする */
+.ct-sv-pano { z-index: 0; isolation: isolate; }
+.ct-sv-bike, .ct-sv-rival, .ct-sv-msg { z-index: 1; }
