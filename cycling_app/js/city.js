@@ -6161,8 +6161,29 @@ const City = (() => {
   function placeBiker(b, along, side, dt, v, pedaling) {
     const p = riderPos(along, side);
     b.g.position.set(p.x, p.y, p.z);
-    b.g.rotation.y = -Math.atan2(p.tz, p.tx);
-    b.pose(pedaling ? dt * 9 : 0, (v * dt) / 0.34);
+    // 実際のロードバイクらしい動き: コーナーでは速さと曲がり具合に合わせて車体を倒す、坂では前後に傾く、
+    // 立ちこぎ(スプリント・きつい上り)では車体を左右に振る、下りの速い所は脚を止める、止まったら少し左へ傾けて足をつく
+    const d = b.dyn || (b.dyn = { lean: 0, pitch: 0, ph: 0, cad: 0 });
+    const q0 = at(along - 4), q1 = at(along + 5);
+    const kap = Math.asin(Math.max(-1, Math.min(1, q0.tx * q1.tz - q0.tz * q1.tx))) / 9; // 曲がり具合(1/m)。右が正
+    const gr = Terrain.grade(along) / 100;
+    let lean = Math.max(-0.48, Math.min(0.48, Math.atan((v * v * kap) / 9.8)));
+    const coast = gr < -0.035 && v > 9.5;
+    const cadW = !pedaling || coast ? 0 : Math.max(5.5, Math.min(10.8, 3.2 + v * 0.62 - Math.max(0, gr) * 28)) * (b.sp ? 1.18 : 1);
+    d.cad += (cadW - d.cad) * Math.min(1, dt * 3);
+    d.ph += d.cad * dt;
+    const stand = pedaling && (b.sp || gr > 0.055) ? 1 : 0;
+    d.stand = (d.stand || 0) + (stand - (d.stand || 0)) * Math.min(1, dt * 4);
+    lean += Math.sin(d.ph) * 0.085 * d.stand; // 立ちこぎの振り
+    if (v < 0.4) lean = -0.06; // 止まっているときは左足をつく
+    else if (v < 3) lean += Math.sin(d.ph * 0.5) * 0.02; // ゆっくりのときのふらつき
+    d.lean += (lean - d.lean) * Math.min(1, dt * 5);
+    d.pitch += (Math.atan(gr) - d.pitch) * Math.min(1, dt * 4);
+    b.g.rotation.order = "YXZ";
+    b.g.rotation.y = -Math.atan2(p.tz, p.tx) - d.lean * 0.12 * d.stand;
+    b.g.rotation.x = d.lean;
+    b.g.rotation.z = d.pitch;
+    b.pose(d.cad * dt, (v * dt) / 0.34);
     return p;
   }
 
@@ -6287,8 +6308,10 @@ const City = (() => {
     if (G3.on()) rival.g.position.y = G3.rivalY();
     const myPed = (s.auto || s.pedal) && !s.brake && !s.paused && !s.done;
     const mySp = myPed && s.sprint && s.stamina > 0.02;
+    me.sp = mySp;
     // ライバルは、ゴール前500mか、ぐっと加速しているときにスプリント
     const rvSp = !s.paused && !s.done && (route.length - s.rAlong < 500 || s.rV > s.rivalV * 1.06);
+    rival.sp = rvSp;
     if (GB) GB.update(real * s.speedX, myPed, s.paused ? 0 : s.v, !s.paused && !s.done, s.paused ? 0 : s.rV, mySp, rvSp);
     Mons.update(real * Math.min(4, s.speedX));
     Perf.lap("乗り手");
@@ -6635,6 +6658,22 @@ const City = (() => {
     } catch (err) {}
     const su = SV.usage();
     if ($("ct-svuse")) $("ct-svuse").textContent = `ストリートビューを開いた回数(この端末): 今月 ${su.n}/${su.capM}回・今日 ${su.dn}/${su.capD}回`;
+    // 右上のデュエルの盤面を出す/出さない
+    for (const id of ["ct-board"])
+      if ($(id)) {
+        let v = true;
+        try {
+          v = localStorage.getItem("city_board") !== "0";
+        } catch (e) {}
+        $(id).checked = v;
+        document.body.classList.toggle("no-board", !v);
+        $(id).onchange = (e) => {
+          document.body.classList.toggle("no-board", !e.target.checked);
+          try {
+            localStorage.setItem("city_board", e.target.checked ? "1" : "0");
+          } catch (err) {}
+        };
+      }
     if ($("ct-perf0")) $("ct-perf0").onchange = (e) => ($("ct-perf").hidden = !e.target.checked);
     // 写真の街
     for (const id of ["ct-pv", "ct-pv0"])
