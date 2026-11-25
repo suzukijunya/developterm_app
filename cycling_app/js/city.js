@@ -7396,7 +7396,15 @@ const City = (() => {
         const oy = Math.sin(ph) * 0.6 + Math.sin(ph * 2.3 + 1) * 0.2 - dive * 0.8;
         const oz = Math.sin(ph * 0.5 + 0.5) * 0.6 + Math.sin(ph * 1.3) * 0.15;
         const ox = Math.cos(ph * 0.5 + 0.5) * 0.45 + dive * 0.5;
-        const tx = bike.position.x - dx * (back - ox) + dz * (lat + oz), tz = bike.position.z - dz * (back - ox) - dx * (lat + oz), ty = bike.position.y + (L.slot === 2 ? 3.6 : 2.6) + oy;
+        // 道の幅の中だけを飛ぶ(翼が建物にめり込まないように)。自転車は道の左端から約0.9m。左が正
+        const rr = Roads.ride(L.side === "you" ? sim.along : sim.rAlong), RW = rr ? rr.W : 6;
+        const bikeL = 0.9 + (L.side === "you" ? sim.dodge || 0 : 1.1), span = size(L.m) * 0.85;
+        let lo = -(RW - bikeL) + span, hi = bikeL - span, narrow = 0;
+        if (lo > hi) (lo = hi = (lo + hi) / 2), (narrow = 1); // 翼より狭い道: 道のまん中を、縦に並んで高めに飛ぶ
+        L.nar = (L.nar || 0) + (narrow - (L.nar || 0)) * Math.min(1, dt * 2);
+        const latT = Math.max(lo, Math.min(hi, lat + oz));
+        const backT = back - ox + L.nar * L.slot * 1.6;
+        const tx = bike.position.x - dx * backT + dz * latT, tz = bike.position.z - dz * backT - dx * latT, ty = bike.position.y + (L.slot === 2 ? 3.6 : 2.6) + oy + L.nar * (1.2 + L.slot * 0.9);
         const k = 1 - Math.exp(-dt * 5);
         const o = L.obj;
         if (o.scale.x < 0.05) o.position.set(tx, ty, tz);

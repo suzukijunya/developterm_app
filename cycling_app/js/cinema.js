@@ -326,12 +326,7 @@ const Cinema = (() => {
       own = "";
     }
     if (own) return DuelFx.avatarHtml(side);
-    // 街を走っている最中は、実際の3Dの乗り手を撮った姿を出す(平らな絵より立体感がある)
-    let url = null;
-    try {
-      url = typeof window.RiderPortrait === "function" ? window.RiderPortrait(side, "bust") : null;
-    } catch (e) {}
-    return url ? `<img class="cn-rider3d" src="${url}" alt="" />` : heroSvg(side);
+    return heroSvg(side);
   }
 
   // ---------- 画角 ----------
