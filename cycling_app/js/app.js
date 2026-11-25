@@ -1092,7 +1092,7 @@
     return setVia(p, text);
   }
   async function setVia(p, text) {
-    const names = text.split(/[、,，\n]+/).map((x) => x.trim()).filter(Boolean).slice(0, 5);
+    const names = text.split(/[、,，\n]+/).map((x) => x.trim()).filter(Boolean);
     const via = [], miss = [];
     // 「35.7, 139.6」の形は「、」で分かれてしまうので、数字2つが続いたらつなぎ直す
     const items = [];
@@ -1100,6 +1100,7 @@
       if (/^-?\d+(\.\d+)?$/.test(names[i]) && /^-?\d+(\.\d+)?$/.test(names[i + 1] || "")) items.push(names[i] + "," + names[++i]);
       else items.push(names[i]);
     }
+    items.length = Math.min(items.length, 5); // 経由地は5つまで(数字の組をつなぎ直したあとで数える)
     for (const q of items) {
       const old = (p.via || []).find((v) => v.name === q);
       if (old) {
@@ -2563,7 +2564,7 @@ print("このファイルをスマホに送って(AirDrop など)、アプリの
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2027.1.43";
+  const APP_VERSION = "2027.1.44";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });
@@ -2595,6 +2596,8 @@ print("このファイルをスマホに送って(AirDrop など)、アプリの
     });
 
   restoreActive();
+  // すでにこのアプリを開いているタブで登録リンクを開くと、ページは読み直されない。そのときは読み直して登録の処理へ進める
+  window.addEventListener("hashchange", () => /^#(place|via|places)=/.test(location.hash) && location.reload());
   // リンクから目的地を登録する: index.html#place=名前&q=住所
   // (住所はリンクの中だけにあり、コードには書かない。開くと設定画面で検索まで進む)
   const placeLink = /^#place=/.test(location.hash) ? new URLSearchParams(location.hash.slice(1)) : null;
