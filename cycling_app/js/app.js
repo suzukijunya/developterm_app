@@ -1950,6 +1950,7 @@ print("このファイルをスマホに送って(AirDrop など)、アプリの
         <h2>目的地 <span class="count">${Store.places.length}/${Store.MAX_PLACES}</span></h2>
         <p class="muted small">会社・自宅・よく行くお店などを作っておくと、走る画面で選ぶだけで「あと何分で着くか」を表示します。到着するたびに、信号待ちを含めたペースと道の遠回り具合を学習して、予測が正確になっていきます。</p>
         ${rows || `<p class="muted">まだ目的地がありません。下のフォームから作成してください。</p>`}
+        ${Store.places.length ? `<p class="small"><button class="link" id="places-share">📤 目的地と経由地を、ほかの端末(PCなど)へ移すリンクをコピー</button></p>` : ""}
         ${
           full
             ? `<p class="notice">目的地は${Store.MAX_PLACES}件まで登録できます。追加するには、使わない目的地を削除してください。</p>`
@@ -2446,6 +2447,20 @@ print("このファイルをスマホに送って(AirDrop など)、アプリの
       Promise.resolve(p.addrPromise).then(() => savePlaceFromForm(p.lat, p.lon, p.label || `緯度 ${p.lat.toFixed(5)}, 経度 ${p.lon.toFixed(5)}`));
     });
     app.querySelectorAll("[data-renameplace]").forEach((b) => b.addEventListener("click", () => renamePlace(b.dataset.renameplace)));
+    const psh = document.getElementById("places-share");
+    if (psh)
+      psh.addEventListener("click", async () => {
+        // 住所や位置はリンクの中だけに入れる(コードにもサーバーにも置かない)
+        const data = Store.places.map((p) => ({ n: p.name, l: p.label || "", a: +p.lat.toFixed(6), o: +p.lon.toFixed(6), v: (p.via || []).map((v) => [v.name, +v.lat.toFixed(6), +v.lon.toFixed(6)]) }));
+        const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(data)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+        const url = location.origin + location.pathname + "#places=" + b64;
+        try {
+          await navigator.clipboard.writeText(url);
+          alert("リンクをコピーしました。移したい端末のブラウザで開くと、目的地と経由地が登録されます。\n(リンクには場所が入っているので、人には送らないでください)");
+        } catch (e) {
+          prompt("このリンクをコピーして、移したい端末で開いてください", url);
+        }
+      });
     app.querySelectorAll("[data-viaplace]").forEach((b) => b.addEventListener("click", () => editVia(b.dataset.viaplace)));
     app.querySelectorAll("[data-delplace]").forEach((b) =>
       b.addEventListener("click", () => {
@@ -2545,7 +2560,7 @@ print("このファイルをスマホに送って(AirDrop など)、アプリの
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2027.1.33";
+  const APP_VERSION = "2027.1.34";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });
@@ -2584,6 +2599,30 @@ print("このファイルをスマホに送って(AirDrop など)、アプリの
     history.replaceState(null, "", location.pathname + location.search);
     view = "settings";
     placeForm = { name: (placeLink.get("place") || "").slice(0, 20), query: placeLink.get("q").slice(0, 120), results: [], status: "", pick: null };
+  }
+  // ほかの端末から目的地と経由地を移す: index.html#places=(データ)
+  if (/^#places=/.test(location.hash)) {
+    const raw = location.hash.slice(8);
+    history.replaceState(null, "", location.pathname + location.search);
+    view = "settings";
+    try {
+      const data = JSON.parse(decodeURIComponent(escape(atob(raw.replace(/-/g, "+").replace(/_/g, "/")))));
+      let add = 0, upd = 0;
+      for (const d of data) {
+        if (!d || !d.n || !isFinite(d.a) || !isFinite(d.o)) continue;
+        const via = (d.v || []).filter((v) => v && isFinite(v[1]) && isFinite(v[2])).map((v) => ({ name: String(v[0]).slice(0, 30), lat: +v[1], lon: +v[2] }));
+        let pl = Store.places.find((x) => x.name === d.n);
+        if (pl) upd++;
+        else if ((pl = Store.addPlace({ name: String(d.n).slice(0, 20), label: String(d.l || "").slice(0, 80), lat: +d.a, lon: +d.o }))) add++;
+        if (pl) {
+          pl.via = via;
+          Store.renamePlace(pl.id, pl.name); // 保存する
+        }
+      }
+      setTimeout(() => alert(`目的地を移しました(新しく ${add}件・経由地を更新 ${upd}件)`), 300);
+    } catch (e) {
+      setTimeout(() => alert("リンクを読めませんでした。もう一度コピーし直してください"), 300);
+    }
   }
   // リンクから経由地を登録する: index.html#via=目的地の名前&list=東高円寺駅、中野駅
   const viaLink = /^#via=/.test(location.hash) ? new URLSearchParams(location.hash.slice(1)) : null;

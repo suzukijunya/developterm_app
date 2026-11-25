@@ -3699,9 +3699,22 @@ const City = (() => {
     // 次の信号(along より先)
     const next = (along) => list.find((s) => s.along > along - 2);
     // 止まるべきなら、その場所で出せる最高速度(m/s)を返す(止まらなくてよければ 99)
+    // 止まるのは大きな交差点だけ。小さな交差点の信号と、信号で左折する所は、見えていても止まらずに進む
+    function must(sg) {
+      if (sg.must != null && sg.mustN > 3) return sg.must;
+      const a = at(Math.max(0, sg.along - 14)), b = at(Math.min(route.length, sg.along + 14));
+      const left = a.tx * b.tz - a.tz * b.tx < -0.55;
+      let span = 0;
+      for (const [a0, a1] of Roads.crossings()) if (a0 - 8 < sg.along && a1 + 8 > sg.along) span = Math.max(span, a1 - a0);
+      const r = Roads.ride(sg.along - 12) || Roads.ride(sg.along + 12);
+      // 横切る道の幅(交差点の長さ)が14m以上か、自分の道が11m以上なら「大きな交差点」
+      const big = span >= 14 || (r && r.W >= 11);
+      sg.mustN = (sg.mustN || 0) + (span > 0 || r ? 4 : 1); // 道の形が届くまでは決めきらない
+      return (sg.must = big && !left);
+    }
     function limit(along, t, v) {
       const sg = next(along);
-      if (!sg) return 99;
+      if (!sg || !must(sg)) return 99;
       const stop = sg.along - 6, d = stop - along; // 停止線は信号の6m手前
       if (d < -1) return 99;
       const st = stateAt(sg, t);
@@ -3717,7 +3730,7 @@ const City = (() => {
         const stop = sg.along - 6;
         if (stop < a0 - 0.5) continue;
         if (stop >= a1) break;
-        if (stateAt(sg, t) === "r") return Math.max(a0, stop);
+        if (must(sg) && stateAt(sg, t) === "r") return Math.max(a0, stop);
       }
       return a1;
     }
@@ -3998,25 +4011,31 @@ const City = (() => {
     // 地面の高さ: 自分の真下を測って、道路の面が y=0 になるようにする
     function groundAt(x, z) {
       const THREE = T();
-      let best = null;
-      for (const [dx, dz] of [[0, 0], [1.2, 0], [-1.2, 0], [0, 1.2], [0, -1.2]]) {
+      // タイヤの下の狭い範囲を9点測り、低いほうから3番目を路面とする
+      // (いちばん低い点だと、くぼみに合わせてしまいタイヤが沈む。高い点は車や木)
+      const ys = [];
+      for (const [dx, dz] of [[0, 0], [0.5, 0], [-0.5, 0], [0, 0.5], [0, -0.5], [0.9, 0.9], [-0.9, 0.9], [0.9, -0.9], [-0.9, -0.9]]) {
         ray.caster.set(new THREE.Vector3(x + dx, 400, z + dz), new THREE.Vector3(0, -1, 0));
         const hit = ray.caster.intersectObject(tiles.group, true)[0];
-        if (hit && (best == null || hit.point.y < best)) best = hit.point.y; // 木や車ではなく、いちばん低い所(路面)
+        if (hit) ys.push(hit.point.y);
       }
-      return best;
+      if (!ys.length) return null;
+      ys.sort((a, b) => a - b);
+      return ys[Math.min(ys.length - 1, 2)];
     }
     function update(dt) {
       if (!on || !tiles) return;
       const s = sim;
       place(s.along);
-      if ((ray.tick += dt) > 0.3) {
+      if ((ray.tick += dt) > 0.12) {
         ray.tick = 0;
         const p = at(s.along);
-        const g = groundAt(p.x, p.z);
-        const want = H(p.x, p.z);
+        // 道のまん中ではなく、自分のタイヤの真下で測る
+        const mp = typeof me !== "undefined" && me && me.g ? me.g.position : p;
+        const g = groundAt(mp.x, mp.z);
+        const want = typeof me !== "undefined" && me && me.g ? mp.y : H(p.x, p.z);
         if (g != null && Math.abs(g - want) < 60) {
-          groundH += (g - want) * 0.6;
+          groundH += (g - want) * 0.85;
           place(s.along, true);
         }
         const r = at(s.rAlong);
