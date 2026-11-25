@@ -2573,11 +2573,132 @@ const City = (() => {
         g.userData.size = [L * 1.25, W * 1.5];
         return g;
       };
-      const sedan = (c, sign) => car({ L: 4.6, W: 1.78, H: 1.45, belt: 0.92, hood: 0.84, trunk: 0.95, cabR: -1.45, cabF: 0.85, rakeR: 0.55, rakeF: 0.8, wr: 0.32, color: c, sign });
-      const hatch = (c) => car({ L: 4.0, W: 1.7, H: 1.5, belt: 0.92, hood: 0.84, trunk: 0.98, cabR: -1.85, cabF: 0.75, rakeR: 0.3, rakeF: 0.75, wr: 0.31, color: c });
-      const kei = (c) => car({ L: 3.4, W: 1.48, H: 1.72, belt: 0.95, hood: 0.9, trunk: 1.0, cabR: -1.62, cabF: 1.0, rakeR: 0.08, rakeF: 0.42, wr: 0.28, color: c });
-      const van = (c) => car({ L: 4.8, W: 1.8, H: 1.86, belt: 1.0, hood: 0.92, trunk: 1.05, cabR: -2.3, cabF: 1.45, rakeR: 0.1, rakeF: 0.75, wr: 0.33, color: c });
-      const suv = (c) => car({ L: 4.5, W: 1.84, H: 1.68, belt: 1.02, hood: 0.98, trunk: 1.08, cabR: -2.05, cabF: 0.8, rakeR: 0.28, rakeF: 0.65, wr: 0.36, color: c });
+      // 乗用車: 車体を、前から後ろへ並べた断面をつないで作る(ロフト)。
+      // 上から見ると前後が細く、屋根はゆるく丸く、窓は上へ行くほど内側へ傾く。窓・柱・ライト・ドアの線・ホイールを付ける。
+      // o: L 長さ・W 幅・H 屋根・belt 窓の下の線・hood ボンネット・deck トランク(無い車は後ろの窓の下)・
+      //    xG0 後ろの窓の下の位置・xR0/xR1 屋根の後ろ/前・xW1 フロントガラスの下・wr タイヤの半径・pillars 柱(屋根の範囲の割合)
+      const car2 = (o) => {
+        const { L, W, H: Ht, belt, hood, deck, xG0, xR0, xR1, xW1, wr, color } = o;
+        const NS = 34, x0 = -L / 2, x1 = L / 2, cl = 0.18;
+        const ss = (a, b, x) => {
+          const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+          return t * t * (3 - 2 * t);
+        };
+        // 上の線(横から見た輪郭)
+        const top = (x) => {
+          let y;
+          if (x < xG0) y = deck - 0.2 * (1 - ss(x0, x0 + 0.28, x)); // 後ろの端は丸く落とす
+          else if (x < xR0) y = deck + (Ht - deck) * ss(xG0, xR0, x);
+          else if (x < xR1) y = Ht - 0.035 * ((x - (xR0 + xR1) / 2) / ((xR1 - xR0) / 2)) ** 2 + 0.035;
+          else if (x < xW1) y = hood + 0.05 + (Ht - hood - 0.05) * (1 - ss(xR1, xW1, x));
+          else y = hood + 0.05 - 0.09 * ss(xW1, x1 - 0.35, x) - 0.24 * ss(x1 - 0.35, x1, x);
+          return y;
+        };
+        const half = (x) => {
+          const u = Math.abs(x) / (L / 2);
+          return (W / 2) * (1 - 0.05 * u * u - 0.15 * Math.pow(u, 9)); // 前後を少し絞り、角は丸める
+        };
+        const st = [];
+        for (let i = 0; i <= NS; i++) {
+          // 端のほうは断面を細かく(丸みが出るように)
+          const t = i / NS, x = x0 + L * (0.5 - 0.5 * Math.cos(Math.PI * t) * 0.35 + (t - 0.5) * 0.65);
+          const tp = top(x), w = half(x), ys = Math.min(belt + 0.02 * (-x / (L / 2)), tp - 0.03), g = Math.max(0, Math.min(1, (tp - ys) / 0.4));
+          const yb = cl + 0.1 * (ss(x1 - 0.5, x1, x) + (1 - ss(x0, x0 + 0.45, x))); // 前後の下は少し上げる
+          const wt = w * (0.93 - 0.15 * g); // 屋根の幅(窓は内側へ傾く)
+          st.push({ x, tp, ys, g, pts: [[0, yb], [w * 0.8, yb], [w * 0.965, yb + 0.1], [w, yb + (ys - yb) * 0.45], [w * 0.992, ys - 0.08], [w * 0.955, ys], [(w * 0.955 + wt) / 2, ys + (tp - ys) * 0.55], [wt, tp - 0.045], [wt * 0.88, tp - 0.008], [wt * 0.48, tp + 0.012 * g], [0, tp + 0.016 * g]] });
+        }
+        const R = 20, P = [];
+        for (const q of st) {
+          for (let k = 0; k <= 10; k++) P.push(q.x, q.pts[k][1], q.pts[k][0]);
+          for (let k = 9; k >= 1; k--) P.push(q.x, q.pts[k][1], -q.pts[k][0]);
+        }
+        // 端のふた(真ん中の1点へ集める)
+        const capA = P.length / 3;
+        P.push(x0 - 0.02, (st[0].pts[0][1] + st[0].tp) / 2, 0);
+        const capB = P.length / 3;
+        P.push(x1 + 0.02, (st[NS].pts[0][1] + st[NS].tp) / 2, 0);
+        const iB = [], iG = [];
+        const pil = (o.pillars || [0.5]).map((f) => xR0 + (xR1 - xR0) * f);
+        const tri = (list, a, b, c) => {
+          // 外向きになるように、向きをそろえる
+          const ax = P[a * 3], ay = P[a * 3 + 1], az = P[a * 3 + 2], ux = P[b * 3] - ax, uy = P[b * 3 + 1] - ay, uz = P[b * 3 + 2] - az, vx = P[c * 3] - ax, vy = P[c * 3 + 1] - ay, vz = P[c * 3 + 2] - az;
+          const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+          const mx = (ax + P[b * 3] + P[c * 3]) / 3, my = (ay + P[b * 3 + 1] + P[c * 3 + 1]) / 3, mz = (az + P[b * 3 + 2] + P[c * 3 + 2]) / 3;
+          const cx = Math.max(x0 + 0.5, Math.min(x1 - 0.5, mx));
+          if (nx * (mx - cx) + ny * (my - 0.7) + nz * mz >= 0) list.push(a, b, c);
+          else list.push(a, c, b);
+        };
+        for (let i = 0; i < NS; i++) {
+          const a = st[i], b = st[i + 1], xm = (a.x + b.x) / 2;
+          const roofZone = a.x >= xR0 - 0.02 && b.x <= xR1 + 0.02, isPil = pil.some((px) => Math.abs(px - xm) < (b.x - a.x) * 0.55 + 0.03);
+          const glassTop = (xm > xR1 + 0.04 && xm < xW1 - 0.04) || (xm > xG0 + 0.05 && xm < xR0 - 0.04 && o.rearGlass !== false);
+          for (let j = 0; j < R; j++) {
+            const k = j < 10 ? j : 19 - j; // 右と左で同じ番号
+            const side = k === 5 || k === 6, upper = k >= 7;
+            const gl = (side && roofZone && !isPil && a.x > xR0 + 0.06 && b.x < xR1 - 0.02) || (upper && k <= 9 && glassTop && !(k === 7 && false));
+            const v00 = i * R + j, v01 = i * R + ((j + 1) % R), v10 = (i + 1) * R + j, v11 = (i + 1) * R + ((j + 1) % R);
+            const list = gl ? iG : iB;
+            tri(list, v00, v10, v11);
+            tri(list, v00, v11, v01);
+          }
+        }
+        for (let j = 0; j < R; j++) (tri(iB, capA, j, (j + 1) % R), tri(iB, capB, NS * R + j, NS * R + ((j + 1) % R)));
+        const mk = (idx) => {
+          const g = new THREE.BufferGeometry();
+          g.setAttribute("position", new THREE.Float32BufferAttribute(P, 3));
+          g.setIndex(idx);
+          g.computeVertexNormals();
+          return g;
+        };
+        const body = [{ geo: mk(iB), c: color }], gl = [{ geo: mk(iG) }], fl = [];
+        const hw = (x) => half(x);
+        // 下まわり・グリル・ナンバー・ライト(前はボンネットの下、後ろはトランクの下)
+        fl.push({ geo: boxG(L * 0.86, 0.1, W * 0.86), m: M4(0, cl + 0.04, 0), c: 0x111213 });
+        const nH = top(x1 - 0.06), tH = top(x0 + 0.08);
+        fl.push({ geo: boxG(0.04, 0.16, W * 0.46), m: M4(x1 - 0.005, nH - 0.3, 0), c: 0x121416 }); // グリル
+        fl.push({ geo: boxG(0.04, 0.1, W * 0.62), m: M4(x1 - 0.03, cl + 0.2, 0), c: 0x17191b }); // 下の吸気口
+        fl.push({ geo: boxG(0.02, 0.11, 0.33), m: M4(x1 + 0.012, nH - 0.47, 0), c: 0xf4f4f0 });
+        fl.push({ geo: boxG(0.02, 0.11, 0.33), m: M4(x0 - 0.012, tH - 0.42, 0), c: 0xf4f4f0 });
+        fl.push({ geo: boxG(0.03, 0.08, W * 0.7), m: M4(x0 + 0.02, cl + 0.2, 0), c: 0x17191b });
+        for (const sz of [-1, 1]) {
+          // ヘッドライト(角に回りこむ形)とテールライト
+          fl.push({ geo: boxG(0.2, 0.1, W * 0.2), m: M4(x1 - 0.13, nH - 0.12, sz * W * 0.335, 0, -sz * 0.5, 0), c: 0xfff8e0 });
+          fl.push({ geo: boxG(0.06, 0.035, W * 0.16), m: M4(x1 - 0.12, nH - 0.19, sz * W * 0.345, 0, -sz * 0.5, 0), c: 0xffc040 });
+          fl.push({ geo: boxG(0.16, 0.11, W * 0.19), m: M4(x0 + 0.1, tH - 0.13, sz * W * 0.34, 0, sz * 0.45, 0), c: 0xc8161a });
+          fl.push({ geo: boxG(0.05, 0.05, W * 0.1), m: M4(x0 + 0.06, tH - 0.24, sz * W * 0.35, 0, sz * 0.45, 0), c: 0xffffff });
+          // ミラー
+          body.push({ geo: new THREE.SphereGeometry(0.085, 8, 6), m: M4(xW1 - 0.42, belt + 0.09, sz * (hw(xW1 - 0.42) + 0.07), 0, 0, 0, 0.75, 0.62, 1.15), c: color });
+          // ドアの線と取っ手
+          const sill = cl + 0.14;
+          for (const dx of [xW1 - 0.52, ...pil, xR0 + 0.12]) fl.push({ geo: boxG(0.009, belt - sill - 0.04, 0.012), m: M4(dx, (belt + sill) / 2, sz * (hw(dx) * 0.992 + 0.004)), c: 0x0c0c0d });
+          for (const px of pil) fl.push({ geo: boxG(0.16, 0.03, 0.02), m: M4(px - 0.2, belt - 0.11, sz * (hw(px) * 0.985 + 0.012)), c: 0x1a1b1d });
+          fl.push({ geo: boxG(0.16, 0.03, 0.02), m: M4(xR0 + 0.32, belt - 0.11, sz * (hw(xR0) * 0.985 + 0.012)), c: 0x1a1b1d });
+          // 窓の下のふち
+          fl.push({ geo: boxG(xW1 - 0.3 - (xR0 - 0.1), 0.022, 0.012), m: M4((xW1 - 0.3 + xR0 - 0.1) / 2, belt + 0.005, sz * (hw(0) * 0.957 + 0.004)), c: 0x0e0f10 });
+        }
+        // タイヤ・ホイール・タイヤハウス
+        const tg = new THREE.CylinderGeometry(wr, wr, 0.21, 22), rg = new THREE.CylinderGeometry(wr * 0.66, wr * 0.66, 0.215, 18), hg = new THREE.CylinderGeometry(wr * 0.16, wr * 0.16, 0.225, 8);
+        const arch = new THREE.RingGeometry(wr * 0.97, wr + 0.085, 20, 1, 0, Math.PI);
+        for (const wx of [x0 + L * 0.19, x1 - L * 0.185])
+          for (const sz of [-1, 1]) {
+            const zz = sz * (hw(wx) - 0.1);
+            const m = M4(wx, wr, zz, Math.PI / 2, 0, 0);
+            fl.push({ geo: tg, m, c: 0x0d0d0e }, { geo: rg, m, c: 0xb4bac0 }, { geo: hg, m, c: 0x3c4044 });
+            // スポークのすき間(暗い板を5枚)
+            for (let q = 0; q < 5; q++) fl.push({ geo: boxG(wr * 0.13, wr * 0.36, 0.01), m: M4(wx + Math.sin((q / 5) * 6.283) * wr * 0.4, wr + Math.cos((q / 5) * 6.283) * wr * 0.4, zz + sz * 0.11, 0, 0, -(q / 5) * 6.283), c: 0x1a1c1e });
+            fl.push({ geo: arch, m: M4(wx, wr, sz * (hw(wx) + 0.004), 0, sz > 0 ? 0 : Math.PI, 0), c: 0x0b0b0c });
+          }
+        if (o.sign) fl.push({ geo: boxG(0.42, 0.14, 0.2), m: M4((xR0 + xR1) / 2, Ht + 0.09, 0), c: o.sign });
+        const g = new THREE.Group();
+        g.add(new THREE.Mesh(merge(body), paint), new THREE.Mesh(merge(gl), glassM), new THREE.Mesh(merge(fl), flat));
+        g.userData.size = [L * 1.25, W * 1.5];
+        return g;
+      };
+      const sedan = (c, sign) => car2({ L: 4.6, W: 1.78, H: 1.43, belt: 0.9, hood: 0.8, deck: 0.98, xG0: -1.62, xR0: -0.95, xR1: 0.22, xW1: 1.02, wr: 0.32, color: c, sign });
+      const hatch = (c) => car2({ L: 4.0, W: 1.7, H: 1.5, belt: 0.9, hood: 0.82, deck: 1.02, xG0: -1.88, xR0: -1.45, xR1: 0.18, xW1: 0.95, wr: 0.31, color: c });
+      const kei = (c) => car2({ L: 3.4, W: 1.48, H: 1.74, belt: 0.95, hood: 0.92, deck: 1.05, xG0: -1.62, xR0: -1.42, xR1: 0.55, xW1: 1.05, wr: 0.28, color: c, pillars: [0.48] });
+      const van = (c) => car2({ L: 4.8, W: 1.8, H: 1.86, belt: 1.0, hood: 0.95, deck: 1.1, xG0: -2.32, xR0: -2.08, xR1: 0.75, xW1: 1.55, wr: 0.33, color: c, pillars: [0.36, 0.7] });
+      const suv = (c) => car2({ L: 4.5, W: 1.84, H: 1.68, belt: 1.02, hood: 0.98, deck: 1.12, xG0: -2.1, xR0: -1.7, xR1: 0.2, xW1: 0.92, wr: 0.36, color: c, pillars: [0.42, 0.78] });
       const ktruck = (c) => car({ L: 3.4, W: 1.48, H: 1.78, belt: 0.95, hood: 0.95, trunk: 0.72, cabR: -1.6, cabF: 1.45, rakeR: 0, rakeF: 0, wr: 0.28, color: c, cargo: "bed" });
       const box2t = (c) => car({ L: 4.7, W: 1.75, H: 2.0, belt: 1.05, hood: 1.05, trunk: 0.8, cabR: -2.2, cabF: 2.1, rakeR: 0, rakeF: 0, wr: 0.34, color: c, cargo: "box", boxH: 2.55 });
       // 歩行者: 胴・頭・髪・腕をまとめた1つと、歩く脚2本
