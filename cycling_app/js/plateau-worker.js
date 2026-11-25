@@ -279,10 +279,13 @@ function build(parts, center, bt) {
   const style = new Uint8Array(NB);
   for (let b = 0; b < NB; b++) {
     const us = String(usage[b] || ""), h = maxY[b] - minY[b], st = +storeys[b] || 0;
-    if (/共同住宅/.test(us)) style[b] = h >= 7 || st >= 3 ? 1 : 0;
-    else if (/商業|業務|官公庁|文教|医療|運輸|宿泊|娯楽|商業系複合/.test(us)) style[b] = h >= 9 ? 2 : 0;
-    else if (/住宅/.test(us)) style[b] = h >= 12 ? 1 : 0;
-    else style[b] = h >= 22 ? 2 : h >= 11 ? 1 : 0;
+    // 0=戸建て 1=マンション 2=オフィス(ガラスの壁) 3=タワーマンション 4=商業ビル(店の入ったビル) 5=戸建て(黒い外壁)
+    const hk = hash(b * 53 + Math.round(bx0[b] * 3)), house = hk < 0.22 ? 5 : 0;
+    if (/共同住宅/.test(us)) style[b] = h >= 45 || st >= 15 ? 3 : h >= 7 || st >= 3 ? 1 : house;
+    else if (/商業|宿泊|娯楽|商業系複合/.test(us)) style[b] = h >= 45 ? 2 : h >= 7 ? 4 : house;
+    else if (/業務|官公庁|文教|医療|運輸/.test(us)) style[b] = h >= 9 ? 2 : house;
+    else if (/住宅/.test(us)) style[b] = h >= 45 ? 3 : h >= 12 ? 1 : house;
+    else style[b] = h >= 45 ? 3 : h >= 22 ? (hk < 0.5 ? 2 : 4) : h >= 11 ? (hk < 0.75 ? 1 : 4) : house;
   }
   const PG = [];
   for (const pt of parts)
@@ -291,7 +294,7 @@ function build(parts, center, bt) {
     else {
       pt.g = null;
       // (屋根を足すぶん、少し多めに場所を取る)
-      for (let k = 0; k < 3; k++) (PG[k] = G("p" + k, "p", null, pt.idx.length * 3)), (PG[k].style = k);
+      for (let k = 0; k < 6; k++) (PG[k] = G("p" + k, "p", null, pt.idx.length * 3)), (PG[k].style = k);
     }
   // anc: その頂点が属する建物の「中心x・足もとy・中心z」。近づくと建物ごとに立ち上がる動きに使う
   for (const g of groups.values()) Object.assign(g, { pos: new Float32Array(g.cap * 3), nor: new Int8Array(g.cap * 3), uv: new Float32Array(g.cap * 2), col: new Uint8Array(g.cap * 3), anc: new Float32Array(g.cap * 3) });
@@ -306,7 +309,7 @@ function build(parts, center, bt) {
         const ia = b0 + ix[t], ib = b0 + ix[t + 1], ic = b0 + ix[t + 2], b = B[ia];
         if (skip[b]) continue;
         if (!plain) { other[b] = 1; continue; }
-        if (style[b] !== 0) continue;
+        if (style[b] !== 0 && style[b] !== 5) continue;
         const ux = P[ib * 3] - P[ia * 3], uy = P[ib * 3 + 1] - P[ia * 3 + 1], uz = P[ib * 3 + 2] - P[ia * 3 + 2];
         const vx = P[ic * 3] - P[ia * 3], vy = P[ic * 3 + 1] - P[ia * 3 + 1], vz = P[ic * 3 + 2] - P[ia * 3 + 2];
         const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx, L = Math.hypot(nx, ny, nz) || 1;
@@ -355,6 +358,9 @@ function build(parts, center, bt) {
     [[246, 244, 238], [236, 228, 212], [222, 218, 210], [204, 190, 170], [168, 150, 128], [232, 232, 228], [190, 192, 194]],
     [[244, 242, 236], [232, 222, 204], [214, 208, 198], [196, 172, 150], [226, 226, 222]],
     [[206, 216, 226], [192, 202, 212], [222, 226, 230], [176, 190, 204]],
+    [[236, 236, 232], [214, 216, 220], [196, 190, 182], [226, 220, 210]],
+    [[244, 240, 232], [232, 222, 206], [216, 210, 202], [240, 232, 214], [206, 196, 184]],
+    [[250, 250, 250], [236, 236, 240], [244, 240, 234]],
   ];
   const ROOF = [[78, 80, 86], [96, 74, 62], [62, 72, 88], [120, 118, 114], [140, 92, 70]];
   const pal = (b) => {
@@ -488,8 +494,8 @@ function build(parts, center, bt) {
 }
 
 // 外壁の模様1枚ぶんの大きさ(m)と、屋根に使う模様の中の無地の場所
-const FW = [7, 7.2, 6], FH = [6.4, 5.8, 8];
-const RUV = [[0.02, 0.98], [0.015, 0.5], [0.5, 0.07]];
+const FW = [7, 7.2, 6, 7.2, 6, 7], FH = [6.4, 5.8, 8, 6, 7, 6.4];
+const RUV = [[0.02, 0.98], [0.015, 0.5], [0.5, 0.07], [0.015, 0.5], [0.02, 0.98], [0.02, 0.98]];
 
 function hash(n) {
   let x = (n ^ 0x9e3779b9) >>> 0;

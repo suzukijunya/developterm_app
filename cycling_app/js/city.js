@@ -477,7 +477,7 @@ const City = (() => {
       mapT.anisotropy = 8;
       const m = new THREE.MeshStandardMaterial({ map: mapT, emissiveMap: tex(b), emissive: 0xffffff, emissiveIntensity: 0, vertexColors: true, roughness: 0.92, metalness: 0, envMapIntensity: 1 });
       const gf = groundFloor(kind);
-      m.userData.fac = { mask: lin(k), ground: tex(gf.cv), gmask: lin(gf.mk), gw: gf.gw, fw: [7, 7.2, 6][kind] };
+      m.userData.fac = { mask: lin(k), ground: tex(gf.cv), gmask: lin(gf.mk), gw: gf.gw, fw: [7, 7.2, 6, 7.2, 6, 7][kind] };
       kind++;
       return m;
     };
@@ -492,7 +492,7 @@ const City = (() => {
     // 1階の絵(高さ3.2m)。玄関・窓・室外機、マンションの入口と郵便受け、店のガラスと看板・ひさし・自販機。
     // 横幅は 外壁の模様3〜4枚ぶん。st: 0=戸建て 1=マンション 2=店・オフィス
     function groundFloor(st) {
-      const GW = [21, 21.6, 24][st], W = 2048, Hh = 256, X = W / GW, Y = Hh / 3.2;
+      const GW = [21, 21.6, 24, 21.6, 24, 21][st], W = 2048, Hh = 256, X = W / GW, Y = Hh / 3.2;
       const cv = document.createElement("canvas"), mkc = document.createElement("canvas");
       cv.width = mkc.width = W;
       cv.height = mkc.height = Hh;
@@ -535,13 +535,90 @@ const City = (() => {
         for (let q = 0; q < 6; q++) R(x + 0.12 + q * 0.125, 1.0 + (q % 2) * 0.32, 0.08, 0.22, ["#d83a3a", "#2f7dd0", "#e8b020", "#3aa860", "#f0f0f0", "#7a4ab0"][q]);
         R(x + 0.1, 0.3, 0.75, 0.3, "#1c1e22");
       };
-      if (st === 0) {
-        R(0, 0, GW, 3.2, "#f4f2ee");
+      // 文字(看板など。実在の店の名前は書かない)
+      const TX = (text, x, y, size, col, bold = 900) => {
+        c.fillStyle = col;
+        c.font = `${bold} ${Math.round(size * Y)}px sans-serif`;
+        c.textAlign = "center";
+        c.textBaseline = "middle";
+        c.fillText(text, x * X, Hh - y * Y);
+      };
+      if (st === 3) {
+        // タワーマンション: 石張りの腰、2層ぶんに見える大きなガラスのロビー、車寄せの庇、植え込み
+        R(0, 0, GW, 3.2, "#5a5650");
+        lines(0, 0, GW, 3.2, 0.6, "rgba(0,0,0,0.18)");
+        lines(0, 0, GW, 3.2, 1.2, "rgba(0,0,0,0.14)", true);
+        for (let n = 0; n < 3; n++) {
+          const x0 = n * 7.2;
+          if (n === 1) {
+            G(x0 + 0.6, 0, 6.0, 2.9, "#c2d2de", "#33424f");
+            for (const mx of [1.8, 3.0, 4.2, 5.4]) R(x0 + mx, 0, 0.05, 2.9, "#2a2d30");
+            R(x0 + 2.7, 0, 1.8, 2.3, "rgba(255,240,210,0.35)"); // 明るいロビー
+            R(x0 + 0.3, 2.9, 6.6, 0.2, "#2a2d30"); // 庇
+            R(x0 + 3.2, 2.45, 0.8, 0.22, "#c9b27a"); // 館名板(文字なし)
+          } else {
+            G(x0 + 0.5, 0.9, 2.6, 1.7, "#b6c6d4", "#2f3d4a");
+            G(x0 + 3.8, 0.9, 2.6, 1.7, "#b6c6d4", "#2f3d4a");
+            R(x0 + 0.3, 0, 6.6, 0.55, "#3a4a34"); // 植え込み
+            for (let q = 0; q < 26; q++) R(x0 + 0.35 + q * 0.25, 0.5, 0.18, 0.12 + (q % 3) * 0.06, q % 2 ? "#4a6a3c" : "#3c5a34");
+          }
+        }
+      } else if (st === 4) {
+        // 商業ビルの1階: 6mごとに、居酒屋(のれんと提灯)・フィットネスジム・カフェ・ドラッグストア風の店
+        R(0, 0, GW, 3.2, "#cfcbc4");
+        for (let n = 0; n < 4; n++) {
+          const x0 = n * 6;
+          R(x0, 0, 0.22, 3.2, "#8f8c86");
+          if (n === 0) {
+            R(x0 + 0.22, 0, 5.78, 3.2, "#3a2a1e"); // 木の壁
+            lines(x0 + 0.22, 0, 5.78, 3.2, 0.22, "rgba(0,0,0,0.25)", true);
+            R(x0 + 1.6, 0, 2.6, 2.2, "#1a1410"); // 入口
+            for (let q = 0; q < 5; q++) R(x0 + 1.62 + q * 0.52, 1.55, 0.48, 0.65, "#1f3a6a"); // のれん
+            TX("酒", x0 + 2.9, 1.88, 0.42, "#f4f0e6");
+            c.fillStyle = "#d8362c";
+            c.beginPath();
+            c.ellipse((x0 + 0.95) * X, Hh - 1.7 * Y, 0.3 * X, 0.42 * Y, 0, 0, 7);
+            c.fill(); // 提灯
+            R(x0 + 4.6, 0.3, 0.9, 1.3, "#f0ead8"); // 品書き
+            lines(x0 + 4.7, 0.5, 0.7, 1.0, 0.16, "#3a3a3a", true);
+            R(x0 + 0.22, 2.55, 5.78, 0.5, "#241a12");
+            TX("居酒屋", x0 + 3.1, 2.8, 0.34, "#f0d8a0");
+          } else if (n === 1) {
+            G(x0 + 0.22, 0.2, 5.78, 2.35, "#c8d8e4", "#3a4a58"); // 全面ガラス
+            for (const mx of [1.6, 3.1, 4.6]) R(x0 + mx, 0.2, 0.05, 2.35, "#2a2d30");
+            // 中に見える器具(ランニングマシンとバーベルのかげ)
+            for (let q = 0; q < 3; q++) (R(x0 + 0.6 + q * 1.7, 0.35, 1.1, 0.12, "rgba(20,22,26,0.7)"), R(x0 + 0.65 + q * 1.7, 0.47, 0.08, 0.9, "rgba(20,22,26,0.7)"), R(x0 + 0.6 + q * 1.7, 1.3, 0.5, 0.3, "rgba(20,22,26,0.7)"));
+            R(x0 + 0.22, 2.55, 5.78, 0.6, "#16181c");
+            TX("FITNESS GYM", x0 + 3.1, 2.84, 0.36, "#f2c230");
+            R(x0 + 0.22, 0, 5.78, 0.2, "#16181c");
+          } else if (n === 2) {
+            R(x0 + 0.22, 0, 5.78, 3.2, "#e9e2d2");
+            G(x0 + 0.5, 0.9, 2.4, 1.5, "#bccad4", "#3d4a56");
+            R(x0 + 3.4, 0, 1.0, 2.2, "#6a4a30");
+            G(x0 + 3.55, 0.9, 0.7, 1.1);
+            for (let q = 0; q < 10; q++) R(x0 + 0.3 + q * 0.56, 2.35, 0.56, 0.35, q % 2 ? "#2f6a3c" : "#f4efe6"); // しまの庇
+            TX("CAFE", x0 + 3.0, 2.9, 0.34, "#3a2a1e");
+            R(x0 + 4.9, 0, 0.7, 1.1, "#2a2d30"); // 立て看板
+            R(x0 + 0.6, 0, 0.5, 0.5, "#8a623e"); // 鉢
+            R(x0 + 0.55, 0.5, 0.6, 0.5, "#3c6a34");
+          } else {
+            G(x0 + 0.22, 0.3, 5.78, 2.25, "#eef2f4", "#aab8c0"); // 明るい店内
+            for (let r = 0; r < 3; r++) for (let q = 0; q < 18; q++) R(x0 + 0.4 + q * 0.3, 0.5 + r * 0.6, 0.22, 0.42, ["#d8463a", "#3a7ad0", "#e8b82a", "#49a868", "#f0f0ea", "#e07a30"][(q + r * 2) % 6]);
+            for (const mx of [2.0, 4.0]) R(x0 + mx, 0.3, 0.05, 2.25, "#5a5d60");
+            R(x0 + 0.22, 2.55, 5.78, 0.6, "#d8402c");
+            TX("ドラッグ", x0 + 3.1, 2.84, 0.36, "#fff");
+            R(x0 + 0.22, 0, 5.78, 0.3, "#8a8d90");
+          }
+        }
+        vending(17.0, "#f2f2ee");
+      } else if (st === 0 || st === 5) {
+        R(0, 0, GW, 3.2, st === 5 ? "#3a3c40" : "#f4f2ee");
         lines(0, 0, GW, 3.2, 0.2, "rgba(0,0,0,0.05)");
         R(0, 0, GW, 0.32, "#b9b7b2"); // 基礎
         for (let n = 0; n < 3; n++) {
           const x0 = n * 7;
-          door(x0 + [1.0, 4.6, 2.9][n], 0.9, 2.1, ["#4a3426", "#27384a", "#5a5c5e"][n], n === 1);
+          if (st === 5) R(x0 + [0.5, 4.1, 2.4][n], 0, 1.9, 3.2, "#8a623e"); // 黒い家: 玄関まわりは木の板
+          door(x0 + [1.0, 4.6, 2.9][n], 0.9, 2.1, st === 5 ? ["#2a2018", "#1c1c1e", "#3a2a1e"][n] : ["#4a3426", "#27384a", "#5a5c5e"][n], n === 1);
           R(x0 + [1.0, 4.6, 2.9][n] - 0.2, 2.25, 1.3, 0.08, "#8f8d88"); // ひさし
           const wx = [3.4, 1.0, 5.0][n];
           R(wx + x0 - 0.08, 0.92, 1.76, 1.26, "#d6d6d1");
@@ -743,6 +820,87 @@ const City = (() => {
           w.fillRect(0, fy + 126.5, S, 1.5);
           for (let x = 0; x < S; x += 32) (w.fillStyle = "rgba(0,0,0,0.12)"), w.fillRect(x, fy + 100, 0.7, 28);
         }
+      }),
+      // タワーマンション: 7.2m×2階(6m)。暗い色の外壁、床から天井までのガラス、ガラスの手すりのバルコニー
+      mk((w, g) => {
+        w.fillStyle = "#6f7378";
+        w.fillRect(0, 0, S, S);
+        grime(w, 8, 0.03);
+        for (const fy of [0, 128]) {
+          glass(w, 10, fy + 10, 236, 104, "#a6bccd", "#2e3d4c");
+          for (const x of [10, 70, 128, 186]) lit(g, x, fy + 12, 56, 100, x * 5 + fy);
+          // カーテンと、室内の影
+          for (let q = 0; q < 4; q++) {
+            const x = 12 + q * 59;
+            if (hash(q * 7 + fy) < 0.6) (w.fillStyle = ["rgba(236,232,222,0.85)", "rgba(210,216,222,0.85)", "rgba(226,214,200,0.85)"][Math.floor(hash(q + fy * 3) * 3)]), w.fillRect(x, fy + 10, 10 + hash(q * 13 + fy) * 18, 104);
+          }
+          w.fillStyle = "#3a3e44";
+          for (const x of [68, 127, 186]) w.fillRect(x, fy + 10, 2.2, 104); // サッシ
+          let sh = w.createLinearGradient(0, fy + 10, 0, fy + 24);
+          sh.addColorStop(0, "rgba(0,0,0,0.5)");
+          sh.addColorStop(1, "rgba(0,0,0,0)");
+          w.fillStyle = sh;
+          w.fillRect(10, fy + 10, 236, 14);
+          // ガラスの手すり(うす青)と、上の笠木
+          w.fillStyle = "rgba(170,205,225,0.42)";
+          w.fillRect(0, fy + 74, S, 42);
+          w.fillStyle = "rgba(255,255,255,0.5)";
+          w.fillRect(0, fy + 73, S, 1.6);
+          for (let x = 0; x < S; x += 42) (w.fillStyle = "rgba(60,66,72,0.8)"), w.fillRect(x, fy + 74, 1.2, 42);
+          // 床の板(白い線)と影
+          w.fillStyle = "#e6e6e2";
+          w.fillRect(0, fy + 116, S, 9);
+          w.fillStyle = "rgba(0,0,0,0.35)";
+          w.fillRect(0, fy + 125, S, 3);
+          w.fillStyle = "#7a7e84";
+          w.fillRect(0, fy, 8, 128); // 柱(屋根の色にも使う)
+        }
+      }),
+      // 商業ビル(雑居ビル): 6m×2階(7m)。タイルの壁、四角い窓、階ごとの看板の帯、そで看板
+      mk((w, g) => {
+        w.fillStyle = "#d6d0c4";
+        w.fillRect(0, 0, S, S);
+        for (let y = 0; y < S; y += 4) (w.fillStyle = "rgba(0,0,0,0.06)"), w.fillRect(0, y, S, 0.5);
+        for (let x = 0; x < S; x += 8) (w.fillStyle = "rgba(0,0,0,0.045)"), w.fillRect(x, 0, 0.5, S);
+        grime(w, 18, 0.06);
+        const SG = ["#c8362c", "#1f5f9e", "#2f8a4e", "#e8a020", "#3a3a3a", "#7a3aa0"];
+        for (const fy of [0, 128]) {
+          for (const x of [14, 90, 166]) {
+            win(w, x, fy + 34, 58, 50, { panes: 2, blind: true, top: "#9fb4c6", bot: "#33414f" });
+            lit(g, x, fy + 34, 58, 50, x * 3 + fy);
+            // 窓に貼った文字(店の案内)のかわりの色の帯
+            if (hash(x + fy * 5) < 0.5) (w.fillStyle = SG[Math.floor(hash(x * 3 + fy) * 6)]), w.fillRect(x + 4, fy + 62, 50, 9);
+          }
+          // 階ごとの看板の帯
+          const col = SG[Math.floor(hash(fy + 3) * 6)];
+          w.fillStyle = col;
+          w.fillRect(8, fy + 100, 226, 22);
+          w.fillStyle = "rgba(255,255,255,0.9)";
+          w.fillRect(20, fy + 106, 90 + hash(fy) * 70, 9);
+          w.fillStyle = "rgba(0,0,0,0.3)";
+          w.fillRect(8, fy + 122, 226, 2);
+          // そで看板(たてに並ぶ色の板)
+          w.fillStyle = "#2a2c30";
+          w.fillRect(238, fy, 16, 128);
+          for (let q = 0; q < 4; q++) (w.fillStyle = SG[Math.floor(hash(q * 5 + fy * 7) * 6)]), w.fillRect(240, fy + 4 + q * 31, 12, 27);
+          for (let q = 0; q < 4; q++) lit(g, 240, fy + 4 + q * 31, 12, 27, q + fy);
+        }
+      }),
+      // 戸建て(黒い外壁の今風の家): 7m×2階(6.4m)。たてのすじの金属の壁と、細長い窓
+      mk((w, g) => {
+        w.fillStyle = "#3c3e42";
+        w.fillRect(0, 0, S, S);
+        for (let x = 0; x < S; x += 6) (w.fillStyle = "rgba(255,255,255,0.05)"), w.fillRect(x, 0, 1, S), (w.fillStyle = "rgba(0,0,0,0.18)"), w.fillRect(x + 1, 0, 0.6, S);
+        grime(w, 10, 0.04);
+        for (const fy of [0, 128]) {
+          win(w, 30, fy + 30, 26, 70, { panes: 1, frame: "#1c1d1f" });
+          win(w, 110, fy + 44, 96, 34, { panes: 3, frame: "#1c1d1f" });
+          lit(g, 30, fy + 30, 26, 70, fy + 1);
+          lit(g, 110, fy + 44, 96, 34, fy + 9);
+          w.fillStyle = "rgba(0,0,0,0.25)";
+          w.fillRect(0, fy + 126, S, 1.4);
+        }
+        pipe(w, 246);
       }),
     ];
   }
