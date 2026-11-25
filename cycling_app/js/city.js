@@ -5261,6 +5261,7 @@ const City = (() => {
             gl_Position = projectionMatrix * viewMatrix * w;
           }`;
       mat = new THREE.ShaderMaterial({
+        extensions: { derivatives: true },
         side: THREE.DoubleSide, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2,
         uniforms: { tA: U(null), tB: U(null), dA: U(null), dB: U(null), cA: U(new THREE.Vector4()), cB: U(new THREE.Vector4()), mixK: U(0), has: U(new THREE.Vector4(0, 0, 0, 0)), uShops: popU.uShops },
         vertexShader: VS,
@@ -5280,14 +5281,28 @@ const City = (() => {
               float hitD = (e.r + e.g / 255.0) * 800.0;
               vis = clamp((hitD * 1.04 + 2.2 - dist) / 1.4, 0.0, 1.0);
             }
-            // 遠い面は写真が引きのばされるので、うすくして、もとの絵に戻す
-            vis *= clamp((85.0 - dist) / 30.0, 0.0, 1.0);
-            return vec4(texture2D(t, uv).rgb, vis);
+            vec3 col = texture2D(t, uv).rgb;
+            // 面を斜めから見る所は、写真が引きのばされて崩れる。面の向きを調べて、斜めすぎる所はもとの絵に戻す
+            vec3 nn = normalize(cross(dFdx(vW), dFdy(vW)));
+            float gz = abs(dot(nn, d));
+            if (abs(nn.y) > 0.7) {
+              // 地面: 撮った場所の近く(約28mまで)だけ
+              vis *= clamp((gz - 0.07) / 0.08, 0.0, 1.0) * clamp((34.0 - dist) / 10.0, 0.0, 1.0);
+            } else {
+              vis *= clamp((gz - 0.22) / 0.22, 0.0, 1.0) * clamp((60.0 - dist) / 22.0, 0.0, 1.0);
+              // 壁なのに写真では空が写っている所(実物より形が高い・ずれている)は貼らない
+              float lum = dot(col, vec3(0.3, 0.59, 0.11));
+              float sky = step(0.03, d.y) * smoothstep(0.62, 0.8, lum) * step(col.r, col.b + 0.03);
+              vis *= 1.0 - sky;
+            }
+            return vec4(col, vis);
           }
           void main() {
             vec4 a = has.x > 0.5 ? pano(tA, dA, cA, has.z) : vec4(0.0);
             vec4 b = has.y > 0.5 ? pano(tB, dB, cB, has.w) : vec4(0.0);
-            float wa = a.a * (1.0 - mixK), wb = b.a * mixK;
+            // 2枚を半々に混ぜると二重にぶれて見えるので、切り替えは短い区間で一気に
+            float mk = smoothstep(0.35, 0.65, mixK);
+            float wa = a.a * (1.0 - mk), wb = b.a * mk;
             // 片方しか使えない所は、使えるほうだけで
             if (wa + wb < 0.02) { wa = a.a; wb = b.a; }
             float sum = wa + wb;
