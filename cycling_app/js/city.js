@@ -3048,7 +3048,7 @@ const City = (() => {
     let prev = null;
     for (let i = 0; i <= n; i++) {
       const al = Math.min(route.length, i * 3), p = at(al), r = Roads.ride(al), o = r ? r.off : 0;
-      const x = p.x + p.tz * o, z = p.z - p.tx * o, y = H(x, z) + 0.1;
+      const x = p.x + p.tz * o, z = p.z - p.tx * o, y = H(x, z) + 0.072; // 路面(約+6.5cm)のすぐ上
       if (prev) {
         const dx = x - prev[0], dz = z - prev[2], L = Math.hypot(dx, dz) || 1, nx = (-dz / L) * 0.32, nz = (dx / L) * 0.32;
         pos.push(prev[0] - nx, prev[1], prev[2] - nz, x - nx, y, z - nz, x + nx, y, z + nz, prev[0] - nx, prev[1], prev[2] - nz, x + nx, y, z + nz, prev[0] + nx, prev[1], prev[2] + nz);
@@ -5544,7 +5544,7 @@ const City = (() => {
     if (ground) ground.material.color.setHex(c.ground);
     photoTint = c.photo;
     scene.traverse((o) => o.isMesh && o.material && o.material.isMeshBasicMaterial && o.material.map && o.userData.photo && o.material.color.setHex(c.photo));
-    const sel = $("ct-time");
+    const sel = $("ct-tod");
     if (sel) sel.value = timeMode;
   }
   let photoTint = 0xffffff;
@@ -5691,7 +5691,7 @@ const City = (() => {
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-    routeStrip = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x35d6ff, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false }));
+    routeStrip = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x35d6ff, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -6 }));
     scene.add(routeStrip);
     // ゴールの門
     const g = at(route.length);
@@ -6156,7 +6156,8 @@ const City = (() => {
       if (L > 1e-3) (p.tx = tx / L), (p.tz = tz / L);
     }
     const x = p.x + p.tz * o, z = p.z - p.tx * o;
-    return { x, z, y: H(x, z), tx: p.tx, tz: p.tz };
+    // 道の面(アスファルト)は地面より約6.5cm上に敷いてある。その面にタイヤを乗せる(地面の高さのままだとタイヤが沈む)
+    return { x, z, y: H(x, z) + (r ? 0.068 : 0), tx: p.tx, tz: p.tz };
   }
   function placeBiker(b, along, side, dt, v, pedaling) {
     const p = riderPos(along, side);
@@ -6299,6 +6300,8 @@ const City = (() => {
       Perf.lap("対戦");
       if ((s.tileT = (s.tileT || 0) + real) > 1.5) (s.tileT = 0), wantTiles(s.along), Roads.want(s.along), Plateau.want(s.along), G3.on() || wantPhotos(s.along);
     }
+    // 走るラインの帯は、地面の高さが届くたびに敷き直す(古い高さのままだと浮いて、タイヤが沈んで見える)
+    if ((s.stripT = (s.stripT == null ? 9 : s.stripT) + real) > 2.5) (s.stripT = 0), rebuildStrip();
     if (photoMore && !G3.on() && (s.phT = (s.phT || 0) + real) > 0.15) (s.phT = 0), wantPhotos(s.along);
     Perf.lap("街の予約");
     // 道の端の人をよける(なめらかに右へ寄って、また左へ戻る)
@@ -6586,8 +6589,8 @@ const City = (() => {
     $("ct-mz-in").onclick = () => miniZoom(0.6);
     $("ct-mz-out").onclick = () => miniZoom(-0.6);
     $("ct-mz-all").onclick = () => (miniFit = !miniFit);
-    $("ct-time").value = timeMode;
-    $("ct-time").onchange = (e) => sim && setTime(e.target.value);
+    $("ct-tod").value = timeMode;
+    $("ct-tod").onchange = (e) => sim && setTime(e.target.value);
     const gk = $("ct-gkey");
     gk.value = G3.getKey();
     const gOn = (() => {

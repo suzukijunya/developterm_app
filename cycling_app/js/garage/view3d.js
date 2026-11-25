@@ -1764,7 +1764,10 @@ const View3D = (() => {
       if (p) b.position.copy(b.parent.worldToLocal(root.localToWorld(p.clone())));
       b.updateMatrixWorld(true);
     };
-    const hip = V(pose.hipMid), sh = V(pose.shoulderMid);
+    // 腰の骨はお尻の肉より前にあるので、そのままだとサドルの前のほうに座って見える。
+    // 腰を少し後ろへ下げて、お尻がサドルの広い所に乗るようにする(ひざは脚の長さを保って解き直す)
+    const HIPB = new THREE.Vector3(-0.065, -0.008, 0);
+    const hip = V(pose.hipMid).add(HIPB), sh = V(pose.shoulderMid);
     const spine = sh.clone().sub(hip);
     // 背中を少し丸める: 腰は立て気味、胸は前に倒す
     const bend = (k) => spine.clone().normalize().applyAxisAngle(Z, k);
@@ -1774,12 +1777,14 @@ const View3D = (() => {
     set("Spine1", along(rig.frac.Spine1), rig.up, rig.right, bend(0), Z);
     set("Spine2", along(rig.frac.Spine2), rig.up, rig.right, bend(-0.14), Z);
     const head = V(pose.head);
-    const neckDir = head.clone().sub(sh).normalize();
+    // 首: 背中の続きで前へ伸ばす(背中より少しだけ起こす)。立てすぎると、頭が後ろへ引けて見える
+    const spineAng = Math.atan2(spine.y, spine.x);
+    const neckAng = Math.min(Math.atan2(head.y - sh.y, head.x - sh.x), spineAng + 0.3);
+    const neckDir = new THREE.Vector3(Math.cos(neckAng), Math.sin(neckAng), 0);
     const neckP = along(rig.frac.Neck);
     set("Neck", neckP, rig.up, rig.right, neckDir, Z);
-    // 頭: 前を見るように、首より起こす
-    const neckAng = Math.atan2(neckDir.y, neckDir.x);
-    const headAng = Math.max(neckAng, Math.min(Math.PI / 2, neckAng + 0.45, 1.25));
+    // 頭: 前を見るように、首より起こす(あごを少し前へ出す形)
+    const headAng = Math.max(neckAng, Math.min(1.2, neckAng + 0.42));
     const neckLen = rest.Head.p.distanceTo(rest.Neck.p) * sc;
     const headP = neckP.clone().addScaledVector(neckDir, neckLen);
     set("Head", headP, rig.up, rig.right, new THREE.Vector3(Math.cos(headAng), Math.sin(headAng), 0), Z);
@@ -1787,7 +1792,18 @@ const View3D = (() => {
     rig.headAng = headAng;
     for (const sd of ["R", "L"]) {
       const l = pose.legs[sd];
-      const H = V(l.hip), K = V(l.knee), A = V(l.ankle), To = V(l.toe);
+      const H0 = V(l.hip), K0 = V(l.knee), A = V(l.ankle), To = V(l.toe);
+      const H = H0.clone().add(HIPB);
+      let K = K0;
+      {
+        const L1 = K0.distanceTo(H0), L2 = A.distanceTo(K0), dv = A.clone().sub(H);
+        const dist = Math.min(dv.length(), L1 + L2 - 0.002), dn = dv.clone().normalize();
+        const al = (L1 * L1 - L2 * L2 + dist * dist) / (2 * dist), hgt = Math.sqrt(Math.max(0, L1 * L1 - al * al));
+        const n = K0.clone().sub(H);
+        n.addScaledVector(dn, -n.dot(dn));
+        if (n.lengthSq() < 1e-6) n.set(1, 0, 0);
+        K = H.clone().addScaledVector(dn, al).addScaledVector(n.normalize(), hgt);
+      }
       const rd = (a, b) => rest[sd + "_" + b].p.clone().sub(rest[sd + "_" + a].p);
       set(sd + "_Thigh", H, rd("Thigh", "Calf"), rig.right, K.clone().sub(H), Z);
       set(sd + "_Calf", K, rd("Calf", "Foot"), rig.right, A.clone().sub(K), Z);
@@ -1831,7 +1847,7 @@ const View3D = (() => {
           if (!fb) continue;
           if (!fb.userData.restQ) fb.userData.restQ = fb.quaternion.clone();
           const amt = i === 0 ? 0.35 : j === "" ? 0.9 : 1.0;
-          fb.quaternion.copy(fb.userData.restQ).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, -1), amt));
+          fb.quaternion.copy(fb.userData.restQ).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), amt));
         }
     }
     return true;
