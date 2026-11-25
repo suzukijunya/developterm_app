@@ -2258,7 +2258,28 @@ const City = (() => {
       }
     }
     // 走る位置: センターラインから左へ何m(交差点の中や測れない所は、前後の値で埋める)
+    // 走る位置: 交差点や曲がり角では、横の道のぶんまで「道幅」に入って左端が外へ飛び、角の建物に突っ込んでしまう。
+    // 前後24mの中でいちばん内側(道のまん中寄り)の値を使い、道が急に広がる所でも手前の道の端の線を保つ
+    const rideMemo = new Map();
     function ride(along) {
+      const k = Math.round(along / STEP), now = performance.now();
+      const hit = rideMemo.get(k);
+      if (hit && now - hit.t < 2000) return hit.v;
+      const c = ride1(along);
+      let v = c;
+      if (c) {
+        let off = c.off;
+        for (const d of [-24, -16, -8, 8, 16, 24]) {
+          const q = ride1(along + d);
+          if (q && q.off < off) off = q.off;
+        }
+        v = { off, W: c.W };
+      }
+      if (rideMemo.size > 4000) rideMemo.clear();
+      rideMemo.set(k, { t: now, v });
+      return v;
+    }
+    function ride1(along) {
       const i0 = Math.round(along / STEP);
       for (const w of [3, 6]) {
         const v = [];
