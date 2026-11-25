@@ -3481,17 +3481,19 @@ const City = (() => {
       hdg = (hdg + ((((want - hdg) % 360) + 540) % 360 - 180) * Math.min(1, dt * 2.5) + 360) % 360;
       // 向きは、変わったときだけ送る(毎回送ると、写真の読み込みのじゃまになることがある)
       if ((povT += dt) > 0.15 && !isNaN(hdg) && (sentH == null || Math.abs(hdg - sentH) > 0.4)) (povT = 0), (sentH = hdg), post({ t: "pov", h: hdg });
+      // いまの道のりを毎コマ知らせる(写真を、進んだ分だけ大きくして、前へ進んで見せるため)
+      post({ t: "at", a: s.along });
       // 写真を先へ進める: 15mごと(速いときは、1.5秒に1回までに間引く)。
       // まだ1枚も出せていない間(出発地点のそばに写真が無いなど)は、2秒おきに、範囲を広げて探し直す
       const step = Math.max(15, s.v * s.speedX * 1.5), now = performance.now();
-      if (busy && now - tryAt > 8000) busy = false; // 返事が来ないとき
+      if (busy && now - tryAt > 4000) busy = false; // 返事が来ないとき
       const retry = (!lastId || miss > 0) && now - tryAt > 2000;
       if (!busy && (Math.abs(s.along - lastAlong) >= step || retry)) {
         lastAlong = s.along;
         tryAt = now;
         busy = true;
         const q = at(s.along + 6);
-        post({ t: "find", lat: route.lat0 - q.z / route.kz, lng: route.lon0 + q.x / route.kx, r: miss > 0 || !lastId ? 150 : 35, outdoor: !(miss > 1) });
+        post({ t: "find", a: s.along + 6, wait: Math.max(350, Math.min(900, 9000 / Math.max(1, s.v * s.speedX))), lat: route.lat0 - q.z / route.kz, lng: route.lon0 + q.x / route.kx, r: miss > 0 || !lastId ? 150 : 35, outdoor: !(miss > 1) });
       }
       // 写真を出せている間だけ、写真の画面にする。出せない間は、下の3Dの街を見せる(真っ黒にしない)
       const show = !!lastId && miss < 3;

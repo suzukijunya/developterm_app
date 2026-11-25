@@ -7,42 +7,55 @@
      ほかの画面の見た目の決まり(CSS)や大きさの影響を受けないよう、別のページに分けてある。
      キーは親のページから受け取る(このページにもURLにも書かない)。 -->
 <style>
-html, body, #p { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0a0f1c; }
+html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0a0f1c; }
+/* 写真は2枚重ねて持つ。次の写真は、見えない側で読み終えてから、ふわっと入れ替える */
+.p { position: absolute; inset: 0; transform-origin: 50% 44%; transition: opacity 0.28s linear; will-change: transform, opacity; }
 </style>
 </head>
 <body>
-<div id="p"></div>
+<div class="p" id="p0"></div>
+<div class="p" id="p1" style="opacity:0"></div>
 <script>
 (() => {
-  let pano = null, svc = null, lastId = "", busy = false, started = false;
+  // 走っている感じを出す工夫:
+  //  1) 写真を2枚持ち、次の写真は裏で読み終えてから入れ替える(ぼやけた読み込み途中を見せない)
+  //  2) 写真が切り替わるまでの間、進んだ分だけ写真を少しずつ大きくする(前へ進んで見える)。
+  //     次の写真は少し先で撮ったものなので、大きくした今の写真とほぼ同じ景色になり、つながって見える
+  const P = [null, null], el = [document.getElementById("p0"), document.getElementById("p1")];
+  const at = [0, 0]; // それぞれの写真を撮った場所(道のり m)
+  let svc = null, cur = 0, lastId = "", busy = false, started = false, along = 0, swapT = 0;
   const send = (m) => parent.postMessage(Object.assign({ sv: 1 }, m), location.origin);
   window.gm_authFailure = () => send({ t: "auth" });
-  // このページの中で起きたエラーを、親の画面に知らせる(原因を調べるため)
   addEventListener("error", (e) => send({ t: "log", why: String(e.message || "").slice(0, 100) }));
   addEventListener("unhandledrejection", (e) => send({ t: "log", why: String((e.reason && e.reason.message) || e.reason || "").slice(0, 100) }));
-  const ce = console.error.bind(console);
-  console.error = (...a) => (ce(...a), send({ t: "log", why: a.map(String).join(" ").slice(0, 100) }));
-  // 描くための部品(canvas)がいくつあるか、WebGL が使えるかも知らせる
-  setInterval(() => {
-    const cs = [...document.querySelectorAll("canvas")];
-    let gl = "?";
-    try {
-      gl = document.createElement("canvas").getContext("webgl") ? "可" : "不可";
-    } catch (e) {
-      gl = "不可";
-    }
-    send({ t: "draw", s: `描く面 ${cs.length}枚${cs[0] ? "(" + cs[0].width + "×" + cs[0].height + ")" : ""}・画像 ${document.querySelectorAll("img").length}・WebGL ${gl}・窓 ${innerWidth}×${innerHeight}` });
-  }, 3000);
   window.__svInit = () => {
     try {
-      pano = new google.maps.StreetViewPanorama(document.getElementById("p"), { disableDefaultUI: true, clickToGo: false, linksControl: false, panControl: false, zoomControl: false, addressControl: false, fullscreenControl: false, motionTracking: false, motionTrackingControl: false, scrollwheel: false, showRoadLabels: true, pov: { heading: 0, pitch: 0 }, zoom: 1 }); // zoom は標準の1(1より小さい広角は、横長の画面で写真が描かれないことがある)
+      // zoom は標準の1(1より小さい広角は、横長の画面で写真が描かれない)
+      const opt = { disableDefaultUI: true, clickToGo: false, linksControl: false, panControl: false, zoomControl: false, addressControl: false, fullscreenControl: false, motionTracking: false, motionTrackingControl: false, scrollwheel: false, showRoadLabels: false, pov: { heading: 0, pitch: -4 }, zoom: 1 };
+      P[0] = new google.maps.StreetViewPanorama(el[0], opt);
+      P[1] = new google.maps.StreetViewPanorama(el[1], opt);
       svc = new google.maps.StreetViewService();
-      pano.addListener("status_changed", () => send({ t: "status", s: String(pano.getStatus()) }));
+      P[0].addListener("status_changed", () => send({ t: "status", s: String(P[0].getStatus()) }));
       send({ t: "ready" });
     } catch (e) {
       send({ t: "fail", why: String((e && e.message) || e).slice(0, 80) });
     }
   };
+  // 進んだ分だけ大きくする(40m進むと2倍。切り替わりはふつう15mごとなので、1.4倍くらいまで)
+  const zoomOf = (i) => 1 + Math.max(0, Math.min(1.2, (along - at[i]) / 40));
+  function frame() {
+    requestAnimationFrame(frame);
+    for (const i of [0, 1]) el[i].style.transform = `scale(${zoomOf(i).toFixed(4)})`;
+  }
+  requestAnimationFrame(frame);
+  function swap(to, id) {
+    cur = to;
+    el[to].style.zIndex = 2;
+    el[1 - to].style.zIndex = 1;
+    el[to].style.opacity = 1;
+    setTimeout(() => cur === to && (el[1 - to].style.opacity = 0), 300);
+    send({ t: "ok", id });
+  }
   addEventListener("message", (e) => {
     if (e.origin !== location.origin || !e.data || !e.data.sv) return;
     const d = e.data;
@@ -53,7 +66,8 @@ html, body, #p { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hid
       sc.onerror = () => send({ t: "fail", why: "読み込めませんでした" });
       document.head.appendChild(sc);
     }
-    if (d.t === "pov" && pano && isFinite(d.h)) pano.setPov({ heading: d.h, pitch: -4 });
+    if (d.t === "pov" && P[0] && isFinite(d.h)) for (const q of P) q.setPov({ heading: d.h, pitch: -4 });
+    if (d.t === "at" && isFinite(d.a)) along = d.a;
     if (d.t === "find" && svc && !busy) {
       busy = true;
       const rq = { location: { lat: d.lat, lng: d.lng }, radius: d.r, preference: google.maps.StreetViewPreference.NEAREST };
@@ -61,15 +75,20 @@ html, body, #p { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hid
       svc.getPanorama(rq)
         .then((r) => {
           const id = r.data.location.pano;
-          if (id !== lastId) {
-            lastId = id;
-            pano.setPano(id);
-            pano.setVisible(true);
-          }
-          send({ t: "ok", id });
+          if (id === lastId) return (busy = false), send({ t: "ok", id });
+          const first = !lastId, to = first ? cur : 1 - cur;
+          lastId = id;
+          at[to] = d.a;
+          P[to].setPano(id);
+          P[to].setVisible(true);
+          // 裏で読み終えるのを待ってから入れ替える(最初の1枚はすぐ出す)
+          const myT = (swapT = performance.now());
+          setTimeout(() => {
+            busy = false;
+            if (swapT === myT) swap(to, id);
+          }, first ? 50 : d.wait || 700);
         })
-        .catch((er) => send({ t: "miss", why: String((er && (er.code || er.message)) || er || "").slice(0, 60) }))
-        .finally(() => (busy = false));
+        .catch((er) => ((busy = false), send({ t: "miss", why: String((er && (er.code || er.message)) || er || "").slice(0, 60) })));
     }
   });
   // Google の部品が「エラーが発生しました」を出したら知らせる(キーの設定が足りないとき)
