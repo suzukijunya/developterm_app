@@ -1011,7 +1011,11 @@ const City = (() => {
           .replace("#include <map_fragment>", `#include <map_fragment>
         float facGlass = 0.0;
         #ifdef USE_MAP
-          if (vWall > 0.5) {
+          if (vUv.x < -0.5) {
+            // 出っ張り(ベランダ・庇・看板・屋上の機械): 外壁の絵は貼らず、色だけ。-2 はガラス
+            diffuseColor.rgb = diffuse;
+            facGlass = vUv.x < -1.5 ? 0.75 : 0.0;
+          } else if (vWall > 0.5) {
             facGlass = texture2D(uMask, vUv).r;
             if (vFh < 3.2) {
               vec2 guv = vec2(vUv.x * uGk, clamp(vFh / 3.2, 0.004, 0.996));
@@ -1021,16 +1025,16 @@ const City = (() => {
           }
         #endif`)
           .replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>
-        if (vWall > 0.5 && vFh < 3.2) totalEmissiveRadiance *= 0.0;`)
+        if ((vWall > 0.5 && vFh < 3.2) || vUv.x < -0.5) totalEmissiveRadiance *= 0.0;`)
           // ガラスの所: つるつるで、鏡に近い(まわりの景色が映る)。色も暗いガラスの色にする
           .replace("#include <metalnessmap_fragment>", `#include <metalnessmap_fragment>
         // 地面の近くは、はね返りの汚れで少し暗く
-        if (vWall > 0.5) diffuseColor.rgb *= 0.86 + 0.14 * smoothstep(0.0, 1.8, vFh);
+        if (vWall > 0.5 && vUv.x > -0.5) diffuseColor.rgb *= 0.86 + 0.14 * smoothstep(0.0, 1.8, vFh);
         roughnessFactor = mix(roughnessFactor, 0.05, facGlass);
         metalnessFactor = mix(metalnessFactor, 0.92 * uRefl, facGlass);
         diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.52, 0.6, 0.68), facGlass * 0.7);`);
     };
-    m.customProgramCacheKey = () => "fac4";
+    m.customProgramCacheKey = () => "fac5";
     return m;
   }
   // anc の4つ目(出はじめる時刻)を入れる。建物ごとに少しずつずらす
@@ -3703,8 +3707,19 @@ const City = (() => {
       const st = stateAt(sg, t);
       // 黄色: 止まれる距離なら止まる。止まれなければそのまま行く
       if (st === "g") return 99;
-      if (st === "y" && d < (v * v) / (2 * 3) - 1) return 99;
+      // 黄色のうちに停止線を越えられるときだけ、そのまま行く
+      if (st === "y" && d < v * left(sg, t) - 0.5) return 99;
       return d <= 0.3 ? 0 : Math.sqrt(2 * 2.5 * Math.max(0, d));
+    }
+    // 赤のあいだは、停止線を絶対に越えさせない(a0 から a1 へ進もうとしたときの、進んでよい位置を返す)
+    function gate(a0, a1, t) {
+      for (const sg of list) {
+        const stop = sg.along - 6;
+        if (stop < a0 - 0.5) continue;
+        if (stop >= a1) break;
+        if (stateAt(sg, t) === "r") return Math.max(a0, stop);
+      }
+      return a1;
     }
     // ---- 3D: 停止線の向こう側(左)に、横向きの信号機(左から青・黄・赤) ----
     let M = null;
@@ -3779,7 +3794,7 @@ const City = (() => {
       el.innerHTML = `<i class="sig ${st}"></i>${sg.name ? esc(sg.name) : "交差点"}${sg.est ? "(推定)" : ""} ${Math.max(0, Math.round(sg.along - along))}m <small>${st === "g" ? "青" : st === "y" ? "黄" : "赤"} あと${sec}秒</small>`;
       return sg;
     }
-    return { prepare, update, limit, next, stateAt, list: () => list, source: () => source };
+    return { prepare, update, limit, gate, next, stateAt, list: () => list, source: () => source };
   })();
 
   // ---------- 大きな見出し(町名・目印・ラスト1km・ゴール) ----------
@@ -5739,7 +5754,9 @@ const City = (() => {
     const rsig = Signals.limit(s.rAlong, s.t, s.rV);
     if (s.rV > rsig) s.rV = Math.max(rsig, s.rV - 5 * dt);
     if (rsig === 0 && s.rV < 0.3) s.rV = 0;
-    s.rAlong = Math.min(route.length, s.rAlong + s.rV * dt);
+    const rNext = Signals.gate(s.rAlong, s.rAlong + s.rV * dt, s.t);
+    if (rNext < s.rAlong + s.rV * dt - 1e-6) s.rV = 0;
+    s.rAlong = Math.min(route.length, rNext);
     s.t += dt;
   }
 
@@ -5956,8 +5973,8 @@ const City = (() => {
     $("ct-time").textContent = `${m}:${String(sec).padStart(2, "0")}`;
     drawMini();
   }
-  // 右上の地図: ふだんは自分のまわり(地理院地図。駅名・道路名つき)、タップでルート全体
-  let miniWhole = false;
+  // 右上の地図: 地図アプリ風(淡い色の地図・青いルート・青い現在地)。＋−やホイールで拡大縮小、「全体」でルート全体
+  let miniZ = 16.2, miniFit = false;
   const mapImgs = new Map();
   function mapTile(z, x, y) {
     const key = z + "/" + x + "/" + y;
@@ -5965,122 +5982,130 @@ const City = (() => {
     if (!im) {
       im = new Image();
       im.crossOrigin = "anonymous";
-      im.src = `https://cyberjapandata.gsi.go.jp/xyz/std/${key}.png`;
+      im.src = `https://cyberjapandata.gsi.go.jp/xyz/pale/${key}.png`;
       mapImgs.set(key, im);
-      if (mapImgs.size > 120) mapImgs.delete(mapImgs.keys().next().value);
+      if (mapImgs.size > 260) mapImgs.delete(mapImgs.keys().next().value);
     }
     return im.complete && im.naturalWidth ? im : null;
   }
-  function drawMini() {
-    if (!miniWhole) return drawLocalMap();
-    drawWholeMap();
+  const merc = (lat, lon) => [(lon + 180) / 360, (1 - Math.asinh(Math.tan((lat * Math.PI) / 180)) / Math.PI) / 2];
+  function miniZoom(d) {
+    if (miniFit && route && route.fitZ) miniZ = route.fitZ;
+    miniFit = false;
+    miniZ = Math.max(11, Math.min(18.6, miniZ + d));
   }
-  function drawLocalMap() {
-    const cv = $("ct-mini"), c = cv.getContext("2d");
-    const W = cv.width, H = cv.height;
+  function drawMini() {
+    const cv = $("ct-mini"), dpr = Math.min(2, window.devicePixelRatio || 1);
+    const cw = Math.round(cv.clientWidth * dpr) || 200, ch = Math.round(cv.clientHeight * dpr) || 200;
+    if (cv.width !== cw || cv.height !== ch) (cv.width = cw), (cv.height = ch);
+    const c = cv.getContext("2d"), W = cw, H = ch;
+    const ll = (x, z) => merc(route.lat0 - z / route.kz, route.lon0 + x / route.kx);
+    if (!route.mxy) {
+      route.mxy = route.xy.map(([x, z]) => ll(x, z));
+      let x0 = 9, x1 = -9, y0 = 9, y1 = -9;
+      for (const [x, y] of route.mxy) (x0 = Math.min(x0, x)), (x1 = Math.max(x1, x)), (y0 = Math.min(y0, y)), (y1 = Math.max(y1, y));
+      route.mbox = { x0, x1, y0, y1 };
+    }
     const p = at(sim.along);
-    const lat = route.lat0 - p.z / route.kz, lon = route.lon0 + p.x / route.kx;
-    const Z = 16, n = 2 ** Z;
-    // 地図のタイル座標(ピクセル)で、自分の位置
-    const fx = ((lon + 180) / 360) * n * 256, fy = ((1 - Math.asinh(Math.tan((lat * Math.PI) / 180)) / Math.PI) / 2) * n * 256;
-    const k = 1.0; // 地図1ピクセル = 画面1ピクセル(約2.4m)
-    c.fillStyle = "#e8e6e0";
+    let cx, cy, z;
+    if (miniFit) {
+      const b = route.mbox;
+      z = Math.min(17, Math.log2(Math.min((W / dpr - 36) / Math.max(1e-9, (b.x1 - b.x0) * 256), (H / dpr - 36) / Math.max(1e-9, (b.y1 - b.y0) * 256))));
+      route.fitZ = z;
+      cx = (b.x0 + b.x1) / 2;
+      cy = (b.y0 + b.y1) / 2;
+    } else {
+      [cx, cy] = ll(p.x, p.z);
+      z = miniZ;
+    }
+    const Z = Math.max(5, Math.min(18, Math.ceil(z - 0.15))), n = 2 ** Z * 256, k = 2 ** (z - Z) * dpr;
+    const x0 = cx * n - W / 2 / k, y0 = cy * n - H / 2 / k;
+    c.fillStyle = "#f2efe9";
     c.fillRect(0, 0, W, H);
-    const x0 = fx - W / 2 / k, y0 = fy - H / 2 / k;
     for (let tx = Math.floor(x0 / 256); tx <= Math.floor((x0 + W / k) / 256); tx++)
       for (let ty = Math.floor(y0 / 256); ty <= Math.floor((y0 + H / k) / 256); ty++) {
         const im = mapTile(Z, tx, ty);
-        if (im) c.drawImage(im, (tx * 256 - x0) * k, (ty * 256 - y0) * k, 256 * k, 256 * k);
+        if (im) c.drawImage(im, (tx * 256 - x0) * k, (ty * 256 - y0) * k, 256 * k + 0.5, 256 * k + 0.5);
       }
-    // ルート(地図のピクセル座標へ)
-    const toPx = (x, z) => {
-      const la = route.lat0 - z / route.kz, lo = route.lon0 + x / route.kx;
-      const px = ((lo + 180) / 360) * n * 256, py = ((1 - Math.asinh(Math.tan((la * Math.PI) / 180)) / Math.PI) / 2) * n * 256;
-      return [(px - x0) * k, (py - y0) * k];
+    const M = ([mx, my]) => [(mx * n - x0) * k, (my * n - y0) * k];
+    const toPx = (x, zz) => M(ll(x, zz));
+    // ルート: 白いふち+青。走り終えたところは灰色
+    let done = 0;
+    while (done < route.cum.length - 1 && route.cum[done + 1] < sim.along) done++;
+    const line = (i0, i1, w, col, extra) => {
+      c.strokeStyle = col;
+      c.lineWidth = w * dpr;
+      c.beginPath();
+      for (let i = i0; i <= i1; i++) {
+        const [qx, qy] = M(route.mxy[i]);
+        if (i === i0) c.moveTo(qx, qy);
+        else c.lineTo(qx, qy);
+      }
+      if (extra) c.lineTo(extra[0], extra[1]);
+      c.stroke();
     };
     c.lineCap = c.lineJoin = "round";
-    for (const [w, col] of [[6, "rgba(255,255,255,0.9)"], [3.5, "#1e88ff"]]) {
-      c.strokeStyle = col;
-      c.lineWidth = w;
-      c.beginPath();
-      route.xy.forEach(([x, z], i) => {
-        const [qx, qy] = toPx(x, z);
-        if (i) c.lineTo(qx, qy);
-        else c.moveTo(qx, qy);
-      });
-      c.stroke();
-    }
-    // ライバルと自分(自分は進む向きの矢印)
-    const r = at(sim.rAlong), [rx, ry] = toPx(r.x, r.z);
-    c.fillStyle = "#ff4455";
+    const me = toPx(p.x, p.z), last = route.mxy.length - 1;
+    line(0, last, 7.5, "#ffffff");
+    line(0, last, 5, "#4285f4");
+    line(0, done, 5, "#9aa7b8", me);
+    // ゴールの赤いピン
+    const [gx, gy] = M(route.mxy[last]);
+    c.fillStyle = "#ea4335";
     c.strokeStyle = "#fff";
-    c.lineWidth = 2;
+    c.lineWidth = 1.5 * dpr;
     c.beginPath();
-    c.arc(rx, ry, 5, 0, Math.PI * 2);
-    c.fill();
-    c.stroke();
-    const ang = Math.atan2(p.tz, p.tx);
-    c.save();
-    c.translate(W / 2, H / 2);
-    c.rotate(ang);
-    c.fillStyle = "#ff9a1f";
-    c.beginPath();
-    c.moveTo(10, 0);
-    c.lineTo(-7, -7);
-    c.lineTo(-3, 0);
-    c.lineTo(-7, 7);
+    c.arc(gx, gy - 11 * dpr, 6.5 * dpr, Math.PI * 0.85, Math.PI * 0.15);
+    c.lineTo(gx, gy);
     c.closePath();
     c.fill();
     c.stroke();
-    c.restore();
-    c.fillStyle = "rgba(255,255,255,0.85)";
-    c.fillRect(W - 54, H - 14, 54, 14);
-    c.fillStyle = "#333";
-    c.font = "9px sans-serif";
-    c.fillText("地理院地図", W - 51, H - 4);
-  }
-  function drawWholeMap() {
-    const cv = $("ct-mini"), c = cv.getContext("2d");
-    const W = cv.width, H = cv.height;
-    if (!route.box) {
-      let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9;
-      for (const [x, z] of route.xy) (x0 = Math.min(x0, x)), (x1 = Math.max(x1, x)), (z0 = Math.min(z0, z)), (z1 = Math.max(z1, z));
-      const k = Math.min((W - 16) / Math.max(1, x1 - x0), (H - 16) / Math.max(1, z1 - z0));
-      route.box = { x0, z0, k, ox: (W - (x1 - x0) * k) / 2, oz: (H - (z1 - z0) * k) / 2 };
-    }
-    const b = route.box, P = (x, z) => [b.ox + (x - b.x0) * b.k, b.oz + (z - b.z0) * b.k];
-    c.clearRect(0, 0, W, H);
-    c.fillStyle = "rgba(6,9,14,0.75)";
-    c.fillRect(0, 0, W, H);
-    c.strokeStyle = "rgba(255,255,255,0.55)";
-    c.lineWidth = 2;
+    c.fillStyle = "#fff";
     c.beginPath();
-    route.xy.forEach(([x, z], i) => {
-      const [px, py] = P(x, z);
-      if (i) c.lineTo(px, py);
-      else c.moveTo(px, py);
-    });
+    c.arc(gx, gy - 11 * dpr, 2.3 * dpr, 0, Math.PI * 2);
+    c.fill();
+    // ライバル(赤い丸)
+    const r = at(sim.rAlong), [rx, ry] = toPx(r.x, r.z);
+    c.fillStyle = "#ff4455";
+    c.lineWidth = 2 * dpr;
+    c.beginPath();
+    c.arc(rx, ry, 5 * dpr, 0, Math.PI * 2);
+    c.fill();
     c.stroke();
-    // 駅など大きな目印を、地図にも出す
-    c.font = "9px sans-serif";
-    for (const t of tiles.values()) {
-      const inf = t.state === "ok" && t.group && t.group.userData.info;
-      for (const lm of (inf && inf.lms) || []) {
-        if (lm.icon !== "🚉" && lm.icon !== "🎓") continue;
-        const [px, py] = P(lm.x, lm.z);
-        c.fillStyle = "#7fd8ff";
-        c.fillRect(px - 2, py - 2, 4, 4);
-        c.fillStyle = "rgba(255,255,255,0.9)";
-        c.fillText(lm.name.slice(0, 6), px + 4, py + 3);
-      }
-    }
-    for (const [al, col] of [[sim.rAlong, "#ff4455"], [sim.along, "#ffa030"]]) {
-      const p = at(al), [px, py] = P(p.x, p.z);
-      c.fillStyle = col;
-      c.beginPath();
-      c.arc(px, py, 4, 0, Math.PI * 2);
-      c.fill();
-    }
+    // 自分: 青い丸と、進む向きの扇
+    const ang = Math.atan2(p.tz, p.tx);
+    const gr = c.createRadialGradient(me[0], me[1], 0, me[0], me[1], 34 * dpr);
+    gr.addColorStop(0, "rgba(66,133,244,0.55)");
+    gr.addColorStop(1, "rgba(66,133,244,0)");
+    c.fillStyle = gr;
+    c.beginPath();
+    c.moveTo(me[0], me[1]);
+    c.arc(me[0], me[1], 34 * dpr, ang - 0.5, ang + 0.5);
+    c.closePath();
+    c.fill();
+    c.fillStyle = "#4285f4";
+    c.strokeStyle = "#fff";
+    c.lineWidth = 2.5 * dpr;
+    c.beginPath();
+    c.arc(me[0], me[1], 7 * dpr, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    // 縮尺
+    const lat = route.lat0 - p.z / route.kz;
+    const mpp = (40075016 * Math.cos((lat * Math.PI) / 180)) / (256 * 2 ** z); // 画面1pxあたりのm
+    let bar = 50;
+    for (const v of [20, 50, 100, 200, 500, 1000, 2000, 5000]) if (v / mpp <= 70) bar = v;
+    const bw = (bar / mpp) * dpr;
+    c.fillStyle = "rgba(255,255,255,0.85)";
+    c.fillRect(6 * dpr, H - 18 * dpr, bw + 8 * dpr, 14 * dpr);
+    c.fillStyle = "#444";
+    c.fillRect(10 * dpr, H - 8 * dpr, bw, 1.5 * dpr);
+    c.font = `${9 * dpr}px sans-serif`;
+    c.fillText(bar >= 1000 ? bar / 1000 + "km" : bar + "m", 10 * dpr, H - 10 * dpr);
+    c.fillStyle = "rgba(255,255,255,0.85)";
+    c.fillRect(W - 50 * dpr, H - 13 * dpr, 50 * dpr, 13 * dpr);
+    c.fillStyle = "#555";
+    c.fillText("地理院地図", W - 47 * dpr, H - 3.5 * dpr);
   }
 
   // side: 走る位置(車道の左端から約0.9m)から、さらに右へ何m
@@ -6499,7 +6524,11 @@ const City = (() => {
     $("ct-auto").onchange = (e) => sim && (sim.auto = e.target.checked);
     $("ct-x").onchange = (e) => sim && (sim.speedX = +e.target.value);
     $("ct-bgm").onchange = (e) => (e.target.checked ? Bgm.start() : Bgm.stop());
-    $("ct-mini").addEventListener("click", () => (miniWhole = !miniWhole));
+    $("ct-mini").addEventListener("click", () => $("ct-mapbox").classList.toggle("big"));
+    $("ct-mini").addEventListener("wheel", (e) => (e.preventDefault(), miniZoom(e.deltaY < 0 ? 0.35 : -0.35)), { passive: false });
+    $("ct-mz-in").onclick = () => miniZoom(0.6);
+    $("ct-mz-out").onclick = () => miniZoom(-0.6);
+    $("ct-mz-all").onclick = () => (miniFit = !miniFit);
     $("ct-time").value = timeMode;
     $("ct-time").onchange = (e) => sim && setTime(e.target.value);
     const gk = $("ct-gkey");
@@ -6512,6 +6541,15 @@ const City = (() => {
       }
     })();
     $("ct-google0").checked = $("ct-google").checked = gOn && !!G3.getKey();
+    // 写真の街は、Googleの3D・ストリートビューと同時には使わない(あとから選んだほうを残す)
+    const pvOff = () => {
+      if (!PV.on()) return;
+      PV.set(false);
+      for (const k of ["ct-pv", "ct-pv0"]) if ($(k)) $(k).checked = false;
+      try {
+        localStorage.setItem("city_pv", "0");
+      } catch (e) {}
+    };
     const setGoogle = async (v) => {
       if (v && !G3.getKey()) {
         $("ct-google0").checked = $("ct-google").checked = false;
@@ -6519,6 +6557,7 @@ const City = (() => {
         return;
       }
       $("ct-google0").checked = $("ct-google").checked = v;
+      if (v) pvOff();
       try {
         localStorage.setItem("city_google", v ? "1" : "0");
       } catch (e) {}
@@ -6537,6 +6576,7 @@ const City = (() => {
     $("ct-google").onchange = (e) => setGoogle(e.target.checked);
     // ストリートビュー
     const setSV = async (v) => {
+      if (v) pvOff();
       try {
         localStorage.setItem("city_sv", v ? "1" : "0");
       } catch (err) {}

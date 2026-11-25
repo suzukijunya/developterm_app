@@ -352,6 +352,83 @@ function build(parts, center, bt) {
       hx.set([ax, az, cxb, czb, Math.max(0, hl - hw), Math.min(2.6, Math.max(0.9, hw * 0.55)), h], b * 7);
     }
   }
+  // ---- 出っ張り(本当の形として足す): ベランダの床と手すり、店の庇、そで看板、屋上の機械室と室外機 ----
+  // 壁の三角形のうち、下の2点が地面にあるものから「建物の足もとの辺」と外向きがわかる。その辺にそって箱を足す。
+  // uv の x を -1 にした面は、外壁の絵を貼らずに色だけで描く(-2 はガラス)
+  const EX = Array.from({ length: 6 }, () => ({ pos: [], nor: [], uv: [], col: [], anc: [] }));
+  const roofDone = new Uint8Array(NB);
+  let exA = [0, 0, 0];
+  const quad = (E, p0, p1, p2, p3, n, c, flag) => {
+    for (const q of [p0, p1, p2, p0, p2, p3]) {
+      E.pos.push(q[0], q[1], q[2]);
+      E.nor.push(Math.round(n[0] * 127), Math.round(n[1] * 127), Math.round(n[2] * 127));
+      E.uv.push(flag, flag);
+      E.col.push(c[0], c[1], c[2]);
+      E.anc.push(exA[0], exA[1], exA[2]);
+    }
+  };
+  // 箱: 中心(cx, cz)・辺の向き(ex, ez)・外向き(nx, nz)。長さ len、外へ d0〜d1、高さ y0〜y1
+  const exBox = (st, cx, cz, ex, ez, nx, nz, len, d0, d1, y0, y1, c, flag = -1) => {
+    const E = EX[st], h = len / 2;
+    const P = (a, d, y) => [cx + ex * a + nx * d, y, cz + ez * a + nz * d];
+    const dk = [c[0] * 0.72, c[1] * 0.72, c[2] * 0.72], lt = [Math.min(255, c[0] * 1.06), Math.min(255, c[1] * 1.06), Math.min(255, c[2] * 1.06)];
+    quad(E, P(-h, d1, y0), P(h, d1, y0), P(h, d1, y1), P(-h, d1, y1), [nx, 0, nz], c, flag); // 外の面
+    quad(E, P(h, d0, y0), P(-h, d0, y0), P(-h, d0, y1), P(h, d0, y1), [-nx, 0, -nz], dk, flag); // 内の面
+    quad(E, P(-h, d0, y0), P(-h, d1, y0), P(-h, d1, y1), P(-h, d0, y1), [-ex, 0, -ez], dk, flag);
+    quad(E, P(h, d1, y0), P(h, d0, y0), P(h, d0, y1), P(h, d1, y1), [ex, 0, ez], dk, flag);
+    quad(E, P(-h, d0, y1), P(-h, d1, y1), P(h, d1, y1), P(h, d0, y1), [0, 1, 0], lt, flag); // 上
+    quad(E, P(-h, d1, y0), P(-h, d0, y0), P(h, d0, y0), P(h, d1, y0), [0, -1, 0], dk, flag); // 下
+  };
+  const SIGNC = [[200, 54, 44], [31, 95, 158], [47, 138, 78], [232, 160, 32], [58, 58, 58], [122, 58, 160], [240, 240, 236]];
+  function extras(b, st, ax, az, bx, bz, nx, nz, y0, hB, ei) {
+    const L = Math.hypot(bx - ax, bz - az);
+    if (L < 2.5) return;
+    const ex = (bx - ax) / L, ez = (bz - az) / L, nl = Math.hypot(nx, nz) || 1;
+    nx /= nl;
+    nz /= nl;
+    const mx = (ax + bx) / 2, mz = (az + bz) / 2, hk = hash(b * 131 + ei * 17 + Math.round(ax));
+    exA = [(bx0[b] + bx1[b]) / 2, y0, (bz0[b] + bz1[b]) / 2];
+    if (st === 1 || st === 3) {
+      // マンション: 南向きの長い辺と、ほかの辺の一部にベランダ。タワーマンションは長い辺ぜんぶ
+      const fh = FH[st] / 2, on = st === 3 ? L >= 6 : L >= 5 && (nz > 0.35 || hk < 0.3);
+      if (!on) return;
+      const len = L - 0.8, slab = st === 3 ? [226, 226, 222] : [220, 218, 212], rail = st === 3 ? [150, 190, 214] : [176, 182, 188];
+      for (let f = 1; f * fh < hB - 1.2; f++) {
+        const y = y0 + f * fh;
+        exBox(st, mx, mz, ex, ez, nx, nz, len, 0, 1.15, y - 0.16, y, slab);
+        exBox(st, mx, mz, ex, ez, nx, nz, len, 1.08, 1.15, y, y + 1.05, rail, st === 3 ? -2 : -1);
+        // となりの家とのしきり板
+        if (st === 1) for (let t = -len / 2 + 7.2; t < len / 2 - 2; t += 7.2) exBox(st, mx + ex * t, mz + ez * t, ex, ez, nx, nz, 0.06, 0, 1.1, y, y + 1.9, [236, 236, 232]);
+      }
+    } else if (st === 4) {
+      // 商業ビル: 1階の上に庇、壁からつき出たそで看板
+      if (L >= 4) exBox(st, mx, mz, ex, ez, nx, nz, L - 0.4, 0, 0.95, y0 + 3.22, y0 + 3.4, SIGNC[Math.floor(hk * 7)]);
+      if (L >= 5 && hB > 7 && hk < 0.75) {
+        const t = (hash(b * 7 + ei) - 0.5) * (L - 2), top = Math.min(hB - 0.5, 4 + hash(b + ei * 3) * 9);
+        exBox(st, mx + ex * t, mz + ez * t, ex, ez, nx, nz, 0.22, 0.05, 1.0, y0 + 3.9, y0 + Math.max(5.6, top), SIGNC[Math.floor(hash(b * 3 + ei * 5) * 7)]);
+      }
+      // 壁の看板(少し浮いた板)
+      if (L >= 6 && hB > 9 && hk > 0.4) exBox(st, mx, mz, ex, ez, nx, nz, Math.min(L - 1.5, 6), 0, 0.14, y0 + 7.3, y0 + 8.6, SIGNC[Math.floor(hash(b * 11 + ei) * 7)]);
+    } else if (st === 2) {
+      // オフィス: 入口の庇(長い辺の一部)
+      if (L >= 10 && hk < 0.5) exBox(st, mx, mz, ex, ez, nx, nz, Math.min(8, L * 0.4), 0, 1.6, y0 + 3.3, y0 + 3.5, [70, 74, 80]);
+    } else if (hB >= 5 && L >= 5 && hk < 0.3) {
+      // 戸建て: 2階の小さなベランダ
+      const t = (hash(b * 5 + ei) - 0.5) * (L - 3.6), c = st === 5 ? [58, 60, 64] : [238, 236, 230];
+      exBox(st, mx + ex * t, mz + ez * t, ex, ez, nx, nz, 3.0, 0, 0.95, y0 + 2.75, y0 + 2.88, c);
+      exBox(st, mx + ex * t, mz + ez * t, ex, ez, nx, nz, 3.0, 0.9, 0.95, y0 + 2.88, y0 + 3.95, c);
+    }
+    // 屋上(平らな屋根の建物に1回だけ): 機械室と、室外機のならび、手すり
+    if (!roofDone[b] && st >= 1 && st <= 4 && hB >= 9) {
+      roofDone[b] = 1;
+      const cx = exA[0], cz = exA[2], top = y0 + hB, w = Math.min(bx1[b] - bx0[b], bz1[b] - bz0[b]);
+      if (w > 7) {
+        exBox(st, cx, cz, ex, ez, nx, nz, 3.4, -1.6, 1.6, top, top + 2.7, [206, 204, 198]);
+        for (let k = 0; k < Math.min(5, Math.floor(w / 3)); k++) exBox(st, cx + ex * (-3.4 - k * 1.1), cz + ez * (-3.4 - k * 1.1), ex, ez, nx, nz, 0.9, -0.4, 0.4, top, top + 0.85, [214, 216, 218]);
+        if (st !== 3 && hash(b * 19) < 0.5) exBox(st, cx + ex * 3.2, cz + ez * 3.2, ex, ez, nx, nz, 1.8, -0.9, 0.9, top + 0.8, top + 2.6, [226, 226, 222]); // 給水タンク
+      }
+    }
+  }
   let base = 0;
   // 外壁の色(写真のない建物)。東京の住宅地に多い色から選ぶ
   const WALL = [
@@ -479,6 +556,12 @@ function build(parts, center, bt) {
           tri(Bq, yA, rb, yR, ra, yR);
         }
       }
+      // 足もとの辺(下の2点が地面にある壁の三角形)から、出っ張りを足す
+      if (g.kind === "p" && !roof) {
+        const lo = [];
+        for (let j = 0; j < 3; j++) if (V[j * 3 + 1] < 0.35) lo.push(j);
+        if (lo.length === 2) extras(b, style[b], V[lo[0] * 3], V[lo[0] * 3 + 2], V[lo[1] * 3], V[lo[1] * 3 + 2], nx, nz, ancY, hs ? wallH : maxY[b] - minY[b], t);
+      }
       g.w = w;
     }
     base += pt.pos.length / 3;
@@ -486,7 +569,19 @@ function build(parts, center, bt) {
   const lm = [];
   for (let b = 0; b < NB; b++) if (names[b] && !skip[b] && pts[b].length) lm.push({ name: String(names[b]), x: (bx0[b] + bx1[b]) / 2, z: (bz0[b] + bz1[b]) / 2, h: maxY[b] - minY[b] });
   const out = [];
-  for (const g of groups.values()) if (g.w) out.push({ kind: g.kind, img: g.img, style: g.style, pos: g.pos.slice(0, g.w * 3), nor: g.nor.slice(0, g.w * 3), uv: g.uv.slice(0, g.w * 2), col: g.col.slice(0, g.w * 3), anc: g.anc.slice(0, g.w * 3) });
+  for (const g of groups.values()) {
+    const E = g.kind === "p" && g.style != null ? EX[g.style] : null;
+    if (!g.w && !(E && E.pos.length)) continue;
+    // 出っ張りのぶんを、後ろにつなげる
+    const cat = (T, a, n, extra) => {
+      const o = new T(n + (extra ? extra.length : 0));
+      o.set(a.subarray(0, n));
+      if (extra) o.set(extra, n);
+      return o;
+    };
+    out.push({ kind: g.kind, img: g.img, style: g.style, pos: cat(Float32Array, g.pos, g.w * 3, E && E.pos), nor: cat(Int8Array, g.nor, g.w * 3, E && E.nor), uv: cat(Float32Array, g.uv, g.w * 2, E && E.uv), col: cat(Uint8Array, g.col, g.w * 3, E && E.col), anc: cat(Float32Array, g.anc, g.w * 3, E && E.anc) });
+    if (E) E.pos = [];
+  }
   // 地面の高さ合わせ用: 建物の足もと(楕円体高 = hc + minY)と場所を、いくつか返す
   const feet = [];
   for (let b = 0; b < NB && feet.length < 80; b += Math.max(1, Math.floor(NB / 80))) if (pts[b].length && !skip[b]) feet.push([(bx0[b] + bx1[b]) / 2, (bz0[b] + bz1[b]) / 2, hc + minY[b]]);
