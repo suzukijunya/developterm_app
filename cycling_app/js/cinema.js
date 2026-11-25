@@ -325,7 +325,13 @@ const Cinema = (() => {
     } catch (e) {
       own = "";
     }
-    return own ? DuelFx.avatarHtml(side) : heroSvg(side);
+    if (own) return DuelFx.avatarHtml(side);
+    // 街を走っている最中は、実際の3Dの乗り手を撮った姿を出す(平らな絵より立体感がある)
+    let url = null;
+    try {
+      url = typeof window.RiderPortrait === "function" ? window.RiderPortrait(side, "bust") : null;
+    } catch (e) {}
+    return url ? `<img class="cn-rider3d" src="${url}" alt="" />` : heroSvg(side);
   }
 
   // ---------- 画角 ----------
@@ -351,8 +357,17 @@ const Cinema = (() => {
   }
   // ghosts: 残像の枚数
   function monster(m, cls = "", side = "you", ghosts = 0) {
-    const art = hasArt(m, side);
-    const body = art ? MonsterArt.icon(m, side, "cn-img") : crest(esc(m.icon || "❔"));
+    let art = hasArt(m, side), body;
+    if (art) body = MonsterArt.icon(m, side, "cn-img");
+    else {
+      // 絵が無いときは、街を飛んでいる3Dの姿を撮った絵を使う
+      let url = null;
+      try {
+        url = typeof window.MonPortrait === "function" ? window.MonPortrait(m, side) : null;
+      } catch (e) {}
+      if (url) (art = true), (body = `<img class="cn-img cn-3d" src="${url}" alt="${esc(m.name)}" />`);
+      else body = crest(esc(m.icon || "❔"));
+    }
     let h = "";
     for (let k = ghosts; k >= 0; k--) h += `<div class="cn-monb ${k ? "g g" + k : ""}">${body}</div>`;
     return `<div class="cn-mon ${art ? "art" : "emo"} ${m.synchro ? "syn" : ""} ${m.ace ? "ace" : ""} ${cls}">${h}</div>`;

@@ -5556,7 +5556,8 @@ const City = (() => {
     const live = new Map(); // "side:uid" → { obj, side, slot, born, gone, seen }
     const cache = new Map();
     let loader = null;
-    const size = (m) => (m.ace ? 1.9 : m.synchro ? 1.5 : 1.1);
+    // 大きさ: レベルが高いほど大きい(Lv4で約1.2m・Lv8で約1.9m・Lv10で約2.2m)。エースはさらに一回り大きく
+    const size = (m) => (0.6 + 0.16 * Math.max(1, Math.min(12, m.lv || 4))) * (m.ace ? 1.15 : 1);
     // ガレージで登録した3Dモデル(なければ null)。高さ1・足もとが原点・前が +x
     function template(m, side) {
       const key = side + "|" + m.name;
@@ -6050,7 +6051,9 @@ const City = (() => {
       let hsh = 7;
       for (const ch of String(m.name)) hsh = (Math.imul(hsh, 31) + ch.codePointAt(0)) >>> 0;
       const rnd = (n) => hash(hsh + n * 97);
-      const kind = (m.ace || m.synchro ? "dragon" : null) || RACE_KIND[m.race] || ICON_KIND[m.icon] || ["knight", "beast", "dragon", "bird", "machine", "mage", "spirit"][hsh % 7];
+      // 種族: カードの種族(「機械族/シンクロ」なら機械)を先に見る。わからないシンクロ・エースは竜
+      const cardRace = typeof MonsterArt !== "undefined" && MonsterArt.CARD && MonsterArt.CARD[m.name] ? String(MonsterArt.CARD[m.name].type || "").split("族")[0] : "";
+      const kind = RACE_KIND[m.race] || RACE_KIND[cardRace] || (m.ace || m.synchro ? "dragon" : null) || ICON_KIND[m.icon] || ["knight", "beast", "dragon", "bird", "machine", "mage", "spirit"][hsh % 7];
       const pal = ATTR_COL[m.attr] || (side === "opp" ? ATTR_COL.闇 : [[0x1f9e7a, 0x7dffd0], [0x1d5fb4, 0x70d0ff], [0xb5341c, 0xffa040], [0xd8c070, 0xfff6c0]][hsh % 4]);
       // 色は画面用の値なので、光の計算用に直す(直さないと白っぽくなる)
       const lin = (h) => new THREE.Color(h).convertSRGBToLinear();
@@ -7433,7 +7436,104 @@ const City = (() => {
         }
       }
     }
-    return { update, _proc: proc, objs: () => [...live.values()].map((L) => L.obj) };
+    // 画面のキャンバスの隅に一度だけ描いて、正方形の絵として切り出す(描く前の設定は元に戻す)
+    function snap(sc, cam) {
+      const THREE = T();
+      const cv = renderer.domElement, S = Math.min(cv.width, cv.height, 900);
+      const vp = renderer.getViewport(new THREE.Vector4()), sci = renderer.getScissor(new THREE.Vector4()), st = renderer.getScissorTest();
+      const cc = renderer.getClearColor(new THREE.Color()), ca = renderer.getClearAlpha(), ac = renderer.autoClear, pr = renderer.getPixelRatio();
+      const rt = renderer.getRenderTarget();
+      renderer.setRenderTarget(null);
+      renderer.setViewport(0, 0, S / pr, S / pr);
+      renderer.setScissor(0, 0, S / pr, S / pr);
+      renderer.setScissorTest(true);
+      renderer.setClearColor(0x000000, 0);
+      renderer.autoClear = true;
+      renderer.render(sc, cam);
+      const out = document.createElement("canvas");
+      out.width = out.height = S;
+      out.getContext("2d").drawImage(cv, 0, cv.height - S, S, S, 0, 0, S, S);
+      renderer.setViewport(vp);
+      renderer.setScissor(sci);
+      renderer.setScissorTest(st);
+      renderer.setClearColor(cc, ca);
+      renderer.autoClear = ac;
+      renderer.setRenderTarget(rt);
+      return out.toDataURL("image/png");
+    }
+    // 見せ場に出す人物: 実際に走っている3Dの乗り手(自分・ライバル)を、ななめ前の低い位置から撮る
+    const riderShots = new Map();
+    function riderPortrait(side, view) {
+      const b = side === "opp" ? rival : me;
+      if (!b || !b.g || !renderer) return null;
+      const key = side + "|" + (view || "bust");
+      if (riderShots.has(key)) return riderShots.get(key);
+      let url = null;
+      const g = b.g, parent = g.parent;
+      try {
+        const THREE = T();
+        const sc = new THREE.Scene();
+        sc.environment = scene.environment;
+        sc.add(new THREE.HemisphereLight(0xe6eeff, 0x2a2430, 0.9));
+        const yaw = g.rotation.y, cx = Math.cos(yaw), sx = Math.sin(yaw);
+        const L = (lx, ly, lz) => new THREE.Vector3(g.position.x + lx * cx + lz * sx, g.position.y + ly, g.position.z - lx * sx + lz * cx);
+        const k1 = new THREE.DirectionalLight(0xfff0dc, 2.6), k2 = new THREE.DirectionalLight(side === "opp" ? 0xff5a7a : 0x6fd0ff, 2.4);
+        k1.position.copy(L(3, 3, 2.5));
+        k1.target.position.copy(L(0.2, 1.2, 0));
+        k2.position.copy(L(-2.5, 2, -2.5));
+        k2.target.position.copy(L(0.2, 1.2, 0));
+        sc.add(k1, k1.target, k2, k2.target);
+        sc.add(g);
+        const V = { bust: [[1.75, 1.02, 0.78], [0.3, 1.28, 0.0], 30], face: [[1.25, 1.42, 0.3], [0.42, 1.52, 0.0], 22], side: [[0.5, 1.2, 2.2], [0.25, 1.15, 0], 34] }[view || "bust"];
+        const cam = new THREE.PerspectiveCamera(V[2], 1, 0.05, 50);
+        cam.position.copy(L(...V[0]));
+        cam.lookAt(L(...V[1]));
+        url = snap(sc, cam);
+      } catch (e) {
+        console.error(e);
+      }
+      if (parent) parent.add(g);
+      riderShots.set(key, url);
+      return url;
+    }
+    window.RiderPortrait = riderPortrait;
+    // 見せ場(Cinema)に出す姿: 組み立てた3Dのモンスターを、ななめ前から撮った絵にする(名前と側ごとに1回だけ)。
+    // 画面のキャンバスの右下に一瞬だけ描いて切り抜く。見せ場は画面全体をおおうので、描いたあとが見えることはない
+    const shots = new Map();
+    function portrait(m, side) {
+      if (!m || !renderer || !scene) return null;
+      const key = (m.name || "") + "|" + side;
+      if (shots.has(key)) return shots.get(key);
+      let url = null;
+      try {
+        const THREE = T();
+        const fb = proc(m, side);
+        const sc = new THREE.Scene();
+        sc.environment = scene.environment;
+        sc.add(new THREE.HemisphereLight(0xdfeaff, 0x302838, 1.1));
+        const key1 = new THREE.DirectionalLight(0xfff2e0, 2.4);
+        key1.position.set(3, 4, 4);
+        const rim = new THREE.DirectionalLight(side === "opp" ? 0xff6a8a : 0x7fd8ff, 2.2);
+        rim.position.set(-4, 2, -3);
+        sc.add(key1, rim, fb);
+        fb.updateMatrixWorld(true);
+        const box = new THREE.Box3().setFromObject(fb), ctr = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3());
+        const R = Math.max(sz.x, sz.y, sz.z) * 0.62;
+        const cam = new THREE.PerspectiveCamera(30, 1, 0.01, 100);
+        // ななめ前・少し下から見上げる(強そうに見える角度)
+        const yaw = 0.75, pit = -0.14, d = (R / Math.tan((15 * Math.PI) / 180)) * 0.82;
+        cam.position.set(ctr.x + Math.cos(pit) * Math.cos(yaw) * d, ctr.y + Math.sin(pit) * d + R * 0.05, ctr.z + Math.cos(pit) * Math.sin(yaw) * d);
+        cam.lookAt(ctr);
+        url = snap(sc, cam);
+        sc.remove(fb);
+      } catch (e) {
+        console.error(e);
+      }
+      shots.set(key, url);
+      return url;
+    }
+    window.MonPortrait = portrait;
+    return { update, portrait, _proc: proc, objs: () => [...live.values()].map((L) => L.obj) };
   })();
 
   function nameTag(text, color) {

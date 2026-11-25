@@ -1653,9 +1653,10 @@ const View3D = (() => {
       const up = new THREE.Vector3(Math.cos(ang), Math.sin(ang), 0), fw = new THREE.Vector3(Math.sin(ang), -Math.cos(ang), 0);
       const hr = 0.098 * rig.scale * 100; // 頭の半径の目安
       const c = hp.clone().addScaledVector(up, hr * 0.95).addScaledVector(fw, hr * 0.12);
-      helmet.position.copy(c).addScaledVector(up, hr * 0.16);
+      // ヘルメットは額の上にのせる(低いと目が隠れる)。前を少し上げて、目とサングラスが見えるように
+      helmet.position.copy(c).addScaledVector(up, hr * 0.52).addScaledVector(fw, -hr * 0.1);
       helmet.scale.set(hr * 1.3, hr * 1.3, hr * 1.12);
-      helmet.rotation.set(0, 0, ang - Math.PI / 2 - 0.12);
+      helmet.rotation.set(0, 0, ang - Math.PI / 2 + 0.1);
       glasses.position.copy(c).addScaledVector(fw, hr * 0.42).addScaledVector(up, -hr * 0.02);
       glasses.scale.setScalar(hr * 0.8);
       glasses.rotation.set(Math.PI / 2, 0, Math.PI / 2 + (ang - Math.PI / 2) + 0.1);

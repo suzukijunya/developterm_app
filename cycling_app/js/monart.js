@@ -208,7 +208,7 @@ const MonsterArt = (() => {
   const has = (id) => !!urls[id];
   const url = (id) => urls[id] || null;
 
-  return { SLOTS, load, src, icon, assign, rerender, remove, has, url, glb };
+  return { SLOTS, CARD, load, src, icon, assign, rerender, remove, has, url, glb };
 })();
 
 if (typeof module !== "undefined") module.exports = MonsterArt;
