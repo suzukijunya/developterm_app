@@ -1187,7 +1187,8 @@ const City = (() => {
       if (!leaves) return void prepare().then(() => want(along));
       const need = new Map();
       // 先読み: 早送りのときほど先まで(20秒ぶん。最大3km)
-      const ahead = Math.min(3000, Math.max(500, (sim ? sim.v * sim.speedX : 7) * 20));
+      // Googleの3Dと組み合わせるときは、きれいな建物を遠く(約650m)まで立てるので、先まで読む
+      const ahead = Math.min(3000, Math.max(typeof G3 !== "undefined" && G3.on() ? 800 : 500, (sim ? sim.v * sim.speedX : 7) * 20));
       const marks = [0, 250, 500];
       for (let d = 800; d <= ahead; d += 300) marks.push(d);
       for (const d of marks) {
@@ -2331,7 +2332,7 @@ const City = (() => {
     function want(along) {
       if (!IDX.length) return;
       const need = new Map();
-      const ahead = Math.min(2500, Math.max(500, (sim ? sim.v * sim.speedX : 7) * 18));
+      const ahead = Math.min(2500, Math.max(typeof G3 !== "undefined" && G3.on() ? 750 : 500, (sim ? sim.v * sim.speedX : 7) * 18));
       for (let d = -100; d <= ahead; d += 150) {
         const p = at(along + d);
         const lat = route.lat0 - p.z / route.kz, lon = route.lon0 + p.x / route.kx;
@@ -3226,9 +3227,9 @@ const City = (() => {
     }
     // ---- 近くの補正 ----
     // Googleの3Dは空から撮った写真で作った形なので、道の高さから見ると建物も道も溶けて見える。
-    // そこで自分のまわり(260mまで)は、Googleの形を地面の高さへ押しつぶして「写真を貼った地面」にし、
-    // その上に、形のきれいな建物(国のデータ)と道路を立てる。320mより先は Google の街をそのまま見せる(遠くはきれいに見える)。
-    const FL = { R1: 260, R2: 320, size: 800, n: 144 };
+    // そこで自分のまわり(600mまで)は、Googleの形を地面の高さへ押しつぶして「写真を貼った地面」にし、
+    // その上に、形のきれいな建物(国のデータ)と道路を立てる。700mより先は Google の街をそのまま見せる(遠くはきれいに見える)。
+    const FL = { R1: 600, R2: 700, size: 1760, n: 128 };
     const flatU = { uFlatH: { value: null }, uFlatC: { value: null }, uFlatR: { value: null } };
     let flatAt = null;
     function flatPatch(root) {
@@ -3255,13 +3256,13 @@ const City = (() => {
         m.needsUpdate = true;
       });
     }
-    // 自分のまわりの地面の高さを、小さな絵(144×144・800m四方)にして渡す。30m動くごとに作り直す
+    // 自分のまわりの地面の高さを、小さな絵(128×128・1760m四方)にして渡す。90m動くごとに作り直す
     function flatUpdate(p) {
       const THREE = T();
       if (!flatU.uFlatC.value) (flatU.uFlatC.value = new THREE.Vector4(0, 0, FL.size, 0)), (flatU.uFlatR.value = new THREE.Vector4(0, 0, FL.R1, FL.R2));
       flatU.uFlatR.value.set(p.x, p.z, FL.R1, FL.R2);
       flatU.uFlatC.value.w = 1;
-      if (flatAt && Math.hypot(p.x - flatAt[0], p.z - flatAt[1]) < 30) return;
+      if (flatAt && Math.hypot(p.x - flatAt[0], p.z - flatAt[1]) < 90) return;
       flatAt = [p.x, p.z];
       const n = FL.n, a = new Float32Array(n * n);
       for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) a[j * n + i] = H(p.x + ((i + 0.5) / n - 0.5) * FL.size, p.z + ((j + 0.5) / n - 0.5) * FL.size);
@@ -3520,7 +3521,7 @@ const City = (() => {
     for (const [, m] of photos) m.visible = !g && !!m.material.map;
     Plateau.setVisible(true);
     Roads.setVisible(true);
-    clipU.uClip.value = g ? 285 : 1e9;
+    clipU.uClip.value = g ? 660 : 1e9;
     if (!popU.uG3.value) popU.uG3.value = new (T().Vector4)(0, 0, 0, 0);
     if (!g) popU.uG3.value.w = 0;
     $("ct-gm").hidden = !g;
@@ -4971,7 +4972,7 @@ const City = (() => {
     // 道のすぐ上から見ると溶けたように見える。「おまかせ」では、Googleの3Dのときだけ上から見る
     // 「すぐ後ろ」は、乗り手の肩ごしに近くから見る(3人称のゲームのような見え方)。
     const vm = viewMode === "auto" ? "close" : viewMode;
-    if (G3.on() && popU.uG3.value) popU.uG3.value.set(p.x, p.z, 250, 300);
+    if (G3.on() && popU.uG3.value) popU.uG3.value.set(p.x, p.z, 585, 670);
     const VW = { close: [3.7 + s.v * 0.09, 1.75 + s.v * 0.02, 7, 0.45, 50], near: [6.5 + s.v * 0.18, 2.9 + s.v * 0.05, 9, 0, 58], high: [30, 26, 16, 0, 58], sky: [60, 75, 22, 0, 58] }[vm] || [6.5, 2.9, 9, 0, 58];
     s.vw = s.vw && s.vw.length === 5 ? s.vw : VW.slice();
     for (let i = 0; i < 5; i++) s.vw[i] += (VW[i] - s.vw[i]) * Math.min(1, real * 2.2); // 切り替えはなめらかに
