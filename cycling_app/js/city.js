@@ -4058,6 +4058,221 @@ const City = (() => {
       sp.center.set(0.5, 0.08);
       return sp;
     }
+    // ---- モンスターの3Dの姿(ガレージで3Dモデルを登録していないカード用) ----
+    // 絵文字のかわりに、種族ごとの形を部品から組み立てる。金属のような面と、属性の色に光る目・核・刃。
+    // 高さ1・足もとが原点・前が +x。userData.tick(t) で、翼・尾・浮いている部品が動く
+    const ATTR_COL = { 風: [0x1f9e7a, 0x7dffd0], 炎: [0xb5341c, 0xffa040], 水: [0x1d5fb4, 0x70d0ff], 地: [0x7a5a2c, 0xf0d070], 光: [0xd8c070, 0xfff6c0], 闇: [0x3a2360, 0xc070ff] };
+    const ICON_KIND = { "🐉": "dragon", "🐲": "dragon", "🐍": "serpent", "🦅": "bird", "🦉": "bird", "🐦": "bird", "🐧": "bird", "🦢": "bird", "🔥": "bird", "🐺": "beast", "🐯": "beast", "🦁": "beast", "🐻": "beast", "🦊": "beast", "🐇": "beast", "🐎": "beast", "🐃": "beast", "🐆": "beast", "🐗": "beast", "🦌": "beast", "🐕": "beast", "🐢": "beast", "⚙️": "machine", "🤖": "machine", "🛸": "machine", "🌀": "machine", "🏎️": "machine", "🚀": "machine", "🎵": "mage", "🎼": "mage", "🧙": "mage", "🔮": "mage", "🛡️": "knight", "⚔️": "knight", "🗡️": "knight", "🏃": "knight", "🗿": "golem", "💀": "spirit", "👻": "spirit", "🌑": "spirit", "💫": "spirit", "😈": "spirit", "👼": "spirit" };
+    const RACE_KIND = { 戦士: "knight", 獣: "beast", 鳥獣: "bird", ドラゴン: "dragon", 機械: "machine", 魔法使い: "mage", 魚: "serpent", 水: "serpent", 昆虫: "insect", 岩石: "golem", 植物: "mage", アンデット: "spirit", 悪魔: "spirit", 天使: "spirit", 雷: "crystal", シンクロ: "dragon" };
+    function proc(m, side) {
+      const THREE = T();
+      let hsh = 7;
+      for (const ch of String(m.name)) hsh = (Math.imul(hsh, 31) + ch.codePointAt(0)) >>> 0;
+      const rnd = (n) => hash(hsh + n * 97);
+      const kind = (m.ace || m.synchro ? "dragon" : null) || RACE_KIND[m.race] || ICON_KIND[m.icon] || ["knight", "beast", "dragon", "bird", "machine", "mage", "spirit"][hsh % 7];
+      const pal = ATTR_COL[m.attr] || (side === "opp" ? ATTR_COL.闇 : [[0x1f9e7a, 0x7dffd0], [0x1d5fb4, 0x70d0ff], [0xb5341c, 0xffa040], [0xd8c070, 0xfff6c0]][hsh % 4]);
+      // 色は画面用の値なので、光の計算用に直す(直さないと白っぽくなる)
+      const base = new THREE.Color(pal[0]).offsetHSL((rnd(1) - 0.5) * 0.06, 0.1, (rnd(2) - 0.5) * 0.06).convertSRGBToLinear();
+      const glow = new THREE.Color(pal[1]).offsetHSL(0, 0.2, -0.12).convertSRGBToLinear();
+      const gold = m.ace || m.synchro;
+      const M1 = new THREE.MeshStandardMaterial({ color: base, metalness: 0.35, roughness: 0.42, flatShading: true, envMapIntensity: 0.55 });
+      const M2 = new THREE.MeshStandardMaterial({ color: gold ? new THREE.Color(0xc99a2e).convertSRGBToLinear() : base.clone().multiplyScalar(0.3), metalness: 0.6, roughness: 0.35, flatShading: true, envMapIntensity: 0.6 });
+      const GL = new THREE.MeshBasicMaterial({ color: glow });
+      const WG = new THREE.MeshStandardMaterial({ color: base.clone().multiplyScalar(0.7), metalness: 0.2, roughness: 0.55, flatShading: true, side: THREE.DoubleSide, envMapIntensity: 0.4, emissive: glow, emissiveIntensity: 0.22 });
+      const root = new THREE.Group(), anim = [];
+      const add = (geo, mat, x, y, z, rx = 0, ry = 0, rz = 0, sx = 1, sy = sx, sz = sx, parent = root) => {
+        const o = new THREE.Mesh(geo, mat);
+        o.position.set(x, y, z);
+        o.rotation.set(rx, ry, rz);
+        o.scale.set(sx, sy, sz);
+        o.castShadow = true;
+        parent.add(o);
+        return o;
+      };
+      const oct = (r = 1) => new THREE.OctahedronGeometry(r, 0), ico = (r = 1, d = 0) => new THREE.IcosahedronGeometry(r, d), cone = (r, h, n = 5) => new THREE.ConeGeometry(r, h, n), box = (a, b, c) => new THREE.BoxGeometry(a, b, c), cyl = (a, b, h, n = 6) => new THREE.CylinderGeometry(a, b, h, n);
+      // 翼(膜のある翼 / 羽の翼)。付け根を原点に、外へ +z
+      const wing = (len, feather) => {
+        const sh = new THREE.Shape();
+        sh.moveTo(0, 0);
+        if (feather) {
+          sh.lineTo(len * 0.35, len * 0.5);
+          sh.lineTo(len, len * 0.42);
+          for (let k = 5; k >= 0; k--) (sh.lineTo(len * (0.2 + 0.16 * k) + len * 0.04, -len * (0.12 + 0.05 * (5 - k))), sh.lineTo(len * (0.2 + 0.16 * k) - len * 0.06, -len * 0.02));
+        } else {
+          sh.lineTo(len * 0.3, len * 0.55);
+          sh.lineTo(len, len * 0.5);
+          sh.lineTo(len * 0.78, len * 0.12);
+          sh.lineTo(len * 0.88, -len * 0.18);
+          sh.lineTo(len * 0.55, -len * 0.02);
+          sh.lineTo(len * 0.5, -len * 0.3);
+          sh.lineTo(len * 0.22, -len * 0.08);
+        }
+        const g = new THREE.ShapeGeometry(sh);
+        g.rotateY(-Math.PI / 2); // 形の横(+x)を、外向き(+z)へ
+        return g;
+      };
+      const wings = (x, y, len, feather, spread = 0.5) => {
+        for (const sg of [-1, 1]) {
+          const pv = new THREE.Group();
+          pv.position.set(x, y, sg * 0.12);
+          pv.scale.z = sg;
+          root.add(pv);
+          const w = add(wing(len, feather), WG, 0, 0, 0, 0, 0, 0, 1, 1, 1, pv);
+          add(cyl(0.02, 0.035, len * 1.05, 5), M2, 0, len * 0.24, len * 0.5, Math.PI / 2 - 0.42, 0, 0, 1, 1, 1, pv); // 翼の骨
+          anim.push((t) => (pv.rotation.x = sg * (-spread + Math.sin(t * 5.5) * 0.42)));
+        }
+      };
+      const eyes = (x, y, z, r = 0.035) => {
+        for (const sg of [-1, 1]) add(ico(r), GL, x, y, sg * z);
+      };
+      const tail = (x, y, n, len, r) => {
+        let par = root, px = x, py = y;
+        for (let k = 0; k < n; k++) {
+          const pv = new THREE.Group();
+          pv.position.set(px, py, 0);
+          par.add(pv);
+          add(cone(r * (1 - k / (n + 1)), len, 5), k % 2 ? M2 : M1, -len / 2, 0, 0, 0, 0, Math.PI / 2, 1, 1, 1, pv);
+          const kk = k;
+          anim.push((t) => (pv.rotation.y = Math.sin(t * 2.4 - kk * 0.7) * 0.28));
+          par = pv;
+          px = -len * 0.85;
+          py = 0;
+        }
+        return par;
+      };
+      if (kind === "dragon") {
+        add(oct(), M1, 0, 0.5, 0, 0, 0, 0, 0.42, 0.26, 0.24);
+        add(ico(0.09), GL, 0.12, 0.48, 0); // 胸の核
+        add(cyl(0.07, 0.11, 0.42, 6), M1, 0.36, 0.72, 0, 0, 0, -0.75);
+        const hd = new THREE.Group();
+        hd.position.set(0.56, 0.92, 0);
+        root.add(hd);
+        add(cone(0.11, 0.34, 5), M1, 0.1, 0, 0, 0, 0, -Math.PI / 2, 1, 1, 1, hd);
+        add(cone(0.07, 0.24, 4), M2, 0.1, -0.07, 0, 0, 0, -Math.PI / 2 - 0.25, 1, 1, 1, hd); // 下あご
+        for (const sg of [-1, 1]) add(cone(0.028, 0.26, 4), M2, -0.1, 0.1, sg * 0.07, sg * 0.35, 0, 0.9, 1, 1, 1, hd); // 角
+        for (const sg of [-1, 1]) add(ico(0.03), GL, 0.08, 0.035, sg * 0.075, 0, 0, 0, 1, 1, 1, hd);
+        anim.push((t) => (hd.rotation.z = Math.sin(t * 1.6) * 0.12));
+        for (let k = 0; k < 5; k++) add(cone(0.035, 0.14, 4), M2, 0.22 - k * 0.13, 0.74 - k * 0.02, 0); // 背びれ
+        for (const [lx, lz] of [[0.2, 0.15], [0.2, -0.15], [-0.22, 0.15], [-0.22, -0.15]]) (add(cyl(0.05, 0.035, 0.3, 5), M1, lx, 0.2, lz, 0, 0, lx > 0 ? 0.25 : -0.3), add(cone(0.05, 0.1, 4), M2, lx + 0.05, 0.03, lz, 0, 0, -Math.PI / 2));
+        tail(-0.36, 0.48, 5, 0.22, 0.09);
+        wings(0.05, 0.68, gold ? 0.95 : 0.75, false, 0.55);
+        if (gold) (wings(-0.12, 0.6, 0.55, false, 0.2), anim.push(((r) => (t) => (r.rotation.z = t * 0.8))(add(new THREE.TorusGeometry(0.2, 0.012, 6, 24), GL, 0.5, 1.2, 0, Math.PI / 2, 0, 0))));
+      } else if (kind === "bird") {
+        add(ico(1, 1), M1, 0, 0.5, 0, 0, 0, 0.3, 0.3, 0.2, 0.19);
+        add(ico(0.12, 1), M1, 0.3, 0.68, 0);
+        add(cone(0.05, 0.2, 4), M2, 0.45, 0.65, 0, 0, 0, -Math.PI / 2 - 0.2);
+        eyes(0.36, 0.71, 0.085, 0.028);
+        for (let k = -2; k <= 2; k++) add(cone(0.045, 0.42, 3), k % 2 ? M2 : M1, -0.42, 0.42, k * 0.07, 0, 0, Math.PI / 2 + 0.15 + Math.abs(k) * 0.04, 1, 1, 0.3); // 尾羽
+        for (const sg of [-1, 1]) (add(cyl(0.022, 0.022, 0.22, 4), M2, 0.02, 0.24, sg * 0.08), add(cone(0.05, 0.1, 3), GL, 0.05, 0.1, sg * 0.08, 0, 0, -1.9));
+        add(cone(0.05, 0.2, 4), M2, 0.22, 0.84, 0, 0, 0, 0.7); // とさか
+        wings(0.04, 0.6, 0.95, true, 0.35);
+      } else if (kind === "beast" || kind === "insect") {
+        const ins = kind === "insect";
+        add(ico(1, 0), M1, 0, 0.42, 0, 0, 0, 0, ins ? 0.26 : 0.36, 0.2, 0.2);
+        if (ins) add(ico(1, 0), M2, -0.36, 0.44, 0, 0, 0, 0.2, 0.3, 0.19, 0.2);
+        const hd = new THREE.Group();
+        hd.position.set(0.4, 0.56, 0);
+        root.add(hd);
+        add(oct(), M1, 0, 0, 0, 0, 0, 0, 0.17, 0.14, 0.14, hd);
+        add(cone(0.07, 0.2, 4), M2, 0.17, -0.04, 0, 0, 0, -Math.PI / 2, 1, 1, 1, hd);
+        for (const sg of [-1, 1]) (add(cone(0.04, ins ? 0.34 : 0.15, 3), M2, ins ? 0.12 : -0.04, ins ? 0.02 : 0.15, sg * (ins ? 0.06 : 0.09), ins ? sg * 0.5 : 0, 0, ins ? -1.2 : 0.2, 1, 1, 1, hd), add(ico(0.028), GL, 0.1, 0.045, sg * 0.085, 0, 0, 0, 1, 1, 1, hd));
+        anim.push((t) => (hd.rotation.z = Math.sin(t * 2) * 0.1));
+        const legs = ins ? [[0.14, 1], [0, 1], [-0.14, 1]] : [[0.22, 1], [-0.22, 1]];
+        legs.forEach(([lx], k) => {
+          for (const sg of [-1, 1]) {
+            const l = add(cyl(ins ? 0.02 : 0.05, ins ? 0.012 : 0.03, ins ? 0.5 : 0.34, 5), M2, lx, ins ? 0.26 : 0.19, sg * (ins ? 0.26 : 0.14), ins ? sg * 0.9 : 0, 0, 0);
+            anim.push((t) => (l.rotation.z = Math.sin(t * 7 + k * 2 + sg) * 0.35));
+          }
+        });
+        for (let k = 0; k < 4; k++) add(cone(0.04, 0.16, 4), GL, 0.2 - k * 0.12, 0.64 - k * 0.015, 0, 0, 0, 0.5); // たてがみ
+        if (ins) wings(-0.05, 0.6, 0.6, false, 0.2);
+        else tail(-0.34, 0.46, 4, 0.16, 0.05);
+      } else if (kind === "knight" || kind === "golem") {
+        const gm = kind === "golem", w = gm ? 1.5 : 1;
+        add(gm ? ico(1, 0) : cyl(0.15, 0.1, 0.34, 6), M1, 0, 0.6, 0, 0, 0.3, 0, gm ? 0.26 : 1, gm ? 0.24 : 1, gm ? 0.24 : 1);
+        add(ico(0.06), GL, 0.13 * w, 0.62, 0);
+        add(gm ? ico(0.13, 0) : oct(0.12), M2, 0.02, 0.9, 0);
+        eyes(0.1, 0.91, 0.045, 0.022);
+        if (!gm) add(cone(0.04, 0.3, 4), GL, -0.05, 1.06, 0, 0, 0, 0.4, 1, 1, 0.35); // かぶとの飾り
+        for (const sg of [-1, 1]) {
+          add(ico(0.1 * w, 0), M2, 0, 0.76, sg * 0.21 * w); // 肩当て
+          const arm = add(cyl(0.045 * w, 0.04 * w, 0.34, 5), M1, 0.05, 0.56, sg * 0.24 * w, 0, 0, 0.35);
+          anim.push((t) => (arm.rotation.z = 0.35 + Math.sin(t * 2.2 + sg) * 0.12));
+          add(cyl(0.065 * w, 0.05 * w, 0.42, 5), M1, 0, 0.22, sg * 0.09 * w);
+          add(box(0.16 * w, 0.06, 0.1 * w), M2, 0.03, 0.03, sg * 0.09 * w);
+        }
+        if (!gm) {
+          const sw = add(box(0.03, 0.72, 0.07), GL, 0.3, 0.72, 0.26, 0, 0, -0.5); // 剣
+          add(box(0.05, 0.05, 0.22), M2, 0.14, 0.42, 0.26, 0, 0, -0.5);
+          anim.push((t) => (sw.rotation.z = -0.5 + Math.sin(t * 2.2) * 0.1));
+          add(cyl(0.2, 0.2, 0.035, 6), M2, 0.14, 0.56, -0.3, Math.PI / 2, 0, 0); // 盾
+          add(ico(0.05), GL, 0.14, 0.56, -0.325);
+        } else for (let k = 0; k < 4; k++) add(oct(0.07), GL, Math.cos(k * 1.57) * 0.1, 0.98 + (k % 2) * 0.06, Math.sin(k * 1.57) * 0.1);
+      } else if (kind === "machine") {
+        const core = new THREE.Group();
+        core.position.set(0, 0.58, 0);
+        root.add(core);
+        add(new THREE.TorusGeometry(0.26, 0.06, 6, 12), M1, 0, 0, 0, 0, Math.PI / 2, 0, 1, 1, 1, core);
+        for (let k = 0; k < 12; k++) add(box(0.08, 0.1, 0.07), M2, 0, Math.sin((k / 12) * 6.283) * 0.34, Math.cos((k / 12) * 6.283) * 0.34, -(k / 12) * 6.283, 0, 0, 1, 1, 1, core);
+        add(ico(0.13, 1), GL, 0, 0, 0, 0, 0, 0, 1, 1, 1, core);
+        anim.push((t) => (core.rotation.x = t * 1.6));
+        for (const sg of [-1, 1]) {
+          const arm = add(cyl(0.035, 0.035, 0.36, 5), M2, 0.1, 0.4, sg * 0.42, sg * 0.5, 0, 0.5);
+          add(cone(0.06, 0.18, 4), GL, 0.24, 0.2, sg * 0.5, 0, 0, -2.2);
+          anim.push((t) => (arm.rotation.z = 0.5 + Math.sin(t * 3 + sg) * 0.25));
+        }
+        add(cyl(0.12, 0.2, 0.16, 6), M1, 0, 0.1, 0);
+        add(oct(0.1), M2, 0.05, 1.0, 0);
+        eyes(0.1, 1.0, 0.04, 0.02);
+      } else if (kind === "mage") {
+        add(cone(0.24, 0.66, 7), M1, 0, 0.33, 0);
+        add(cyl(0.11, 0.15, 0.2, 6), M2, 0, 0.7, 0);
+        add(ico(0.1, 1), M2, 0.02, 0.88, 0);
+        add(cone(0.14, 0.34, 6), M1, -0.03, 1.06, 0, 0, 0, 0.25); // 帽子
+        eyes(0.09, 0.89, 0.04, 0.02);
+        add(cyl(0.015, 0.015, 0.95, 5), M2, 0.22, 0.52, 0.22, 0, 0, -0.12); // 杖
+        const orb = add(ico(0.075, 1), GL, 0.28, 1.02, 0.22);
+        anim.push((t) => orb.scale.setScalar(1 + Math.sin(t * 4) * 0.18));
+        for (let k = 0; k < 3; k++) {
+          const r = add(new THREE.TorusGeometry(0.3 + k * 0.05, 0.01, 4, 28), GL, 0, 0.3 + k * 0.2, 0, Math.PI / 2, 0, 0);
+          const kk = k;
+          anim.push((t) => ((r.rotation.z = t * (1 + kk * 0.5)), (r.rotation.x = Math.PI / 2 + Math.sin(t + kk) * 0.25)));
+        }
+      } else if (kind === "serpent") {
+        const hd = add(cone(0.11, 0.3, 5), M1, 0.4, 0.62, 0, 0, 0, -Math.PI / 2 + 0.3);
+        eyes(0.4, 0.68, 0.075, 0.028);
+        for (const sg of [-1, 1]) add(cone(0.1, 0.02, 3), WG, 0.26, 0.62, sg * 0.14, sg * 1.2, 0, 0, 1, 12, 1);
+        const tp = tail(0.3, 0.58, 7, 0.2, 0.11);
+        add(cone(0.14, 0.02, 3), WG, -0.16, 0, 0, Math.PI / 2, 0, 0, 1, 10, 1, tp);
+        for (let k = 0; k < 4; k++) add(cone(0.03, 0.16, 3), GL, 0.18 - k * 0.14, 0.72, 0);
+        anim.push((t) => (hd.position.y = 0.62 + Math.sin(t * 2) * 0.03));
+      } else {
+        // 霊・悪魔・天使・雷の結晶: 浮かぶ体
+        const cr = kind === "crystal";
+        add(cr ? oct(1) : cone(0.2, 0.6, 6), M1, 0, cr ? 0.55 : 0.42, 0, cr ? 0 : Math.PI, 0, 0, cr ? 0.2 : 1, cr ? 0.42 : 1, cr ? 0.2 : 1);
+        if (!cr) (add(ico(0.12, 1), M2, 0.02, 0.86, 0), eyes(0.1, 0.87, 0.045, 0.026), add(ico(0.06), GL, 0.14, 0.58, 0));
+        const dk = m.race === "悪魔" || m.attr === "闇", an = m.race === "天使" || m.attr === "光";
+        if (dk) for (const sg of [-1, 1]) add(cone(0.03, 0.2, 4), M2, 0, 1.0, sg * 0.08, sg * 0.5, 0, 0);
+        if (an) anim.push(((r) => (t) => (r.rotation.z = t))(add(new THREE.TorusGeometry(0.12, 0.012, 5, 20), GL, 0, 1.08, 0, Math.PI / 2, 0, 0)));
+        if (!cr) wings(-0.02, 0.66, 0.7, an, 0.5);
+        for (let k = 0; k < (cr ? 7 : 4); k++) {
+          const a = (k / (cr ? 7 : 4)) * 6.283, sh = add(oct(0.05 + rnd(k + 9) * 0.05), GL, Math.cos(a) * 0.36, 0.5 + rnd(k) * 0.4, Math.sin(a) * 0.36, 0, 0, 0, 0.5, 1.6, 0.5);
+          anim.push((t) => (sh.position.set(Math.cos(a + t) * 0.36, 0.5 + rnd(k) * 0.4 + Math.sin(t * 2 + k) * 0.05, Math.sin(a + t) * 0.36), (sh.rotation.y = t * 2)));
+        }
+      }
+      // 高さ1にそろえて、足もとを原点へ
+      root.updateMatrixWorld(true);
+      const wrap = new THREE.Group();
+      wrap.add(root);
+      const bx = new THREE.Box3().setFromObject(root), sz = bx.getSize(new THREE.Vector3());
+      const k = 1 / Math.max(sz.y, 0.6);
+      root.scale.setScalar(k);
+      root.position.y = -bx.min.y * k;
+      wrap.userData.tick = (t) => {
+        for (const f of anim) f(t);
+      };
+      return wrap;
+    }
     function atkTag(m, side) {
       const THREE = T();
       const cv = document.createElement("canvas");
@@ -4081,6 +4296,7 @@ const City = (() => {
     }
     function spawn(m, side) {
       const THREE = T();
+      const L0 = {};
       const obj = new THREE.Group();
       const body = new THREE.Group();
       obj.add(body);
@@ -4093,8 +4309,16 @@ const City = (() => {
       const tag = atkTag(m, side);
       tag.position.y = s + 0.22;
       obj.add(tag);
-      const fb = sprite(m, side);
-      fb.scale.set(s * 1.2, s * 1.2, 1);
+      // 3Dモデルを登録していないカードは、部品から組み立てた姿で出す(絵文字は使わない)
+      let fb;
+      try {
+        fb = proc(m, side);
+        fb.scale.setScalar(s);
+      } catch (e) {
+        console.error(e);
+        fb = sprite(m, side);
+        fb.scale.set(s * 1.2, s * 1.2, 1);
+      }
       body.add(fb);
       template(m, side).then((tpl) => {
         if (!tpl) return;
@@ -4102,10 +4326,13 @@ const City = (() => {
         c.scale.setScalar(s);
         body.remove(fb);
         body.add(c);
+        L0.fb = null;
       });
       obj.scale.setScalar(0.01);
       scene.add(obj);
-      return { obj, body, ring, side, born: sim ? sim.t : 0, gone: null, m };
+      L0.obj = obj;
+      Object.assign(L0, { body, ring, side, born: sim ? sim.t : 0, gone: null, m, fb });
+      return L0;
     }
     function update(dt) {
       if (!sim || !sim.ride.duel) return;
@@ -4139,6 +4366,7 @@ const City = (() => {
         o.rotation.y = yaw;
         L.body.rotation.y = Math.sin(t * 0.8 + L.slot) * 0.25;
         L.ring.rotation.z += dt * 1.5;
+        if (L.fb && L.fb.userData.tick) L.fb.userData.tick(performance.now() / 1000 + L.slot * 1.3);
         // 出てくるときは光って大きくなり、やられたら小さくなって消える
         const life = L.gone == null ? Math.min(1, (t - L.born) / 0.6) : Math.max(0, 1 - (t - L.gone) / 0.5);
         const sc = Math.max(0.01, life < 1 && L.gone == null ? 1 - Math.pow(1 - life, 3) * 1 + Math.sin(life * Math.PI) * 0.25 : life);
@@ -4149,7 +4377,7 @@ const City = (() => {
         }
       }
     }
-    return { update };
+    return { update, _proc: proc };
   })();
 
   function nameTag(text, color) {
@@ -5364,5 +5592,5 @@ const City = (() => {
   }
 
   if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", bind);
-  return { at, turnAhead, readTile, _H: (x, z) => H(x, z), _state: () => ({ G3, popU, clipU, sim, route, tiles, failed, camera, Plateau, Roads, scene, me, Traffic, Signals, renderer, Perf }), ride: (a) => Roads.ride(a) };
+  return { at, turnAhead, readTile, _H: (x, z) => H(x, z), _state: () => ({ Mons, G3, popU, clipU, sim, route, tiles, failed, camera, Plateau, Roads, scene, me, Traffic, Signals, renderer, Perf }), ride: (a) => Roads.ride(a) };
 })();
