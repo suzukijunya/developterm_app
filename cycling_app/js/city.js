@@ -651,18 +651,34 @@ const City = (() => {
   // ---------- 1枚ぶんの街を作る ----------
   // 実物の建物: 読み込めたら、建物ごとに地面からばねのように立ち上がる(急にパッと出ない)。
   // anc = 建物の中心x・足もとy・中心z・出はじめる時刻(秒)。頂点シェーダーで高さを 0→1 に伸ばす
-  const popU = { uPopT: { value: 0 } };
+  // uG3: Googleの3Dと組み合わせるとき。自分の位置(x,z)と、きれいな建物を立てる範囲(ここまで全部 / ここから先は無し)。w=0 なら使わない
+  const popU = { uPopT: { value: 0 }, uG3: { value: null } };
+  // 道・木・電柱など: Googleの3Dと組み合わせるときは、近くだけ描く(遠くは Google の街にまかせる)
+  const clipU = { uClip: { value: 1e9 } };
+  function clipMat(m) {
+    if (!m || !(m.isMeshLambertMaterial || m.isMeshStandardMaterial) || m.onBeforeCompile !== T().Material.prototype.onBeforeCompile) return m;
+    m.onBeforeCompile = (sh) => {
+      sh.uniforms.uClip = clipU.uClip;
+      sh.fragmentShader = "uniform float uClip;\n" + sh.fragmentShader.replace("#include <clipping_planes_fragment>", "if (length(vViewPosition) > uClip) discard;\n#include <clipping_planes_fragment>");
+    };
+    m.customProgramCacheKey = () => "clip";
+    return m;
+  }
   function popMat(m, photo) {
     m.onBeforeCompile = (sh) => {
       sh.uniforms.uPopT = popU.uPopT;
-      sh.vertexShader = "attribute vec4 anc;\nuniform float uPopT;\n" + sh.vertexShader.replace("#include <begin_vertex>", `#include <begin_vertex>
+      if (!popU.uG3.value) popU.uG3.value = new (T().Vector4)(0, 0, 0, 0);
+      sh.uniforms.uG3 = popU.uG3;
+      sh.vertexShader = "attribute vec4 anc;\nuniform float uPopT;\nuniform vec4 uG3;\n" + sh.vertexShader.replace("#include <begin_vertex>", `#include <begin_vertex>
         float popT = clamp((uPopT - anc.w) / 0.95, 0.0, 1.0);
         float popK = popT >= 1.0 ? 1.0 : (popT <= 0.0 ? 0.0 : 1.0 - exp(-6.0 * popT) * cos(8.0 * popT));
+        // Googleの3Dと組み合わせるとき: 建物ごとに、近くのものだけ立てる
+        if (uG3.w > 0.0) popK *= 1.0 - smoothstep(uG3.z, uG3.w, distance(anc.xz, uG3.xy));
         transformed.y = anc.y + (transformed.y - anc.y) * popK - (1.0 - min(popK, 1.0)) * 1.5;`);
       // 壁の写真は暗く写っていることが多いので、少し明るく起こす
       if (photo) sh.fragmentShader = sh.fragmentShader.replace("#include <map_fragment>", "#include <map_fragment>\n diffuseColor.rgb = pow(diffuseColor.rgb, vec3(0.78)) * 1.12;");
     };
-    m.customProgramCacheKey = () => "pop" + (photo ? 1 : 0);
+    m.customProgramCacheKey = () => "pop3" + (photo ? 1 : 0);
     return m;
   }
   // 外壁の材質: 1階には専用の絵(入口・店)を貼り、窓ガラスには空を映す(見る角度が浅いほど強く映る)
@@ -1284,7 +1300,6 @@ const City = (() => {
           for (const ch of t.mesh.children) (ch.visible = false), reveal.push(ch);
           scene.add(t.mesh);
           Perf.span("実物の建物を置く", performance.now() - pt0);
-          if (G3.on()) t.mesh.visible = false;
           syncPlaceholders();
         } else loaded.delete(L.key);
       } catch (e) {
@@ -1794,6 +1809,7 @@ const City = (() => {
         rail: new THREE.MeshLambertMaterial({ color: 0xf4f4f0, side: THREE.DoubleSide }),
         stripe: new THREE.MeshBasicMaterial({ color: 0x35d6ff, transparent: true, opacity: 0.42, depthWrite: false, side: THREE.DoubleSide }),
       };
+      for (const k in M) clipMat(M[k]);
       return M;
     }
     // 道ばたの物の材質と絵(1回だけ作る)
@@ -1901,6 +1917,7 @@ const City = (() => {
           c.fill();
         }),
       };
+      for (const k in PM) clipMat(PM[k]);
       return PM;
     }
     // 道ばたの物を置く。同じ形はまとめて描く(数が多くても重くならない)
@@ -3188,7 +3205,10 @@ const City = (() => {
         const gl = new GLTFLoader(tiles.manager);
         gl.setDRACOLoader(draco);
         tiles.manager.addHandler(/\.gltf$/, gl);
-        tiles.addEventListener("load-model", () => models++);
+        tiles.addEventListener("load-model", (e) => {
+          models++;
+          if (e && e.scene) flatPatch(e.scene);
+        });
         tiles.setCamera(camera);
         tiles.setResolutionFromRenderer(camera, renderer);
         tiles.group.matrixAutoUpdate = false;
@@ -3203,6 +3223,55 @@ const City = (() => {
         starting = null;
       });
       return starting;
+    }
+    // ---- 近くの補正 ----
+    // Googleの3Dは空から撮った写真で作った形なので、道の高さから見ると建物も道も溶けて見える。
+    // そこで自分のまわり(110mまで)は、Googleの形を地面の高さへ押しつぶして「写真を貼った地面」にし、
+    // その上に、形のきれいな建物(国のデータ)と道路を立てる。150mより先は Google の街をそのまま見せる(遠くはきれいに見える)。
+    const FL = { R1: 110, R2: 150, size: 384, n: 96 };
+    const flatU = { uFlatH: { value: null }, uFlatC: { value: null }, uFlatR: { value: null } };
+    let flatAt = null;
+    function flatPatch(root) {
+      const THREE = T();
+      if (!flatU.uFlatC.value) (flatU.uFlatC.value = new THREE.Vector4(0, 0, FL.size, 0)), (flatU.uFlatR.value = new THREE.Vector4(0, 0, FL.R1, FL.R2));
+      root.traverse((o) => {
+        const m = o.isMesh && o.material;
+        if (!m || m.userData.flat) return;
+        m.userData.flat = true;
+        m.onBeforeCompile = (sh) => {
+          Object.assign(sh.uniforms, flatU);
+          sh.vertexShader = "uniform sampler2D uFlatH;\nuniform vec4 uFlatC;\nuniform vec4 uFlatR;\n" + sh.vertexShader.replace("#include <project_vertex>", `
+            vec4 mvPosition = modelMatrix * vec4(transformed, 1.0);
+            if (uFlatC.w > 0.5) {
+              float fk = smoothstep(uFlatR.z, uFlatR.w, distance(mvPosition.xz, uFlatR.xy));
+              float fh = texture2D(uFlatH, (mvPosition.xz - uFlatC.xy) / uFlatC.z + 0.5).r;
+              // 近く: 地面の高さ(少し下)へ。高さの順番だけは残す(屋根や木の上が上になる。空から見た写真と同じ)
+              mvPosition.y = mix(fh - 0.1 + (mvPosition.y - fh) * 0.003, mvPosition.y, fk);
+            }
+            mvPosition = viewMatrix * mvPosition;
+            gl_Position = projectionMatrix * mvPosition;`);
+        };
+        m.customProgramCacheKey = () => "g3flat";
+        m.needsUpdate = true;
+      });
+    }
+    // 自分のまわりの地面の高さを、小さな絵(96×96・384m四方)にして渡す。30m動くごとに作り直す
+    function flatUpdate(p) {
+      const THREE = T();
+      if (!flatU.uFlatC.value) (flatU.uFlatC.value = new THREE.Vector4(0, 0, FL.size, 0)), (flatU.uFlatR.value = new THREE.Vector4(0, 0, FL.R1, FL.R2));
+      flatU.uFlatR.value.set(p.x, p.z, FL.R1, FL.R2);
+      flatU.uFlatC.value.w = 1;
+      if (flatAt && Math.hypot(p.x - flatAt[0], p.z - flatAt[1]) < 30) return;
+      flatAt = [p.x, p.z];
+      const n = FL.n, a = new Float32Array(n * n);
+      for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) a[j * n + i] = H(p.x + ((i + 0.5) / n - 0.5) * FL.size, p.z + ((j + 0.5) / n - 0.5) * FL.size);
+      const old = flatU.uFlatH.value;
+      const tx = new THREE.DataTexture(a, n, n, THREE.RedFormat, THREE.FloatType);
+      tx.magFilter = tx.minFilter = renderer.extensions.has("OES_texture_float_linear") ? THREE.LinearFilter : THREE.NearestFilter;
+      tx.needsUpdate = true;
+      flatU.uFlatH.value = tx;
+      flatU.uFlatC.value.set(p.x, p.z, FL.size, 1);
+      if (old) old.dispose();
     }
     // 基準点(自分のいる所)を置き直し、地心座標 → アプリの平面 の変換を作る
     function place(along, force) {
@@ -3253,6 +3322,7 @@ const City = (() => {
         const gr = Math.hypot(r.x - p.x, r.z - p.z) < 600 ? groundAt(r.x - r.tz * 1.3, r.z + r.tx * 1.3) : null;
         ray.rival = gr != null && Math.abs(gr - H(r.x, r.z)) < 40 ? gr : H(r.x, r.z);
       }
+      flatUpdate(at(s.along));
       camera.updateMatrixWorld();
       tiles.setResolutionFromRenderer(camera, renderer);
       tiles.update();
@@ -3276,6 +3346,7 @@ const City = (() => {
     }
     return {
       usage: () => Object.assign(usage(), { capM: CAP_M, capD: CAP_D, over: overCap() }),
+      _flat: [flatPatch, flatUpdate],
       getKey,
       setKey(k) {
         try {
@@ -3444,11 +3515,14 @@ const City = (() => {
     const g = G3.on();
     for (const t of tiles.values()) if (t.group) hideOwnCity(t.group, g);
     syncPlaceholders();
-    if (routeStrip) routeStrip.visible = !g;
+    // Googleの3Dのとき: 近くは、きれいな建物(国のデータ)と道路を立てる。地面の写真と仮の建物は Google のものを使う
     if (ground) ground.position.y = g ? -3 : 0;
     for (const [, m] of photos) m.visible = !g && !!m.material.map;
-    Plateau.setVisible(!g);
-    Roads.setVisible(!g);
+    Plateau.setVisible(true);
+    Roads.setVisible(true);
+    clipU.uClip.value = g ? 128 : 1e9;
+    if (!popU.uG3.value) popU.uG3.value = new (T().Vector4)(0, 0, 0, 0);
+    if (!g) popU.uG3.value.w = 0;
     $("ct-gm").hidden = !g;
   }
 
@@ -4869,7 +4943,7 @@ const City = (() => {
       }
       if (s.along >= route.length - 0.5) finish();
       Perf.lap("対戦");
-      if ((s.tileT = (s.tileT || 0) + real) > 1.5) (s.tileT = 0), wantTiles(s.along), Roads.want(s.along), G3.on() || (wantPhotos(s.along), Plateau.want(s.along));
+      if ((s.tileT = (s.tileT || 0) + real) > 1.5) (s.tileT = 0), wantTiles(s.along), Roads.want(s.along), Plateau.want(s.along), G3.on() || wantPhotos(s.along);
     }
     if (photoMore && !G3.on() && (s.phT = (s.phT || 0) + real) > 0.15) (s.phT = 0), wantPhotos(s.along);
     Perf.lap("街の予約");
@@ -4896,7 +4970,8 @@ const City = (() => {
     // 視点: 近く(すぐ後ろ)/上から(ドローンのように)/空から。Googleの3Dは空から撮った街なので、
     // 道のすぐ上から見ると溶けたように見える。「おまかせ」では、Googleの3Dのときだけ上から見る
     // 「すぐ後ろ」は、乗り手の肩ごしに近くから見る(3人称のゲームのような見え方)。
-    const vm = viewMode === "auto" ? (G3.on() ? "high" : "close") : viewMode;
+    const vm = viewMode === "auto" ? "close" : viewMode;
+    if (G3.on() && popU.uG3.value) popU.uG3.value.set(p.x, p.z, 105, 135);
     const VW = { close: [3.7 + s.v * 0.09, 1.75 + s.v * 0.02, 7, 0.45, 50], near: [6.5 + s.v * 0.18, 2.9 + s.v * 0.05, 9, 0, 58], high: [30, 26, 16, 0, 58], sky: [60, 75, 22, 0, 58] }[vm] || [6.5, 2.9, 9, 0, 58];
     s.vw = s.vw && s.vw.length === 5 ? s.vw : VW.slice();
     for (let i = 0; i < 5; i++) s.vw[i] += (VW[i] - s.vw[i]) * Math.min(1, real * 2.2); // 切り替えはなめらかに
@@ -5243,5 +5318,5 @@ const City = (() => {
   }
 
   if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", bind);
-  return { at, turnAhead, readTile, _H: (x, z) => H(x, z), _state: () => ({ sim, route, tiles, failed, camera, Plateau, Roads, scene, me, Traffic, Signals, renderer, Perf }), ride: (a) => Roads.ride(a) };
+  return { at, turnAhead, readTile, _H: (x, z) => H(x, z), _state: () => ({ G3, popU, clipU, sim, route, tiles, failed, camera, Plateau, Roads, scene, me, Traffic, Signals, renderer, Perf }), ride: (a) => Roads.ride(a) };
 })();
