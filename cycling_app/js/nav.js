@@ -142,13 +142,12 @@ const Nav = (() => {
     while (list.length && d(list[0], to) >= me - 150) list = list.slice(1);
     return list;
   }
-  async function fetchRoute(from, to, via) {
-    const vs = aheadVia(from, to, via);
+  async function routeOnce(from, to, vs, kind) {
     try {
       const loc0 = { lat: from.lat, lon: from.lon };
       if (from.heading != null) Object.assign(loc0, { heading: Math.round(from.heading), heading_tolerance: 60 });
       const req = {
-        locations: [loc0, ...vs.map((v) => ({ lat: v.lat, lon: v.lon, type: "through", radius: 30 })), { lat: to.lat, lon: to.lon }],
+        locations: [loc0, ...vs.map((v) => ({ lat: v.lat, lon: v.lon, type: kind, radius: 30 })), { lat: to.lat, lon: to.lon }],
         costing: "bicycle",
         costing_options: { bicycle: { bicycle_type: "Road", use_roads: 0.5, use_hills: 0.3 } },
         directions_options: { units: "kilometers" },
@@ -166,6 +165,21 @@ const Nav = (() => {
     const json = await res.json();
     if (!json.routes || !json.routes.length) throw new Error("no route");
     return fromOsrm(json);
+  }
+  const routeLen = (r) => (r && (r.length || r.distance || (r.cum && r.cum[r.cum.length - 1]))) || 0;
+  async function fetchRoute(from, to, via) {
+    const vs = aheadVia(from, to, via);
+    if (!vs.length) return routeOnce(from, to, [], "through");
+    // 経由地つきの道が、まっすぐ行く道よりひどく遠回りになることがある(経由地が反対車線に吸いつき、
+    // 引き返せずに大回りするなど)。そのときは、止まってよい経由地として引き直し、それでもだめなら経由地なしの道にする
+    const [withVia, direct] = await Promise.all([routeOnce(from, to, vs, "through").catch(() => null), routeOnce(from, to, [], "through").catch(() => null)]);
+    const dl = routeLen(direct), ok = (r) => r && (!dl || routeLen(r) <= Math.max(dl * 1.6, dl + 3000));
+    if (ok(withVia)) return withVia;
+    const soft = await routeOnce(from, to, vs, "break").catch(() => null);
+    if (ok(soft)) return soft;
+    if (direct) return direct;
+    if (withVia) return withVia;
+    throw new Error("no route");
   }
 
   // ---------- ルート上の現在位置 ----------
