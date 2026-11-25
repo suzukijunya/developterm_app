@@ -280,12 +280,364 @@ const Cinema = (() => {
     return m ? m[1] : "";
   }
 
+  // ---------- 光と粒の演出(キャンバス): 集中線・光の輪・火花・衝撃波・稲妻・紙吹雪・画面の揺れ ----------
+  const FX = (() => {
+    let cv = null, g = null, W = 0, H = 0, raf = 0, st = null, stageEl = null;
+    const R = Math.random, TAU = Math.PI * 2;
+    const PAL = { you: ["#5ff5c0", "#5fd0ff", "#eaffff"], opp: ["#ff5a8a", "#c060ff", "#ffe6f0"], gold: ["#ffd24a", "#ff9a2a", "#fff6d0"] };
+    function spark(x, y, n, sp, cols, o = {}) {
+      for (let i = 0; i < n; i++) {
+        const a = o.dir != null ? o.dir + (R() - 0.5) * (o.spread || 1) : R() * TAU, v = sp * (0.25 + R() * 0.9);
+        st.P.push({ x, y, px: x, py: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0, max: (o.life || 0.9) * (0.5 + R()), w: (o.w || 2.2) * (0.5 + R()), col: cols[(R() * cols.length) | 0], grav: o.grav == null ? 500 : o.grav, drag: o.drag || 1.6, flat: !!o.flat, rot: R() * TAU, vr: (R() - 0.5) * 12 });
+      }
+    }
+    const ring = (x, y, col, v, w) => st.rings.push({ x, y, r: 10, v: v || H * 1.6, a: 1, col, w: w || 10 });
+    const flash = (a, col) => ((st.flash = Math.max(st.flash, a)), (st.flashCol = col || "#ffffff"));
+    function bolt(x0, y0, x1, y1, col) {
+      const pts = [[x0, y0]], n = 9;
+      for (let i = 1; i < n; i++) pts.push([x0 + ((x1 - x0) * i) / n + (R() - 0.5) * W * 0.08, y0 + ((y1 - y0) * i) / n + (R() - 0.5) * H * 0.05]);
+      pts.push([x1, y1]);
+      st.bolts.push({ pts, a: 1, col });
+    }
+    function once(key, at, t, fn) {
+      if (t >= at && !st.done[key]) (st.done[key] = 1), fn();
+    }
+    // 集中線(中心から外へ流れる線)。dir: 0=放射 1=横に流れる
+    function lines(t, cx, cy, col, dense, horiz) {
+      g.globalCompositeOperation = "lighter";
+      g.strokeStyle = col;
+      for (const L of st.L) {
+        const k = (t * L.sp + L.ph) % 1;
+        g.globalAlpha = Math.sin(k * Math.PI) * L.al * dense;
+        g.lineWidth = L.w * st.dpr;
+        g.beginPath();
+        if (horiz) {
+          const y = L.ph2 * H, x = (horiz > 0 ? k : 1 - k) * (W * 1.6) - W * 0.3, len = W * (0.12 + L.len * 0.3);
+          g.moveTo(x, y);
+          g.lineTo(x - horiz * len, y);
+        } else {
+          const r0 = Math.hypot(W, H) * (0.16 + k * 0.5), r1 = r0 + Math.hypot(W, H) * (0.1 + L.len * 0.28);
+          g.moveTo(cx + Math.cos(L.a) * r0, cy + Math.sin(L.a) * r0);
+          g.lineTo(cx + Math.cos(L.a) * r1, cy + Math.sin(L.a) * r1);
+        }
+        g.stroke();
+      }
+      g.globalAlpha = 1;
+    }
+    function glow(x, y, r, col, a) {
+      const gr = g.createRadialGradient(x, y, 0, x, y, r);
+      gr.addColorStop(0, col);
+      gr.addColorStop(1, "rgba(0,0,0,0)");
+      g.globalCompositeOperation = "lighter";
+      g.globalAlpha = a;
+      g.fillStyle = gr;
+      g.fillRect(x - r, y - r, r * 2, r * 2);
+      g.globalAlpha = 1;
+    }
+    // 後ろで回る光の扇
+    function rays(t, cx, cy, col, n, a) {
+      g.globalCompositeOperation = "lighter";
+      g.fillStyle = col;
+      const rad = Math.hypot(W, H);
+      for (let i = 0; i < n; i++) {
+        const a0 = t * 0.35 + (i / n) * TAU, wd = (TAU / n) * (0.22 + 0.12 * Math.sin(t * 2 + i));
+        g.globalAlpha = a * (0.5 + 0.5 * Math.sin(t * 3 + i * 1.7));
+        g.beginPath();
+        g.moveTo(cx, cy);
+        g.arc(cx, cy, rad, a0, a0 + wd);
+        g.closePath();
+        g.fill();
+      }
+      g.globalAlpha = 1;
+    }
+    const SHOT = {
+      synchro(t, c, p) {
+        const cx = W / 2, cy = H * 0.45, n = Math.max(3, Math.min(10, c.lv || 6));
+        glow(cx, cy, H * (0.5 + t * 0.2), p[0], 0.18 + 0.1 * Math.sin(t * 9));
+        lines(t, cx, cy, p[2], 0.5 + t * 0.4, 0);
+        // 奥から手前へ次々に通り抜ける光の輪
+        g.globalCompositeOperation = "lighter";
+        for (let k = 0; k < n; k++) {
+          const u = (t * 0.75 + k / n) % 1, r = H * (0.04 + u * u * 1.1);
+          g.globalAlpha = Math.min(1, u * 4) * (1 - u) * 1.4;
+          g.strokeStyle = p[0];
+          g.shadowColor = p[0];
+          g.shadowBlur = 30 * st.dpr;
+          g.lineWidth = (2 + u * 12) * st.dpr;
+          g.beginPath();
+          g.ellipse(cx, cy, r, r * 0.92, t * 0.6 + k, 0, TAU);
+          g.stroke();
+        }
+        g.shadowBlur = 0;
+        // 星が一列に並んで中心へ吸い込まれる
+        const u = Math.min(1, t / 1.4), e = u * u;
+        for (let k = 0; k < n; k++) {
+          const a = (k / n) * TAU + t * 3, r = H * 0.42 * (1 - e);
+          const x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r * 0.6;
+          glow(x, y, 26 * st.dpr, "#ffffff", 0.9);
+          glow(x, y, 70 * st.dpr, p[2], 0.5);
+          if (t < 1.4 && R() < 0.5) spark(x, y, 1, 60, p, { grav: 0, life: 0.5, w: 1.5 });
+        }
+        once("burst", 1.45, t, () => {
+          flash(1);
+          spark(cx, cy, 260, H * 1.5, [p[0], p[2], "#ffffff"], { grav: 120, life: 1.2, w: 3 });
+          ring(cx, cy, p[0]);
+          ring(cx, cy, "#ffffff", H * 2.4, 6);
+          st.shake = 22;
+        });
+        if (t > 1.45) {
+          // 光の柱
+          const a = Math.max(0, 1 - (t - 1.45) / 1.1), w = W * (0.05 + (t - 1.45) * 0.12);
+          const gr = g.createLinearGradient(cx - w, 0, cx + w, 0);
+          gr.addColorStop(0, "rgba(0,0,0,0)");
+          gr.addColorStop(0.5, "#ffffff");
+          gr.addColorStop(1, "rgba(0,0,0,0)");
+          g.globalAlpha = a;
+          g.fillStyle = gr;
+          g.fillRect(cx - w, 0, w * 2, H);
+          g.globalAlpha = 1;
+        }
+      },
+      attack(t, c, p) {
+        const dir = c.side === "opp" ? -1 : 1, cx = W / 2, cy = H * 0.42;
+        lines(t * 1.6, cx, cy, p[2], 1, dir);
+        if (t < 0.72) {
+          // 光の弾が尾を引いて突っ込む
+          const u = t / 0.72, x = cx - dir * W * 0.7 * (1 - u * u), y = cy + Math.sin(u * 3) * H * 0.02;
+          glow(x, y, H * 0.22, p[0], 0.9);
+          glow(x, y, H * 0.08, "#ffffff", 1);
+          g.globalCompositeOperation = "lighter";
+          const gr = g.createLinearGradient(x, y, x - dir * W * 0.5, y);
+          gr.addColorStop(0, p[2]);
+          gr.addColorStop(1, "rgba(0,0,0,0)");
+          g.fillStyle = gr;
+          g.beginPath();
+          g.moveTo(x, y - H * 0.035);
+          g.lineTo(x - dir * W * 0.5, y);
+          g.lineTo(x, y + H * 0.035);
+          g.fill();
+          spark(x, y, 4, 500, p, { dir: dir > 0 ? Math.PI : 0, spread: 1.2, grav: 200, life: 0.5 });
+        }
+        once("hit", 0.72, t, () => {
+          flash(1);
+          st.shake = 34;
+          spark(cx, cy, 300, H * 1.8, [p[0], "#ffffff", "#ffd24a"], { life: 1.1, w: 3.2 });
+          spark(cx, cy, 60, H * 0.9, ["#ffffff"], { flat: true, life: 1.4, w: 7, grav: 900 });
+          ring(cx, cy, "#ffffff", H * 2.6, 14);
+          ring(cx, cy, p[0], H * 1.7, 22);
+          ring(cx, cy, "#ffd24a", H * 1.1, 8);
+          for (let i = 0; i < 5; i++) bolt(cx, cy, cx + (R() - 0.5) * W * 1.2, cy + (R() - 0.5) * H * 1.2, p[2]);
+        });
+        if (t > 0.72) glow(cx, cy, H * 0.6, c.side === "opp" ? "#ff2a50" : "#ff5a3a", Math.max(0, 0.6 - (t - 0.72) * 0.6));
+      },
+      summon(t, c, p, big) {
+        const cx = W / 2, cy = H * 0.5;
+        rays(t, cx, cy, p[0], 14, 0.16);
+        glow(cx, cy, H * 0.8, p[0], 0.22 + 0.08 * Math.sin(t * 8));
+        lines(t, cx, cy, p[2], 0.7, 0);
+        if (R() < 0.8) spark(R() * W, H + 10, 2, H * 0.5, p, { dir: -Math.PI / 2, spread: 0.5, grav: -60, life: 2, w: 2.4, drag: 0.4 });
+        once("in", 0.05, t, () => {
+          flash(0.8, p[2]);
+          st.shake = big ? 26 : 12;
+          ring(cx, H * 0.8, p[0], H * 1.8, 16);
+          spark(cx, H * 0.8, big ? 220 : 110, H * 1.3, p, { dir: -Math.PI / 2, spread: 2.6, life: 1.3 });
+        });
+        if (big && (st.bt = (st.bt || 0) - st.dt) <= 0) {
+          st.bt = 0.22 + R() * 0.3;
+          const x = R() * W;
+          bolt(x, 0, x + (R() - 0.5) * W * 0.3, H * (0.5 + R() * 0.4), p[2]);
+          flash(0.25, p[2]);
+        }
+      },
+      draw(t, c, p) {
+        lines(t * 1.3, W * 0.5, H * 0.5, p[2], 0.8, c.side === "opp" ? -1 : 1);
+        const u = Math.min(1, t / 0.5), a = -2.4 + u * 2.6, cx = W * 0.5, cy = H * 0.75, r = H * 0.55;
+        if (u < 1) spark(cx + Math.cos(a) * r, cy + Math.sin(a) * r, 10, 380, p, { grav: 300, life: 0.8 });
+        once("f", 0.45, t, () => (flash(c.gold ? 0.9 : 0.4, p[2]), c.gold && (ring(W / 2, H / 2, p[0]), spark(W / 2, H / 2, 200, H * 1.3, p, { life: 1.3 }))));
+        if (c.gold) rays(t, W / 2, H / 2, p[0], 12, 0.14);
+      },
+      card(t, c, p) {
+        const cx = W / 2, cy = H / 2;
+        rays(t, cx, cy, p[0], 10, 0.14);
+        glow(cx, cy, H * 0.7, p[0], 0.25);
+        for (let i = 0; i < 3; i++) {
+          const a = t * 2.4 + i * 2.1, r = H * 0.34;
+          spark(cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.5, 1, 90, p, { grav: 0, life: 0.7, w: 2 });
+        }
+        once("f", 0.05, t, () => flash(0.5, p[2]));
+      },
+      pinch(t) {
+        const a = 0.35 + 0.25 * Math.sin(t * 7.8);
+        const gr = g.createRadialGradient(W / 2, H / 2, H * 0.2, W / 2, H / 2, Math.hypot(W, H) * 0.6);
+        gr.addColorStop(0, "rgba(0,0,0,0)");
+        gr.addColorStop(1, `rgba(255,20,50,${a})`);
+        g.globalCompositeOperation = "lighter";
+        g.fillStyle = gr;
+        g.fillRect(0, 0, W, H);
+        if (R() < 0.5) spark(R() * W, -10, 1, 80, ["#ff5a6a", "#7a1020"], { dir: Math.PI / 2, spread: 0.6, grav: 60, life: 3, w: 2, drag: 0.2 });
+        if (((t * 1.25) | 0) !== st.beat) (st.beat = (t * 1.25) | 0), (st.shake = 8);
+      },
+      finish(t, c, p) {
+        const cx = W / 2, cy = H / 2;
+        if (c.win) {
+          rays(t, cx, cy, "#ffd24a", 16, 0.2);
+          lines(t, cx, cy, "#fff6d0", 0.9, 0);
+          if (R() < 0.9) spark(R() * W, -10, 4, 260, ["#ffd24a", "#5fd0ff", "#ff5a8a", "#5ff5c0", "#ffffff"], { dir: Math.PI / 2, spread: 1.2, grav: 260, life: 3, w: 8, flat: true, drag: 0.6 });
+          once("f", 0.05, t, () => (flash(1), (st.shake = 30), ring(cx, cy, "#ffd24a"), ring(cx, cy, "#ffffff", H * 2.4, 8), spark(cx, cy, 320, H * 1.7, PAL.gold, { life: 1.4, w: 3 })));
+          once("f2", 0.9, t, () => (ring(cx, cy, "#ffd24a", H * 1.4), spark(cx, cy, 160, H * 1.2, PAL.gold, { life: 1.2 })));
+        } else {
+          glow(cx, cy, H, "#5a0618", 0.5);
+          if (R() < 0.7) spark(R() * W, H + 10, 2, 160, ["#ff3d5a", "#7a1020", "#ff9a6a"], { dir: -Math.PI / 2, spread: 0.7, grav: -30, life: 2.6, w: 2.4, drag: 0.3 });
+          once("f", 0.05, t, () => (flash(0.9, "#ff2a50"), (st.shake = 30), ring(cx, cy, "#ff3d5a")));
+        }
+      },
+      clash(t, c, p) {
+        lines(t, W / 2, H / 2, p[2], 0.8, 0);
+        once("f", 0.22, t, () => {
+          flash(0.9);
+          st.shake = 20;
+          for (let i = 0; i < 26; i++) spark(W * (0.1 + i * 0.032), H * (0.9 - i * 0.032), 8, H * 0.8, ["#ffffff", "#ffd24a", p[0]], { life: 0.9 });
+          ring(W / 2, H / 2, "#ffffff");
+        });
+      },
+      chain(t, c, p) {
+        const n = (c.links || []).length;
+        for (let k = 0; k < n; k++)
+          once("c" + k, 0.15 + k * 0.22, t, () => {
+            const y = H * (0.25 + (0.5 * k) / Math.max(1, n - 1));
+            bolt(0, y, W, y + (R() - 0.5) * H * 0.1, k % 2 ? PAL.opp[0] : PAL.you[0]);
+            spark(W / 2, y, 60, H * 0.9, k % 2 ? PAL.opp : PAL.you, { life: 0.8 });
+            flash(0.3);
+            st.shake = 8;
+          });
+        lines(t, W / 2, H / 2, "#ffffff", 0.35, 0);
+      },
+    };
+    const MAP = { synchro: "synchro", attack: "attack", low: "summon", two: "summon", manga: "summon", draw: "draw", hold: "card", cardup: "card", pinch: "pinch", finish: "finish", reversal: "clash", duel: "clash", rival: "summon", glare: "card", chain: "chain" };
+    function frame(now) {
+      raf = requestAnimationFrame(frame);
+      if (!st || !cv.isConnected) return stop();
+      const t = (now - st.t0) / 1000, dt = Math.min(0.05, (now - st.last) / 1000);
+      st.last = now;
+      st.dt = dt;
+      const cw = Math.round(cv.clientWidth * st.dpr), ch = Math.round(cv.clientHeight * st.dpr);
+      if (cv.width !== cw || cv.height !== ch) (cv.width = cw), (cv.height = ch);
+      W = cw;
+      H = ch;
+      g.globalCompositeOperation = "source-over";
+      g.clearRect(0, 0, W, H);
+      const c = st.c, p = c.gold ? PAL.gold : PAL[c.side] || PAL.you, fn = SHOT[MAP[c.shot]];
+      if (fn) fn(t, c, p, c.shot === "low" || c.shot === "manga");
+      // 衝撃波
+      g.globalCompositeOperation = "lighter";
+      st.rings = st.rings.filter((r) => r.a > 0.02);
+      for (const r of st.rings) {
+        r.r += r.v * dt * st.dpr * 0.6;
+        r.a *= Math.exp(-dt * 2.6);
+        g.globalAlpha = r.a;
+        g.strokeStyle = r.col;
+        g.lineWidth = r.w * st.dpr * (0.3 + r.a);
+        g.beginPath();
+        g.ellipse(r.x, r.y, r.r, r.r * 0.9, 0, 0, TAU);
+        g.stroke();
+      }
+      // 稲妻
+      st.bolts = st.bolts.filter((b) => b.a > 0.03);
+      for (const b of st.bolts) {
+        b.a *= Math.exp(-dt * 7);
+        for (const [w, col] of [[9, b.col], [3, "#ffffff"]]) {
+          g.globalAlpha = b.a * (w > 5 ? 0.5 : 1);
+          g.strokeStyle = col;
+          g.lineWidth = w * st.dpr;
+          g.lineJoin = "bevel";
+          g.beginPath();
+          b.pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+          g.stroke();
+        }
+      }
+      // 火花・紙吹雪
+      g.lineCap = "round";
+      const P = st.P;
+      for (let i = P.length - 1; i >= 0; i--) {
+        const q = P[i];
+        q.life += dt;
+        if (q.life > q.max) {
+          P[i] = P[P.length - 1];
+          P.pop();
+          continue;
+        }
+        q.px = q.x;
+        q.py = q.y;
+        const dr = Math.exp(-q.drag * dt);
+        q.vx *= dr;
+        q.vy = q.vy * dr + q.grav * st.dpr * dt;
+        q.x += q.vx * dt;
+        q.y += q.vy * dt;
+        const a = 1 - q.life / q.max;
+        g.globalAlpha = Math.min(1, a * 1.6);
+        if (q.flat) {
+          q.rot += q.vr * dt;
+          g.fillStyle = q.col;
+          g.save();
+          g.translate(q.x, q.y);
+          g.rotate(q.rot);
+          g.scale(1, Math.cos(q.rot * 1.7));
+          g.fillRect(-q.w * st.dpr, -q.w * st.dpr * 0.6, q.w * 2 * st.dpr, q.w * 1.2 * st.dpr);
+          g.restore();
+        } else {
+          g.strokeStyle = q.col;
+          g.lineWidth = q.w * st.dpr * (0.4 + a);
+          g.beginPath();
+          g.moveTo(q.px - q.vx * 0.012, q.py - q.vy * 0.012);
+          g.lineTo(q.x, q.y);
+          g.stroke();
+        }
+      }
+      if (P.length > 2600) P.splice(0, P.length - 2600);
+      // 画面全体の光
+      if (st.flash > 0.01) {
+        g.globalCompositeOperation = "lighter";
+        g.globalAlpha = st.flash;
+        g.fillStyle = st.flashCol;
+        g.fillRect(0, 0, W, H);
+        st.flash *= Math.exp(-dt * 6);
+      }
+      g.globalAlpha = 1;
+      // 揺れ
+      if (stageEl) {
+        if (st.shake > 0.4) {
+          stageEl.style.transform = `translate(${((R() - 0.5) * st.shake).toFixed(1)}px,${((R() - 0.5) * st.shake).toFixed(1)}px) scale(1.03)`;
+          st.shake *= Math.exp(-dt * 7);
+        } else if (stageEl.style.transform) stageEl.style.transform = "";
+      }
+    }
+    function start(el, c) {
+      cv = el.querySelector(".cn-fx");
+      stageEl = el.querySelector(".cn-stage");
+      if (!cv) return;
+      if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      g = cv.getContext("2d");
+      const now = performance.now();
+      const L = Array.from({ length: 110 }, () => ({ a: R() * TAU, sp: 0.6 + R() * 1.6, ph: R(), ph2: R(), len: R(), w: 0.6 + R() * 2.4, al: 0.15 + R() * 0.5 }));
+      st = { c, t0: now, last: now, P: [], rings: [], bolts: [], L, done: {}, flash: 0, flashCol: "#fff", shake: 0, dpr: Math.min(2, window.devicePixelRatio || 1), dt: 0.016 };
+      if (stageEl) stageEl.style.transform = "";
+      if (!raf) raf = requestAnimationFrame(frame);
+    }
+    function stop() {
+      cancelAnimationFrame(raf);
+      raf = 0;
+      st = null;
+    }
+    return { start, stop };
+  })();
+
   // ---------- 再生 ----------
   let timer = null;
   let pending = null; // 再生中に次の見せ場が来たら、終わってから続けて流す
   const busy = () => !!document.getElementById("cine");
   function stop() {
     clearTimeout(timer);
+    FX.stop();
     pending = null;
     const el = document.getElementById("cine");
     if (el) el.remove();
@@ -299,7 +651,7 @@ const Cinema = (() => {
       return cuts;
     }
     stop();
-    document.body.insertAdjacentHTML("beforeend", `<div class="cine" id="cine" role="dialog" aria-label="デュエルの見せ場"><div class="cn-stage"></div><div class="cn-scan"></div><div class="cn-sub"></div><div class="cn-bar t"></div><div class="cn-bar b"></div></div>`);
+    document.body.insertAdjacentHTML("beforeend", `<div class="cine" id="cine" role="dialog" aria-label="デュエルの見せ場"><div class="cn-stage"></div><canvas class="cn-fx"></canvas><div class="cn-scan"></div><div class="cn-sub"></div><div class="cn-bar t"></div><div class="cn-bar b"></div></div>`);
     const el = document.getElementById("cine");
     const stage = el.querySelector(".cn-stage");
     const sub = el.querySelector(".cn-sub");
@@ -319,6 +671,7 @@ const Cinema = (() => {
       sub.innerHTML = `<span>${esc(c.line)}</span>`;
       sub.className = `cn-sub ${c.side}`;
       void stage.offsetWidth;
+      FX.start(el, c);
       cueSfx(c);
       if (onCut) onCut(c);
       const dur = Math.max(DUR[c.shot] || 1.6, Math.min(3.2, c.line.length * 0.12));

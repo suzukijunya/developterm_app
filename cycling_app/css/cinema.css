@@ -199,3 +199,10 @@
 .cn-mon.two .cn-img { width: 80vw; height: 60vh; animation: cn-two 1.7s ease-out both; }
 .cn-mon.dash .cn-img { width: 64vw; height: 44vh; animation: cn-dash 0.8s cubic-bezier(0.6, 0, 0.9, 0.4) both; }
 .cn-mon.dash.opp .cn-img { animation-name: cn-dash-r; }
+
+/* 光と粒の演出のキャンバス(絵の上、字幕の下)。奥に深みを出す色のにじみと、上下の黒帯 */
+.cn-fx { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 4; pointer-events: none; mix-blend-mode: screen; }
+.cine { background: radial-gradient(120% 90% at 50% 45%, #0c2036 0%, #050b16 55%, #010307 100%); }
+.cine::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 6; background: radial-gradient(100% 100% at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.55) 100%); }
+.cn-scan { opacity: 0.45; }
+.cn-stage { will-change: transform; }
