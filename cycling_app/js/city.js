@@ -4924,7 +4924,7 @@ const City = (() => {
   // 画像は Map Tiles API の Street View Tiles から取る(保存はしない)。料金がかからないよう、この端末では月の枚数に上限を付ける。
   const PV = (() => {
     const STEP = 28, Z = 2, CAP_M = 24000; // 28mごとに1枚。1枚=タイル8枚(2048×1024)。月の上限(タイルの枚数)
-    let on = false, session = null, sessionP = null, err = "", mat = null, sky = null, walkT = 0, told = false, copy = "";
+    let on = false, session = null, sessionP = null, err = "", mat = null, walkT = 0, told = false, copy = "";
     const panos = new Map(); // i(道のり/STEP) → { state, tex, x, y, z, hd, al }
     const usage = () => {
       const d = new Date(), m = d.getFullYear() + "-" + (d.getMonth() + 1);
@@ -4960,6 +4960,8 @@ const City = (() => {
         const a = at(P.al), lat = route.lat0 - a.z / route.kz, lng = route.lon0 + a.x / route.kx;
         const md = await (await fetch(`${api}streetview/metadata?${q}&lat=${lat}&lng=${lng}&radius=40`)).json();
         if (!md.panoId) throw new Error((md.error && md.error.message) || "写真なし");
+        // 道で撮った Google の写真だけ使う(店の中などで撮られた、投稿の写真は使わない)
+        if (md.copyright && !/Google/i.test(md.copyright)) throw new Error("道の写真なし");
         // 同じ写真をもう持っていれば使い回す
         for (const o of panos.values()) if (o !== P && o.id === md.panoId && o.tex) return Object.assign(P, { state: "ok", tex: o.tex, shared: true, id: o.id, x: o.x, y: o.y, z: o.z, hd: o.hd });
         const cols = 2 ** Z, rows = 2 ** (Z - 1), tw = md.tileWidth || 512, th = md.tileHeight || 512;
@@ -4994,89 +4996,148 @@ const City = (() => {
         if (!told) (told = true), ticker("写真の街: 写真を取れません(" + err + ")", "opp");
       }
     }
+    // 写真を貼るための材質。もとの街をふつうに描いたあと、その上に重ねて描く。
+    // 写真を撮った場所から見えない面(建物の裏・かげ)や、遠すぎる面には貼らない(もとの3Dの絵がそのまま見える)
     function material() {
       if (mat) return mat;
       const THREE = T();
       const U = (v) => ({ value: v });
-      mat = new THREE.ShaderMaterial({
-        side: THREE.DoubleSide,
-        uniforms: { tA: U(null), tB: U(null), cA: U(new THREE.Vector4()), cB: U(new THREE.Vector4()), mixK: U(0), has: U(new THREE.Vector2(0, 0)) },
-        vertexShader: `varying vec3 vW;
+      const VS = `attribute vec4 anc; uniform vec3 uShops[16]; varying vec3 vW;
           void main() {
             vec4 p = vec4(position, 1.0);
             #ifdef USE_INSTANCING
               p = instanceMatrix * p;
             #endif
             vec4 w = modelMatrix * p;
+            // 店を専用の形で建てた敷地の、もとの建物は描かない(ふつうの描き方と同じ決まり)
+            if (anc.w > 1.5) for (int si = 0; si < 16; si++) if (uShops[si].z > 0.0 && distance(anc.xz, uShops[si].xy) < uShops[si].z) w.y = -500.0;
             vW = w.xyz;
             gl_Position = projectionMatrix * viewMatrix * w;
-          }`,
+          }`;
+      mat = new THREE.ShaderMaterial({
+        side: THREE.DoubleSide, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2,
+        uniforms: { tA: U(null), tB: U(null), dA: U(null), dB: U(null), cA: U(new THREE.Vector4()), cB: U(new THREE.Vector4()), mixK: U(0), has: U(new THREE.Vector4(0, 0, 0, 0)), uShops: popU.uShops },
+        vertexShader: VS,
         // その点が、写真を撮った場所から見てどの向きにあるかで、写真のどこを貼るかを決める(北=-z・東=+x)
-        fragmentShader: `uniform sampler2D tA; uniform sampler2D tB; uniform vec4 cA; uniform vec4 cB; uniform float mixK; uniform vec2 has;
+        fragmentShader: `uniform sampler2D tA; uniform sampler2D tB; uniform samplerCube dA; uniform samplerCube dB; uniform vec4 cA; uniform vec4 cB; uniform float mixK; uniform vec4 has;
           varying vec3 vW;
-          vec3 pano(sampler2D t, vec4 c) {
-            vec3 d = normalize(vW - c.xyz);
+          vec4 pano(sampler2D t, samplerCube dm, vec4 c, float hasD) {
+            vec3 v = vW - c.xyz;
+            float dist = length(v);
+            vec3 d = v / dist;
             float yaw = atan(d.x, -d.z) - c.w;
             vec2 uv = vec2(yaw / 6.2831853 + 0.5, 0.5 + asin(clamp(d.y, -1.0, 1.0)) / 3.14159265);
-            return texture2D(t, uv).rgb;
+            // 見えているか: 撮った場所から、この向きでいちばん手前にある面までの距離とくらべる
+            float vis = 1.0;
+            if (hasD > 0.5) {
+              vec4 e = textureCube(dm, v);
+              float hitD = (e.r + e.g / 255.0) * 800.0;
+              vis = clamp((hitD * 1.04 + 2.2 - dist) / 1.4, 0.0, 1.0);
+            }
+            // 遠い面は写真が引きのばされるので、うすくして、もとの絵に戻す
+            vis *= clamp((85.0 - dist) / 30.0, 0.0, 1.0);
+            return vec4(texture2D(t, uv).rgb, vis);
           }
           void main() {
-            vec3 a = has.x > 0.5 ? pano(tA, cA) : vec3(0.55);
-            vec3 b = has.y > 0.5 ? pano(tB, cB) : a;
-            gl_FragColor = vec4(mix(a, b, has.x > 0.5 ? mixK : 1.0), 1.0);
+            vec4 a = has.x > 0.5 ? pano(tA, dA, cA, has.z) : vec4(0.0);
+            vec4 b = has.y > 0.5 ? pano(tB, dB, cB, has.w) : vec4(0.0);
+            float wa = a.a * (1.0 - mixK), wb = b.a * mixK;
+            // 片方しか使えない所は、使えるほうだけで
+            if (wa + wb < 0.02) { wa = a.a; wb = b.a; }
+            float sum = wa + wb;
+            if (sum < 0.02) discard;
+            gl_FragColor = vec4((a.rgb * wa + b.rgb * wb) / sum, min(1.0, max(a.a, b.a)));
           }`,
       });
-      sky = new THREE.Mesh(new THREE.SphereGeometry(1200, 24, 16), new THREE.MeshBasicMaterial({ color: 0x888888 }));
-      sky.layers.set(2);
-      sky.frustumCulled = false;
-      scene.add(sky);
+      // 距離を測るための材質(写真を撮った場所から、まわりの面までの距離を6方向ぶん撮る)
+      distMat = new THREE.ShaderMaterial({
+        side: THREE.DoubleSide,
+        uniforms: { cP: U(new THREE.Vector3()), uShops: popU.uShops },
+        vertexShader: VS,
+        fragmentShader: `uniform vec3 cP; varying vec3 vW;
+          void main() {
+            float v = clamp(length(vW - cP) / 800.0, 0.0, 0.9999) * 255.0;
+            gl_FragColor = vec4(floor(v) / 255.0, fract(v), 0.0, 1.0);
+          }`,
+      });
       return mat;
     }
-    // 写真を貼る物(動かない建物・道・地面)に2番、上に重ねて描く物(自分・ライバル・車と人・モンスター)に1番の印を付ける
+    let distMat = null, cubeT = 0, cubeN = 0;
+    function depthOf(P) {
+      const THREE = T();
+      if (!P.rt) {
+        P.rt = new THREE.WebGLCubeRenderTarget(256, { generateMipmaps: false, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter });
+        P.cam = new THREE.CubeCamera(0.5, 800, P.rt);
+        for (const ch of P.cam.children) ch.layers.set(2);
+      }
+      P.cam.position.set(P.x, P.y, P.z);
+      P.cam.updateMatrixWorld(true);
+      distMat.uniforms.cP.value.set(P.x, P.y, P.z);
+      const bg = scene.background, fog = scene.fog, tm = renderer.toneMapping, sm = renderer.shadowMap.autoUpdate, cc = renderer.getClearColor(new THREE.Color()), ca = renderer.getClearAlpha();
+      scene.background = null;
+      scene.fog = null;
+      scene.overrideMaterial = distMat;
+      renderer.toneMapping = THREE.NoToneMapping;
+      renderer.shadowMap.autoUpdate = false;
+      renderer.setClearColor(0xffff00, 1); // 何もない向き = いちばん遠い
+      P.cam.update(renderer, scene);
+      renderer.setClearColor(cc, ca);
+      renderer.shadowMap.autoUpdate = sm;
+      renderer.toneMapping = tm;
+      scene.overrideMaterial = null;
+      scene.background = bg;
+      scene.fog = fog;
+      P.depthAt = performance.now();
+    }
+    // 写真を貼る物(動かない建物・道・地面)に2番の印を付ける
     function mark() {
       const dyn = new Set([me.g, rival.g, ...Traffic.objs(), ...Mons.objs()]);
-      const walk = (o, d) => {
-        if (dyn.has(o)) d = true;
-        if (d) o.layers.enable(1);
-        else if (o.isMesh && !o.isInstancedMesh && !o.isSkinnedMesh && o !== sky && o.material && !o.material.transparent && o.material.depthTest !== false && !o.userData.blob) o.layers.enable(2);
-        for (const ch of o.children) walk(ch, d);
+      const walk = (o) => {
+        if (dyn.has(o)) return;
+        if (o.isMesh && !o.isInstancedMesh && !o.isSkinnedMesh && o.material && !o.material.transparent && o.material.depthTest !== false && !o.userData.blob && !o.userData.sign) o.layers.enable(2);
+        for (const ch of o.children) walk(ch);
       };
-      walk(scene, false);
+      walk(scene);
     }
-    // 写真の街として描く。描けたら true(ふつうの描き方はしない)
+    // 写真の街として描く。描けたら true(ふつうの描き方は、この中で済ませる)
     function render(p, s, real) {
       if (!on) return false;
-      const THREE = T(), i0 = Math.floor(s.along / STEP);
+      const i0 = Math.floor(s.along / STEP);
       for (const i of [i0, i0 + 1, i0 + 2]) if (i * STEP <= route.length && !panos.has(i)) load(i);
       for (const [i, P] of panos)
         if (i < i0 - 2 || i > i0 + 5) {
-          if (P.tex && !P.shared && ![...panos.values()].some((o) => o !== P && o.tex === P.tex)) P.tex.dispose();
+          if (P.tex && ![...panos.values()].some((o) => o !== P && o.tex === P.tex)) P.tex.dispose();
+          if (P.rt) P.rt.dispose();
           panos.delete(i);
         }
       const A = panos.get(i0), B = panos.get(i0 + 1), okA = A && A.state === "ok", okB = B && B.state === "ok";
       if (!okA && !okB) return false; // まだ1枚もない間は、ふつうの3Dの街
       const m = material(), u = m.uniforms;
-      if (okA) (u.tA.value = A.tex), u.cA.value.set(A.x, A.y, A.z, A.hd);
-      if (okB) (u.tB.value = B.tex), u.cB.value.set(B.x, B.y, B.z, B.hd);
-      u.has.value.set(okA ? 1 : 0, okB ? 1 : 0);
-      // 2枚の写真の間を、進み具合でなめらかに入れ替える(真ん中あたりでゆっくり替わる)
-      const f = (s.along - i0 * STEP) / STEP;
-      u.mixK.value = okB ? Math.min(1, Math.max(0, (f - 0.3) / 0.5)) ** 2 * (3 - 2 * Math.min(1, Math.max(0, (f - 0.3) / 0.5))) : 0;
       if ((walkT -= real) <= 0) (walkT = 0.7), mark();
-      sky.position.copy(camera.position);
+      // 距離の絵は、街が読み込まれるたびに変わるので、2秒おきに撮り直す(1コマに1枚ずつ)
+      if ((cubeT -= real) <= 0) {
+        cubeT = 0.25;
+        const list = [A, B].filter((P) => P && P.state === "ok").sort((x, y) => (x.depthAt || 0) - (y.depthAt || 0));
+        if (list[0] && (!list[0].depthAt || performance.now() - list[0].depthAt > 2000)) depthOf(list[0]);
+      }
+      // 1) ふつうに描く(もとの3Dの街と、動く物)
+      renderer.render(scene, camera);
+      // 2) その上に、写真を重ねる
+      if (okA) (u.tA.value = A.tex), u.cA.value.set(A.x, A.y, A.z, A.hd), (u.dA.value = A.rt ? A.rt.texture : null);
+      if (okB) (u.tB.value = B.tex), u.cB.value.set(B.x, B.y, B.z, B.hd), (u.dB.value = B.rt ? B.rt.texture : null);
+      u.has.value.set(okA ? 1 : 0, okB ? 1 : 0, okA && A.rt ? 1 : 0, okB && B.rt ? 1 : 0);
+      // 2枚の写真の間を、進み具合でなめらかに入れ替える
+      const f = (s.along - i0 * STEP) / STEP, k = Math.min(1, Math.max(0, (f - 0.25) / 0.5));
+      u.mixK.value = okB ? (okA ? k * k * (3 - 2 * k) : 1) : 0;
       const bg = scene.background, fog = scene.fog;
       scene.background = null;
       scene.fog = null;
       scene.overrideMaterial = m;
       camera.layers.set(2);
-      renderer.autoClear = true;
-      renderer.render(scene, camera);
-      // その上に、動く物をふつうの描き方で重ねる(建物のかげに入れば隠れる)
-      scene.overrideMaterial = null;
-      camera.layers.set(1);
       renderer.autoClear = false;
       renderer.render(scene, camera);
       renderer.autoClear = true;
+      scene.overrideMaterial = null;
       camera.layers.set(0);
       scene.background = bg;
       scene.fog = fog;
@@ -5092,6 +5153,7 @@ const City = (() => {
       },
       info: () => `写真の街: 今月のタイル ${usage().n}/${CAP_M}・持っている写真 ${[...panos.values()].filter((x) => x.state === "ok").length}${err ? "・" + err : ""}`,
       credit: () => copy,
+      _panos: () => panos,
     };
   })();
   const TIMES = {
@@ -6234,6 +6296,11 @@ const City = (() => {
         } catch (err) {}
         $(id).onchange = (e) => {
           const v = PV.set(e.target.checked);
+          // 写真の街は、形のきれいな3Dの街に貼る。Googleの3D(溶けた形)やストリートビューとは一緒に使わない
+          if (v) {
+            for (const k of ["ct-google", "ct-google0"]) if ($(k) && $(k).checked) (($(k).checked = false), $(k).onchange({ target: $(k) }));
+            for (const k of ["ct-sv", "ct-sv0"]) if ($(k) && $(k).checked) (($(k).checked = false), $(k).onchange({ target: $(k) }));
+          }
           for (const k of ["ct-pv", "ct-pv0"]) if ($(k)) $(k).checked = v;
           try {
             localStorage.setItem("city_pv", v ? "1" : "0");
@@ -6242,7 +6309,7 @@ const City = (() => {
           $("ct-gm").hidden = !(v || G3.on());
         };
       }
-    if ($("ct-pv0") && $("ct-pv0").checked) PV.set(true);
+    if ($("ct-pv0") && $("ct-pv0").checked) (PV.set(true), $("ct-pv0").onchange({ target: $("ct-pv0") }));
     if ($("ct-refl")) {
       $("ct-refl").checked = Refl.on();
       $("ct-refl").onchange = (e) => Refl.set(e.target.checked);
@@ -6309,5 +6376,5 @@ const City = (() => {
   }
 
   if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", bind);
-  return { at, turnAhead, readTile, _H: (x, z) => H(x, z), _state: () => ({ Shops, Mons, G3, popU, clipU, sim, route, tiles, failed, camera, Plateau, Roads, scene, me, Traffic, Signals, renderer, Perf }), ride: (a) => Roads.ride(a) };
+  return { at, turnAhead, readTile, _H: (x, z) => H(x, z), _state: () => ({ PV, Shops, Mons, G3, popU, clipU, sim, route, tiles, failed, camera, Plateau, Roads, scene, me, Traffic, Signals, renderer, Perf }), ride: (a) => Roads.ride(a) };
 })();
