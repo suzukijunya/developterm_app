@@ -3226,9 +3226,9 @@ const City = (() => {
     }
     // ---- 近くの補正 ----
     // Googleの3Dは空から撮った写真で作った形なので、道の高さから見ると建物も道も溶けて見える。
-    // そこで自分のまわり(110mまで)は、Googleの形を地面の高さへ押しつぶして「写真を貼った地面」にし、
-    // その上に、形のきれいな建物(国のデータ)と道路を立てる。150mより先は Google の街をそのまま見せる(遠くはきれいに見える)。
-    const FL = { R1: 110, R2: 150, size: 384, n: 96 };
+    // そこで自分のまわり(260mまで)は、Googleの形を地面の高さへ押しつぶして「写真を貼った地面」にし、
+    // その上に、形のきれいな建物(国のデータ)と道路を立てる。320mより先は Google の街をそのまま見せる(遠くはきれいに見える)。
+    const FL = { R1: 260, R2: 320, size: 800, n: 144 };
     const flatU = { uFlatH: { value: null }, uFlatC: { value: null }, uFlatR: { value: null } };
     let flatAt = null;
     function flatPatch(root) {
@@ -3255,7 +3255,7 @@ const City = (() => {
         m.needsUpdate = true;
       });
     }
-    // 自分のまわりの地面の高さを、小さな絵(96×96・384m四方)にして渡す。30m動くごとに作り直す
+    // 自分のまわりの地面の高さを、小さな絵(144×144・800m四方)にして渡す。30m動くごとに作り直す
     function flatUpdate(p) {
       const THREE = T();
       if (!flatU.uFlatC.value) (flatU.uFlatC.value = new THREE.Vector4(0, 0, FL.size, 0)), (flatU.uFlatR.value = new THREE.Vector4(0, 0, FL.R1, FL.R2));
@@ -3520,7 +3520,7 @@ const City = (() => {
     for (const [, m] of photos) m.visible = !g && !!m.material.map;
     Plateau.setVisible(true);
     Roads.setVisible(true);
-    clipU.uClip.value = g ? 128 : 1e9;
+    clipU.uClip.value = g ? 285 : 1e9;
     if (!popU.uG3.value) popU.uG3.value = new (T().Vector4)(0, 0, 0, 0);
     if (!g) popU.uG3.value.w = 0;
     $("ct-gm").hidden = !g;
@@ -4971,7 +4971,7 @@ const City = (() => {
     // 道のすぐ上から見ると溶けたように見える。「おまかせ」では、Googleの3Dのときだけ上から見る
     // 「すぐ後ろ」は、乗り手の肩ごしに近くから見る(3人称のゲームのような見え方)。
     const vm = viewMode === "auto" ? "close" : viewMode;
-    if (G3.on() && popU.uG3.value) popU.uG3.value.set(p.x, p.z, 105, 135);
+    if (G3.on() && popU.uG3.value) popU.uG3.value.set(p.x, p.z, 250, 300);
     const VW = { close: [3.7 + s.v * 0.09, 1.75 + s.v * 0.02, 7, 0.45, 50], near: [6.5 + s.v * 0.18, 2.9 + s.v * 0.05, 9, 0, 58], high: [30, 26, 16, 0, 58], sky: [60, 75, 22, 0, 58] }[vm] || [6.5, 2.9, 9, 0, 58];
     s.vw = s.vw && s.vw.length === 5 ? s.vw : VW.slice();
     for (let i = 0; i < 5; i++) s.vw[i] += (VW[i] - s.vw[i]) * Math.min(1, real * 2.2); // 切り替えはなめらかに
