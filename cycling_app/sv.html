@@ -17,9 +17,25 @@ html, body, #p { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hid
   let pano = null, svc = null, lastId = "", busy = false, started = false;
   const send = (m) => parent.postMessage(Object.assign({ sv: 1 }, m), location.origin);
   window.gm_authFailure = () => send({ t: "auth" });
+  // このページの中で起きたエラーを、親の画面に知らせる(原因を調べるため)
+  addEventListener("error", (e) => send({ t: "log", why: String(e.message || "").slice(0, 100) }));
+  addEventListener("unhandledrejection", (e) => send({ t: "log", why: String((e.reason && e.reason.message) || e.reason || "").slice(0, 100) }));
+  const ce = console.error.bind(console);
+  console.error = (...a) => (ce(...a), send({ t: "log", why: a.map(String).join(" ").slice(0, 100) }));
+  // 描くための部品(canvas)がいくつあるか、WebGL が使えるかも知らせる
+  setInterval(() => {
+    const cs = [...document.querySelectorAll("canvas")];
+    let gl = "?";
+    try {
+      gl = document.createElement("canvas").getContext("webgl") ? "可" : "不可";
+    } catch (e) {
+      gl = "不可";
+    }
+    send({ t: "draw", s: `描く面 ${cs.length}枚${cs[0] ? "(" + cs[0].width + "×" + cs[0].height + ")" : ""}・画像 ${document.querySelectorAll("img").length}・WebGL ${gl}・窓 ${innerWidth}×${innerHeight}` });
+  }, 3000);
   window.__svInit = () => {
     try {
-      pano = new google.maps.StreetViewPanorama(document.getElementById("p"), { disableDefaultUI: true, clickToGo: false, linksControl: false, panControl: false, zoomControl: false, addressControl: false, fullscreenControl: false, motionTracking: false, motionTrackingControl: false, scrollwheel: false, showRoadLabels: true, zoom: 0.4 });
+      pano = new google.maps.StreetViewPanorama(document.getElementById("p"), { disableDefaultUI: true, clickToGo: false, linksControl: false, panControl: false, zoomControl: false, addressControl: false, fullscreenControl: false, motionTracking: false, motionTrackingControl: false, scrollwheel: false, showRoadLabels: true, pov: { heading: 0, pitch: 0 }, zoom: 1 }); // zoom は標準の1(1より小さい広角は、横長の画面で写真が描かれないことがある)
       svc = new google.maps.StreetViewService();
       pano.addListener("status_changed", () => send({ t: "status", s: String(pano.getStatus()) }));
       send({ t: "ready" });
@@ -37,7 +53,7 @@ html, body, #p { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hid
       sc.onerror = () => send({ t: "fail", why: "読み込めませんでした" });
       document.head.appendChild(sc);
     }
-    if (d.t === "pov" && pano) pano.setPov({ heading: d.h, pitch: -4 });
+    if (d.t === "pov" && pano && isFinite(d.h)) pano.setPov({ heading: d.h, pitch: -4 });
     if (d.t === "find" && svc && !busy) {
       busy = true;
       const rq = { location: { lat: d.lat, lng: d.lng }, radius: d.r, preference: google.maps.StreetViewPreference.NEAREST };

@@ -4,6 +4,8 @@
   const me = document.currentScript, ver = me && (me.src.split("?v=")[1] || "");
   const tag = document.getElementById("app-ver");
   if (tag && ver) tag.textContent = "版 " + ver;
+  const tag2 = document.getElementById("ct-ver");
+  if (tag2 && ver) tag2.textContent = "版 " + ver;
   async function check() {
     try {
       const hud = document.getElementById("ct-hud");

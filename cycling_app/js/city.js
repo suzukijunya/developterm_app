@@ -3402,7 +3402,7 @@ const City = (() => {
     };
     // ストリートビューは、別のページ(sv.html)を画面いっぱいに埋めこんで出す。
     // この画面の中に直接作ると、見た目の決まり(CSS)や大きさの影響で、写真が真っ黒になることがあった。
-    let frame = null, ready = false, hello = false, status = "";
+    let frame = null, ready = false, hello = false, status = "", draw = "", logs = "", toldLog = false;
     const post = (m) => frame && frame.contentWindow && frame.contentWindow.postMessage(Object.assign({ sv: 1 }, m), location.origin);
     function fail(text) {
       err = text;
@@ -3421,6 +3421,11 @@ const City = (() => {
       else if (d.t === "auth") fail("キーで Maps JavaScript API が使えません。Google Cloud で「Maps JavaScript API」を有効にして、キーの「API の制限」にも加えてください");
       else if (d.t === "fail") fail(d.why || "");
       else if (d.t === "status") status = d.s;
+      else if (d.t === "draw") draw = d.s;
+      else if (d.t === "log") {
+        logs = (logs + " / " + d.why).slice(-160);
+        if (!toldLog) (toldLog = true), ticker("ストリートビューの中でエラー: " + d.why, "opp");
+      }
       else if (d.t === "ok") (busy = false), (miss = 0), (lastId = d.id);
       else if (d.t === "miss") {
         busy = false;
@@ -3474,7 +3479,8 @@ const City = (() => {
       const want = heading(p);
       if (hdg == null || isNaN(hdg)) hdg = want;
       hdg = (hdg + ((((want - hdg) % 360) + 540) % 360 - 180) * Math.min(1, dt * 2.5) + 360) % 360;
-      if ((povT += dt) > 0.1 && !isNaN(hdg)) (povT = 0), post({ t: "pov", h: hdg });
+      // 向きは、変わったときだけ送る(毎回送ると、写真の読み込みのじゃまになることがある)
+      if ((povT += dt) > 0.15 && !isNaN(hdg) && (sentH == null || Math.abs(hdg - sentH) > 0.4)) (povT = 0), (sentH = hdg), post({ t: "pov", h: hdg });
       // 写真を先へ進める: 15mごと(速いときは、1.5秒に1回までに間引く)。
       // まだ1枚も出せていない間(出発地点のそばに写真が無いなど)は、2秒おきに、範囲を広げて探し直す
       const step = Math.max(15, s.v * s.speedX * 1.5), now = performance.now();
@@ -3502,7 +3508,8 @@ const City = (() => {
         rv.lastChild.textContent = `${Math.round(d)}m`;
       }
     }
-    const info = () => `準備 ${hello ? "○" : "×"}/${ready ? "○" : "×"}・写真 ${lastId ? "あり" : "なし"}・状態 ${status || "-"}・失敗 ${miss}${why ? "(" + why + ")" : ""}`;
+    let sentH = null;
+    const info = () => `準備 ${hello ? "○" : "×"}/${ready ? "○" : "×"}・写真 ${lastId ? "あり" : "なし"}・状態 ${status || "-"}・失敗 ${miss}${why ? "(" + why + ")" : ""}<br>${draw}${logs ? "<br>エラー: " + esc(logs) : ""}`;
     return { start, stop, update, info, on: () => on, showing: () => on && !!el && !el.classList.contains("off"), err: () => err, usage: () => Object.assign(usage(), { capM: CAP_M, capD: CAP_D, over: over() }) };
   })();
 
