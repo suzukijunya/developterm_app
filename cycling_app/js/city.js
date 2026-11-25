@@ -4983,27 +4983,468 @@ const City = (() => {
       return sp;
     }
     // ---- モンスターの3Dの姿(ガレージで3Dモデルを登録していないカード用) ----
-    // 絵文字のかわりに、種族ごとの形を部品から組み立てる。金属のような面と、属性の色に光る目・核・刃。
-    // 高さ1・足もとが原点・前が +x。userData.tick(t) で、翼・尾・浮いている部品が動く
+    // 種族ごとの形を、丸みのある管・回転体・羽・膜・布から細かく組み立てる。模様は自作の画像。
+    // 高さ1ほど・足もとが原点・前が +x。userData.tick(t) で翼・首・尾・布が動く
     const ATTR_COL = { 風: [0x1f9e7a, 0x7dffd0], 炎: [0xb5341c, 0xffa040], 水: [0x1d5fb4, 0x70d0ff], 地: [0x7a5a2c, 0xf0d070], 光: [0xd8c070, 0xfff6c0], 闇: [0x3a2360, 0xc070ff] };
     const ICON_KIND = { "🐉": "dragon", "🐲": "dragon", "🐍": "serpent", "🦅": "bird", "🦉": "bird", "🐦": "bird", "🐧": "bird", "🦢": "bird", "🔥": "bird", "🐺": "beast", "🐯": "beast", "🦁": "beast", "🐻": "beast", "🦊": "beast", "🐇": "beast", "🐎": "beast", "🐃": "beast", "🐆": "beast", "🐗": "beast", "🦌": "beast", "🐕": "beast", "🐢": "beast", "⚙️": "machine", "🤖": "machine", "🛸": "machine", "🌀": "machine", "🏎️": "machine", "🚀": "machine", "🎵": "mage", "🎼": "mage", "🧙": "mage", "🔮": "mage", "🛡️": "knight", "⚔️": "knight", "🗡️": "knight", "🏃": "knight", "🗿": "golem", "💀": "spirit", "👻": "spirit", "🌑": "spirit", "💫": "spirit", "😈": "spirit", "👼": "spirit" };
     const RACE_KIND = { 戦士: "knight", 獣: "beast", 鳥獣: "bird", ドラゴン: "dragon", 機械: "machine", 魔法使い: "mage", 魚: "serpent", 水: "serpent", 昆虫: "insect", 岩石: "golem", 植物: "mage", アンデット: "spirit", 悪魔: "spirit", 天使: "spirit", 雷: "crystal", シンクロ: "dragon" };
+    // 形と模様は種類ごとに1回だけ作って、同じ種類のモンスターで使い回す
+    const GEO = new Map(), TEXC = new Map();
+    const G = (key, f) => {
+      let g = GEO.get(key);
+      if (!g) GEO.set(key, (g = f()));
+      return g;
+    };
+    // 模様の画像(白黒。色は材質の色を掛ける)
+    const tile9 = (f) => {
+      for (const dx of [-256, 0, 256]) for (const dy of [-256, 0, 256]) f(dx, dy);
+    };
+    const cracks = (r) => {
+      const out = [];
+      for (let i = 0; i < 13; i++) {
+        let x = r() * 256, y = r() * 256, a = r() * 6.28;
+        const p = [[x, y]];
+        for (let k = 0; k < 9; k++) ((a += (r() - 0.5) * 1.5), (x += Math.cos(a) * 15), (y += Math.sin(a) * 15), p.push([x, y]));
+        out.push(p);
+      }
+      return out;
+    };
+    const glyph = (c, r, x, y, s) => {
+      c.beginPath();
+      for (let k = 0; k < 4; k++) {
+        const ax = x + (Math.floor(r() * 3) - 1) * s, ay = y + (Math.floor(r() * 4) - 1.5) * s * 0.7, bx = x + (Math.floor(r() * 3) - 1) * s, by = y + (Math.floor(r() * 4) - 1.5) * s * 0.7;
+        c.moveTo(ax, ay);
+        r() < 0.3 ? c.arc(ax, ay, s * 0.45, 0, 3.6) : c.lineTo(bx, by);
+      }
+      c.stroke();
+    };
+    const PAINT = {
+      scale(c) {
+        c.fillStyle = "#444";
+        c.fillRect(0, 0, 256, 256);
+        for (let row = 9; row >= -1; row--)
+          for (let col = -1; col < 9; col++) {
+            const x = col * 32 + (row & 1 ? 16 : 0), y = row * 32;
+            const g = c.createRadialGradient(x, y - 9, 2, x, y, 22);
+            g.addColorStop(0, "#fff");
+            g.addColorStop(0.65, "#b8b8b8");
+            g.addColorStop(0.9, "#707070");
+            g.addColorStop(1, "#101010");
+            c.fillStyle = g;
+            c.beginPath();
+            c.arc(x, y, 22, 0, 7);
+            c.fill();
+          }
+      },
+      fur(c, r) {
+        c.fillStyle = "#909090";
+        c.fillRect(0, 0, 256, 256);
+        for (let i = 0; i < 1100; i++) {
+          const x = r() * 256, y = r() * 256, l = 14 + r() * 30, v = (80 + r() * 170) | 0, b1 = (r() - 0.5) * 6, b2 = (r() - 0.5) * 9;
+          c.strokeStyle = `rgb(${v},${v},${v})`;
+          c.lineWidth = 1 + r() * 1.6;
+          for (const dy of [0, -256]) (c.beginPath(), c.moveTo(x, y + dy), c.quadraticCurveTo(x + b1, y + dy + l / 2, x + b2, y + dy + l), c.stroke());
+        }
+      },
+      feather(c) {
+        let g = c.createLinearGradient(0, 256, 0, 0);
+        g.addColorStop(0, "#cfcfcf");
+        g.addColorStop(0.55, "#f6f6f6");
+        g.addColorStop(0.8, "#9c9c9c");
+        g.addColorStop(1, "#303030");
+        c.fillStyle = g;
+        c.fillRect(0, 0, 256, 256);
+        c.strokeStyle = "rgba(20,20,20,0.33)";
+        c.lineWidth = 1.3;
+        for (let y = -60; y < 320; y += 7) (c.beginPath(), c.moveTo(0, y), c.lineTo(128, y + 44), c.lineTo(256, y), c.stroke());
+        c.strokeStyle = "#fff";
+        c.lineWidth = 8;
+        (c.beginPath(), c.moveTo(128, 256), c.lineTo(128, 0), c.stroke());
+        c.strokeStyle = "rgba(0,0,0,0.45)";
+        c.lineWidth = 1.5;
+        for (const x of [122, 134]) (c.beginPath(), c.moveTo(x, 256), c.lineTo(x, 0), c.stroke());
+        g = c.createLinearGradient(0, 0, 256, 0);
+        g.addColorStop(0, "rgba(0,0,0,0.5)");
+        g.addColorStop(0.2, "rgba(0,0,0,0)");
+        g.addColorStop(0.8, "rgba(0,0,0,0)");
+        g.addColorStop(1, "rgba(0,0,0,0.5)");
+        c.fillStyle = g;
+        c.fillRect(0, 0, 256, 256);
+      },
+      // 翼の膜: 下(手首)から上(ふち)へ血管が枝分かれする
+      membrane(c, r) {
+        let g = c.createLinearGradient(0, 256, 0, 0);
+        g.addColorStop(0, "#f0f0f0");
+        g.addColorStop(0.7, "#b0b0b0");
+        g.addColorStop(1, "#4a4a4a");
+        c.fillStyle = g;
+        c.fillRect(0, 0, 256, 256);
+        for (let i = 0; i < 70; i++) {
+          const x = r() * 256, y = r() * 256, s = 8 + r() * 22;
+          g = c.createRadialGradient(x, y, 0, x, y, s);
+          g.addColorStop(0, `rgba(${r() < 0.5 ? "0,0,0" : "255,255,255"},0.13)`);
+          g.addColorStop(1, "rgba(0,0,0,0)");
+          c.fillStyle = g;
+          c.fillRect(x - s, y - s, s * 2, s * 2);
+        }
+        c.strokeStyle = "rgba(15,15,15,0.5)";
+        const vein = (x, y, a, w, d) => {
+          for (let k = 0; k < 7 && y > -5; k++) {
+            const nx = x + Math.sin(a) * 15, ny = y - Math.cos(a) * 15;
+            c.lineWidth = w;
+            (c.beginPath(), c.moveTo(x, y), c.lineTo(nx, ny), c.stroke());
+            ((x = nx), (y = ny), (a += (r() - 0.5) * 0.5), (w *= 0.9));
+            if (d < 2 && r() < 0.4) vein(x, y, a + (r() < 0.5 ? 0.7 : -0.7), w * 0.7, d + 1);
+          }
+        };
+        for (let i = 0; i < 12; i++) vein(8 + i * 21 + r() * 8, 256, (r() - 0.5) * 0.3, 2.6, 0);
+        vein(128, 150, 0, 2, 0);
+      },
+      plate(c, r) {
+        c.fillStyle = "#c6c6c6";
+        c.fillRect(0, 0, 256, 256);
+        for (let i = 0; i < 500; i++) {
+          const v = r() < 0.5 ? 0 : 255;
+          c.fillStyle = `rgba(${v},${v},${v},0.07)`;
+          c.fillRect(r() * 256, r() * 256, 20 + r() * 80, 1);
+        }
+        const P = [[6, 6, 116, 116], [134, 6, 116, 76], [134, 94, 116, 156], [6, 134, 116, 116]];
+        for (const [x, y, w, h] of P) {
+          c.strokeStyle = "#1c1c1c";
+          c.lineWidth = 4;
+          c.strokeRect(x, y, w, h);
+          c.strokeStyle = "rgba(255,255,255,0.8)";
+          c.lineWidth = 1.2;
+          c.strokeRect(x + 3.5, y + 3.5, w - 7, h - 7);
+          for (const [rx, ry] of [[x + 12, y + 12], [x + w - 12, y + 12], [x + 12, y + h - 12], [x + w - 12, y + h - 12]]) ((c.fillStyle = "#222"), c.beginPath(), c.arc(rx, ry, 4, 0, 7), c.fill(), (c.fillStyle = "#eee"), c.beginPath(), c.arc(rx - 1, ry - 1, 1.6, 0, 7), c.fill());
+        }
+      },
+      // 鎧・機械の光る線
+      plateE(c) {
+        c.fillStyle = "#000";
+        c.fillRect(0, 0, 256, 256);
+        c.strokeStyle = "#fff";
+        c.shadowColor = "#fff";
+        c.shadowBlur = 7;
+        c.lineWidth = 3.5;
+        c.lineCap = "round";
+        const L = (...p) => {
+          c.beginPath();
+          c.moveTo(p[0], p[1]);
+          for (let i = 2; i < p.length; i += 2) c.lineTo(p[i], p[i + 1]);
+          c.stroke();
+        };
+        L(24, 64, 60, 64, 76, 48, 104, 48);
+        L(24, 84, 70, 84);
+        for (let k = 0; k < 3; k++) L(152, 130 + k * 34, 192, 160 + k * 34, 232, 130 + k * 34);
+        (c.beginPath(), c.arc(64, 192, 30, 0.4, 5.6), c.stroke());
+        (c.beginPath(), c.arc(64, 192, 10, 0, 7), c.stroke());
+        for (let k = 0; k < 4; k++) L(152 + k * 22, 30, 164 + k * 22, 30);
+        L(152, 56, 232, 56);
+      },
+      rock(c, r) {
+        const cr = cracks(r);
+        c.fillStyle = "#9a9a9a";
+        c.fillRect(0, 0, 256, 256);
+        for (let i = 0; i < 300; i++) {
+          const x = r() * 256, y = r() * 256, s = 6 + r() * 26, v = r() < 0.5 ? "0,0,0" : "255,255,255";
+          tile9((dx, dy) => {
+            const g = c.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, s);
+            g.addColorStop(0, `rgba(${v},0.16)`);
+            g.addColorStop(1, `rgba(${v},0)`);
+            c.fillStyle = g;
+            c.fillRect(x + dx - s, y + dy - s, s * 2, s * 2);
+          });
+        }
+        for (let i = 0; i < 1800; i++) ((c.fillStyle = `rgba(0,0,0,${r() * 0.35})`), c.fillRect(r() * 256, r() * 256, 1.5, 1.5));
+        c.lineJoin = "round";
+        for (const [w, col] of [[7, "rgba(0,0,0,0.35)"], [3.5, "#0c0c0c"]])
+          for (const p of cr)
+            tile9((dx, dy) => {
+              c.strokeStyle = col;
+              c.lineWidth = w;
+              c.beginPath();
+              p.forEach((q, i) => (i ? c.lineTo(q[0] + dx, q[1] + dy) : c.moveTo(q[0] + dx, q[1] + dy)));
+              c.stroke();
+            });
+      },
+      // 岩のひびの中の光
+      rockE(c, r) {
+        const cr = cracks(r);
+        c.fillStyle = "#000";
+        c.fillRect(0, 0, 256, 256);
+        c.strokeStyle = "#fff";
+        c.shadowColor = "#fff";
+        c.shadowBlur = 5;
+        c.lineWidth = 2.2;
+        c.lineJoin = "round";
+        for (const p of cr)
+          tile9((dx, dy) => {
+            c.beginPath();
+            p.forEach((q, i) => (i ? c.lineTo(q[0] + dx, q[1] + dy) : c.moveTo(q[0] + dx, q[1] + dy)));
+            c.stroke();
+          });
+      },
+      cloth(c, r) {
+        c.fillStyle = "#b6b6b6";
+        c.fillRect(0, 0, 256, 256);
+        for (let y = 0; y < 256; y += 4) ((c.fillStyle = "rgba(0,0,0,0.13)"), c.fillRect(0, y, 256, 1.5));
+        for (let x = 0; x < 256; x += 4) ((c.fillStyle = "rgba(255,255,255,0.1)"), c.fillRect(x, 0, 1.5, 256));
+        for (let i = 0; i < 400; i++) ((c.fillStyle = `rgba(0,0,0,${r() * 0.12})`), c.fillRect(r() * 256, r() * 256, 2 + r() * 10, 2));
+        // すその飾り帯
+        c.fillStyle = "#f4f4f4";
+        c.fillRect(0, 214, 256, 30);
+        c.fillStyle = "#333";
+        c.fillRect(0, 212, 256, 3);
+        c.fillRect(0, 243, 256, 3);
+        for (let x = 16; x < 256; x += 32) (c.beginPath(), c.moveTo(x, 219), c.lineTo(x + 9, 229), c.lineTo(x, 239), c.lineTo(x - 9, 229), c.fill());
+      },
+      clothE(c, r) {
+        c.fillStyle = "#000";
+        c.fillRect(0, 0, 256, 256);
+        c.strokeStyle = "#fff";
+        c.shadowColor = "#fff";
+        c.shadowBlur = 5;
+        c.lineWidth = 3;
+        for (let k = 0; k < 6; k++) glyph(c, r, 22 + k * 42.6, 170, 11);
+        c.lineWidth = 2;
+        for (const y of [140, 200]) (c.beginPath(), c.moveTo(0, y), c.lineTo(256, y), c.stroke());
+      },
+      // 魔法陣の帯(横に1周ぶん)
+      rune(c, r) {
+        c.fillStyle = "#000";
+        c.fillRect(0, 0, 256, 256);
+        c.strokeStyle = "#fff";
+        c.shadowColor = "#fff";
+        c.shadowBlur = 8;
+        c.lineWidth = 9;
+        c.lineCap = "round";
+        for (let k = 0; k < 5; k++) glyph(c, r, 26 + k * 51.2, 128, 30);
+        c.lineWidth = 10;
+        for (const y of [22, 234]) (c.beginPath(), c.moveTo(0, y), c.lineTo(256, y), c.stroke());
+        for (let k = 0; k < 5; k++) (c.beginPath(), c.arc(k * 51.2, 128, 5, 0, 7), c.stroke());
+      },
+      chitin(c, r) {
+        c.fillStyle = "#b0b0b0";
+        c.fillRect(0, 0, 256, 256);
+        for (let x = 0; x < 256; x += 16) {
+          const g = c.createLinearGradient(x, 0, x + 16, 0);
+          g.addColorStop(0, "rgba(0,0,0,0.3)");
+          g.addColorStop(0.5, "rgba(255,255,255,0.25)");
+          g.addColorStop(1, "rgba(0,0,0,0.3)");
+          c.fillStyle = g;
+          c.fillRect(x, 0, 16, 256);
+        }
+        for (let i = 0; i < 700; i++) ((c.fillStyle = `rgba(0,0,0,${0.1 + r() * 0.3})`), c.beginPath(), c.arc(r() * 256, r() * 256, 0.8 + r() * 1.6, 0, 7), c.fill());
+        for (let y = 0; y < 256; y += 64) ((c.fillStyle = "rgba(0,0,0,0.35)"), c.fillRect(0, y, 256, 3));
+      },
+      // 虫の羽(白いところほど濃い)
+      wingI(c, r) {
+        c.fillStyle = "#3a3a3a";
+        c.fillRect(0, 0, 256, 256);
+        c.strokeStyle = "#fff";
+        c.lineWidth = 3;
+        for (let k = 0; k < 6; k++) (c.beginPath(), c.moveTo(20 + k * 8, 256), c.bezierCurveTo(10 + k * 30, 180, 20 + k * 44, 90, 60 + k * 30, 0), c.stroke());
+        c.lineWidth = 1.6;
+        for (let i = 0; i < 60; i++) {
+          const x = r() * 256, y = r() * 256;
+          (c.beginPath(), c.moveTo(x, y), c.lineTo(x + 20 + r() * 26, y + (r() - 0.5) * 24), c.stroke());
+        }
+        const g = c.createLinearGradient(0, 60, 0, 0);
+        g.addColorStop(0, "rgba(255,255,255,0)");
+        g.addColorStop(1, "rgba(255,255,255,0.7)");
+        c.fillStyle = g;
+        c.fillRect(0, 0, 256, 60);
+      },
+    };
+    function tex(kind, rx = 1, ry = 1) {
+      const key = kind + "|" + rx + "|" + ry;
+      if (TEXC.has(key)) return TEXC.get(key);
+      const THREE = T();
+      let base = TEXC.get(kind);
+      if (!base) {
+        const cv = document.createElement("canvas");
+        cv.width = cv.height = 256;
+        let sd = 11;
+        const r = () => (sd = (Math.imul(sd, 1103515245) + 12345) >>> 0) / 4294967296;
+        PAINT[kind](cv.getContext("2d"), r);
+        base = new THREE.CanvasTexture(cv);
+        base.wrapS = base.wrapT = THREE.RepeatWrapping;
+        base.encoding = THREE.sRGBEncoding;
+        base.anisotropy = 4;
+        TEXC.set(kind, base);
+      }
+      const t = base.clone();
+      t.repeat.set(rx, ry);
+      t.needsUpdate = true;
+      TEXC.set(key, t);
+      return t;
+    }
+    // ぼんやりした光の玉(目・核のまわり)
+    function glowTex() {
+      if (TEXC.has("glow")) return TEXC.get("glow");
+      const cv = document.createElement("canvas");
+      cv.width = cv.height = 128;
+      const c = cv.getContext("2d"), g = c.createRadialGradient(64, 64, 0, 64, 64, 64);
+      g.addColorStop(0, "rgba(255,255,255,1)");
+      g.addColorStop(0.25, "rgba(255,255,255,0.45)");
+      g.addColorStop(0.6, "rgba(255,255,255,0.1)");
+      g.addColorStop(1, "rgba(255,255,255,0)");
+      c.fillStyle = g;
+      c.fillRect(0, 0, 128, 128);
+      const t = new (T().CanvasTexture)(cv);
+      TEXC.set("glow", t);
+      return t;
+    }
+    const geoOf = (pos, nor, uv, idx) => {
+      const THREE = T(), g = new THREE.BufferGeometry();
+      g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+      if (nor) g.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3));
+      g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+      g.setIndex(idx);
+      if (!nor) g.computeVertexNormals();
+      return g;
+    };
+    // 管: 中心線(点の列)にそって、太さを変えながら丸い断面を並べる。胴・首・腕・角に使う
+    function sweep(P, R, o = {}) {
+      const THREE = T(), nv = o.nv || 16, nu = o.nu || Math.max(10, (P.length - 1) * 7), ey = o.ey || 1, ez = o.ez || 1;
+      const cur = new THREE.CatmullRomCurve3(P.map((p) => new THREE.Vector3(p[0], p[1], p[2] || 0)), false, "centripetal");
+      const rc = typeof R === "function" ? null : new THREE.CatmullRomCurve3(R.map((r, i) => new THREE.Vector3(r, i, 0)), false, "centripetal");
+      const rad = (u) => Math.max(0.0004, (rc ? rc.getPoint(u).x : R(u)) * (o.rf ? o.rf(u) : 1));
+      const pos = [], nor = [], uv = [], idx = [];
+      const C = new THREE.Vector3(), Tn = new THREE.Vector3(), N = new THREE.Vector3(), B = new THREE.Vector3(), a1 = new THREE.Vector3(), a2 = new THREE.Vector3(), n = new THREE.Vector3();
+      const Z = new THREE.Vector3(0, 0, 1), Y = new THREE.Vector3(0, 1, 0);
+      for (let i = 0; i <= nu; i++) {
+        const u = i / nu, e = 0.5 / nu, u1 = Math.min(1, u + e), u0 = Math.max(0, u - e);
+        cur.getPoint(u, C);
+        cur.getTangent(u, Tn);
+        N.crossVectors(Math.abs(Tn.z) < 0.95 ? Z : Y, Tn).normalize();
+        B.crossVectors(Tn, N);
+        const r = rad(u), dr = (rad(u1) - rad(u0)) / Math.max(1e-5, cur.getPoint(u1, a1).distanceTo(cur.getPoint(u0, a2)));
+        for (let j = 0; j <= nv; j++) {
+          const a = (j / nv) * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a);
+          pos.push(C.x + r * (ca * ey * N.x + sa * ez * B.x), C.y + r * (ca * ey * N.y + sa * ez * B.y), C.z + r * (ca * ey * N.z + sa * ez * B.z));
+          n.set(0, 0, 0).addScaledVector(N, ca / ey).addScaledVector(B, sa / ez).normalize().addScaledVector(Tn, -Math.max(-3, Math.min(3, dr))).normalize();
+          nor.push(n.x, n.y, n.z);
+          uv.push(j / nv, u);
+        }
+      }
+      for (let i = 0; i < nu; i++)
+        for (let j = 0; j < nv; j++) {
+          const a = i * (nv + 1) + j, b = a + nv + 1;
+          idx.push(a, a + 1, b, b, a + 1, b + 1);
+        }
+      return geoOf(pos, nor, uv, idx);
+    }
+    // いくつもの形を1つにまとめる(歯・とげ・羽などの細かい部品を1回で描くため)
+    function merge(parts) {
+      const THREE = T(), pos = [], nor = [], uv = [], idx = [], v = new THREE.Vector3(), nm = new THREE.Matrix3();
+      let base = 0;
+      for (const [g, m] of parts) {
+        const p = g.attributes.position, n = g.attributes.normal, t = g.attributes.uv, flip = m.determinant() < 0;
+        nm.getNormalMatrix(m);
+        for (let i = 0; i < p.count; i++) {
+          v.fromBufferAttribute(p, i).applyMatrix4(m);
+          pos.push(v.x, v.y, v.z);
+          v.fromBufferAttribute(n, i).applyMatrix3(nm).normalize();
+          nor.push(v.x, v.y, v.z);
+          uv.push(t ? t.getX(i) : 0, t ? t.getY(i) : 0);
+        }
+        const ix = g.index ? g.index.array : null, cnt = ix ? ix.length : p.count;
+        for (let k = 0; k < cnt; k += 3) {
+          const a = base + (ix ? ix[k] : k), b = base + (ix ? ix[k + 1] : k + 1), c = base + (ix ? ix[k + 2] : k + 2);
+          flip ? idx.push(a, c, b) : idx.push(a, b, c);
+        }
+        base += p.count;
+      }
+      return geoOf(pos, nor, uv, idx);
+    }
+    // 膜: 付け根 W から、となり合う骨の先どうしの間に張る。ふちは内へえぐれ、中ほどはふくらむ
+    function membrane(W, tips, sag, billow) {
+      const ns = 8, nt = 8, pos = [], uv = [], idx = [], n = tips.length - 1;
+      for (let f = 0; f < n; f++) {
+        const A = tips[f], B = tips[f + 1], b0 = pos.length / 3, sg = Array.isArray(sag) ? sag[f] : sag;
+        for (let i = 0; i <= ns; i++)
+          for (let j = 0; j <= nt; j++) {
+            const s = i / ns, t = j / nt, e = s * (1 - sg * Math.sin(Math.PI * t) * s), bl = billow * Math.sin(Math.PI * t) * Math.sin(Math.PI * Math.min(1, s * 1.15));
+            pos.push(W[0] + ((A[0] - W[0]) * (1 - t) + (B[0] - W[0]) * t) * e, W[1] + ((A[1] - W[1]) * (1 - t) + (B[1] - W[1]) * t) * e + bl, W[2] + ((A[2] - W[2]) * (1 - t) + (B[2] - W[2]) * t) * e);
+            uv.push((f + t) / n, s);
+          }
+        for (let i = 0; i < ns; i++)
+          for (let j = 0; j < nt; j++) {
+            const a = b0 + i * (nt + 1) + j, b = a + nt + 1;
+            idx.push(a, b, a + 1, a + 1, b, b + 1);
+          }
+      }
+      return geoOf(pos, null, uv, idx);
+    }
+    // 布(マント・すそ・リボン): 格子の点を式で動かす。closed は筒(横が1周つながる)
+    function sheet(nu, nv, fn, closed) {
+      const pos = new Array((nu + 1) * (nv + 1) * 3).fill(0), uv = [], idx = [], o = [0, 0, 0];
+      for (let j = 0; j <= nv; j++) for (let i = 0; i <= nu; i++) uv.push(i / nu, 1 - j / nv);
+      for (let j = 0; j < nv; j++)
+        for (let i = 0; i < nu; i++) {
+          const a = j * (nu + 1) + i, b = a + nu + 1;
+          idx.push(a, b, a + 1, a + 1, b, b + 1);
+        }
+      const g = geoOf(pos, null, uv, idx), p = g.attributes.position, nr = g.attributes.normal;
+      const upd = (t) => {
+        for (let j = 0; j <= nv; j++)
+          for (let i = 0; i <= nu; i++) {
+            fn(i / nu, j / nv, t, o);
+            p.setXYZ(j * (nu + 1) + i, o[0], o[1], o[2]);
+          }
+        p.needsUpdate = true;
+        g.computeVertexNormals();
+        if (closed)
+          for (let j = 0; j <= nv; j++) {
+            const a = j * (nu + 1), b = a + nu, x = nr.getX(a) + nr.getX(b), y = nr.getY(a) + nr.getY(b), z = nr.getZ(a) + nr.getZ(b), l = Math.hypot(x, y, z) || 1;
+            nr.setXYZ(a, x / l, y / l, z / l);
+            nr.setXYZ(b, x / l, y / l, z / l);
+          }
+      };
+      upd(0);
+      return { g, upd };
+    }
     function proc(m, side) {
       const THREE = T();
+      const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
       let hsh = 7;
       for (const ch of String(m.name)) hsh = (Math.imul(hsh, 31) + ch.codePointAt(0)) >>> 0;
       const rnd = (n) => hash(hsh + n * 97);
       const kind = (m.ace || m.synchro ? "dragon" : null) || RACE_KIND[m.race] || ICON_KIND[m.icon] || ["knight", "beast", "dragon", "bird", "machine", "mage", "spirit"][hsh % 7];
       const pal = ATTR_COL[m.attr] || (side === "opp" ? ATTR_COL.闇 : [[0x1f9e7a, 0x7dffd0], [0x1d5fb4, 0x70d0ff], [0xb5341c, 0xffa040], [0xd8c070, 0xfff6c0]][hsh % 4]);
       // 色は画面用の値なので、光の計算用に直す(直さないと白っぽくなる)
+      const lin = (h) => new THREE.Color(h).convertSRGBToLinear();
       const base = new THREE.Color(pal[0]).offsetHSL((rnd(1) - 0.5) * 0.06, 0.1, (rnd(2) - 0.5) * 0.06).convertSRGBToLinear();
       const glow = new THREE.Color(pal[1]).offsetHSL(0, 0.2, -0.12).convertSRGBToLinear();
-      const gold = m.ace || m.synchro;
-      const M1 = new THREE.MeshStandardMaterial({ color: base, metalness: 0.35, roughness: 0.42, flatShading: true, envMapIntensity: 0.55 });
-      const M2 = new THREE.MeshStandardMaterial({ color: gold ? new THREE.Color(0xc99a2e).convertSRGBToLinear() : base.clone().multiplyScalar(0.3), metalness: 0.6, roughness: 0.35, flatShading: true, envMapIntensity: 0.6 });
-      const GL = new THREE.MeshBasicMaterial({ color: glow });
-      const WG = new THREE.MeshStandardMaterial({ color: base.clone().multiplyScalar(0.7), metalness: 0.2, roughness: 0.55, flatShading: true, side: THREE.DoubleSide, envMapIntensity: 0.4, emissive: glow, emissiveIntensity: 0.22 });
+      const gold = m.ace || m.synchro, dark = m.attr === "闇" || (!ATTR_COL[m.attr] && side === "opp");
+      const metal = kind === "knight" || kind === "machine";
+      // ---- 材質 ----
+      const PM = (o) => new THREE.MeshPhysicalMaterial(Object.assign({ envMapIntensity: 0.9 }, o));
+      const skinKind = { dragon: "scale", serpent: "scale", bird: "fur", beast: "fur", insect: "chitin", knight: "plate", machine: "plate", golem: "rock", mage: "cloth", spirit: "cloth", crystal: "plate" }[kind];
+      const sk = tex(skinKind, kind === "dragon" || kind === "serpent" ? 6 : 3, kind === "dragon" || kind === "serpent" ? 5 : 3);
+      const bright = base.clone().multiplyScalar(1.5);
+      const M1 = PM({ color: bright, map: sk, bumpMap: sk, bumpScale: metal ? 0.004 : 0.008, metalness: metal ? 0.9 : 0.3, roughness: metal ? 0.3 : 0.45, clearcoat: 0.7, clearcoatRoughness: 0.25 }); // 体
+      const pt = tex("plate", 2, 2);
+      const M2 = PM({ color: gold ? lin(0xe0a938) : base.clone().multiplyScalar(0.3).addScalar(0.02), map: pt, bumpMap: pt, bumpScale: 0.004, metalness: 0.95, roughness: gold ? 0.24 : 0.34, clearcoat: 0.5, clearcoatRoughness: 0.2 }); // 鎧・金具
+      const M3 = PM({ color: lin(dark ? 0x3a3340 : 0xefe4cc), metalness: 0.05, roughness: 0.3, clearcoat: 0.9, clearcoatRoughness: 0.15 }); // 角・爪・歯
+      const sk2 = tex(skinKind, 2, 8);
+      const M4 = PM({ color: base.clone().lerp(lin(0xf4e8c8), 0.55), map: sk2, bumpMap: sk2, bumpScale: 0.006, metalness: 0.15, roughness: 0.5, clearcoat: 0.4 }); // 腹
+      const GL = new THREE.MeshBasicMaterial({ color: glow.clone().multiplyScalar(1.7) }); // 光る部品
+      const BK = new THREE.MeshStandardMaterial({ color: 0x06060a, roughness: 0.6, metalness: 0.2 });
+      const GE = PM({ color: base.clone().multiplyScalar(0.35), map: pt, emissive: glow, emissiveIntensity: 2.2, emissiveMap: tex("plateE", 2, 2), metalness: 0.85, roughness: 0.32, clearcoat: 0.5 }); // 光る線の入った鎧
+      const mt = tex("membrane");
+      const WG = PM({ color: base.clone().multiplyScalar(1.1).lerp(glow, 0.25), map: mt, bumpMap: mt, bumpScale: 0.006, side: THREE.DoubleSide, metalness: 0.1, roughness: 0.5, clearcoat: 0.3, emissive: glow, emissiveIntensity: 0.22, emissiveMap: mt }); // 膜
+      const ft = tex("feather");
+      const FT = PM({ color: base.clone().lerp(lin(0xffffff), 0.45), map: ft, bumpMap: ft, bumpScale: 0.004, side: THREE.DoubleSide, metalness: 0.1, roughness: 0.5, sheen: 0.6 }); // 風切り羽
+      const FT2 = PM({ color: base.clone().multiplyScalar(0.9).lerp(glow, 0.2), map: ft, bumpMap: ft, bumpScale: 0.004, side: THREE.DoubleSide, metalness: 0.15, roughness: 0.5, emissive: glow, emissiveIntensity: 0.12 }); // 雨おおい羽
+      const RN = new THREE.MeshBasicMaterial({ color: glow.clone().multiplyScalar(1.4), map: tex("rune", 3, 1), transparent: true, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false }); // 魔法陣
+      const halos = {};
       const root = new THREE.Group(), anim = [];
+      // 飛び方の状態: t=時刻 ph=羽ばたきの位相 amp=羽ばたきの強さ climb=上昇(+)下降(-) turn=旋回 fold=翼のたたみ
+      const S = { t: 0, ph: 0.9, amp: 0.8, climb: 0, turn: 0, fold: 0, w: 3, lift: 0.03 };
+      // ---- 部品を置く道具 ----
       const add = (geo, mat, x, y, z, rx = 0, ry = 0, rz = 0, sx = 1, sy = sx, sz = sx, parent = root) => {
         const o = new THREE.Mesh(geo, mat);
         o.position.set(x, y, z);
@@ -5013,188 +5454,1218 @@ const City = (() => {
         parent.add(o);
         return o;
       };
-      const oct = (r = 1) => new THREE.OctahedronGeometry(r, 0), ico = (r = 1, d = 0) => new THREE.IcosahedronGeometry(r, d), cone = (r, h, n = 5) => new THREE.ConeGeometry(r, h, n), box = (a, b, c) => new THREE.BoxGeometry(a, b, c), cyl = (a, b, h, n = 6) => new THREE.CylinderGeometry(a, b, h, n);
-      // 翼(膜のある翼 / 羽の翼)。付け根を原点に、外へ +z
-      const wing = (len, feather) => {
-        const sh = new THREE.Shape();
-        sh.moveTo(0, 0);
-        if (feather) {
-          sh.lineTo(len * 0.35, len * 0.5);
-          sh.lineTo(len, len * 0.42);
-          for (let k = 5; k >= 0; k--) (sh.lineTo(len * (0.2 + 0.16 * k) + len * 0.04, -len * (0.12 + 0.05 * (5 - k))), sh.lineTo(len * (0.2 + 0.16 * k) - len * 0.06, -len * 0.02));
-        } else {
-          sh.lineTo(len * 0.3, len * 0.55);
-          sh.lineTo(len, len * 0.5);
-          sh.lineTo(len * 0.78, len * 0.12);
-          sh.lineTo(len * 0.88, -len * 0.18);
-          sh.lineTo(len * 0.55, -len * 0.02);
-          sh.lineTo(len * 0.5, -len * 0.3);
-          sh.lineTo(len * 0.22, -len * 0.08);
-        }
-        const g = new THREE.ShapeGeometry(sh);
-        g.rotateY(-Math.PI / 2); // 形の横(+x)を、外向き(+z)へ
+      const grp = (par, x = 0, y = 0, z = 0) => {
+        const g = new THREE.Group();
+        g.position.set(x, y, z);
+        par.add(g);
         return g;
       };
-      const wings = (x, y, len, feather, spread = 0.5) => {
-        for (const sg of [-1, 1]) {
-          const pv = new THREE.Group();
-          pv.position.set(x, y, sg * 0.12);
-          pv.scale.z = sg;
-          root.add(pv);
-          const w = add(wing(len, feather), WG, 0, 0, 0, 0, 0, 0, 1, 1, 1, pv);
-          add(cyl(0.02, 0.035, len * 1.05, 5), M2, 0, len * 0.24, len * 0.5, Math.PI / 2 - 0.42, 0, 0, 1, 1, 1, pv); // 翼の骨
-          anim.push((t) => (pv.rotation.x = sg * (-spread + Math.sin(t * 5.5) * 0.42)));
+      // 向き d(形の +x)と、上 u(形の +y)で置く
+      const bas = (p, d, u, sx = 1, sy = sx, sz = sx) => {
+        const X = V(d[0], d[1], d[2]).normalize(), Z = V().crossVectors(X, V(u[0], u[1], u[2]));
+        if (Z.lengthSq() < 1e-8) Z.crossVectors(X, Math.abs(X.y) < 0.9 ? V(0, 1, 0) : V(1, 0, 0));
+        Z.normalize();
+        const Y = V().crossVectors(Z, X);
+        return new THREE.Matrix4().makeBasis(X.multiplyScalar(sx), Y.multiplyScalar(sy), Z.multiplyScalar(sz)).setPosition(p[0], p[1], p[2]);
+      };
+      const put = (geo, mat, p, d, u, sx = 1, sy = sx, sz = sx, parent = root) => {
+        const o = new THREE.Mesh(geo, mat);
+        bas(p, d, u, sx, sy, sz).decompose(o.position, o.quaternion, o.scale);
+        parent.add(o);
+        return o;
+      };
+      const gput = (par, p, d, u, s = 1) => {
+        const g = new THREE.Group();
+        bas(p, d, u, s).decompose(g.position, g.quaternion, g.scale);
+        par.add(g);
+        return g;
+      };
+      const mirror = (par, f) => {
+        for (const sg of [1, -1]) {
+          const g = grp(par);
+          g.scale.z = sg;
+          f(g, sg);
         }
       };
-      const eyes = (x, y, z, r = 0.035) => {
-        for (const sg of [-1, 1]) add(ico(r), GL, x, y, sg * z);
+      const halo = (par, x, y, z, s, op = 0.6) => {
+        const sp = new THREE.Sprite(halos[op] || (halos[op] = new THREE.SpriteMaterial({ map: glowTex(), color: glow, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: op })));
+        sp.position.set(x, y, z);
+        sp.scale.set(s, s, 1);
+        par.add(sp);
+        return sp;
       };
-      const tail = (x, y, n, len, r) => {
-        let par = root, px = x, py = y;
-        for (let k = 0; k < n; k++) {
-          const pv = new THREE.Group();
-          pv.position.set(px, py, 0);
-          par.add(pv);
-          add(cone(r * (1 - k / (n + 1)), len, 5), k % 2 ? M2 : M1, -len / 2, 0, 0, 0, 0, Math.PI / 2, 1, 1, 1, pv);
-          const kk = k;
-          anim.push((t) => (pv.rotation.y = Math.sin(t * 2.4 - kk * 0.7) * 0.28));
-          par = pv;
-          px = -len * 0.85;
-          py = 0;
-        }
-        return par;
+      const tab = (a, u) => {
+        const f = Math.max(0, Math.min(1, u)) * (a.length - 1), i = Math.min(a.length - 2, Math.floor(f));
+        return a[i] + (a[i + 1] - a[i]) * (f - i);
       };
-      if (kind === "dragon") {
-        add(oct(), M1, 0, 0.5, 0, 0, 0, 0, 0.42, 0.26, 0.24);
-        add(ico(0.09), GL, 0.12, 0.48, 0); // 胸の核
-        add(cyl(0.07, 0.11, 0.42, 6), M1, 0.36, 0.72, 0, 0, 0, -0.75);
-        const hd = new THREE.Group();
-        hd.position.set(0.56, 0.92, 0);
-        root.add(hd);
-        add(cone(0.11, 0.34, 5), M1, 0.1, 0, 0, 0, 0, -Math.PI / 2, 1, 1, 1, hd);
-        add(cone(0.07, 0.24, 4), M2, 0.1, -0.07, 0, 0, 0, -Math.PI / 2 - 0.25, 1, 1, 1, hd); // 下あご
-        for (const sg of [-1, 1]) add(cone(0.028, 0.26, 4), M2, -0.1, 0.1, sg * 0.07, sg * 0.35, 0, 0.9, 1, 1, 1, hd); // 角
-        for (const sg of [-1, 1]) add(ico(0.03), GL, 0.08, 0.035, sg * 0.075, 0, 0, 0, 1, 1, 1, hd);
-        anim.push((t) => (hd.rotation.z = Math.sin(t * 1.6) * 0.12));
-        for (let k = 0; k < 5; k++) add(cone(0.035, 0.14, 4), M2, 0.22 - k * 0.13, 0.74 - k * 0.02, 0); // 背びれ
-        for (const [lx, lz] of [[0.2, 0.15], [0.2, -0.15], [-0.22, 0.15], [-0.22, -0.15]]) (add(cyl(0.05, 0.035, 0.3, 5), M1, lx, 0.2, lz, 0, 0, lx > 0 ? 0.25 : -0.3), add(cone(0.05, 0.1, 4), M2, lx + 0.05, 0.03, lz, 0, 0, -Math.PI / 2));
-        tail(-0.36, 0.48, 5, 0.22, 0.09);
-        wings(0.05, 0.68, gold ? 0.95 : 0.75, false, 0.55);
-        if (gold) (wings(-0.12, 0.6, 0.55, false, 0.2), anim.push(((r) => (t) => (r.rotation.z = t * 0.8))(add(new THREE.TorusGeometry(0.2, 0.012, 6, 24), GL, 0.5, 1.2, 0, Math.PI / 2, 0, 0))));
-      } else if (kind === "bird") {
-        add(ico(1, 1), M1, 0, 0.5, 0, 0, 0, 0.3, 0.3, 0.2, 0.19);
-        add(ico(0.12, 1), M1, 0.3, 0.68, 0);
-        add(cone(0.05, 0.2, 4), M2, 0.45, 0.65, 0, 0, 0, -Math.PI / 2 - 0.2);
-        eyes(0.36, 0.71, 0.085, 0.028);
-        for (let k = -2; k <= 2; k++) add(cone(0.045, 0.42, 3), k % 2 ? M2 : M1, -0.42, 0.42, k * 0.07, 0, 0, Math.PI / 2 + 0.15 + Math.abs(k) * 0.04, 1, 1, 0.3); // 尾羽
-        for (const sg of [-1, 1]) (add(cyl(0.022, 0.022, 0.22, 4), M2, 0.02, 0.24, sg * 0.08), add(cone(0.05, 0.1, 3), GL, 0.05, 0.1, sg * 0.08, 0, 0, -1.9));
-        add(cone(0.05, 0.2, 4), M2, 0.22, 0.84, 0, 0, 0, 0.7); // とさか
-        wings(0.04, 0.6, 0.95, true, 0.35);
-      } else if (kind === "beast" || kind === "insect") {
-        const ins = kind === "insect";
-        add(ico(1, 0), M1, 0, 0.42, 0, 0, 0, 0, ins ? 0.26 : 0.36, 0.2, 0.2);
-        if (ins) add(ico(1, 0), M2, -0.36, 0.44, 0, 0, 0, 0.2, 0.3, 0.19, 0.2);
-        const hd = new THREE.Group();
-        hd.position.set(0.4, 0.56, 0);
-        root.add(hd);
-        add(oct(), M1, 0, 0, 0, 0, 0, 0, 0.17, 0.14, 0.14, hd);
-        add(cone(0.07, 0.2, 4), M2, 0.17, -0.04, 0, 0, 0, -Math.PI / 2, 1, 1, 1, hd);
-        for (const sg of [-1, 1]) (add(cone(0.04, ins ? 0.34 : 0.15, 3), M2, ins ? 0.12 : -0.04, ins ? 0.02 : 0.15, sg * (ins ? 0.06 : 0.09), ins ? sg * 0.5 : 0, 0, ins ? -1.2 : 0.2, 1, 1, 1, hd), add(ico(0.028), GL, 0.1, 0.045, sg * 0.085, 0, 0, 0, 1, 1, 1, hd));
-        anim.push((t) => (hd.rotation.z = Math.sin(t * 2) * 0.1));
-        const legs = ins ? [[0.14, 1], [0, 1], [-0.14, 1]] : [[0.22, 1], [-0.22, 1]];
-        legs.forEach(([lx], k) => {
-          for (const sg of [-1, 1]) {
-            const l = add(cyl(ins ? 0.02 : 0.05, ins ? 0.012 : 0.03, ins ? 0.5 : 0.34, 5), M2, lx, ins ? 0.26 : 0.19, sg * (ins ? 0.26 : 0.14), ins ? sg * 0.9 : 0, 0, 0);
-            anim.push((t) => (l.rotation.z = Math.sin(t * 7 + k * 2 + sg) * 0.35));
+      // 胴の表面: x での中心の高さと半径
+      const atX = (P, R, x) => {
+        let i = 0;
+        while (i < P.length - 2 && (P[i + 1][0] - x) * (P[i + 1][0] - P[0][0]) < 0) i++;
+        const f = Math.max(0, Math.min(1, (x - P[i][0]) / (P[i + 1][0] - P[i][0])));
+        return [P[i][1] + (P[i + 1][1] - P[i][1]) * f, R[i] + (R[i + 1] - R[i]) * f];
+      };
+      // ---- 基本の形 ----
+      const sph = G("sph", () => new THREE.SphereGeometry(1, 28, 18));
+      const hemi = G("hemi", () => new THREE.SphereGeometry(1, 28, 10, 0, Math.PI * 2, 0, Math.PI / 2));
+      const cylG = G("cyl", () => new THREE.CylinderGeometry(1, 1, 1, 24));
+      const boxG = G("box", () => new THREE.BoxGeometry(1, 1, 1));
+      const tor = (ratio, arc = 6.2832) => G(`tor:${ratio}:${arc.toFixed(2)}`, () => new THREE.TorusGeometry(1, ratio, 12, 48, arc));
+      const tooth = G("tooth", () => {
+        const g = new THREE.ConeGeometry(1, 1, 8);
+        g.rotateZ(-Math.PI / 2);
+        g.translate(0.5, 0, 0);
+        return g;
+      });
+      const sw = (P, R, o, tag = "") => G("sw:" + tag + JSON.stringify([P, typeof R === "function" ? 0 : R, o && Object.assign({}, o, { rf: o.rf ? 1 : 0 })]), () => sweep(P, R, o));
+      // 角・爪・とげ: +x へのび、+y へ反る。長さ1・根元の半径 rr
+      const hornG = (rr, bend = 0, ridge = 0) =>
+        G(`horn:${rr}:${bend}:${ridge}`, () => {
+          const P = [];
+          for (let i = 0; i <= 5; i++) {
+            const a = (bend * i) / 5;
+            P.push(Math.abs(bend) < 0.01 ? [i / 5, 0, 0] : [Math.sin(a) / bend, (1 - Math.cos(a)) / bend, 0]);
           }
+          return sweep(P, (u) => rr * Math.pow(1 - u, 0.85) * (1 + ridge * Math.sin(u * 60)) + 0.003, { nv: 12, nu: ridge ? 50 : 16 });
         });
-        for (let k = 0; k < 4; k++) add(cone(0.04, 0.16, 4), GL, 0.2 - k * 0.12, 0.64 - k * 0.015, 0, 0, 0, 0.5); // たてがみ
-        if (ins) wings(-0.05, 0.6, 0.6, false, 0.2);
-        else tail(-0.34, 0.46, 4, 0.16, 0.05);
-      } else if (kind === "knight" || kind === "golem") {
-        const gm = kind === "golem", w = gm ? 1.5 : 1;
-        add(gm ? ico(1, 0) : cyl(0.15, 0.1, 0.34, 6), M1, 0, 0.6, 0, 0, 0.3, 0, gm ? 0.26 : 1, gm ? 0.24 : 1, gm ? 0.24 : 1);
-        add(ico(0.06), GL, 0.13 * w, 0.62, 0);
-        add(gm ? ico(0.13, 0) : oct(0.12), M2, 0.02, 0.9, 0);
-        eyes(0.1, 0.91, 0.045, 0.022);
-        if (!gm) add(cone(0.04, 0.3, 4), GL, -0.05, 1.06, 0, 0, 0, 0.4, 1, 1, 0.35); // かぶとの飾り
+      // 押し出した板(ふちは丸める): 刃・盾・ひれ・機械の翼
+      const ext = (key, pts, depth, bev, smooth = 0) =>
+        G("ext:" + key, () => {
+          let v = pts.map((p) => new THREE.Vector2(p[0], p[1]));
+          if (smooth) v = new THREE.SplineCurve(v.concat([v[0]])).getPoints(smooth).slice(0, -1);
+          const g = new THREE.ExtrudeGeometry(new THREE.Shape(v), { depth, bevelEnabled: true, bevelThickness: bev, bevelSize: bev, bevelSegments: 3, curveSegments: 8 });
+          g.translate(0, 0, -depth / 2);
+          return g;
+        });
+      // 羽1枚: +x へのび、幅は z、表は +y。軸のところが少し盛り上がり、先は下へ反る
+      const featherG = G("feather", () => {
+        const nu = 12, nv = 4, pos = [], uv = [], idx = [];
+        for (let i = 0; i <= nu; i++) {
+          const s = i / nu, w = 0.11 * Math.pow(Math.sin(Math.PI * Math.pow(s, 0.62)), 0.55) + 0.004;
+          for (let j = 0; j <= nv; j++) {
+            const q = (j / nv) * 2 - 1;
+            pos.push(s, -0.08 * s * s + 0.3 * w * (1 - q * q), q * w);
+            uv.push(j / nv, s);
+          }
+        }
+        for (let i = 0; i < nu; i++)
+          for (let j = 0; j < nv; j++) {
+            const a = i * (nv + 1) + j, b = a + nv + 1;
+            idx.push(a, a + 1, b, b, a + 1, b + 1);
+          }
+        return geoOf(pos, null, uv, idx);
+      });
+      // 毛のふさ
+      const tuftG = G("tuft", () => sweep([[0, 0, 0], [0.3, 0.05, 0], [0.7, 0.05, 0], [1, -0.03, 0]], [0.1, 0.13, 0.08, 0.004], { nv: 8, ez: 0.6 }));
+      // 六角の結晶(両端がとがる)。中心が原点・長さ1(y)
+      const gemG = G("gem", () => {
+        const c = new THREE.CylinderGeometry(1, 1, 0.5, 6, 1, true).toNonIndexed(), t = new THREE.ConeGeometry(1, 0.25, 6, 1, true).toNonIndexed();
+        c.computeVertexNormals();
+        t.computeVertexNormals();
+        return merge([[c, new THREE.Matrix4()], [t, new THREE.Matrix4().makeTranslation(0, 0.375, 0)], [t, new THREE.Matrix4().makeRotationX(Math.PI).setPosition(0, -0.375, 0)]]);
+      });
+      // 平たい輪(水平)。模様は1周に巻く
+      const annulus = (r0) =>
+        G("ann:" + r0, () => {
+          const n = 64, pos = [], uv = [], idx = [];
+          for (let i = 0; i <= n; i++) {
+            const a = (i / n) * 6.2832;
+            pos.push(Math.cos(a) * r0, 0, Math.sin(a) * r0, Math.cos(a), 0, Math.sin(a));
+            uv.push(i / n, 0, i / n, 1);
+            if (i < n) idx.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 2, i * 2 + 1, i * 2 + 3);
+          }
+          return geoOf(pos, null, uv, idx);
+        });
+      // ごつごつした岩(球をでこぼこにする)
+      const boulder = (sd) =>
+        G("bd:" + sd, () => {
+          const g = new THREE.IcosahedronGeometry(1, 10), p = g.attributes.position, nr = g.attributes.normal;
+          const f = (d, o) => {
+            const n = Math.sin(d.x * 3.1 + sd) * Math.sin(d.y * 2.7 + sd * 1.7) * Math.sin(d.z * 3.3 + sd * 0.6) * 0.22 + Math.sin(d.x * 6.3 + d.y * 5.1 + sd * 2) * Math.sin(d.z * 7.1 - d.y * 4.3 + sd) * 0.08 + Math.sin(d.x * 13 + sd) * Math.sin(d.y * 12 - sd) * Math.sin(d.z * 14) * 0.03;
+            return o.copy(d).multiplyScalar(1 + n);
+          };
+          const d = V(), t1 = V(), t2 = V(), a = V(), b = V(), c = V(), q = V();
+          for (let i = 0; i < p.count; i++) {
+            d.fromBufferAttribute(p, i).normalize();
+            t1.crossVectors(d, Math.abs(d.y) < 0.9 ? V(0, 1, 0) : V(1, 0, 0)).normalize();
+            t2.crossVectors(d, t1);
+            f(d, a);
+            f(q.copy(d).addScaledVector(t1, 0.02).normalize(), b);
+            f(q.copy(d).addScaledVector(t2, 0.02).normalize(), c);
+            b.sub(a);
+            c.sub(a);
+            q.crossVectors(b, c).normalize();
+            if (q.dot(d) < 0) q.negate();
+            p.setXYZ(i, a.x, a.y, a.z);
+            nr.setXYZ(i, q.x, q.y, q.z);
+          }
+          return g;
+        });
+      // 胴をおおう羽・毛: 胴の表面にそって、後ろ向きに少し立てて並べる
+      const coat = (key, geo, P, R, ez, rows, per, len, tilt, wid = 1, u0 = 0, u1 = 1, arc = Math.PI, a0 = 0) =>
+        G("coat:" + key, () => {
+          const parts = [], xs = P.map((p) => p[0]), ys = P.map((p) => p[1]);
+          for (let i = 0; i < rows; i++) {
+            const u = u0 + ((u1 - u0) * i) / Math.max(1, rows - 1), x = tab(xs, u), cy = tab(ys, u), r = tab(R, u);
+            for (let j = 0; j < per; j++) {
+              const a = a0 + ((j + (i % 2) * 0.5 + 0.25) / per) * 2 * arc - arc, l = len * (0.8 + 0.4 * hash(i * 31 + j * 7 + 1));
+              parts.push([geo, bas([x, cy + r * Math.cos(a) * 0.97, r * ez * Math.sin(a) * 0.97], [-1, tilt * Math.cos(a), tilt * Math.sin(a)], [0, Math.cos(a), Math.sin(a)], l, l, l * wid)]);
+            }
+          }
+          return merge(parts);
+        });
+      const xt = (par, mat, p, d, l, r, rz = r) => put(gemG, mat, p, [d[1], -d[0], 0], d, r, l, rz, par);
+      // 光る目: くぼみ・光る玉・たて長のひとみ・にじむ光
+      const eye = (par, x, y, z, r, slit = true) => {
         for (const sg of [-1, 1]) {
-          add(ico(0.1 * w, 0), M2, 0, 0.76, sg * 0.21 * w); // 肩当て
-          const arm = add(cyl(0.045 * w, 0.04 * w, 0.34, 5), M1, 0.05, 0.56, sg * 0.24 * w, 0, 0, 0.35);
-          anim.push((t) => (arm.rotation.z = 0.35 + Math.sin(t * 2.2 + sg) * 0.12));
-          add(cyl(0.065 * w, 0.05 * w, 0.42, 5), M1, 0, 0.22, sg * 0.09 * w);
-          add(box(0.16 * w, 0.06, 0.1 * w), M2, 0.03, 0.03, sg * 0.09 * w);
+          add(sph, BK, x - r * 0.2, y, sg * (z - r * 0.5), 0, 0, 0, r * 1.35, r * 1.2, r * 0.7, par);
+          add(sph, GL, x, y, sg * z, 0, 0, 0, r, r * 0.85, r * 0.7, par);
+          if (slit) add(sph, BK, x + r * 0.35, y, sg * (z + r * 0.5), 0, 0, 0, r * 0.22, r * 0.7, r * 0.3, par);
+          halo(par, x, y, sg * (z + r), r * 9, 0.6);
         }
-        if (!gm) {
-          const sw = add(box(0.03, 0.72, 0.07), GL, 0.3, 0.72, 0.26, 0, 0, -0.5); // 剣
-          add(box(0.05, 0.05, 0.22), M2, 0.14, 0.42, 0.26, 0, 0, -0.5);
-          anim.push((t) => (sw.rotation.z = -0.5 + Math.sin(t * 2.2) * 0.1));
-          add(cyl(0.2, 0.2, 0.035, 6), M2, 0.14, 0.56, -0.3, Math.PI / 2, 0, 0); // 盾
-          add(ico(0.05), GL, 0.14, 0.56, -0.325);
-        } else for (let k = 0; k < 4; k++) add(oct(0.07), GL, Math.cos(k * 1.57) * 0.1, 0.98 + (k % 2) * 0.06, Math.sin(k * 1.57) * 0.1);
-      } else if (kind === "machine") {
-        const core = new THREE.Group();
-        core.position.set(0, 0.58, 0);
-        root.add(core);
-        add(new THREE.TorusGeometry(0.26, 0.06, 6, 12), M1, 0, 0, 0, 0, Math.PI / 2, 0, 1, 1, 1, core);
-        for (let k = 0; k < 12; k++) add(box(0.08, 0.1, 0.07), M2, 0, Math.sin((k / 12) * 6.283) * 0.34, Math.cos((k / 12) * 6.283) * 0.34, -(k / 12) * 6.283, 0, 0, 1, 1, 1, core);
-        add(ico(0.13, 1), GL, 0, 0, 0, 0, 0, 0, 1, 1, 1, core);
-        anim.push((t) => (core.rotation.x = t * 1.6));
-        for (const sg of [-1, 1]) {
-          const arm = add(cyl(0.035, 0.035, 0.36, 5), M2, 0.1, 0.4, sg * 0.42, sg * 0.5, 0, 0.5);
-          add(cone(0.06, 0.18, 4), GL, 0.24, 0.2, sg * 0.5, 0, 0, -2.2);
-          anim.push((t) => (arm.rotation.z = 0.5 + Math.sin(t * 3 + sg) * 0.25));
+      };
+      const claws = (par, p, d, u, len, n = 3, spread = 0.5, mat = M3) => {
+        const ax = V(u[0], u[1], u[2]).normalize();
+        for (let i = 0; i < n; i++) {
+          const D = V(d[0], d[1], d[2]).applyAxisAngle(ax, (i - (n - 1) / 2) * spread);
+          put(hornG(0.2, -1.0), mat, p, [D.x, D.y, D.z], u, len, len, len, par);
         }
-        add(cyl(0.12, 0.2, 0.16, 6), M1, 0, 0.1, 0);
-        add(oct(0.1), M2, 0.05, 1.0, 0);
-        eyes(0.1, 1.0, 0.04, 0.02);
-      } else if (kind === "mage") {
-        add(cone(0.24, 0.66, 7), M1, 0, 0.33, 0);
-        add(cyl(0.11, 0.15, 0.2, 6), M2, 0, 0.7, 0);
-        add(ico(0.1, 1), M2, 0.02, 0.88, 0);
-        add(cone(0.14, 0.34, 6), M1, -0.03, 1.06, 0, 0, 0, 0.25); // 帽子
-        eyes(0.09, 0.89, 0.04, 0.02);
-        add(cyl(0.015, 0.015, 0.95, 5), M2, 0.22, 0.52, 0.22, 0, 0, -0.12); // 杖
-        const orb = add(ico(0.075, 1), GL, 0.28, 1.02, 0.22);
-        anim.push((t) => orb.scale.setScalar(1 + Math.sin(t * 4) * 0.18));
-        for (let k = 0; k < 3; k++) {
-          const r = add(new THREE.TorusGeometry(0.3 + k * 0.05, 0.01, 4, 28), GL, 0, 0.3 + k * 0.2, 0, Math.PI / 2, 0, 0);
-          const kk = k;
-          anim.push((t) => ((r.rotation.z = t * (1 + kk * 0.5)), (r.rotation.x = Math.PI / 2 + Math.sin(t + kk) * 0.25)));
+      };
+      const limb = (par, hip, P, R, mat = M1, o) => {
+        const g = grp(par, hip[0], hip[1], hip[2]);
+        add(sw(P, R, o || { nv: 16 }), mat, 0, 0, 0, 0, 0, 0, 1, 1, 1, g);
+        return g;
+      };
+      // 節でつないだ管(首・尾・長い胴)。節ごとに少しずつ曲がり、波が根元から先へ伝わる。上昇・旋回には遅れてついてくる
+      const chain = (par, x, y, n, len, rk, mat, o = {}) => {
+        const dir = o.dir || -1, ey = o.ey || 1, ez = o.ez || 1, js = [];
+        const R = (k) => (typeof rk === "function" ? rk(k) : rk[0] + (rk[1] - rk[0]) * (k / n));
+        let p = par;
+        for (let k = 0; k < n; k++) {
+          const j = grp(p, k ? dir * len : x, k ? 0 : y, 0), ra = R(k), rb = R(k + 1), q = Math.round((rb / ra) * 20) / 20;
+          add(G(`seg:${dir}:${q}`, () => {
+            const g = new THREE.CylinderGeometry(q, 1, 1, 20, 1, true);
+            g.rotateZ(dir > 0 ? -Math.PI / 2 : Math.PI / 2);
+            g.translate(dir * 0.5, 0, 0);
+            return g;
+          }), mat, 0, 0, 0, 0, 0, 0, len, ra * ey, ra * ez, j);
+          add(sph, mat, 0, 0, 0, 0, 0, 0, ra, ra * ey, ra * ez, j);
+          if (o.each) o.each(j, k, ra, rb);
+          js.push(j);
+          p = j;
         }
-      } else if (kind === "serpent") {
-        const hd = add(cone(0.11, 0.3, 5), M1, 0.4, 0.62, 0, 0, 0, -Math.PI / 2 + 0.3);
-        eyes(0.4, 0.68, 0.075, 0.028);
-        for (const sg of [-1, 1]) add(cone(0.1, 0.02, 3), WG, 0.26, 0.62, sg * 0.14, sg * 1.2, 0, 0, 1, 12, 1);
-        const tp = tail(0.3, 0.58, 7, 0.2, 0.11);
-        add(cone(0.14, 0.02, 3), WG, -0.16, 0, 0, Math.PI / 2, 0, 0, 1, 10, 1, tp);
-        for (let k = 0; k < 4; k++) add(cone(0.03, 0.16, 3), GL, 0.18 - k * 0.14, 0.72, 0);
-        anim.push((t) => (hd.position.y = 0.62 + Math.sin(t * 2) * 0.03));
-      } else {
-        // 霊・悪魔・天使・雷の結晶: 浮かぶ体
-        const cr = kind === "crystal";
-        add(cr ? oct(1) : cone(0.2, 0.6, 6), M1, 0, cr ? 0.55 : 0.42, 0, cr ? 0 : Math.PI, 0, 0, cr ? 0.2 : 1, cr ? 0.42 : 1, cr ? 0.2 : 1);
-        if (!cr) (add(ico(0.12, 1), M2, 0.02, 0.86, 0), eyes(0.1, 0.87, 0.045, 0.026), add(ico(0.06), GL, 0.14, 0.58, 0));
-        const dk = m.race === "悪魔" || m.attr === "闇", an = m.race === "天使" || m.attr === "光";
-        if (dk) for (const sg of [-1, 1]) add(cone(0.03, 0.2, 4), M2, 0, 1.0, sg * 0.08, sg * 0.5, 0, 0);
-        if (an) anim.push(((r) => (t) => (r.rotation.z = t))(add(new THREE.TorusGeometry(0.12, 0.012, 5, 20), GL, 0, 1.08, 0, Math.PI / 2, 0, 0)));
-        if (!cr) wings(-0.02, 0.66, 0.7, an, 0.5);
-        for (let k = 0; k < (cr ? 7 : 4); k++) {
-          const a = (k / (cr ? 7 : 4)) * 6.283, sh = add(oct(0.05 + rnd(k + 9) * 0.05), GL, Math.cos(a) * 0.36, 0.5 + rnd(k) * 0.4, Math.sin(a) * 0.36, 0, 0, 0, 0.5, 1.6, 0.5);
-          anim.push((t) => (sh.position.set(Math.cos(a + t) * 0.36, 0.5 + rnd(k) * 0.4 + Math.sin(t * 2 + k) * 0.05, Math.sin(a + t) * 0.36), (sh.rotation.y = t * 2)));
+        const tip = grp(p, dir * len, 0, 0);
+        add(sph, mat, 0, 0, 0, 0, 0, 0, R(n), R(n) * ey, R(n) * ez, tip);
+        const bz = o.bz || (() => 0), w = o.w || 2.4, pz = o.pz == null ? 0.6 : o.pz, az = o.az == null ? 0.1 : o.az, ay = o.ay == null ? 0.1 : o.ay, lag = o.lag == null ? 0.05 : o.lag, ph0 = o.ph || 0;
+        anim.push(() => {
+          for (let k = 0; k < n; k++) {
+            const g = o.gain ? o.gain(k / n) : 0.4 + k / n;
+            js[k].rotation.z = bz(k) + Math.sin(S.t * w - k * pz + ph0) * az * g - dir * S.climb * lag;
+            js[k].rotation.y = Math.sin(S.t * w * 0.73 - k * pz + 1 + ph0) * ay * g + S.turn * lag;
+          }
+          // 長い胴は、波の分だけ根元を逆へ向けて、全体の向きがぶれないようにする
+          if (o.level) ((js[0].rotation.z += (az * Math.cos(S.t * w + ph0 + pz / 2)) / (2 * Math.sin(pz / 2))), (js[0].rotation.y += (ay * Math.cos(S.t * w * 0.73 + 1 + ph0 + pz / 2)) / (2 * Math.sin(pz / 2))));
+        });
+        return { js, tip };
+      };
+      // 羽ばたき: 肩で大きく上下し、手首から先は遅れてしなる。下降中は小さくたたんで滑空する
+      const flap = (sh, hd, o) =>
+        anim.push(() => {
+          const ph = S.ph + (o.ph || 0), a = S.amp * (o.amp || 1);
+          sh.rotation.x = -((o.dih == null ? 0.25 : o.dih) + S.fold * 0.25 + Math.sin(ph) * 0.6 * a);
+          sh.rotation.y = Math.cos(ph) * 0.14 * a - S.fold * 0.25;
+          sh.rotation.z = Math.cos(ph) * 0.16 * a;
+          hd.rotation.x = Math.sin(ph - 1.1) * 0.55 * a - S.fold * 0.5;
+        });
+      // 膜の翼: 肩→ひじ→手首の腕と、手首から開く4本の指。大きさ1で作って L 倍する
+      const batWing = (par, x, y, z, L, o = {}) => {
+        const E = [-0.1, 0.07, 0.34], W = [0.16, 0.1, 0.6], F = [[0.12, 0.04, 1.3], [-0.36, 0, 1.1], [-0.66, -0.02, 0.76], [-0.74, -0.02, 0.34]], Bp = [-0.62, -0.06, 0.02];
+        // 手首から先は、いちばん内側の指を軸に折れる(内側の膜とすき間ができない)
+        const q = new THREE.Quaternion().setFromUnitVectors(V(1, 0, 0), V(F[3][0] - W[0], F[3][1] - W[1], F[3][2] - W[2]).normalize()), qi = q.clone().invert();
+        const loc = (p) => V(p[0] - W[0], p[1] - W[1], p[2] - W[2]).applyQuaternion(qi).toArray();
+        const gIn = G("bw:in", () => membrane([0, 0, 0], [W, F[3], Bp], [0, 0.3], 0.05));
+        const gOut = G("bw:out", () => membrane([0, 0, 0], F.map(loc), 0.34, 0.06));
+        const bIn = G("bw:bi", () => merge([[sweep([[0, 0, 0], E, W], [0.04, 0.03, 0.026], { nv: 12 }), new THREE.Matrix4()], [sph, new THREE.Matrix4().makeScale(0.036, 0.036, 0.036).setPosition(E[0], E[1], E[2])], [sph, new THREE.Matrix4().makeScale(0.034, 0.034, 0.034).setPosition(W[0], W[1], W[2])], [sweep([W, [(W[0] + F[3][0]) / 2, 0.06, (W[2] + F[3][2]) / 2 + 0.02], F[3]], [0.016, 0.012, 0.004], { nv: 8 }), new THREE.Matrix4()]]));
+        const bOut = G("bw:bo", () => merge(F.slice(0, 3).map((f) => {
+          const l = loc(f);
+          return [sweep([[0, 0, 0], [l[0] * 0.5, l[1] * 0.5 + 0.035, l[2] * 0.5], l], [0.018, 0.013, 0.004], { nv: 8 }), new THREE.Matrix4()];
+        })));
+        mirror(par, (g) => {
+          g.position.set(x, y, z);
+          g.scale.multiplyScalar(L);
+          g.userData.nb = true;
+          const sh = grp(g);
+          add(gIn, WG, 0, 0, 0, 0, 0, 0, 1, 1, 1, sh);
+          add(bIn, M1, 0, 0, 0, 0, 0, 0, 1, 1, 1, sh);
+          put(hornG(0.2, 0.8), M3, W, [0.6, 0.8, 0.1], [-1, 0, 0], 0.14, 0.14, 0.14, sh); // 手首の爪
+          const h0 = grp(sh, W[0], W[1], W[2]);
+          h0.quaternion.copy(q);
+          const hd = grp(h0);
+          add(gOut, WG, 0, 0, 0, 0, 0, 0, 1, 1, 1, hd);
+          add(bOut, M1, 0, 0, 0, 0, 0, 0, 1, 1, 1, hd);
+          flap(sh, hd, o);
+        });
+      };
+      // 羽の翼: 風切り羽(手に初列・腕に次列)の上に、雨おおい羽を2段かさねる
+      const featherWing = (par, x, y, z, L, o = {}) => {
+        const E = [-0.06, 0.05, 0.3], W = [0.1, 0.07, 0.58], Tp = [0.0, 0.03, 0.9];
+        const row = (key, A, B, n, len, dy, d0, d1, wid) =>
+          G("fw:" + key, () => {
+            const parts = [];
+            for (let i = 0; i < n; i++) {
+              const t = i / (n - 1), l = len * (0.85 + 0.3 * Math.sin(Math.PI * (0.25 + t * 0.6)));
+              parts.push([featherG, bas([A[0] + (B[0] - A[0]) * t - 0.01, A[1] + (B[1] - A[1]) * t + dy + i * 0.0015, A[2] + (B[2] - A[2]) * t], [d0[0] + (d1[0] - d0[0]) * t, -0.04, d0[1] + (d1[1] - d0[1]) * t], [0.12, 1, -0.2], l, l, l * wid)]);
+            }
+            return merge(parts);
+          });
+        const armG = G("fw:arm", () => merge([[sweep([[0, 0, 0], E, W], [0.06, 0.05, 0.04], { nv: 12 }), new THREE.Matrix4()], [sph, new THREE.Matrix4().makeScale(0.07, 0.06, 0.07)]]));
+        const handG = G("fw:hand", () => sweep([[0, 0, 0], [Tp[0] - W[0], Tp[1] - W[1], Tp[2] - W[2]]], [0.04, 0.012], { nv: 10 }));
+        const H = [Tp[0] - W[0], Tp[1] - W[1], Tp[2] - W[2]];
+        mirror(par, (g) => {
+          g.position.set(x, y, z);
+          g.scale.multiplyScalar(L);
+          g.userData.nb = true;
+          const sh = grp(g);
+          add(armG, M1, 0, 0, 0, 0, 0, 0, 1, 1, 1, sh);
+          add(row("sec", [-0.02, 0, 0.04], W, 10, 0.5, -0.012, [-1, 0.1], [-1, 0.32], 1.25), FT, 0, 0, 0, 0, 0, 0, 1, 1, 1, sh);
+          add(row("sc1", [-0.02, 0, 0.04], W, 11, 0.27, 0.008, [-1, 0.1], [-1, 0.3], 1.5), FT2, 0, 0, 0, 0, 0, 0, 1, 1, 1, sh);
+          add(row("sc2", [-0.01, 0, 0.05], W, 12, 0.15, 0.024, [-1, 0.1], [-1, 0.3], 1.7), FT, 0, 0, 0, 0, 0, 0, 1, 1, 1, sh);
+          const hd = grp(sh, W[0], W[1], W[2]);
+          add(handG, M1, 0, 0, 0, 0, 0, 0, 1, 1, 1, hd);
+          add(row("pri", [0, 0, 0], H, 10, 0.62, -0.012, [-1, 0.42], [-0.05, 1], 1.1), FT, 0, 0, 0, 0, 0, 0, 1, 1, 1, hd);
+          add(row("pc1", [0, 0, 0], H, 9, 0.3, 0.008, [-1, 0.42], [-0.15, 1], 1.4), FT2, 0, 0, 0, 0, 0, 0, 1, 1, 1, hd);
+          add(row("pc2", [0, 0, 0], H, 9, 0.16, 0.022, [-1, 0.42], [-0.2, 1], 1.6), FT, 0, 0, 0, 0, 0, 0, 1, 1, 1, hd);
+          flap(sh, hd, o);
+        });
+      };
+      // ひれ(骨のあいだに膜)。根元が原点、+x へ開く扇(x–z の面)
+      const fin = (par, p, d, u, len, n, spread, mat = WG) => {
+        const tips = [];
+        for (let i = 0; i < n; i++) {
+          const a = (i / (n - 1) - 0.5) * spread, l = 1 - 0.3 * Math.abs(i / (n - 1) - 0.5) * 2;
+          tips.push([Math.cos(a) * l, 0, Math.sin(a) * l]);
         }
-      }
-      // 高さ1にそろえて、足もとを原点へ
-      root.updateMatrixWorld(true);
+        const g = gput(par, p, d, u, len);
+        add(G(`fin:${n}:${spread}`, () => membrane([0, 0, 0], tips, 0.3, 0.03)), mat, 0, 0, 0, 0, 0, 0, 1, 1, 1, g);
+        add(G(`finb:${n}:${spread}`, () => merge(tips.map((t) => [sweep([[0, 0, 0], t], [0.022, 0.004], { nv: 6, nu: 4 }), new THREE.Matrix4()]))), M3, 0, 0, 0, 0, 0, 0, 1, 1, 1, g);
+        g.userData.nb = true;
+        return g;
+      };
+      // 竜・海蛇の頭: 長い鼻面・まゆ・歯のならんだ上下のあご(下あごは開く)・角
+      const rhead = (par, horns) => {
+        const h = grp(par);
+        add(sw([[-0.06, 0, 0], [0.05, 0.022, 0], [0.16, 0.016, 0], [0.27, -0.004, 0], [0.335, -0.014, 0]], [0.04, 0.075, 0.062, 0.044, 0.02], { ez: 0.95, ey: 0.82, nv: 22 }), M1, 0, 0, 0, 0, 0, 0, 1, 1, 1, h);
+        for (let k = 0; k < 5; k++) add(hemi, M2, 0.06 + k * 0.055, 0.074 - k * 0.0135, 0, 0, 0, -0.22, 0.042 - k * 0.005, 0.016, 0.034 - k * 0.004, h); // 鼻すじの板
+        mirror(h, (g) => {
+          add(sw([[0.02, 0.05, 0.04], [0.1, 0.07, 0.056], [0.18, 0.04, 0.045]], [0.012, 0.022, 0.006], { nv: 10 }), M2, 0, 0, 0, 0, 0, 0, 1, 1, 1, g); // まゆ
+          add(sph, BK, 0.318, -0.002, 0.013, 0, 0, 0, 0.007, 0.005, 0.005, g);
+          if (horns) {
+            put(hornG(0.085, 0.7, 0.1), M3, [-0.01, 0.05, 0.045], [-0.85, 0.42, 0.32], [0, 1, 0], 0.4, 0.4, 0.4, g);
+            put(hornG(0.09, -0.6, 0.1), M3, [-0.02, 0.0, 0.058], [-0.9, 0.05, 0.5], [0, 1, 0], 0.22, 0.22, 0.22, g);
+            for (let k = 0; k < 3; k++) put(hornG(0.16, 0.3), M2, [0.0, -0.03 + k * 0.02, 0.058], [-0.8, -0.35 + k * 0.3, 0.55], [0, 1, 0], 0.13 - k * 0.02, 0.13, 0.07, g);
+          } else for (let k = 0; k < 3; k++) fin(g, [0.0, 0.02 - k * 0.03, 0.055], [-0.75, 0.3 - k * 0.3, 0.6], [0.6, 0, 0.8], 0.2 - k * 0.03, 4, 0.9); // えらのひれ
+        });
+        eye(h, 0.105, 0.03, 0.057, 0.018);
+        add(G("rh:tu", () => {
+          const parts = [];
+          for (let k = 0; k < 9; k++) for (const sg of [-1, 1]) parts.push([tooth, bas([0.13 + k * 0.024, -0.022 - k * 0.002, sg * (0.042 - k * 0.003)], [0.12, -1, 0], [0, 0, 1], k === 7 ? 0.045 : 0.02 + (k % 2) * 0.007, 0.007, 0.007)]);
+          return merge(parts);
+        }), M3, 0, 0, 0, 0, 0, 0, 1, 1, 1, h);
+        const jaw = grp(h, 0, -0.036, 0);
+        add(sw([[0, 0, 0], [0.1, -0.02, 0], [0.2, -0.018, 0], [0.3, 0.0, 0]], [0.034, 0.04, 0.03, 0.012], { ey: 0.6, ez: 0.95, nv: 16 }), M1, 0, 0, 0, 0, 0, 0, 1, 1, 1, jaw);
+        add(G("rh:tl", () => {
+          const parts = [];
+          for (let k = 0; k < 8; k++) for (const sg of [-1, 1]) parts.push([tooth, bas([0.11 + k * 0.024, 0.0, sg * (0.035 - k * 0.003)], [0.1, 1, 0], [0, 0, 1], k === 7 ? 0.032 : 0.017 + (k % 2) * 0.006, 0.006, 0.006)]);
+          return merge(parts);
+        }), M3, 0, 0, 0, 0, 0, 0, 1, 1, 1, jaw);
+        add(sph, GL, 0.1, 0.0, 0, 0, 0, 0, 0.07, 0.007, 0.02, jaw); // 口の中の光
+        mirror(jaw, (g) => put(hornG(0.18, 0.5), M3, [0.07, -0.03, 0.02], [-0.6, -0.8, 0.25], [-1, 0, 0], 0.07, 0.07, 0.07, g));
+        if (horns) put(hornG(0.22, 0.5), M3, [0.29, 0.02, 0], [0.3, 1, 0], [-1, 0, 0], 0.06, 0.06, 0.04, h);
+        anim.push(() => (jaw.rotation.z = -0.14 - Math.max(0, Math.sin(S.t * 1.3 + 1)) ** 3 * 0.32));
+        return h;
+      };
+      // ふちがぎざぎざの衣(すそがなびく)
+      const robe = (par, mat, y0, h, r0, r1, back, folds, taper = 0) => {
+        const sh = sheet(32, 12, (u, v, t, out) => {
+          const a = u * 6.2832, w = Math.pow(v, 0.8), r = (r0 + (r1 - r0) * w) * (1 + 0.11 * v * Math.sin(a * folds + Math.sin(t * 2.2 + v * 3) * 1.1)) * (1 - taper * v * v);
+          out[0] = Math.cos(a) * r * 0.85 - v * v * back + Math.sin(t * 1.9 - v * 3) * 0.03 * v * v;
+          out[1] = y0 - v * h + 0.05 * v ** 4 * Math.sin(a * 9 + 1);
+          out[2] = Math.sin(a) * r + Math.sin(t * 2.4 - v * 3.5) * 0.05 * v * v;
+        }, true);
+        const me = add(sh.g, mat, 0, 0, 0, 0, 0, 0, 1, 1, 1, par);
+        anim.push(() => sh.upd(S.t));
+        return me;
+      };
+      const CL = () => PM({ color: bright, map: tex("cloth", 4, 1), bumpMap: tex("cloth", 4, 1), bumpScale: 0.004, side: THREE.DoubleSide, roughness: 0.7, metalness: 0.05, sheen: 1, sheenColor: glow, emissive: glow, emissiveIntensity: 1.6, emissiveMap: tex("clothE", 4, 1) });
+
+      const BUILD = {
+        dragon() {
+          S.w = 5.2;
+          S.lift = 0.07;
+          const BP = [[-0.42, 0.5, 0], [-0.24, 0.52, 0], [0, 0.54, 0], [0.2, 0.56, 0], [0.35, 0.6, 0]], BR = [0.075, 0.13, 0.17, 0.16, 0.1];
+          add(sw(BP, BR, { ez: 0.85, nv: 28 }), M1, 0, 0, 0);
+          add(sw(BP.map((p) => [p[0], p[1] - 0.035, 0]), BR.map((r) => r * 0.86), { ez: 0.72, nv: 24, nu: 60, rf: (u) => 1 + 0.07 * Math.abs(Math.sin(u * 34)) }, "dbelly"), M4, 0, 0, 0); // 腹の板
+          // 背の鎧(4段)・背びれのとげ・わき腹の光る線
+          for (let k = 0; k < 4; k++) {
+            const x = 0.22 - k * 0.125, [cy, r] = atX(BP, BR, x);
+            add(hemi, M2, x, cy + r * 0.8, 0, 0, 0, 0.2, 0.1, 0.06, 0.1 - k * 0.008);
+          }
+          add(G("dspine", () => {
+            const parts = [];
+            for (let k = 0; k < 9; k++) {
+              const x = 0.3 - k * 0.085, [cy, r] = atX(BP, BR, x), l = 0.1 + 0.06 * Math.sin((k / 8) * Math.PI);
+              parts.push([hornG(0.25, 0.5), bas([x, cy + r * 0.95, 0], [-0.45, 1, 0], [-1, 0, 0], l, l, l * 0.45)]);
+            }
+            return merge(parts);
+          }), M3, 0, 0, 0);
+          mirror(root, (g, sg) => {
+            add(sw(BP.map((p, i) => [p[0], p[1] + 0.02, BR[i] * 0.85 * 0.99]), [0.002, 0.008, 0.009, 0.008, 0.002], { nv: 8 }), GL, 0, 0, 0, 0, 0, 0, 1, 1, 1, g);
+            // 前あし・後ろあし(飛んでいるので後ろへたたむ)
+            const fl = limb(g, [0.2, 0.5, 0.11], [[0, 0, 0], [-0.06, -0.14, 0.03], [0.04, -0.23, 0.025], [0.12, -0.26, 0.02]], [0.07, 0.055, 0.034, 0.03]);
+            claws(fl, [0.12, -0.26, 0.02], [0.85, -0.5, 0], [0, 1, 0], 0.08);
+            add(sph, M2, -0.05, -0.13, 0.035, 0, 0, 0, 0.04, 0.04, 0.035, fl);
+            const hl = limb(g, [-0.26, 0.48, 0.11], [[0, 0, 0], [0.06, -0.15, 0.04], [-0.08, -0.22, 0.035], [-0.2, -0.27, 0.03]], [0.085, 0.06, 0.035, 0.03]);
+            claws(hl, [-0.2, -0.27, 0.03], [-0.8, -0.6, 0], [0, 1, 0], 0.08);
+            add(sph, M1, 0, 0, 0, 0, 0, 0.3, 0.095, 0.115, 0.06, hl);
+            anim.push(() => ((fl.rotation.z = Math.sin(S.t * 1.3 + sg) * 0.08 - S.climb * 0.2), (hl.rotation.z = Math.sin(S.t * 1.1 + sg * 2) * 0.08 + S.climb * 0.15)));
+          });
+          // 胸の核
+          add(sph, GL, 0.385, 0.53, 0, 0, 0, 0, 0.04, 0.05, 0.045);
+          add(tor(0.22), M2, 0.39, 0.53, 0, 0, Math.PI / 2, 0, 0.055);
+          halo(root, 0.43, 0.53, 0, 0.4, 0.5);
+          // 首(S字)と頭
+          const nbz = [0.62, 0.3, 0.1, -0.1, -0.25, -0.3];
+          const nk = chain(root, 0.33, 0.61, 6, 0.07, [0.1, 0.062], M1, {
+            dir: 1, bz: (k) => nbz[k], az: 0.05, ay: 0.06, w: 1.7, pz: 0.5, lag: 0.07,
+            each: (j, k, ra) => {
+              put(hornG(0.25, 0.5), M3, [0.03, ra * 0.9, 0], [-0.4, 1, 0], [-1, 0, 0], 0.075 - k * 0.004, 0.075, 0.035, j);
+              add(sph, M4, 0.035, -ra * 0.35, 0, 0, 0, 0, 0.045, ra * 0.75, ra * 0.7, j);
+            },
+          });
+          const hd = grp(nk.tip);
+          hd.scale.setScalar(1.15);
+          const hh = rhead(hd, true);
+          anim.push(() => ((hd.rotation.z = -0.5 + Math.sin(S.t * 1.1) * 0.06 - S.climb * 0.12), (hd.rotation.y = Math.sin(S.t * 0.7) * 0.12 + S.turn * 0.2)));
+          // 尾と、先の刃
+          const tl = chain(root, -0.4, 0.5, 12, 0.058, [0.078, 0.014], M1, {
+            bz: (k) => -0.07 + 0.012 * k, az: 0.09, ay: 0.13, w: 2.2, pz: 0.55, lag: 0.05,
+            each: (j, k, ra) => {
+              put(hornG(0.25, 0.5), M3, [-0.02, ra * 0.9, 0], [-0.5, 1, 0], [-1, 0, 0], ra * 1.1, ra * 1.1, ra * 0.5, j);
+              add(sph, M4, -0.03, -ra * 0.3, 0, 0, 0, 0, 0.035, ra * 0.78, ra * 0.72, j);
+            },
+          });
+          add(ext("dblade", [[0, 0.012], [-0.04, 0.07], [-0.11, 0.055], [-0.24, 0], [-0.11, -0.055], [-0.04, -0.07], [0, -0.012]], 0.004, 0.008), M3, 0, 0, 0, 0, 0, 0, 1, 1, 1, tl.tip);
+          add(sph, GL, -0.07, 0, 0, 0, 0, 0, 0.03, 0.02, 0.012, tl.tip);
+          batWing(root, 0.1, 0.66, 0.08, gold ? 1.15 : 1.0, { dih: 0.3 });
+          if (gold) {
+            // エース・シンクロ: 小さい翼がもう1組と、頭の後ろの光の輪
+            batWing(root, -0.16, 0.6, 0.07, 0.62, { dih: 0.12, ph: -0.8, amp: 0.7 });
+            const ring = grp(hh, -0.1, 0.12, 0);
+            ring.rotation.z = 0.3;
+            add(tor(0.035), GL, 0, 0, 0, 0, Math.PI / 2, 0, 0.17, 0.17, 0.17, ring);
+            const rn = add(annulus(0.72), RN, 0, 0, 0, 0, 0, Math.PI / 2, 0.24, 0.24, 0.24, ring);
+            anim.push(() => (rn.rotation.x = S.t * 0.8));
+            for (let k = 0; k < 3; k++) xt(hh, GL, [0.0, 0.085 + (k === 1 ? 0.015 : 0), (k - 1) * 0.03], [-0.3, 1, (k - 1) * 0.5], k === 1 ? 0.1 : 0.07, 0.012);
+          }
+        },
+        serpent() {
+          S.w = 2.6;
+          S.lift = 0;
+          const n = 22, len = 0.066, rr = (k) => 0.03 + 0.062 * Math.pow(Math.sin(Math.PI * Math.min(1, (k + 3.5) / (n + 5))), 0.8) * (1 - (k / n) ** 3 * 0.75);
+          const bd = chain(root, 0.42, 0.6, n, len, rr, M1, {
+            ez: 0.82, az: 0.2, ay: 0.13, w: 2.6, pz: 0.52, lag: 0.012, gain: () => 1, level: true,
+            each: (j, k, ra) => {
+              const h = 0.03 + 0.1 * Math.sin((k / n) * Math.PI) ** 0.7;
+              add(sph, M4, -len / 2, -ra * 0.32, 0, 0, 0, 0, len * 0.62, ra * 0.76, ra * 0.62, j); // 腹の板
+              if (k % 2 === 0) mirror(j, (g) => (add(sph, GL, -0.02, ra * 0.1, ra * 0.8, 0, 0, 0, 0.009, 0.009, 0.005, g), k % 4 === 0 && halo(g, -0.02, ra * 0.1, ra * 0.86, 0.06, 0.6))); // 体の横の光る点
+              // 背びれ(骨と膜)
+              put(hornG(0.1, 0.3), M3, [0, ra * 0.9, 0], [-0.55, 1, 0], [-1, 0, 0], h * 1.25, h, h, j);
+              add(G("sfin", () => geoOf([0, 0, 0, -1, 0, 0, -0.55, 1, 0, -1.55, 1, 0], null, [0, 0, 1, 0, 0, 1, 1, 1], [0, 1, 2, 2, 1, 3])), WG, 0, ra * 0.9, 0, 0, 0, 0, len, h * 1.05, 1, j).userData.nb = true;
+              if (k === 2 || k === 9) {
+                // 胸びれ・腹びれ: ゆっくりあおぐ
+                mirror(j, (g, sg) => {
+                  const f = fin(g, [0, -ra * 0.2, ra * 0.7], [-0.55, -0.25, 0.8], [0, 1, 0.3], k === 2 ? 0.34 : 0.2, 5, 1.2);
+                  const pv = grp(g);
+                  pv.add(f);
+                  anim.push(() => (pv.rotation.x = Math.sin(S.t * 2.2 + k) * 0.35 - 0.1));
+                });
+              }
+            },
+          });
+          bd.tip.userData.nb = true;
+          for (const s of [1, -1]) fin(bd.tip, [0, 0, 0], [-1, s * 0.5, 0], [0, 0, 1], 0.26, 5, 1.0); // 尾びれ
+          const hd = grp(root, 0.42, 0.6, 0);
+          hd.scale.setScalar(1.25);
+          const hh = rhead(hd, false);
+          fin(hh, [0.08, 0.06, 0], [-0.8, 0.6, 0], [0, 0, 1], 0.24, 5, 1.0); // とさかのひれ
+          // 長いひげ
+          mirror(hh, (g, sg) => {
+            const b = grp(g, 0.3, -0.01, 0.02);
+            b.rotation.y = -0.5;
+            chain(b, 0, 0, 9, 0.045, [0.008, 0.002], GL, { dir: 1, bz: () => -0.09, az: 0.12, ay: 0.12, w: 3, pz: 0.7, lag: 0.02, ph: sg });
+          });
+          anim.push(() => ((hd.rotation.z = Math.sin(S.t * 2.6 + 0.6) * 0.12 - S.climb * 0.1), (hd.rotation.y = Math.sin(S.t * 1.9 + 1.5) * 0.1 + S.turn * 0.2)));
+          halo(root, 0.5, 0.6, 0, 0.3, 0.25);
+        },
+        bird() {
+          S.w = 6.4;
+          S.lift = 0.08;
+          const BP = [[-0.32, 0.5, 0], [-0.16, 0.5, 0], [0.02, 0.51, 0], [0.18, 0.55, 0], [0.28, 0.62, 0]], BR = [0.03, 0.1, 0.14, 0.125, 0.08];
+          add(sw(BP, BR, { ez: 0.9, nv: 24 }), M1, 0, 0, 0);
+          // 体じゅうの羽(うろこのように重なる)。胸は明るい色
+          add(coat("bird", featherG, BP, BR, 0.9, 11, 12, 0.13, 0.28, 2.3, 0.08, 0.98), FT2, 0, 0, 0);
+          add(coat("birdB", featherG, BP.map((p) => [p[0], p[1] - 0.004, 0]), BR, 0.9, 8, 5, 0.12, 0.3, 2.4, 0.3, 0.95, 0.6, Math.PI), FT, 0, 0, 0);
+          // 頭: かぎ形のくちばし(下は開く)・けわしいまゆ・後ろへなびく冠羽
+          const hd = grp(root, 0.3, 0.64, 0);
+          add(sph, M1, 0.06, 0.04, 0, 0, 0, 0.2, 0.1, 0.088, 0.08, hd);
+          add(G("bhead", () => {
+            const parts = [];
+            for (let i = 0; i < 4; i++) for (let j = 0; j < 9; j++) {
+              const a = ((j + (i % 2) * 0.5) / 9) * 6.2832, x = 0.11 - i * 0.035, r = 0.055 + i * 0.012;
+              parts.push([featherG, bas([x, 0.04 + Math.cos(a) * r, Math.sin(a) * r * 0.9], [-1, 0.5 * Math.cos(a), 0.5 * Math.sin(a)], [0, Math.cos(a), Math.sin(a)], 0.09, 0.09, 0.2)]);
+            }
+            return merge(parts);
+          }), FT2, 0, 0, 0, 0, 0, 0, 1, 1, 1, hd);
+          add(sw([[0.12, 0.045, 0], [0.2, 0.04, 0], [0.265, 0.008, 0], [0.272, -0.045, 0]], [0.046, 0.036, 0.022, 0.002], { ez: 0.72, nv: 14 }), M3, 0, 0, 0, 0, 0, 0, 1, 1, 1, hd);
+          add(sph, M2, 0.135, 0.062, 0, 0, 0, 0, 0.03, 0.022, 0.034, hd); // ろう膜
+          const jaw = grp(hd, 0.11, 0.012, 0);
+          add(sw([[0, 0, 0], [0.07, -0.012, 0], [0.125, -0.016, 0]], [0.03, 0.022, 0.003], { ez: 0.75, ey: 0.6, nv: 12 }), M3, 0, 0, 0, 0, 0, 0, 1, 1, 1, jaw);
+          anim.push(() => (jaw.rotation.z = -0.06 - Math.max(0, Math.sin(S.t * 1.7)) ** 4 * 0.4));
+          mirror(hd, (g) => add(sw([[0.05, 0.085, 0.04], [0.11, 0.09, 0.058], [0.16, 0.06, 0.045]], [0.01, 0.018, 0.005], { nv: 8 }), M2, 0, 0, 0, 0, 0, 0, 1, 1, 1, g));
+          eye(hd, 0.115, 0.058, 0.066, 0.017);
+          const crest = grp(hd, 0.03, 0.1, 0);
+          add(G("bcrest", () => {
+            const parts = [];
+            for (let k = 0; k < 7; k++) {
+              const a = (k - 3) * 0.2, l = 0.34 - Math.abs(k - 3) * 0.045;
+              parts.push([featherG, bas([0, 0, 0], [-1, 0.45 - Math.abs(a) * 0.3, Math.sin(a) * 0.9], [0.4, 1, 0], l, l, l * 0.8)]);
+            }
+            return merge(parts);
+          }), FT, 0, 0, 0, 0, 0, 0, 1, 1, 1, crest).userData.nb = true;
+          anim.push(() => ((crest.rotation.z = Math.sin(S.t * 3.1) * 0.08 + S.climb * 0.15), (hd.rotation.z = Math.sin(S.t * 1.2) * 0.05 - S.climb * 0.2), (hd.rotation.y = Math.sin(S.t * 0.8) * 0.15 + S.turn * 0.25)));
+          // 尾羽の扇と、長い飾り羽
+          const tg = grp(root, -0.3, 0.5, 0);
+          tg.userData.nb = true;
+          add(G("btail", () => {
+            const parts = [];
+            for (let k = 0; k < 9; k++) {
+              const a = (k - 4) * 0.13, l = 0.36 - Math.abs(k - 4) * 0.025;
+              parts.push([featherG, bas([0.03, Math.abs(k - 4) * -0.004, Math.sin(a) * 0.05], [-Math.cos(a), -0.05, Math.sin(a)], [0, 1, 0], l, l, l * 0.9)]);
+            }
+            return merge(parts);
+          }), FT, 0, 0, 0, 0, 0, 0, 1, 1, 1, tg);
+          add(coat("btc", featherG, [[0.06, 0, 0], [-0.12, 0, 0]], [0.06, 0.05], 1.4, 3, 7, 0.16, 0.1, 1.6, 0, 1, 1.5), FT2, 0, 0, 0, 0, 0, 0, 1, 1, 1, tg);
+          mirror(tg, (g, sg) => {
+            const b = grp(g, 0, 0, 0.03);
+            b.rotation.y = 0.12;
+            const st = chain(b, 0, 0, 8, 0.06, [0.012, 0.01], FT2, { ey: 0.25, ez: 1.6, az: 0.1, ay: 0.08, w: 3.2, pz: 0.6, lag: 0.04, ph: sg });
+            add(featherG, FT, 0.02, 0, 0, 0, Math.PI, 0, 0.3, 0.3, 0.42, st.tip);
+            add(sph, GL, -0.2, 0, 0, 0, 0, 0, 0.03, 0.006, 0.02, st.tip);
+          });
+          anim.push(() => (tg.rotation.z = 0.08 + Math.sin(S.ph - 0.6) * 0.1 * S.amp - S.climb * 0.25));
+          // あし(後ろへたたむ)とかぎ爪
+          mirror(root, (g, sg) => {
+            add(sph, FT2, -0.06, 0.42, 0.07, 0, 0, 0.5, 0.07, 0.09, 0.055, g);
+            const l = limb(g, [-0.08, 0.38, 0.075], [[0, 0, 0], [-0.07, -0.05, 0], [-0.15, -0.045, 0]], [0.028, 0.02, 0.016], M3);
+            claws(l, [-0.15, -0.045, 0], [-0.75, -0.65, 0], [0, 1, 0], 0.085, 3, 0.55, M2);
+            put(hornG(0.2, -1.0), M2, [-0.15, -0.045, 0], [0.6, -0.8, 0], [0, 1, 0], 0.06, 0.06, 0.06, l);
+            anim.push(() => (l.rotation.z = Math.sin(S.t * 1.4 + sg) * 0.1 + S.climb * 0.3));
+          });
+          featherWing(root, 0.1, 0.61, 0.09, 0.66, { dih: 0.2 });
+        },
+        beast() {
+          S.w = 7.5;
+          S.lift = 0.05;
+          const BP = [[-0.38, 0.57, 0], [-0.2, 0.55, 0], [0, 0.56, 0], [0.18, 0.59, 0], [0.3, 0.64, 0]], BR = [0.085, 0.11, 0.125, 0.16, 0.12];
+          const MM = PM({ color: base.clone().multiplyScalar(0.5).lerp(glow, 0.45), map: tex("fur", 1, 2), roughness: 0.6, metalness: 0.1, emissive: glow, emissiveIntensity: 0.3 }); // たてがみ
+          const bd = grp(root);
+          add(sw(BP, BR, { ez: 0.8, nv: 26 }), M1, 0, 0, 0, 0, 0, 0, 1, 1, 1, bd);
+          add(sw(BP.map((p) => [p[0], p[1] - 0.03, 0]), BR.map((r) => r * 0.85), { ez: 0.7, nv: 20 }), M4, 0, 0, 0, 0, 0, 0, 1, 1, 1, bd);
+          add(coat("bfur", tuftG, BP, BR, 0.8, 11, 18, 0.075, 0.2, 0.5, 0.05, 0.75, 2.2), M1, 0, 0, 0, 0, 0, 0, 1, 1, 1, bd);
+          add(coat("bmane", tuftG, BP, BR.map((r) => r * 1.02), 0.8, 5, 20, 0.15, 0.42, 0.4, 0.7, 1.0), MM, 0, 0, 0, 0, 0, 0, 1, 1, 1, bd); // 首まわりのたてがみ
+          add(coat("bridge", tuftG, BP, BR, 0.8, 10, 1, 0.1, 0.8, 0.4, 0.0, 0.66, 0.01), MM, 0, 0, 0, 0, 0, 0, 1, 1, 1, bd); // 背すじ
+          // 肩の鎧(2段)と首輪の宝石
+          mirror(bd, (g) => {
+            add(hemi, GE, 0.17, 0.66, 0.1, 0.9, 0, 0, 0.11, 0.05, 0.1, g);
+            add(hemi, M2, 0.12, 0.62, 0.11, 1.1, 0, 0, 0.09, 0.04, 0.085, g);
+            put(hornG(0.2, 0.6), M3, [0.17, 0.7, 0.13], [-0.3, 0.6, 0.7], [0, 1, 0], 0.1, 0.1, 0.1, g);
+          });
+          // 頭: 鼻面・きば・耳・ひたいの角
+          const hd = grp(bd, 0.33, 0.69, 0);
+          add(sw([[-0.06, -0.03, 0], [0.04, 0.03, 0], [0.12, 0.06, 0]], [0.12, 0.1, 0.085], { nv: 20, ez: 0.9 }), M1, 0, 0, 0, 0, 0, 0, 1, 1, 1, hd);
+          add(sph, M1, 0.13, 0.07, 0, 0, 0, 0, 0.1, 0.09, 0.088, hd);
+          add(sw([[0.15, 0.065, 0], [0.25, 0.045, 0], [0.33, 0.035, 0]], [0.065, 0.048, 0.03], { ez: 0.85, ey: 0.85, nv: 16 }), M1, 0, 0, 0, 0, 0, 0, 1, 1, 1, hd);
+          add(sph, BK, 0.345, 0.045, 0, 0, 0, 0, 0.022, 0.018, 0.024, hd); // 鼻
+          add(tor(0.3), M2, 0.0, 0.0, 0, 0, Math.PI / 2 - 0.5, 0, 0.105, 0.105, 0.105, hd).rotation.z = 0.5;
+          add(sph, GL, 0.085, -0.055, 0, 0, 0, 0, 0.022, 0.026, 0.022, hd);
+          halo(hd, 0.1, -0.06, 0, 0.2, 0.5);
+          mirror(hd, (g) => {
+            add(G("bear", () => sweep([[0, 0, 0], [0.0, 0.07, 0.01], [-0.02, 0.15, 0.02]], [0.04, 0.035, 0.002], { nv: 10, ey: 0.35 })), M1, 0.08, 0.13, 0.055, 0.25, 0.3, 0, 1, 1, 1, g); // 耳
+            add(sw([[0.1, 0.115, 0.04], [0.16, 0.125, 0.055], [0.22, 0.09, 0.04]], [0.01, 0.02, 0.005], { nv: 8 }), M2, 0, 0, 0, 0, 0, 0, 1, 1, 1, g);
+            put(hornG(0.16, -0.5), M3, [0.29, 0.02, 0.03], [0.15, -1, 0.05], [1, 0, 0], 0.1, 0.1, 0.07, g); // 長いきば
+            add(G("bteeth", () => merge([0, 1, 2, 3].map((k) => [tooth, bas([0.19 + k * 0.022, 0.012, 0.038 - k * 0.002], [0, -1, 0], [0, 0, 1], 0.02, 0.006, 0.006)]))), M3, 0, 0, 0, 0, 0, 0, 1, 1, 1, g);
+            for (let k = 0; k < 3; k++) put(tuftG, MM, [0.08, 0.02 + k * 0.03, 0.08], [-0.7, -0.3 + k * 0.25, 0.6], [0, 1, 0], 0.11, 0.11, 0.05, g); // ほおの毛
+          });
+          eye(hd, 0.175, 0.095, 0.062, 0.016);
+          put(ext("bhorn", [[0, -0.02], [0.2, 0.0], [0.0, 0.03]], 0.004, 0.006), M3, [0.17, 0.14, 0], [0.5, 0.85, 0], [0, 0, 1], 1, 1, 1, hd);
+          put(hornG(0.1, 0.5), GL, [0.18, 0.13, 0], [0.55, 0.85, 0], [-1, 0, 0], 0.13, 0.05, 0.03, hd);
+          const jaw = grp(hd, 0.14, 0.02, 0);
+          add(sw([[0, 0, 0], [0.09, -0.016, 0], [0.165, -0.012, 0]], [0.04, 0.032, 0.016], { ey: 0.6, ez: 0.85, nv: 12 }), M1, 0, 0, 0, 0, 0, 0, 1, 1, 1, jaw);
+          mirror(jaw, (g) => put(tooth, M3, [0.145, 0.005, 0.02], [0, 1, 0], [0, 0, 1], 0.035, 0.008, 0.008, g));
+          add(sph, GL, 0.07, 0.006, 0, 0, 0, 0, 0.06, 0.006, 0.02, jaw);
+          // あし: 肩・ひざ・足首で曲げて、空を駆ける。足先に光
+          const legs = [];
+          mirror(bd, (g, sg) => {
+            for (const fr of [1, 0]) {
+              const hip = grp(g, fr ? 0.2 : -0.28, fr ? 0.54 : 0.55, fr ? 0.1 : 0.09);
+              add(sph, M1, 0, 0, 0, 0, 0, 0, fr ? 0.075 : 0.09, fr ? 0.1 : 0.12, 0.06, hip);
+              add(sw([[0, 0, 0], [fr ? 0.02 : -0.03, -0.1, 0], [0, -0.19, 0]], [0.07, 0.055, 0.04], { nv: 14 }), M1, 0, 0, 0, 0, 0, 0, 1, 1, 1, hip);
+              const kn = grp(hip, 0, -0.19, 0);
+              add(sw([[0, 0, 0], [fr ? -0.01 : 0.03, -0.09, 0], [0, -0.18, 0]], [0.04, 0.032, 0.026], { nv: 12 }), M1, 0, 0, 0, 0, 0, 0, 1, 1, 1, kn);
+              add(tor(0.3), M2, 0, -0.1, 0, Math.PI / 2, 0, 0, 0.036, 0.036, 0.036, kn);
+              const pw = grp(kn, 0, -0.18, 0);
+              add(sph, M1, 0.03, -0.012, 0, 0, 0, 0, 0.05, 0.03, 0.04, pw);
+              claws(pw, [0.06, -0.015, 0], [0.9, -0.4, 0], [0, 1, 0], 0.05, 3, 0.4);
+              add(sph, GL, 0.02, -0.035, 0, 0, 0, 0, 0.035, 0.008, 0.03, pw);
+              halo(pw, 0.02, -0.04, 0, 0.26, 0.5);
+              legs.push([hip, kn, pw, fr, (fr ? 0 : 2.6) + (sg > 0 ? 0 : 0.7)]);
+            }
+          });
+          anim.push(() => {
+            for (const [hip, kn, pw, fr, p0] of legs) {
+              const a = S.ph + p0;
+              hip.rotation.z = Math.sin(a) * 0.6 + (fr ? 0.25 : -0.25);
+              kn.rotation.z = (fr ? -1 : 1) * (0.35 + 0.35 * Math.sin(a + (fr ? 1.3 : -1.3)));
+              pw.rotation.z = (fr ? 1 : -1) * 0.3 * Math.sin(a + 2);
+            }
+            // 駆けるたびに背中が伸び縮みする
+            bd.rotation.z = Math.sin(S.ph + 0.5) * 0.07;
+            hd.rotation.z = -Math.sin(S.ph + 0.5) * 0.1 - S.climb * 0.15 + 0.05;
+            hd.rotation.y = S.turn * 0.25;
+            jaw.rotation.z = -0.1 - Math.max(0, Math.sin(S.t * 1.5)) ** 3 * 0.3;
+          });
+          // ふさふさの尾
+          chain(bd, -0.4, 0.6, 8, 0.065, (k) => 0.03 + 0.03 * Math.sin((k / 8) * Math.PI), M1, {
+            bz: (k) => (k < 2 ? -0.35 : 0.08), az: 0.12, ay: 0.14, w: 4, pz: 0.6, lag: 0.06,
+            each: (j, k, ra) => {
+              for (let i = 0; i < 5; i++) {
+                const a = (i / 5) * 6.2832 + k;
+                put(tuftG, k > 4 ? MM : M1, [0, Math.cos(a) * ra * 0.7, Math.sin(a) * ra * 0.7], [-1, Math.cos(a) * 0.55, Math.sin(a) * 0.55], [0, Math.cos(a), Math.sin(a)], 0.06 + ra, 0.06 + ra, 0.04, j);
+              }
+            },
+          });
+        },
+        insect() {
+          S.w = 26;
+          S.lift = 0.012;
+          M1.clearcoat = 1;
+          M1.roughness = 0.25;
+          M1.metalness = 0.6;
+          M1.iridescence = 0.8;
+          const IW = PM({ color: lin(0xffffff).lerp(glow, 0.4), map: tex("wingI"), alphaMap: tex("wingI"), transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false, roughness: 0.15, metalness: 0, emissive: glow, emissiveIntensity: 0.5, emissiveMap: tex("wingI"), iridescence: 1 });
+          // 胸・頭・角
+          add(sw([[-0.1, 0.5, 0], [0.04, 0.52, 0], [0.2, 0.5, 0]], [0.09, 0.13, 0.075], { nv: 24, ez: 1.05 }), M1, 0, 0, 0);
+          add(hemi, M2, 0.07, 0.56, 0, 0, 0, -0.15, 0.13, 0.1, 0.14); // 胸の盾
+          add(tor(0.08), GL, 0.07, 0.565, 0, Math.PI / 2, 0, 0, 0.125, 0.135, 0.125).rotation.y = -0.15;
+          const hd = grp(root, 0.24, 0.47, 0);
+          add(sph, M1, 0.03, 0, 0, 0, 0, 0, 0.07, 0.06, 0.075, hd);
+          const ME = PM({ color: glow.clone().multiplyScalar(0.4), emissive: glow, emissiveIntensity: 1.3, emissiveMap: tex("scale", 5, 4), bumpMap: tex("scale", 5, 4), bumpScale: 0.004, roughness: 0.15, clearcoat: 1 });
+          mirror(hd, (g, sg) => {
+            add(sph, ME, 0.06, 0.02, 0.05, 0, 0, 0, 0.04, 0.045, 0.036, g); // 複眼
+            halo(g, 0.08, 0.02, 0.08, 0.16, 0.4);
+            const md = grp(g, 0.08, -0.03, 0.03);
+            put(hornG(0.16, 0.9, 0.08), M3, [0, 0, 0], [1, -0.15, 0.5], [0, 0, -1], 0.17, 0.17, 0.1, md); // 大あご
+            anim.push(() => (md.rotation.y = Math.sin(S.t * 3) * 0.2 + 0.1));
+            const an = grp(g, 0.06, 0.05, 0.03);
+            an.rotation.set(0, -0.4, 0.7);
+            chain(an, 0, 0, 9, 0.05, [0.007, 0.002], M2, { dir: 1, bz: () => -0.1, az: 0.1, ay: 0.1, w: 3.4, pz: 0.6, lag: 0.02, ph: sg });
+          });
+          add(sw([[0.2, 0.56, 0], [0.34, 0.63, 0], [0.47, 0.76, 0], [0.5, 0.9, 0]], [0.04, 0.03, 0.022, 0.012], { nv: 14 }), M2, 0, 0, 0); // 大きな角
+          mirror(root, (g) => put(hornG(0.25, 0.7), M2, [0.5, 0.89, 0.0], [0.3, 0.6, 0.75], [1, 0, 0], 0.13, 0.13, 0.13, g));
+          add(sph, GL, 0.5, 0.9, 0, 0, 0, 0, 0.016);
+          halo(root, 0.5, 0.9, 0, 0.2, 0.5);
+          // 腹: 節ごとに光る帯。先は針
+          const rr = [0.095, 0.12, 0.125, 0.11, 0.09, 0.065, 0.04, 0.02];
+          const ab = chain(root, -0.1, 0.5, 7, 0.078, (k) => rr[k], M1, {
+            bz: () => 0.1, az: 0.05, ay: 0.04, w: 3, pz: 0.5, lag: 0.03,
+            each: (j, k, ra) => {
+              add(tor(0.06), GL, 0, 0, 0, 0, Math.PI / 2, 0, ra * 1.0, ra * 1.0, ra, j);
+              add(tor(0.16), M2, -0.03, 0, 0, 0, Math.PI / 2, 0, ra * 0.98, ra * 0.98, ra * 0.98, j);
+            },
+          });
+          put(hornG(0.3, -0.6), M3, [0, 0, 0], [-1, 0, 0], [0, 1, 0], 0.12, 0.12, 0.12, ab.tip);
+          add(sph, GL, -0.11, -0.03, 0, 0, 0, 0, 0.012, 0.012, 0.012, ab.tip);
+          // かたい前羽(開いて立てる)と、うすい後ろ羽(速くふるえる。残像を重ねる)
+          mirror(root, (g, sg) => {
+            g.userData.nb = true;
+            const el = grp(g, 0.02, 0.6, 0.05);
+            const elG = G("elytra", () => new THREE.SphereGeometry(1, 24, 12, 0, Math.PI));
+            add(elG, GE, -0.27, 0, 0.02, Math.PI / 2, 0, 0, 0.3, 0.1, 0.06, el);
+            add(elG, M2, -0.27, -0.004, 0.02, Math.PI / 2, 0, 0, 0.29, 0.095, 0.04, el);
+            anim.push(() => (el.rotation.set(-0.9 + Math.sin(S.t * 9) * 0.03, 0.75, 0)));
+            for (const [bx, L, d] of [[0.0, 0.62, 0.35], [-0.07, 0.48, 0.9]]) {
+              const pv = grp(g, bx, 0.61, 0.05);
+              pv.rotation.y = -d;
+              const bl = [0, 0.4, 0.8].map((lagp) => add(G("iwing", () => {
+                const pos = [], uv = [], idx = [];
+                for (let i = 0; i <= 12; i++) {
+                  const s = i / 12, w = 0.17 * Math.pow(Math.sin(Math.PI * Math.pow(s, 0.6)), 0.7);
+                  pos.push(-w * 1.5, 0, s, w * 0.4, 0, s);
+                  uv.push(0, s, 1, s);
+                  if (i < 12) idx.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 2, i * 2 + 1, i * 2 + 3);
+                }
+                return geoOf(pos, null, uv, idx);
+              }), IW, 0, 0, 0, 0, 0, 0, L, L, L, pv));
+              anim.push(() => bl.forEach((b, i) => (b.rotation.x = -0.35 - Math.sin(S.ph + d * 2 - i * 0.55) * 0.75)));
+            }
+            // 6本のあし(3節)
+            for (let k = 0; k < 3; k++) {
+              const l = limb(g, [0.14 - k * 0.11, 0.43, 0.07], [[0, 0, 0], [0.02 - k * 0.03, 0.02, 0.12], [0.04 - k * 0.06, -0.14, 0.17], [0.0 - k * 0.07, -0.26, 0.13]], [0.022, 0.018, 0.012, 0.006], M2, { nv: 10 });
+              put(hornG(0.25, -0.8), M3, [0.0 - k * 0.07, -0.26, 0.13], [0.2, -1, -0.2], [1, 0, 0], 0.05, 0.05, 0.05, l);
+              anim.push(() => ((l.rotation.x = Math.sin(S.t * 5 + k * 2 + sg) * 0.12), (l.rotation.z = Math.sin(S.t * 3.7 + k) * 0.1)));
+            }
+          });
+          anim.push(() => (hd.rotation.z = Math.sin(S.t * 2) * 0.06));
+        },
+        knight() {
+          S.w = 2.2;
+          S.lift = 0.035;
+          const fig = grp(root);
+          fig.rotation.z = -0.3;
+          const SW = PM({ color: lin(0xdfe6f0), metalness: 1, roughness: 0.14, clearcoat: 1, emissive: glow, emissiveIntensity: 0.12 });
+          const CP = PM({ color: gold ? lin(0x8a1420) : base.clone().multiplyScalar(0.6).lerp(glow, 0.15), map: tex("cloth", 2, 1), bumpMap: tex("cloth", 2, 1), bumpScale: 0.004, side: THREE.DoubleSide, roughness: 0.75, metalness: 0, sheen: 1, emissive: glow, emissiveIntensity: 1.2, emissiveMap: tex("clothE", 2, 1) });
+          // 胴よろい: 胸当て・腹の段(3枚)・腰の板
+          add(sw([[0, 0.5, 0], [0, 0.6, 0], [0, 0.72, 0], [0, 0.82, 0]], [0.085, 0.078, 0.125, 0.085], { ey: 0.78, ez: 1.1, nv: 24 }), M1, 0, 0, 0, 0, 0, 0, 1, 1, 1, fig);
+          add(sph, GE, 0.035, 0.725, 0, 0, 0, 0, 0.085, 0.085, 0.12, fig);
+          for (let k = 0; k < 3; k++) add(tor(0.16), M2, 0, 0.635 - k * 0.045, 0, Math.PI / 2, 0, 0, 0.066 + k * 0.006, 0.086 + k * 0.007, 0.07, fig);
+          add(sph, GL, 0.112, 0.735, 0, 0, 0, 0, 0.014, 0.024, 0.024, fig);
+          add(tor(0.25), M2, 0.112, 0.735, 0, 0, Math.PI / 2, 0, 0.03, 0.03, 0.03, fig);
+          halo(fig, 0.13, 0.735, 0, 0.22, 0.5);
+          add(tor(0.3), M2, 0, 0.855, 0, Math.PI / 2, 0, 0, 0.05, 0.06, 0.05, fig); // のど当て
+          for (let k = 0; k < 6; k++) {
+            const a = (k / 6) * 6.2832 + 0.52;
+            add(hemi, k % 2 ? M2 : M1, Math.cos(a) * 0.07, 0.5, Math.sin(a) * 0.09, Math.PI + Math.sin(a) * 0.35, 0, -Math.cos(a) * 0.35, 0.045, 0.12, 0.055, fig); // 腰の板
+          }
+          // かぶと: 面ぼおの光るすき間・とさか・羽かざり
+          const hd = grp(fig, 0.01, 0.93, 0);
+          add(sph, M1, 0, 0, 0, 0, 0, 0, 0.078, 0.084, 0.074, hd);
+          add(sw([[0.02, -0.06, 0], [0.065, -0.03, 0], [0.085, 0.0, 0]], [0.05, 0.05, 0.03], { nv: 16, ey: 1, ez: 1.25 }), M2, 0, 0, 0, 0, 0, 0, 1, 1, 1, hd); // 面ぼお
+          add(tor(0.085, 2.3), GL, 0.012, 0.012, 0, Math.PI / 2, 0, 0, 0.073, 0.07, 0.07, hd).rotation.z = -1.15;
+          halo(hd, 0.09, 0.012, 0, 0.2, 0.5);
+          add(ext("kcrest", [[0.07, 0.03], [0.04, 0.1], [-0.04, 0.125], [-0.11, 0.09], [-0.14, 0.02], [-0.07, 0.06], [0, 0.07]], 0.006, 0.006, 40), M2, 0, 0, 0, 0, 0, 0, 1, 1, 1, hd);
+          mirror(hd, (g) => put(ext("kwing", [[0, 0], [0.02, 0.05], [-0.06, 0.13], [-0.03, 0.06], [-0.1, 0.07], [-0.04, 0.02], [-0.07, -0.01]], 0.003, 0.004), gold ? M2 : GE, [0, 0.02, 0.07], [1, 0.2, -0.25], [0, 1, 0], 1, 1, 1, g)); // 耳の羽かざり
+          const pl = grp(hd, -0.1, 0.09, 0);
+          pl.userData.nb = true;
+          add(G("kplume", () => merge([0, 1, 2, 3, 4].map((k) => [featherG, bas([0, 0, 0], [-1, 0.5 - k * 0.22, 0], [0.3, 1, 0], 0.3 - k * 0.02, 0.3, 0.3)]))), FT2, 0, 0, 0, 0, 0, 0, 1, 1, 1, pl);
+          anim.push(() => (pl.rotation.z = Math.sin(S.t * 5) * 0.08 - 0.1));
+          // 肩当て(3段)・腕・こて
+          const arm = (sg) => {
+            const g = grp(fig);
+            g.scale.z = sg;
+            for (let k = 0; k < 3; k++) add(hemi, k === 1 ? GE : M2, 0, 0.81 - k * 0.03, 0.165 + k * 0.028, 0.75 + k * 0.3, 0, 0, 0.09 - k * 0.012, 0.06, 0.09 - k * 0.01, g);
+            put(hornG(0.2, 0.4), M2, [0, 0.86, 0.17], [-0.1, 0.7, 0.7], [0, 1, 0], 0.08, 0.08, 0.08, g);
+            const sh = grp(g, 0, 0.79, 0.19);
+            add(sw([[0, 0, 0], [0.005, -0.08, 0.005], [0.01, -0.16, 0]], [0.042, 0.044, 0.036], { nv: 14 }), M1, 0, 0, 0, 0, 0, 0, 1, 1, 1, sh);
+            const el = grp(sh, 0.01, -0.16, 0);
+            add(sph, M2, 0, 0, 0, 0, 0, 0, 0.044, 0.044, 0.044, el);
+            add(sw([[0, 0, 0], [0.07, -0.01, 0], [0.15, -0.01, 0]], [0.036, 0.048, 0.034], { nv: 14 }), M1, 0, 0, 0, 0, 0, 0, 1, 1, 1, el);
+            add(tor(0.22), GL, 0.075, -0.01, 0, 0, Math.PI / 2, 0, 0.046, 0.046, 0.046, el);
+            add(sph, M2, 0.18, -0.01, 0, 0, 0, 0, 0.04, 0.036, 0.04, el); // にぎりこぶし
+            return { g, sh, el };
+          };
+          const ar = arm(1), al = arm(-1);
+          // 大剣: 光るみぞ・つば・柄頭
+          const sword = grp(ar.el, 0.18, -0.01, 0);
+          sword.rotation.set(0, 0, 0.9);
+          add(ext("kblade", [[0, -0.032], [0.5, -0.026], [0.66, 0], [0.5, 0.026], [0, 0.032]], 0.002, 0.008), SW, 0.04, 0, 0, 0, 0, 0, 1, 1, 1, sword);
+          add(boxG, GL, 0.3, 0, 0, 0, 0, 0, 0.48, 0.008, 0.02, sword);
+          add(sw([[0.03, -0.1, 0], [0.045, -0.05, 0], [0.04, 0, 0], [0.045, 0.05, 0], [0.03, 0.1, 0]], [0.008, 0.016, 0.022, 0.016, 0.008], { nv: 10 }), M2, 0, 0, 0, 0, 0, 0, 1, 1, 1, sword);
+          add(sph, GL, 0.042, 0, 0, 0, 0, 0, 0.016, 0.016, 0.026, sword);
+          add(cylG, BK, -0.04, 0, 0, 0, 0, Math.PI / 2, 0.014, 0.14, 0.014, sword);
+          add(sph, M2, -0.12, 0, 0, 0, 0, 0, 0.024, 0.024, 0.024, sword);
+          halo(sword, 0.68, 0, 0, 0.25, 0.5);
+          // 盾: ふちどり・中央の紋
+          const shd = grp(al.el, 0.1, -0.02, 0.07);
+          shd.rotation.set(0.15, 0, 1.2);
+          add(ext("kshield", [[0, 0.17], [0.11, 0.15], [0.13, 0.02], [0.08, -0.12], [0, -0.21], [-0.08, -0.12], [-0.13, 0.02], [-0.11, 0.15]], 0.012, 0.01, 48), M1, 0, 0, 0, 0, 0, 0, 1, 1, 1, shd);
+          add(ext("kshield2", [[0, 0.13], [0.08, 0.115], [0.095, 0.02], [0.06, -0.09], [0, -0.16], [-0.06, -0.09], [-0.095, 0.02], [-0.08, 0.115]], 0.012, 0.006, 48), GE, 0, 0, 0.012, 0, 0, 0, 1, 1, 1, shd);
+          add(sph, M2, 0, 0.0, 0.02, 0, 0, 0, 0.04, 0.04, 0.025, shd);
+          add(sph, GL, 0, 0.0, 0.04, 0, 0, 0, 0.018, 0.018, 0.012, shd);
+          add(tor(0.1), GL, 0, 0, 0.026, 0, 0, 0, 0.062, 0.062, 0.062, shd);
+          // 脚: もも当て・ひざ当て・すね当て・とがった鉄ぐつ。足の裏から光を噴く
+          const legs = [];
+          for (const sg of [1, -1]) {
+            const hip = grp(fig, 0, 0.5, sg * 0.062);
+            add(sw([[0, 0, 0], [0.015, -0.1, 0], [0, -0.2, 0]], [0.062, 0.06, 0.044], { nv: 16 }), M1, 0, 0, 0, 0, 0, 0, 1, 1, 1, hip);
+            const kn = grp(hip, 0, -0.2, 0);
+            add(sph, M2, 0.012, 0, 0, 0, 0, 0, 0.05, 0.05, 0.048, kn);
+            put(hornG(0.3, 0.3), M2, [0.05, 0.0, 0], [1, 0.5, 0], [0, 1, 0], 0.06, 0.06, 0.06, kn);
+            add(sw([[0, 0, 0], [-0.015, -0.1, 0], [0, -0.2, 0]], [0.042, 0.05, 0.03], { nv: 16 }), M1, 0, 0, 0, 0, 0, 0, 1, 1, 1, kn);
+            add(tor(0.2), GL, 0, -0.035, 0, Math.PI / 2, 0, 0, 0.044, 0.044, 0.044, kn);
+            add(sw([[-0.03, -0.2, 0], [0.03, -0.235, 0], [0.11, -0.24, 0]], [0.03, 0.036, 0.008], { nv: 12, ey: 0.7 }), M2, 0, 0, 0, 0, 0, 0, 1, 1, 1, kn);
+            const jet = add(G("jet", () => new THREE.ConeGeometry(1, 1, 16, 1, true).rotateX(Math.PI).translate(0, -0.5, 0)), GL, 0, -0.25, 0, 0, 0, 0, 0.025, 0.16, 0.025, kn);
+            jet.userData.nb = true;
+            halo(kn, 0, -0.27, 0, 0.3, 0.5);
+            legs.push([hip, kn, jet, sg]);
+          }
+          // マント(風になびく)
+          const cape = sheet(12, 14, (u, v, t, out) => {
+            const w = Math.sin(t * 5 - v * 6 + u * 2.5) * 0.04 * v + Math.sin(t * 3.1 - v * 3.5 - u * 3) * 0.03 * v;
+            out[0] = -0.075 - v * 0.42 - Math.sin(u * Math.PI) * 0.03 * (1 - v);
+            out[1] = 0.845 - v * 0.33 - v * v * 0.12 + w + S.climb * -0.1 * v * v;
+            out[2] = (u - 0.5) * (0.27 + v * 0.3) + Math.sin(t * 4 - v * 5) * 0.02 * v;
+          });
+          add(cape.g, CP, 0, 0, 0, 0, 0, 0, 1, 1, 1, fig).userData.nb = true;
+          anim.push(() => {
+            cape.upd(S.t);
+            for (const [hip, kn, jet, sg] of legs) {
+              hip.rotation.z = -0.15 + sg * 0.22 + Math.sin(S.t * 1.6 + sg) * 0.06;
+              kn.rotation.z = -0.5 - sg * 0.2;
+              jet.scale.y = 0.14 + Math.sin(S.t * 31 + sg) * 0.03 + S.climb * 0.08;
+            }
+            fig.rotation.z = -0.3 - S.climb * 0.1;
+            hd.rotation.z = 0.22 + Math.sin(S.t * 0.9) * 0.04;
+            hd.rotation.y = Math.sin(S.t * 0.6) * 0.2 + S.turn * 0.3;
+            ar.sh.rotation.set(0.25, 0, 0.5 + Math.sin(S.t * 1.8) * 0.1);
+            ar.el.rotation.z = 0.35 + Math.sin(S.t * 1.8 + 0.6) * 0.12;
+            al.sh.rotation.set(0.2, 0, 0.3 + Math.sin(S.t * 1.5 + 2) * 0.06);
+            al.el.rotation.z = 0.5;
+          });
+        },
+        golem() {
+          S.w = 1.4;
+          S.lift = 0.04;
+          const rk = tex("rock", 2, 2), rkE = tex("rockE", 2, 2);
+          const MR = PM({ color: base.clone().lerp(lin(0x9a948c), 0.6).multiplyScalar(1.2), map: rk, bumpMap: rk, bumpScale: 0.02, roughness: 0.85, metalness: 0.05, clearcoat: 0, emissive: glow, emissiveIntensity: 2.4, emissiveMap: rkE });
+          const MX = PM({ color: glow, emissive: glow, emissiveIntensity: 0.7, roughness: 0.08, metalness: 0, clearcoat: 1, flatShading: true, transparent: true, opacity: 0.9 });
+          // 胴・腰・頭(岩)。胸に核と金具
+          add(boulder(1), MR, 0, 0.64, 0, 0, 0, 0, 0.25, 0.23, 0.24);
+          add(boulder(2), MR, -0.03, 0.4, 0, 0, 0, 0, 0.15, 0.11, 0.15);
+          const core = add(sph, GL, 0.2, 0.64, 0, 0, 0, 0, 0.06, 0.075, 0.075);
+          add(tor(0.2), M2, 0.215, 0.64, 0, 0, Math.PI / 2, 0, 0.09, 0.09, 0.09);
+          const rn = add(annulus(0.7), RN, 0.25, 0.64, 0, 0, 0, Math.PI / 2, 0.16, 0.16, 0.16);
+          const hc = halo(root, 0.27, 0.64, 0, 0.5, 0.6);
+          const hd = grp(root, 0.08, 0.93, 0);
+          add(boulder(3), MR, 0, 0, 0, 0, 0, 0, 0.12, 0.1, 0.11, hd);
+          add(boulder(4), MR, 0.04, -0.085, 0, 0, 0, 0, 0.085, 0.045, 0.08, hd); // あご
+          add(sph, BK, 0.085, 0.0, 0, 0, 0, 0, 0.03, 0.03, 0.085, hd);
+          add(sph, GL, 0.1, 0.0, 0, 0, 0, 0, 0.02, 0.016, 0.07, hd); // ひとつ目のすき間
+          halo(hd, 0.13, 0, 0, 0.3, 0.6);
+          for (let k = 0; k < 5; k++) xt(hd, MX, [-0.03 - Math.abs(k - 2) * 0.01, 0.08, (k - 2) * 0.04], [-0.3, 1, (k - 2) * 0.3], 0.2 - Math.abs(k - 2) * 0.04, 0.022); // 結晶の冠
+          for (let k = 0; k < 6; k++) xt(root, MX, [-0.2, 0.6 + rnd(k) * 0.2, (rnd(k + 3) - 0.5) * 0.3], [-1, 0.6 + rnd(k + 5), (rnd(k + 3) - 0.5) * 1.2], 0.2 + rnd(k + 7) * 0.16, 0.03 + rnd(k + 9) * 0.02); // 背の結晶
+          // 肩と、宙に浮く腕・こぶし
+          const arms = [];
+          mirror(root, (g, sg) => {
+            add(boulder(5), MR, 0, 0.8, 0.3, 0, 0, 0, 0.14, 0.12, 0.14, g);
+            xt(g, MX, [0, 0.88, 0.33], [-0.2, 1, 0.5], 0.2, 0.03);
+            xt(g, MX, [-0.05, 0.86, 0.26], [-0.5, 1, 0.1], 0.14, 0.022);
+            const a = grp(g, 0.03, 0.58, 0.4);
+            add(boulder(6), MR, 0, 0, 0, 0, 0, 0, 0.085, 0.11, 0.085, a);
+            const f = grp(a, 0.1, -0.2, 0.03);
+            add(boulder(7), MR, 0, 0, 0, 0, 0, 0, 0.13, 0.15, 0.13, f);
+            for (let k = 0; k < 4; k++) add(boulder(8), MR, 0.1, -0.1, (k - 1.5) * 0.06, 0, 0, 0, 0.05, 0.06, 0.035, f); // 指
+            add(boulder(8), MR, 0.06, 0.0, -0.13, 0, 0, 0, 0.045, 0.055, 0.04, f);
+            const wr = add(annulus(0.75), RN, 0, 0.1, 0, 0, 0, 0, 0.19, 0.19, 0.19, f);
+            add(tor(0.07), M2, 0, 0.13, 0, Math.PI / 2, 0, 0, 0.1, 0.1, 0.1, f);
+            arms.push([a, f, wr, sg]);
+          });
+          // 腰の下: 回りながら浮く岩のかけら
+          const sh = [];
+          for (let k = 0; k < 6; k++) sh.push(add(boulder(9 + (k % 3)), MR, 0, 0, 0, rnd(k) * 3, rnd(k + 1) * 3, 0, 0.05 + rnd(k + 2) * 0.03, 0.09 + rnd(k + 3) * 0.05, 0.05 + rnd(k + 4) * 0.03));
+          const belt = add(annulus(0.8), RN, -0.03, 0.42, 0, 0, 0, 0, 0.28, 0.28, 0.28);
+          anim.push(() => {
+            const t = S.t;
+            core.scale.setScalar(0.065 + Math.sin(t * 3) * 0.008);
+            hc.scale.setScalar(0.5 + Math.sin(t * 3) * 0.08);
+            rn.rotation.x = t * 0.9;
+            belt.rotation.y = -t * 0.6;
+            hd.rotation.y = Math.sin(t * 0.6) * 0.25 + S.turn * 0.3;
+            hd.position.y = 0.93 + Math.sin(t * 1.4 + 1) * 0.012;
+            for (const [a, f, wr, sg] of arms) {
+              a.position.y = 0.58 + Math.sin(t * 1.4 + sg) * 0.025;
+              a.rotation.z = Math.sin(t * 1.1 + sg * 1.5) * 0.18 - S.climb * 0.2;
+              f.position.y = -0.2 + Math.sin(t * 1.4 + sg + 1) * 0.02;
+              f.rotation.z = Math.sin(t * 1.3 + sg) * 0.2 + 0.2;
+              wr.rotation.y = t * 1.5 * sg;
+            }
+            sh.forEach((o, k) => {
+              const a = (k / 6) * 6.2832 + t * 0.7;
+              o.position.set(Math.cos(a) * (0.1 + (k % 2) * 0.08) - 0.03, 0.2 - (k % 3) * 0.06 + Math.sin(t * 1.7 + k) * 0.025, Math.sin(a) * (0.1 + (k % 2) * 0.08));
+              o.rotation.y = t * 0.5 + k;
+            });
+          });
+        },
+        machine() {
+          S.w = 3.1;
+          S.lift = 0.02;
+          const GLS = PM({ color: glow.clone().multiplyScalar(0.5), emissive: glow, emissiveIntensity: 1.1, roughness: 0.02, metalness: 0, clearcoat: 1, clearcoatRoughness: 0 });
+          // 機体: 胴・背の放熱ひれ・光る筋
+          const HP = [[-0.34, 0.55, 0], [-0.18, 0.56, 0], [0.04, 0.56, 0], [0.24, 0.55, 0], [0.34, 0.54, 0]], HR = [0.05, 0.115, 0.14, 0.1, 0.065];
+          add(sw(HP, HR, { nv: 28, ey: 0.85 }), M1, 0, 0, 0);
+          add(sw(HP.map((p) => [p[0] * 0.8, p[1] + 0.012, 0]), HR.map((r) => r * 0.93), { nv: 24, ey: 0.85, ez: 0.8 }), GE, 0, 0, 0);
+          add(G("mfins", () => merge([0, 1, 2, 3, 4, 5, 6].map((k) => [boxG, new THREE.Matrix4().makeScale(0.012, 0.05 - Math.abs(k - 2.5) * 0.006, 0.1).setPosition(-0.2 + k * 0.035, 0.675, 0)]))), M2, 0, 0, 0);
+          mirror(root, (g) => add(sw(HP.map((p, i) => [p[0], p[1], HR[i] * 1.0]), [0.002, 0.01, 0.011, 0.01, 0.002], { nv: 8 }), GL, 0, 0, 0, 0, 0, 0, 1, 1, 1, g));
+          // 機首の目(レンズ): 輪を重ねた中に光る玉
+          const eyeG = grp(root, 0.36, 0.54, 0);
+          for (let k = 0; k < 3; k++) add(tor(0.16), k === 1 ? GL : M2, k * 0.02, 0, 0, 0, Math.PI / 2, 0, 0.075 - k * 0.012, 0.075 - k * 0.012, 0.06, eyeG);
+          add(sph, GLS, 0.03, 0, 0, 0, 0, 0, 0.05, 0.05, 0.05, eyeG);
+          add(sph, BK, 0.07, 0, 0, 0, 0, 0, 0.014, 0.022, 0.022, eyeG);
+          halo(eyeG, 0.09, 0, 0, 0.4, 0.6);
+          anim.push(() => ((eyeG.rotation.y = Math.sin(S.t * 0.9) * 0.3 + S.turn * 0.3), (eyeG.rotation.z = Math.sin(S.t * 1.3) * 0.15)));
+          // 胴をかこむ2重の輪(逆向きに回る)。歯のような突起つき
+          const rings = [0.21, 0.26].map((r, i) => {
+            const g = grp(root, -0.02, 0.56, 0);
+            add(tor(0.07), i ? GE : M2, 0, 0, 0, 0, Math.PI / 2, 0, r, r, r, g);
+            add(G("mteeth", () => merge(Array.from({ length: 16 }, (_, k) => [boxG, new THREE.Matrix4().makeRotationX((k / 16) * 6.2832).multiply(new THREE.Matrix4().makeTranslation(0, 1.08, 0)).multiply(new THREE.Matrix4().makeScale(0.2, 0.14, 0.16))]))), M2, 0, 0, 0, 0, 0, 0, r, r, r, g);
+            g.userData.nb = true;
+            return g;
+          });
+          anim.push(() => (rings[0].rotation.set(S.t * 1.7, 0, 0.25), rings[1].rotation.set(-S.t * 1.1, 0.5, -0.2)));
+          // 左右の推進器: 吸気口の輪・噴射の炎・翼
+          const pods = [];
+          mirror(root, (g, sg) => {
+            add(sw([[0, 0.58, 0.1], [-0.02, 0.6, 0.22], [-0.04, 0.58, 0.32]], [0.03, 0.022, 0.03], { nv: 10 }), M2, 0, 0, 0, 0, 0, 0, 1, 1, 1, g);
+            const pd = grp(g, -0.05, 0.57, 0.36);
+            add(sw([[-0.24, 0, 0], [-0.1, 0, 0], [0.06, 0, 0], [0.17, 0, 0]], [0.04, 0.075, 0.07, 0.045], { nv: 20 }), M1, 0, 0, 0, 0, 0, 0, 1, 1, 1, pd);
+            add(tor(0.14), M2, 0.17, 0, 0, 0, Math.PI / 2, 0, 0.05, 0.05, 0.05, pd);
+            add(sph, BK, 0.165, 0, 0, 0, 0, 0, 0.02, 0.042, 0.042, pd);
+            add(tor(0.1), GL, -0.02, 0, 0, 0, Math.PI / 2, 0, 0.076, 0.076, 0.076, pd);
+            add(tor(0.18), M2, -0.24, 0, 0, 0, Math.PI / 2, 0, 0.044, 0.044, 0.044, pd);
+            const fl = add(G("jetx", () => new THREE.ConeGeometry(1, 1, 16, 1, true).rotateZ(Math.PI / 2).translate(-0.5, 0, 0)), GL, -0.24, 0, 0, 0, 0, 0, 0.2, 0.036, 0.036, pd);
+            fl.userData.nb = true;
+            halo(pd, -0.28, 0, 0, 0.3, 0.6);
+            // 翼(後退翼)と小さい前翼。ふちが光る
+            const wg = grp(pd, -0.02, 0, 0.06);
+            wg.userData.nb = true;
+            add(ext("mwing", [[0.1, 0], [0.02, 0.42], [-0.12, 0.5], [-0.2, 0.46], [-0.13, 0.2], [-0.16, 0]], 0.012, 0.008), M1, 0, 0, 0, Math.PI / 2, 0, 0, 1, 1, 1, wg);
+            add(ext("mwing2", [[0.06, 0.03], [0.0, 0.36], [-0.08, 0.4], [-0.06, 0.03]], 0.012, 0.004), GE, 0, 0.008, 0, Math.PI / 2, 0, 0, 1, 1, 1, wg);
+            add(sw([[0.1, 0, 0], [0.02, 0, 0.42], [-0.12, 0, 0.5]], [0.008, 0.008, 0.008], { nv: 6 }), GL, 0, 0, 0, 0, 0, 0, 1, 1, 1, wg);
+            add(ext("mcanard", [[0.06, 0], [0.0, 0.16], [-0.05, 0.16], [-0.04, 0]], 0.008, 0.005), M2, 0.18, 0.55, 0.1, Math.PI / 2 - 0.2, 0, 0, 1, 1, 1, g);
+            pods.push([pd, fl, wg, sg]);
+          });
+          // 尾翼(V字)・アンテナ・腹の下のつかみ腕
+          mirror(root, (g) => add(ext("mtail", [[0.06, 0], [-0.04, 0.2], [-0.12, 0.2], [-0.08, 0]], 0.008, 0.005), M2, -0.3, 0.6, 0.02, -0.5, 0, 0, 1, 1, 1, g));
+          add(cylG, M2, -0.1, 0.76, 0, 0, 0, -0.3, 0.004, 0.2, 0.004);
+          const bl = add(sph, GL, -0.07, 0.86, 0, 0, 0, 0, 0.012);
+          const arms = [];
+          mirror(root, (g, sg) => {
+            const a = limb(g, [0.12, 0.45, 0.06], [[0, 0, 0], [0.06, -0.1, 0.02], [0.16, -0.12, 0.02]], [0.022, 0.018, 0.016], M2, { nv: 10 });
+            add(sph, GL, 0.06, -0.1, 0.02, 0, 0, 0, 0.022, 0.022, 0.022, a);
+            claws(a, [0.16, -0.12, 0.02], [1, -0.2, 0], [0, 1, 0], 0.08, 3, 0.7, M2);
+            arms.push([a, sg]);
+          });
+          anim.push(() => {
+            bl.visible = Math.sin(S.t * 6) > 0;
+            for (const [pd, fl, wg, sg] of pods) {
+              pd.rotation.z = Math.sin(S.t * 1.3 + sg) * 0.06 + S.climb * 0.3;
+              fl.scale.x = 0.16 + Math.sin(S.t * 37 + sg) * 0.03 + Math.max(0, S.climb) * 0.14;
+              wg.rotation.x = Math.sin(S.t * 2.1 + sg) * 0.08 - 0.12 - S.turn * sg * 0.15;
+            }
+            for (const [a, sg] of arms) a.rotation.z = Math.sin(S.t * 1.7 + sg) * 0.2 - 0.2;
+          });
+        },
+        mage() {
+          S.w = 1.8;
+          S.lift = 0.04;
+          const fig = grp(root);
+          fig.rotation.z = -0.14;
+          const C1 = CL();
+          // 衣(すそがなびく)・胴・帯・肩かけ・高いえり
+          robe(fig, C1, 0.64, 0.62, 0.095, 0.27, 0.16, 7);
+          add(sw([[0, 0.6, 0], [0, 0.7, 0], [0, 0.82, 0]], [0.1, 0.11, 0.08], { nv: 20, ey: 0.85 }), M1, 0, 0, 0, 0, 0, 0, 1, 1, 1, fig);
+          add(tor(0.18), M2, 0, 0.63, 0, Math.PI / 2, 0, 0, 0.088, 0.1, 0.1, fig);
+          add(gemG, GL, 0.1, 0.63, 0, 0, 0, 0, 0.022, 0.07, 0.022, fig);
+          halo(fig, 0.12, 0.63, 0, 0.2, 0.5);
+          add(sw([[0, 0.87, 0], [0, 0.82, 0], [0, 0.75, 0]], [0.06, 0.17, 0.21], { nv: 24, nu: 16 }), M2, 0, 0, 0, 0, 0, 0, 1, 1, 1, fig);
+          add(tor(0.03), GL, 0, 0.752, 0, Math.PI / 2, 0, 0, 0.205, 0.205, 0.205, fig);
+          add(G("mcollar", () => new THREE.CylinderGeometry(0.15, 0.08, 0.17, 24, 4, true, Math.PI * 0.75, Math.PI * 1.5)), PM({ color: M2.color, map: pt, metalness: 0.9, roughness: 0.3, side: THREE.DoubleSide }), 0, 0.92, 0, 0, 0, 0, 1, 1, 1, fig);
+          // 頭巾(先がたれる)。中は暗く、目だけが光る
+          const hd = grp(fig, 0.01, 0.94, 0);
+          add(sph, M1, 0, 0, 0, 0, 0, 0, 0.088, 0.095, 0.085, hd);
+          add(sw([[-0.02, 0.06, 0], [-0.1, 0.1, 0], [-0.19, 0.06, 0], [-0.22, -0.02, 0]], [0.065, 0.045, 0.022, 0.003], { nv: 14 }), M1, 0, 0, 0, 0, 0, 0, 1, 1, 1, hd);
+          add(sph, BK, 0.035, -0.008, 0, 0, 0, 0, 0.066, 0.07, 0.064, hd);
+          add(tor(0.14), M2, 0.04, -0.005, 0, 0, Math.PI / 2, 0, 0.07, 0.076, 0.07, hd);
+          mirror(hd, (g) => (add(sph, GL, 0.092, 0.0, 0.027, 0.3, 0, 0, 0.009, 0.009, 0.02, g), halo(g, 0.1, 0, 0.03, 0.05, 0.6)));
+          const crown = [0, 1, 2, 3, 4].map((k) => add(gemG, GL, 0, 0, 0, 0, 0, 0, 0.01, 0.06, 0.01, hd));
+          // そで(口が広い)と手
+          const arm = (sg, rz, rx) => {
+            const sh = grp(fig, 0, 0.8, sg * 0.14);
+            sh.rotation.set(rx * sg, 0, rz);
+            add(sw([[0, 0, 0], [0.08, -0.04, 0], [0.19, -0.04, 0]], [0.05, 0.058, 0.085], { nv: 18 }), C1, 0, 0, 0, 0, 0, 0, 1, 1, 1, sh);
+            add(sph, BK, 0.18, -0.04, 0, 0, 0, 0, 0.015, 0.07, 0.07, sh);
+            add(sph, M3, 0.22, -0.04, 0, 0, 0, 0, 0.03, 0.022, 0.026, sh);
+            for (let k = 0; k < 4; k++) put(hornG(0.14, -0.5), M3, [0.235, -0.035, (k - 1.5) * 0.013], [1, 0.1, (k - 1.5) * 0.15], [0, 1, 0], 0.05, 0.05, 0.05, sh);
+            return sh;
+          };
+          const ar = arm(1, 0.5, 0.3), al = arm(-1, 0.15, 0.5);
+          // 杖: 三日月の先に光る玉
+          const st = grp(ar, 0.24, -0.04, 0);
+          st.rotation.z = -0.4;
+          add(sw([[0, -0.5, 0], [0.01, -0.2, 0], [0, 0.1, 0], [0, 0.34, 0]], [0.008, 0.014, 0.013, 0.016], { nv: 10, rf: (u) => 1 + 0.25 * Math.max(0, Math.sin(u * 40)) ** 6 }, "staff"), M2, 0, 0, 0, 0, 0, 0, 1, 1, 1, st);
+          add(tor(0.14, 4.4), M2, 0, 0.43, 0, 0, 0, 0, 0.09, 0.09, 0.09, st).rotation.z = -0.63;
+          const orb = add(sph, GL, 0, 0.43, 0, 0, 0, 0, 0.045, 0.045, 0.045, st);
+          const oh = halo(st, 0, 0.43, 0, 0.5, 0.6);
+          const sat = [0, 1, 2].map(() => add(gemG, GL, 0, 0, 0, 0, 0, 0, 0.008, 0.045, 0.008, st));
+          // 宙に浮く魔導書(表紙がゆっくり開閉する)
+          const bk = grp(fig, 0.3, 0.62, -0.2);
+          bk.userData.nb = true;
+          const cov = [1, -1].map((s) => {
+            const g = grp(bk);
+            add(boxG, M2, 0, 0, s * 0.055, 0, 0, 0, 0.14, 0.012, 0.1, g);
+            add(boxG, M3, 0, 0.012, s * 0.052, 0, 0, 0, 0.125, 0.014, 0.09, g);
+            add(boxG, GL, 0, 0.0205, s * 0.052, 0, 0, 0, 0.08, 0.001, 0.05, g);
+            return [g, s];
+          });
+          halo(bk, 0, 0.05, 0, 0.3, 0.4);
+          // 足もとの魔法陣と、体をめぐる輪
+          const circ = [[0.45, 0.02, 0.8], [0.3, 0.02, -1.3]].map(([r, y, sp]) => [add(annulus(0.82), RN, -0.05, y, 0, 0, 0, 0, r, r, r), sp]);
+          const rg = [0, 1].map((k) => add(annulus(0.88), RN, 0, 0.5, 0, 0, 0, 0, 0.36 + k * 0.06, 0.36, 0.36 + k * 0.06));
+          circ.concat(rg.map((r) => [r, 0])).forEach(([o]) => (o.userData.nb = true));
+          anim.push(() => {
+            const t = S.t;
+            orb.scale.setScalar(0.045 + Math.sin(t * 4) * 0.007);
+            oh.scale.setScalar(0.5 + Math.sin(t * 4) * 0.1);
+            sat.forEach((o, k) => (o.position.set(Math.cos(t * 2.5 + k * 2.1) * 0.1, 0.43 + Math.sin(t * 1.7 + k) * 0.03, Math.sin(t * 2.5 + k * 2.1) * 0.1), (o.rotation.y = t * 3)));
+            crown.forEach((o, k) => o.position.set(Math.cos(t * 1.2 + k * 1.2566) * 0.1 - 0.01, 0.15 + Math.sin(t * 2 + k) * 0.012, Math.sin(t * 1.2 + k * 1.2566) * 0.1));
+            for (const [o, sp] of circ) o.rotation.y = t * sp;
+            rg.forEach((o, k) => (o.rotation.set(0.5 * Math.sin(t * 0.7 + k * 2), t * (k ? -1.3 : 1), 0.45 * Math.cos(t * 0.6 + k)), (o.position.y = 0.5 + k * 0.15)));
+            for (const [g, s] of cov) g.rotation.x = s * (-0.35 - Math.sin(t * 1.3) * 0.15);
+            bk.position.y = 0.62 + Math.sin(t * 1.6) * 0.03;
+            bk.rotation.y = 0.5 + Math.sin(t * 0.8) * 0.2;
+            fig.rotation.z = -0.14 - S.climb * 0.1;
+            hd.rotation.y = Math.sin(t * 0.7) * 0.2 + S.turn * 0.3;
+            ar.rotation.z = 0.5 + Math.sin(t * 1.5) * 0.08;
+            al.rotation.z = 0.15 + Math.sin(t * 1.6 + 1) * 0.1;
+          });
+        },
+        spirit() {
+          const dk = m.race === "悪魔" || (m.attr === "闇" && m.race !== "天使" && m.race !== "アンデット"), an = !dk && (m.race === "天使" || m.attr === "光");
+          S.w = dk ? 5.6 : an ? 4.4 : 1.7;
+          S.lift = dk || an ? 0.06 : 0.04;
+          const fig = grp(root);
+          fig.rotation.z = -0.2;
+          const C1 = CL();
+          // ぼろぼろの衣(先は細くなって後ろへ流れる)。あばら骨の中で核が光る
+          robe(fig, C1, 0.66, 0.66, 0.1, 0.2, 0.32, 6, 0.78);
+          add(sw([[0, 0.6, 0], [0, 0.72, 0], [0, 0.83, 0]], [0.07, 0.095, 0.075], { nv: 20, ey: 0.8 }), BK, 0, 0, 0, 0, 0, 0, 1, 1, 1, fig);
+          for (let k = 0; k < 4; k++) add(tor(0.11, 5.0), an ? M2 : M3, 0, 0.8 - k * 0.045, 0, Math.PI / 2, 0, 0, 0.1 - k * 0.006, 0.125 - k * 0.008, 0.1, fig).rotation.z = 0.64 + Math.PI; // あばら
+          const core = add(sph, GL, 0.02, 0.73, 0, 0, 0, 0, 0.04, 0.05, 0.04, fig);
+          const hc = halo(fig, 0.06, 0.73, 0, 0.45, 0.6);
+          add(sw([[0, 0.87, 0], [0, 0.83, 0], [0, 0.78, 0]], [0.05, 0.14, 0.17], { nv: 24, nu: 14 }), an ? M2 : C1, 0, 0, 0, 0, 0, 0, 1, 1, 1, fig); // 肩
+          const hd = grp(fig, 0.02, 0.95, 0);
+          // 細い腕と長い指
+          const arms = [];
+          mirror(fig, (g, sg) => {
+            const sh = grp(g, 0, 0.82, 0.15);
+            add(sw([[0, 0, 0], [0.04, -0.11, 0.02], [0.16, -0.14, 0.0]], [0.03, 0.024, 0.02], { nv: 12 }), an ? M1 : M3, 0, 0, 0, 0, 0, 0, 1, 1, 1, sh);
+            add(sph, an ? M2 : M3, 0.04, -0.11, 0.02, 0, 0, 0, 0.03, 0.03, 0.03, sh);
+            if (an) add(tor(0.25), M2, 0.12, -0.132, 0.005, 0, Math.PI / 2, 0, 0.026, 0.026, 0.026, sh).rotation.z = -0.2;
+            for (let k = 0; k < 4; k++) put(hornG(0.1, -0.7), an ? M2 : M3, [0.16, -0.14, (k - 1.5) * 0.012], [1, -0.1, (k - 1.5) * 0.25], [0, 1, 0], dk ? 0.14 : 0.09, 0.09, 0.09, sh);
+            arms.push([sh, sg]);
+          });
+          if (dk) {
+            // 悪魔: 骨の面・巻いた角・膜の翼・先のとがった尾
+            add(sph, M3, 0, 0, 0, 0, 0, 0, 0.078, 0.085, 0.072, hd);
+            add(sw([[0.03, -0.04, 0], [0.08, -0.05, 0], [0.12, -0.06, 0]], [0.045, 0.04, 0.024], { nv: 14, ey: 0.8 }), M3, 0, 0, 0, 0, 0, 0, 1, 1, 1, hd);
+            add(G("dteeth", () => merge([-2, -1, 0, 1, 2].map((k) => [tooth, bas([0.115 - Math.abs(k) * 0.012, -0.075, k * 0.011], [0, -1, 0], [0, 0, 1], 0.022, 0.006, 0.006)]))), M3, 0, 0, 0, 0, 0, 0, 1, 1, 1, hd);
+            eye(hd, 0.06, 0.005, 0.034, 0.016);
+            mirror(hd, (g) => {
+              add(G("ramhorn", () => {
+                const P = [];
+                for (let i = 0; i <= 8; i++) {
+                  const a = (i / 8) * 4.4;
+                  P.push([-0.02 - Math.sin(a) * 0.09, 0.06 + (1 - Math.cos(a)) * 0.06, 0.05 + i * 0.016]);
+                }
+                return sweep(P, (u) => 0.034 * Math.pow(1 - u, 0.7) * (1 + 0.1 * Math.sin(u * 90)) + 0.002, { nv: 12, nu: 70 });
+              }), M2, 0, 0, 0, 0, 0, 0, 1, 1, 1, g);
+              add(sw([[0.02, 0.04, 0.03], [0.07, 0.05, 0.045], [0.1, 0.02, 0.035]], [0.008, 0.016, 0.004], { nv: 8 }), M3, 0, 0, 0, 0, 0, 0, 1, 1, 1, g);
+            });
+            add(gemG, GL, 0.075, 0.045, 0, 0, 0, -0.3, 0.01, 0.04, 0.01, hd);
+            mirror(fig, (g) => put(hornG(0.2, 0.5), M3, [0, 0.86, 0.14], [-0.3, 0.7, 0.6], [0, 1, 0], 0.14, 0.14, 0.14, g));
+            batWing(fig, -0.06, 0.8, 0.06, 0.82, { dih: 0.35 });
+            const tl = chain(fig, -0.08, 0.5, 11, 0.06, [0.022, 0.008], M3, { bz: (k) => (k < 3 ? 0.5 : -0.25), az: 0.14, ay: 0.16, w: 3, pz: 0.6, lag: 0.05 });
+            add(ext("dspade", [[0, 0.008], [-0.03, 0.05], [-0.12, 0], [-0.03, -0.05], [0, -0.008]], 0.004, 0.006), GL, 0, 0, 0, 0, 0, 0, 1, 1, 1, tl.tip);
+          } else if (an) {
+            // 天使: なめらかな面・光の輪・2組の羽の翼・光の槍・腰のリボン
+            add(sph, M3, 0, 0, 0, 0, 0, 0, 0.076, 0.086, 0.07, hd);
+            add(sw([[-0.05, 0.0, 0], [0.0, 0.085, 0], [0.07, 0.05, 0]], [0.06, 0.05, 0.02], { nv: 16, ez: 1.25, ey: 0.6 }), M2, 0, 0, 0, 0, 0, 0, 1, 1, 1, hd); // かぶと
+            add(tor(0.09, 2.2), GL, 0.008, 0.008, 0, Math.PI / 2, 0, 0, 0.072, 0.068, 0.07, hd).rotation.z = -1.1;
+            halo(hd, 0.08, 0.01, 0, 0.2, 0.5);
+            mirror(hd, (g) => add(G("awing", () => merge([0, 1, 2, 3].map((k) => [featherG, bas([0, 0, 0], [-1, 0.75 - k * 0.3, 0.25], [0, 0.3, 1], 0.2 - k * 0.025, 0.2, 0.2)]))), FT, -0.01, 0.03, 0.066, 0, 0, 0, 1, 1, 1, g));
+            const hl = grp(hd, -0.07, 0.13, 0);
+            hl.rotation.z = 0.35;
+            hl.userData.nb = true;
+            add(tor(0.05), GL, 0, 0, 0, Math.PI / 2, 0, 0, 0.12, 0.12, 0.12, hl);
+            add(annulus(0.8), RN, 0, 0, 0, 0, 0, 0, 0.19, 0.19, 0.19, hl);
+            for (let k = 0; k < 8; k++) xt(hl, GL, [Math.cos(k * 0.785) * 0.17, 0, Math.sin(k * 0.785) * 0.17], [Math.cos(k * 0.785), 0.001, Math.sin(k * 0.785)], k % 2 ? 0.06 : 0.1, 0.008, 0.004);
+            anim.push(() => (hl.rotation.y = S.t * 0.6));
+            featherWing(fig, -0.05, 0.82, 0.07, 0.95, { dih: 0.4 });
+            featherWing(fig, -0.07, 0.72, 0.07, 0.6, { dih: -0.05, ph: -0.9, amp: 0.7 });
+            const sp = grp(arms[0][0], 0.17, -0.14, 0);
+            sp.rotation.z = 0.5;
+            add(cylG, M2, 0.05, 0, 0, 0, 0, Math.PI / 2, 0.008, 0.8, 0.008, sp);
+            add(ext("aspear", [[0, -0.012], [0.05, -0.04], [0.26, 0], [0.05, 0.04], [0, 0.012]], 0.002, 0.007), GL, 0.44, 0, 0, 0, 0, 0, 1, 1, 1, sp);
+            add(tor(0.2), M2, 0.43, 0, 0, 0, Math.PI / 2, 0, 0.02, 0.02, 0.02, sp);
+            halo(sp, 0.56, 0, 0, 0.4, 0.5);
+            for (const sg of [1, -1]) {
+              const rb = sheet(3, 14, (u, v, t, out) => {
+                out[0] = -0.06 - v * 0.5;
+                out[1] = 0.62 - v * 0.2 + Math.sin(t * 4 - v * 7 + sg) * 0.05 * v;
+                out[2] = sg * (0.08 + v * 0.14) + (u - 0.5) * 0.05 + Math.sin(t * 3 - v * 5) * 0.04 * v;
+              });
+              add(rb.g, C1, 0, 0, 0, 0, 0, 0, 1, 1, 1, fig).userData.nb = true;
+              anim.push(() => rb.upd(S.t));
+            }
+          } else {
+            // 亡霊: 頭巾の中のどくろ・大鎌・まわりをめぐる人魂
+            add(sph, C1, -0.01, 0.005, 0, 0, 0, 0, 0.092, 0.1, 0.09, hd);
+            add(sw([[-0.03, 0.06, 0], [-0.11, 0.09, 0], [-0.2, 0.03, 0]], [0.065, 0.04, 0.003], { nv: 14 }), C1, 0, 0, 0, 0, 0, 0, 1, 1, 1, hd);
+            add(sph, BK, 0.03, -0.005, 0, 0, 0, 0, 0.07, 0.076, 0.068, hd);
+            add(sph, M3, 0.035, 0.0, 0, 0, 0, 0, 0.058, 0.064, 0.052, hd);
+            add(sw([[0.04, -0.045, 0], [0.07, -0.06, 0], [0.085, -0.075, 0]], [0.036, 0.032, 0.02], { nv: 12, ey: 0.8 }), M3, 0, 0, 0, 0, 0, 0, 1, 1, 1, hd);
+            add(G("gteeth", () => merge([-2, -1, 0, 1, 2].map((k) => [boxG, new THREE.Matrix4().makeScale(0.004, 0.016, 0.008).setPosition(0.098 - Math.abs(k) * 0.005, -0.072, k * 0.01)]))), BK, 0, 0, 0, 0, 0, 0, 1, 1, 1, hd);
+            eye(hd, 0.078, 0.008, 0.024, 0.014, false);
+            const sc = grp(arms[0][0], 0.17, -0.14, 0);
+            sc.rotation.z = 1.3;
+            sc.userData.nb = true;
+            add(sw([[-0.4, 0, 0], [0, 0.012, 0], [0.42, 0, 0]], [0.01, 0.012, 0.01], { nv: 8 }), M2, 0, 0, 0, 0, 0, 0, 1, 1, 1, sc);
+            const bl = grp(sc, 0.42, 0, 0);
+            bl.rotation.z = 0.5;
+            add(ext("scythe", [[0, 0], [0.05, 0.06], [0.02, 0.2], [-0.1, 0.36], [-0.26, 0.42], [-0.12, 0.3], [-0.04, 0.17], [-0.04, 0.02]], 0.002, 0.006, 40), M3, 0, 0, 0, 0, 0, 0, 1, 1, 1, bl);
+            add(sw([[0.055, 0.06, 0], [0.03, 0.2, 0], [-0.09, 0.365, 0], [-0.26, 0.425, 0]], [0.004, 0.006, 0.006, 0.002], { nv: 6 }), GL, 0, 0, 0, 0, 0, 0, 1, 1, 1, bl);
+          }
+          // まわりをめぐる人魂
+          const wisps = [0, 1, 2, 3].map((k) => {
+            const g = grp(root);
+            g.userData.nb = true;
+            add(sph, GL, 0, 0, 0, 0, 0, 0, 0.022, 0.03, 0.022, g);
+            add(tooth, GL, 0, 0.015, 0, 0, 0, Math.PI / 2, 0.06, 0.018, 0.018, g);
+            halo(g, 0, 0, 0, 0.2, 0.6);
+            return g;
+          });
+          anim.push(() => {
+            const t = S.t;
+            core.scale.set(0.04 + Math.sin(t * 3.4) * 0.006, 0.05 + Math.sin(t * 3.4) * 0.006, 0.04);
+            hc.scale.setScalar(0.45 + Math.sin(t * 3.4) * 0.08);
+            wisps.forEach((g, k) => g.position.set(Math.cos(t * 1.1 + k * 1.57) * 0.42, 0.55 + Math.sin(t * 1.9 + k * 2) * 0.22, Math.sin(t * 1.1 + k * 1.57) * 0.42));
+            fig.rotation.z = -0.2 - S.climb * 0.12;
+            hd.rotation.y = Math.sin(t * 0.7) * 0.2 + S.turn * 0.3;
+            hd.rotation.z = Math.sin(t * 1.1) * 0.06 + 0.1;
+            for (const [sh, sg] of arms) sh.rotation.set(0.25, 0, 0.45 + Math.sin(t * 1.4 + sg * 1.3) * 0.15);
+          });
+        },
+        crystal() {
+          S.w = 1.6;
+          S.lift = 0.05;
+          const MX = PM({ color: bright.clone().lerp(glow, 0.5), emissive: glow, emissiveIntensity: 0.3, roughness: 0.05, metalness: 0.1, clearcoat: 1, clearcoatRoughness: 0.02, flatShading: true, transparent: true, opacity: 0.86, envMapIntensity: 1.6 });
+          // 大きな結晶と、まわりに生えた小さな結晶。中に光る芯
+          const cg = grp(root, 0, 0.6, 0);
+          const core = add(sph, GL, 0, 0, 0, 0, 0, 0, 0.05, 0.2, 0.05, cg);
+          add(gemG, MX, 0, 0, 0, 0, 0.3, 0, 0.15, 0.72, 0.15, cg);
+          for (let k = 0; k < 11; k++) {
+            const a = (k / 11) * 6.2832 + rnd(k), up = k % 2 ? 1 : -1, l = 0.2 + rnd(k + 20) * 0.18;
+            put(gemG, MX, [Math.cos(a) * 0.09, up * (0.1 + rnd(k + 4) * 0.08), Math.sin(a) * 0.09], [Math.sin(a), 0, -Math.cos(a)], [Math.cos(a) * 0.55, up, Math.sin(a) * 0.55], 0.04 + rnd(k + 8) * 0.025, l, 0.04 + rnd(k + 8) * 0.025, cg);
+          }
+          const hc = halo(cg, 0, 0, 0, 0.9, 0.5);
+          // 結晶をつかむ金のつめと、逆向きに回る2本の輪
+          for (const up of [1, -1]) for (let k = 0; k < 3; k++) {
+            const a = k * 2.094 + (up > 0 ? 0 : 1.05);
+            put(hornG(0.14, 1.1, 0.06), M2, [Math.cos(a) * 0.2, up * 0.28, Math.sin(a) * 0.2], [-Math.cos(a) * 0.2, -up, -Math.sin(a) * 0.2], [-Math.cos(a), 0, -Math.sin(a)], 0.22, 0.22, 0.22, cg);
+          }
+          for (const up of [1, -1]) add(tor(0.12), M2, 0, up * 0.27, 0, Math.PI / 2, 0, 0, 0.2, 0.2, 0.2, cg);
+          const rings = [0, 1].map((i) => {
+            const g = grp(cg);
+            g.userData.nb = true;
+            add(tor(0.035), M2, 0, 0, 0, Math.PI / 2, 0, 0, 0.36 + i * 0.06, 0.36 + i * 0.06, 0.36, g);
+            add(annulus(0.86), RN, 0, 0, 0, 0, 0, 0, 0.35 + i * 0.06, 0.35, 0.35 + i * 0.06, g);
+            for (let k = 0; k < 6; k++) add(gemG, GL, Math.cos(k * 1.047) * (0.36 + i * 0.06), 0, Math.sin(k * 1.047) * (0.36 + i * 0.06), 0, 0, 0, 0.012, 0.06, 0.012, g);
+            return g;
+          });
+          // 左右に浮く刃のような結晶(腕のかわり)
+          const blades = [];
+          mirror(root, (g, sg) => {
+            const b = grp(g, 0.05, 0.62, 0.42);
+            b.userData.nb = true;
+            add(gemG, MX, 0, 0, 0, 0, 0, -0.5, 0.045, 0.42, 0.03, b);
+            add(sph, GL, 0, 0, 0, 0, 0, -0.5, 0.012, 0.14, 0.01, b);
+            add(tor(0.15), M2, 0, 0, 0, Math.PI / 2, 0, 0, 0.05, 0.05, 0.05, b);
+            blades.push([b, sg]);
+          });
+          // めぐるかけらと、ときどき走る稲妻
+          const sh = [0, 1, 2, 3, 4, 5, 6].map((k) => add(gemG, k % 2 ? GL : MX, 0, 0, 0, 0, 0, 0, 0.02 + rnd(k + 9) * 0.015, 0.09 + rnd(k) * 0.06, 0.02 + rnd(k + 9) * 0.015));
+          sh.forEach((o) => (o.userData.nb = true));
+          const bolts = [0, 1, 2].map((k) => {
+            const P = [[0, 0, 0]];
+            for (let i = 1; i <= 7; i++) P.push([i * 0.075, (hash(k * 50 + i) - 0.5) * 0.12, (hash(k * 50 + i + 20) - 0.5) * 0.12]);
+            const g = grp(cg);
+            g.userData.nb = true;
+            add(G("bolt" + k, () => {
+              const parts = [];
+              for (let i = 0; i < 7; i++) {
+                const d = [P[i + 1][0] - P[i][0], P[i + 1][1] - P[i][1], P[i + 1][2] - P[i][2]];
+                parts.push([cylG, bas(P[i], [-d[1], d[0], 0.0001], d, 0.006, Math.hypot(d[0], d[1], d[2]), 0.006).multiply(new THREE.Matrix4().makeTranslation(0, 0.5, 0))]);
+              }
+              return merge(parts);
+            }), GL, 0, 0, 0, 0, 0, 0, 1, 1, 1, g);
+            return g;
+          });
+          anim.push(() => {
+            const t = S.t;
+            cg.rotation.y = t * 0.5;
+            core.scale.set(0.05 + Math.sin(t * 5) * 0.012, 0.2, 0.05 + Math.sin(t * 5) * 0.012);
+            hc.scale.setScalar(0.9 + Math.sin(t * 5) * 0.15);
+            rings[0].rotation.set(0.5 + Math.sin(t * 0.7) * 0.2, t * 1.3, 0.2);
+            rings[1].rotation.set(-0.4, -t * 0.9, 0.5 + Math.cos(t * 0.6) * 0.2);
+            for (const [b, sg] of blades) ((b.position.y = 0.62 + Math.sin(t * 1.6 + sg) * 0.05), (b.rotation.z = Math.sin(t * 1.2 + sg) * 0.2 - S.climb * 0.3), (b.rotation.y = Math.sin(t * 0.9) * 0.3));
+            sh.forEach((o, k) => {
+              const a = (k / 7) * 6.2832 + t * (0.9 + (k % 3) * 0.2);
+              o.position.set(Math.cos(a) * 0.5, 0.6 + Math.sin(t * 2 + k * 1.3) * 0.28, Math.sin(a) * 0.5);
+              o.rotation.set(t + k, t * 2, 0.4);
+            });
+            bolts.forEach((g, k) => {
+              const n = Math.floor(t * 11 + k * 3.7), on = hash(n * 7 + k) > 0.55;
+              g.visible = on;
+              if (on) g.rotation.set(hash(n) * 6.28, hash(n + 5) * 6.28, hash(n + 9) * 6.28);
+            });
+          });
+        },
+      };
+      BUILD[kind]();
+      // 高さ1ほどにそろえて、足もとを原点へ(翼・マントなど、はみ出してよい部品は測らない)
       const wrap = new THREE.Group();
       wrap.add(root);
-      const bx = new THREE.Box3().setFromObject(root), sz = bx.getSize(new THREE.Vector3());
-      const k = 1 / Math.max(sz.y, 0.6);
-      root.scale.setScalar(k);
-      root.position.y = -bx.min.y * k;
-      wrap.userData.tick = (t) => {
+      const tick = (t) => {
+        const dt = Math.min(0.1, Math.max(0, t - S.t)), d = wrap.userData.drive;
+        S.t = t;
+        if (d) {
+          const k = Math.min(1, dt * 5);
+          S.climb += (d.climb - S.climb) * k;
+          S.turn += (d.turn - S.turn) * k;
+        }
+        S.amp = 0.75 + 0.35 * S.climb;
+        S.fold = Math.max(0, -S.climb);
+        S.ph += dt * S.w * (1 + 0.3 * S.climb);
         for (const f of anim) f(t);
+        wrap.userData.lift = -Math.sin(S.ph - 0.5) * S.lift * S.amp; // 打ち下ろすと体が持ち上がる
       };
+      tick(0);
+      root.updateMatrixWorld(true);
+      const bx = new THREE.Box3(), tb = new THREE.Box3();
+      const measure = (o) => {
+        if (o.userData.nb) return;
+        if (o.isMesh) {
+          if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+          bx.union(tb.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld));
+        }
+        for (const c of o.children) measure(c);
+      };
+      measure(root);
+      const sz = bx.getSize(new THREE.Vector3());
+      const k = 1 / Math.max(sz.y, sz.x * 0.62, 0.6);
+      root.scale.setScalar(k);
+      root.position.set((-(bx.min.x + bx.max.x) / 2) * k * 0.5, -bx.min.y * k, 0);
+      wrap.userData.tick = tick;
+      wrap.userData.kind = kind;
       return wrap;
     }
     function atkTag(m, side) {
@@ -5277,12 +6748,14 @@ const City = (() => {
         if (!L.seen && L.gone == null) L.gone = t;
         const bike = L.side === "you" ? me.g : rival.g;
         const yaw = bike.rotation.y, dx = Math.cos(-yaw), dz = Math.sin(-yaw);
-        // 自転車の斜め後ろの上に浮かぶ(カメラから自転車が隠れないように、左右と上に分ける)
+        // 自転車の斜め後ろの上を飛ぶ(カメラから自転車が隠れないように、左右と上に分ける)
         const back = L.slot === 2 ? 2.6 : 1.8, lat = L.slot === 0 ? 1.7 : L.slot === 1 ? -1.7 : 0;
-        // 飛んでいる感じ: 大きくゆっくり上下しながら、ときどき深く沈んで舞い上がる。左右にもゆれる
-        const ph = t * 0.9 + L.slot * 2.1, bob = Math.sin(ph) * 0.55 + Math.sin(ph * 2.3 + 1) * 0.18 + Math.max(0, Math.sin(ph * 0.37)) ** 6 * -0.9;
-        const sway = Math.sin(ph * 0.7 + 0.5) * 0.45;
-        const tx = bike.position.x - dx * back + dz * (lat + sway), tz = bike.position.z - dz * back - dx * (lat + sway), ty = bike.position.y + (L.slot === 2 ? 3.6 : 2.6) + bob;
+        // 飛ぶ道すじ: 上下に大きく波うち、左右は8の字、前後にも出入りする。ときどき深く急降下して舞い上がる
+        const ph = t * 0.9 + L.slot * 2.1, dive = Math.max(0, Math.sin(ph * 0.37)) ** 6;
+        const oy = Math.sin(ph) * 0.6 + Math.sin(ph * 2.3 + 1) * 0.2 - dive * 0.8;
+        const oz = Math.sin(ph * 0.5 + 0.5) * 0.6 + Math.sin(ph * 1.3) * 0.15;
+        const ox = Math.cos(ph * 0.5 + 0.5) * 0.45 + dive * 0.5;
+        const tx = bike.position.x - dx * (back - ox) + dz * (lat + oz), tz = bike.position.z - dz * (back - ox) - dx * (lat + oz), ty = bike.position.y + (L.slot === 2 ? 3.6 : 2.6) + oy;
         const k = 1 - Math.exp(-dt * 5);
         const o = L.obj;
         if (o.scale.x < 0.05) o.position.set(tx, ty, tz);
@@ -5290,12 +6763,28 @@ const City = (() => {
         o.position.y += (ty - o.position.y) * k;
         o.position.z += (tz - o.position.z) * k;
         o.rotation.y = yaw;
-        L.body.rotation.y = Math.sin(t * 0.8 + L.slot) * 0.25;
-        // 上がるときは頭を上げ、下がるときは下げる。横へ動くときは体を傾ける
-        L.body.rotation.z = Math.cos(ph) * 0.3 + Math.cos(ph * 2.3 + 1) * 0.1;
-        L.body.rotation.x = -Math.cos(ph * 0.7 + 0.5) * 0.3;
+        // 動く向きに体を合わせる: 上昇で頭を上げ、下降で下げる。横へ動くとき・道を曲がるときは内側へ傾く
+        let dyaw = yaw - (L.yaw == null ? yaw : L.yaw);
+        dyaw -= Math.round(dyaw / (2 * Math.PI)) * 2 * Math.PI;
+        L.yaw = yaw;
+        const q = L.pv || (L.pv = { oy, oz, vy: 0, vz: 0, yr: 0 }), e = Math.min(1, dt * 4), idt = dt > 1e-4 ? 1 / dt : 0;
+        const cl = (v, a) => Math.max(-a, Math.min(a, v));
+        q.vy += ((oy - q.oy) * idt - q.vy) * e;
+        q.vz += ((oz - q.oz) * idt - q.vz) * e;
+        q.yr += (cl(dyaw * idt, 2) - q.yr) * e;
+        q.oy = oy;
+        q.oz = oz;
+        L.body.rotation.y = cl(q.vz * 0.25, 0.4);
+        L.body.rotation.z = cl(q.vy * 0.42, 0.6);
+        L.body.rotation.x = cl(-q.vz * 0.6 - q.yr * 0.5, 0.7);
         L.ring.rotation.z += dt * 1.5;
-        if (L.fb && L.fb.userData.tick) L.fb.userData.tick(performance.now() / 1000 + L.slot * 1.3);
+        if (L.fb && L.fb.userData.tick) {
+          // 上昇中は強く速く羽ばたき、下降中は翼をたたんで滑空する。首と尾は遅れてついてくる
+          L.fb.userData.drive = { climb: cl(q.vy * 0.9, 1), turn: cl(q.vz * 0.6 + q.yr * 0.6, 1) };
+          L.fb.userData.tick(performance.now() / 1000 + L.slot * 1.3);
+          // 羽ばたきに合わせて体が上下する
+          L.body.position.y = (L.fb.userData.lift || 0) * size(L.m);
+        } else L.body.position.y = 0;
         // 出てくるときは光って大きくなり、やられたら小さくなって消える
         const life = L.gone == null ? Math.min(1, (t - L.born) / 0.6) : Math.max(0, 1 - (t - L.gone) / 0.5);
         const sc = Math.max(0.01, life < 1 && L.gone == null ? 1 - Math.pow(1 - life, 3) * 1 + Math.sin(life * Math.PI) * 0.25 : life);
