@@ -2928,10 +2928,25 @@ const City = (() => {
       const THREE = T();
       const M4 = (x, y, z, rx, ry, rz, sx, sy, sz) => new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx || 0, ry || 0, rz || 0)), new THREE.Vector3(sx || 1, sy || sx || 1, sz || sx || 1));
       // 材質: 塗装(つやがあって空が映る)・ガラス(暗くてよく映る)・つやなし(タイヤ・ライトなど、そのままの色)
-      const paint = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.35, roughness: 0.34, envMapIntensity: 0.8 });
+      const paint = new THREE.MeshPhysicalMaterial({ vertexColors: true, metalness: 0.45, roughness: 0.42, envMapIntensity: 0.9, clearcoat: 1, clearcoatRoughness: 0.06 }); // つやのある上塗り
       const glassM = new THREE.MeshStandardMaterial({ color: 0x0d141b, metalness: 0.85, roughness: 0.06, envMapIntensity: 1.6 });
       const flat = new THREE.MeshBasicMaterial({ vertexColors: true });
       const cloth = new THREE.MeshLambertMaterial({ vertexColors: true });
+      // 乗用車のガラス: 中が見える、うすい色つき。空やまわりが映る
+      const glass2 = new THREE.MeshStandardMaterial({ color: 0x1a2630, metalness: 0.6, roughness: 0.05, envMapIntensity: 1.5, transparent: true, opacity: 0.62, depthWrite: false });
+      // ヘッドライトが路面を照らす光(夕方と夜)
+      const beamG = new THREE.PlaneGeometry(9, 3.4);
+      beamG.rotateX(-Math.PI / 2);
+      const bcv = document.createElement("canvas");
+      bcv.width = 128;
+      bcv.height = 64;
+      const bcx = bcv.getContext("2d"), bgr = bcx.createRadialGradient(8, 32, 2, 8, 32, 120);
+      bgr.addColorStop(0, "rgba(255,246,214,0.75)");
+      bgr.addColorStop(0.5, "rgba(255,246,214,0.22)");
+      bgr.addColorStop(1, "rgba(255,246,214,0)");
+      bcx.fillStyle = bgr;
+      bcx.fillRect(0, 0, 128, 64);
+      const beamM = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(bcv), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
       // 足もとの丸い影(本物の影を使わない端末で、地面に浮いて見えないように)
       const sc = document.createElement("canvas");
       sc.width = sc.height = 64;
@@ -3132,14 +3147,59 @@ const City = (() => {
           for (const sz of [-1, 1]) {
             const zz = sz * (hw(wx) - 0.1);
             const m = M4(wx, wr, zz, Math.PI / 2, 0, 0);
-            fl.push({ geo: tg, m, c: 0x0d0d0e }, { geo: rg, m, c: 0xb4bac0 }, { geo: hg, m, c: 0x3c4044 });
+            // タイヤは角を丸く(ドーナツの形)、ホイールは奥にへこませる
+            fl.push({ geo: new THREE.TorusGeometry(wr - 0.085, 0.085, 10, 26), m: M4(wx, wr, zz), c: 0x0d0d0e }, { geo: new THREE.TorusGeometry(wr - 0.1, 0.07, 8, 26), m: M4(wx, wr, zz + sz * 0.04), c: 0x16171a });
+            fl.push({ geo: new THREE.CylinderGeometry(wr * 0.7, wr * 0.7, 0.16, 20), m, c: 0x0d0d0e }, { geo: rg, m: M4(wx, wr, zz + sz * 0.02, Math.PI / 2, 0, 0), c: 0xb4bac0 }, { geo: hg, m: M4(wx, wr, zz + sz * 0.05, Math.PI / 2, 0, 0), c: 0x3c4044 });
+            fl.push({ geo: new THREE.TorusGeometry(wr * 0.66, 0.012, 6, 26), m: M4(wx, wr, zz + sz * 0.13), c: 0xe4e8ec }); // リムのふち
             // スポークのすき間(暗い板を5枚)
-            for (let q = 0; q < 5; q++) fl.push({ geo: boxG(wr * 0.13, wr * 0.36, 0.01), m: M4(wx + Math.sin((q / 5) * 6.283) * wr * 0.4, wr + Math.cos((q / 5) * 6.283) * wr * 0.4, zz + sz * 0.11, 0, 0, -(q / 5) * 6.283), c: 0x1a1c1e });
+            for (let q = 0; q < 5; q++) fl.push({ geo: boxG(wr * 0.13, wr * 0.36, 0.01), m: M4(wx + Math.sin((q / 5) * 6.283) * wr * 0.4, wr + Math.cos((q / 5) * 6.283) * wr * 0.4, zz + sz * 0.135, 0, 0, -(q / 5) * 6.283), c: 0x1a1c1e });
             fl.push({ geo: arch, m: M4(wx, wr, sz * (hw(wx) + 0.004), 0, sz > 0 ? 0 : Math.PI, 0), c: 0x0b0b0c });
           }
         if (o.sign) fl.push({ geo: boxG(0.42, 0.14, 0.2), m: M4((xR0 + xR1) / 2, Ht + 0.09, 0), c: o.sign });
+        // ---- 細部 ----
+        // 室内(ガラスごしに見える): 座席・背もたれ・ヘッドレスト・ダッシュボード・ハンドル・運転している人
+        const inn = [], seatY = belt - 0.34, fx = xW1 - 1.15, rx2 = xR0 + 0.45, zw = W * 0.2;
+        for (const sx of [fx, rx2])
+          for (const sz of [-1, 1]) {
+            inn.push({ geo: boxG(0.48, 0.14, 0.44), m: M4(sx, seatY, sz * zw), c: 0x2c2e33 });
+            inn.push({ geo: boxG(0.12, 0.58, 0.44), m: M4(sx - 0.25, seatY + 0.32, sz * zw, 0, 0, 0.18), c: 0x33363b });
+            inn.push({ geo: boxG(0.1, 0.17, 0.24), m: M4(sx - 0.31, seatY + 0.7, sz * zw), c: 0x2c2e33 });
+          }
+        inn.push({ geo: boxG(0.35, 0.22, W * 0.8), m: M4(xW1 - 0.42, belt - 0.08, 0), c: 0x1e2024 }); // ダッシュボード
+        inn.push({ geo: new THREE.TorusGeometry(0.17, 0.02, 6, 16), m: M4(xW1 - 0.7, belt + 0.02, zw, 0, Math.PI / 2 - 0.0, 0.0), c: 0x101113 }); // ハンドル(右)
+        inn.push({ geo: new THREE.CapsuleGeometry(0.17, 0.3, 4, 8), m: M4(fx - 0.06, seatY + 0.38, zw, 0, 0, 0.1), c: [0x39445a, 0x5a3d3a, 0x3d4a3c, 0x6a6a6e][Math.floor(rnd() * 4)] }); // 運転している人
+        inn.push({ geo: new THREE.SphereGeometry(0.105, 10, 8), m: M4(fx - 0.02, seatY + 0.78, zw), c: 0xd9a27e });
+        inn.push({ geo: new THREE.SphereGeometry(0.108, 10, 8, 0, 6.3, 0, 1.7), m: M4(fx - 0.035, seatY + 0.8, zw), c: 0x1a1512 });
+        // ワイパー・屋根のアンテナ・マフラー・泥よけの下の黒い帯・バンパーの継ぎ目
+        for (const sz of [-1, 1]) fl.push({ geo: boxG(0.02, 0.02, W * 0.34), m: M4(xW1 - 0.05, top(xW1 - 0.05) + 0.015, sz * W * 0.17 + 0.05, 0, 0.12, 0), c: 0x0c0c0d });
+        body.push({ geo: new THREE.ConeGeometry(0.035, 0.16, 6), m: M4(xR0 + 0.15, Ht + 0.06, 0, 0, 0, 0.5, 1.6, 1, 0.5), c: 0x101113 });
+        fl.push({ geo: new THREE.CylinderGeometry(0.03, 0.03, 0.14, 8), m: M4(x0 + 0.04, cl + 0.07, -W * 0.28, 0, 0, Math.PI / 2), c: 0x8a8d90 });
+        for (const sz of [-1, 1]) {
+          fl.push({ geo: boxG(L * 0.5, 0.07, 0.012), m: M4(0, cl + 0.1, sz * (hw(0) * 0.972 + 0.004)), c: 0x101113 });
+          fl.push({ geo: boxG(0.008, 0.32, 0.012), m: M4(x1 - 0.42, cl + 0.36, sz * (hw(x1 - 0.42) * 0.99 + 0.004)), c: 0x0c0c0d });
+          fl.push({ geo: boxG(0.008, 0.32, 0.012), m: M4(x0 + 0.4, cl + 0.36, sz * (hw(x0 + 0.4) * 0.99 + 0.004)), c: 0x0c0c0d });
+          // ヘッドライトの中のレンズ(丸い目)と、テールライトの中の白い部分
+          fl.push({ geo: new THREE.SphereGeometry(0.045, 10, 8), m: M4(x1 - 0.07, nH - 0.12, sz * W * 0.3, 0, 0, 0, 0.5, 1, 1), c: 0xffffff });
+          fl.push({ geo: new THREE.TorusGeometry(0.055, 0.008, 6, 14), m: M4(x1 - 0.055, nH - 0.12, sz * W * 0.3, 0, Math.PI / 2, 0), c: 0x9aa0a6 });
+        }
+        // ブレーキランプ(止まるとき・減速するときに光る)と、ヘッドライトの光(夕方と夜)
+        const bk = [];
+        for (const sz of [-1, 1]) bk.push({ geo: boxG(0.17, 0.12, W * 0.2), m: M4(x0 + 0.095, tH - 0.13, sz * W * 0.34, 0, sz * 0.45, 0), c: 0xff3020 });
+        bk.push({ geo: boxG(0.03, 0.03, W * 0.3), m: M4(xG0 + 0.05, top(xG0 + 0.05) + 0.02, 0), c: 0xff3020 }); // 上の3つ目のランプ
+        const brake = new THREE.Mesh(merge(bk), flat);
+        brake.userData.brake = true;
+        brake.visible = false;
+        const beam = new THREE.Mesh(beamG, beamM);
+        beam.position.set(x1 + 4.2, 0.06, 0);
+        beam.userData.beam = true;
+        beam.visible = false;
+        const lampOn = [];
+        for (const sz of [-1, 1]) lampOn.push({ geo: new THREE.SphereGeometry(0.09, 8, 6), m: M4(x1 - 0.05, nH - 0.12, sz * W * 0.31, 0, 0, 0, 0.4, 1, 1.6), c: 0xfffbe6 });
+        const lamp = new THREE.Mesh(merge(lampOn), flat);
+        lamp.userData.beam = true;
+        lamp.visible = false;
         const g = new THREE.Group();
-        g.add(new THREE.Mesh(merge(body), paint), new THREE.Mesh(merge(gl), glassM), new THREE.Mesh(merge(fl), flat));
+        g.add(new THREE.Mesh(merge(inn), cloth), new THREE.Mesh(merge(body), paint), new THREE.Mesh(merge(fl), flat), brake, lamp, beam, new THREE.Mesh(merge(gl), glass2));
         g.userData.size = [L * 1.25, W * 1.5];
         return g;
       };
@@ -3301,6 +3361,11 @@ const City = (() => {
         // 向こうから来る車どうしも、前の車との間をあける
         if (e.kind === "car" && e.dir < 0) for (const o of list) if (o !== e && o.kind === "car" && o.dir < 0 && o.along < e.along && e.along - o.along < 7) v = 0;
         e.cv = v;
+        if (e.kind === "car") {
+          if (e.lamps === undefined) e.lamps = e.obj.children.filter((o) => o.userData.brake || o.userData.beam);
+          const night = timeMode !== "day";
+          for (const o of e.lamps) o.visible = o.userData.brake ? v < e.v * 0.6 : night;
+        }
         e.along += e.dir * v * dt;
         r = Roads.ride(e.along);
         const p = at(e.along);
