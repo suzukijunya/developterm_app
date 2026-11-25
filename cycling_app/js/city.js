@@ -3163,11 +3163,22 @@ const City = (() => {
           { geo: new THREE.SphereGeometry(0.108, 14, 10), m: M4(0.005, 1.62, 0, 0, 0, 0, 1, 1.12, 0.94), c: sk },
           { geo: new THREE.SphereGeometry(0.114, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), m: M4(-0.012, 1.635, 0, 0, 0, 0.25, 1, 1.1, 0.97), c: hr }, // 髪
         ];
-        for (const sz of [-1, 1]) {
-          parts.push({ geo: cap(0.045, 0.24), m: M4(0.02 * sz, 1.25, sz * 0.215 * wide, 0, 0, 0.12 * sz), c: shirt }); // 上腕
-          parts.push({ geo: cap(0.038, 0.22), m: M4(0.07 * sz, 0.98, sz * 0.225 * wide, 0, 0, 0.3 * sz), c: sk }); // 前腕
-        }
+        // 顔(目と口)・耳・えり。3人に1人は、肩かけかばんかリュック
+        for (const sz of [-1, 1]) (parts.push({ geo: new THREE.SphereGeometry(0.012, 6, 5), m: M4(0.098, 1.635, sz * 0.04), c: 0x1c1410 }), parts.push({ geo: new THREE.SphereGeometry(0.022, 6, 5), m: M4(0, 1.62, sz * 0.105, 0, 0, 0, 0.6, 1, 0.5), c: sk }));
+        parts.push({ geo: boxG(0.012, 0.01, 0.04), m: M4(0.1, 1.575, 0), c: 0x7a3a34 });
+        parts.push({ geo: new THREE.CylinderGeometry(0.075, 0.085, 0.04, 8), m: M4(0, 1.46, 0), c: shirt });
+        const bagK = rnd();
+        if (bagK < 0.2) parts.push({ geo: boxG(0.14, 0.36, 0.3), m: M4(-0.17, 1.2, 0), c: [0x2a2c30, 0x3a4a6a, 0x6a3a2a][Math.floor(rnd() * 3)] }); // リュック
+        else if (bagK < 0.36) (parts.push({ geo: boxG(0.3, 0.22, 0.08), m: M4(0.02, 0.95, 0.27 * wide), c: [0x4a3424, 0x1c1c1e, 0x8a7a5a][Math.floor(rnd() * 3)] }), parts.push({ geo: boxG(0.02, 0.62, 0.02), m: M4(0, 1.22, 0.14 * wide, 0.42, 0, 0), c: 0x1c1c1e }));
         const body = new THREE.Mesh(merge(parts), cloth);
+        // 腕は肩を支点に振る(歩くとき、脚と逆に動く)
+        const armG = merge([{ geo: cap(0.045, 0.24), m: M4(0, -0.17, 0), c: shirt }, { geo: cap(0.038, 0.22), m: M4(0.02, -0.44, 0), c: sk }, { geo: new THREE.SphereGeometry(0.045, 8, 6), m: M4(0.03, -0.62, 0), c: sk }]);
+        const armL = new THREE.Mesh(armG, cloth), armR = new THREE.Mesh(armG, cloth);
+        armL.position.set(0, 1.42, -0.215 * wide);
+        armR.position.set(0, 1.42, 0.215 * wide);
+        g.add(armL, armR);
+        g.userData.arms = [armL, armR];
+        g.userData.body = body;
         const legG = merge([{ geo: cap(0.068, 0.62), m: M4(0, -0.39, 0), c: pants }, { geo: boxG(0.24, 0.07, 0.1), m: M4(0.05, -0.8, 0), c: 0x202024 }]);
         const legL = new THREE.Mesh(legG, cloth), legR = new THREE.Mesh(legG, cloth);
         legL.position.set(0, 0.86, -0.085 * wide);
@@ -3298,8 +3309,12 @@ const City = (() => {
         e.obj.rotation.y = -Math.atan2(p.tz, p.tx) + (e.dir < 0 ? Math.PI : 0);
         if (e.kind === "ped") {
           const ph = (s.t * 6 + e.lane * 10) % (Math.PI * 2);
-          e.obj.userData.legs[0].rotation.z = Math.sin(ph) * 0.45;
-          e.obj.userData.legs[1].rotation.z = -Math.sin(ph) * 0.45;
+          // 止まっているとき(信号待ち)は動かさない
+          const k = Math.min(1, v / 0.6), ud = e.obj.userData;
+          ud.legs[0].rotation.z = Math.sin(ph) * 0.45 * k;
+          ud.legs[1].rotation.z = -Math.sin(ph) * 0.45 * k;
+          if (ud.arms) (ud.arms[0].rotation.z = -Math.sin(ph) * 0.4 * k), (ud.arms[1].rotation.z = Math.sin(ph) * 0.4 * k);
+          if (ud.body) (ud.body.position.y = Math.abs(Math.cos(ph)) * 0.025 * k), (ud.body.rotation.y = Math.sin(ph) * 0.07 * k);
         } else if (e.kind === "bike") e.obj.userData.pose(dt * 7, (v * dt) / 0.34);
         // 自分との位置関係
         const rel = e.along - s.along;
@@ -4877,9 +4892,12 @@ const City = (() => {
       const tm = renderer.toneMapping, vis = me && me.g.visible;
       renderer.toneMapping = THREE.NoToneMapping;
       if (me) me.g.visible = false; // 自分は映さない(撮る場所が自分の中なので)
+      const bg = scene.background;
+      if (skyFlat) scene.background = skyFlat;
       renderer.setRenderTarget(rt, face);
       renderer.render(scene, cube.children[face]);
       renderer.setRenderTarget(null);
+      scene.background = bg;
       if (me) me.g.visible = vis;
       renderer.toneMapping = tm;
       if (++face >= 6) {
@@ -5081,6 +5099,7 @@ const City = (() => {
     dusk: { sky: [[0, "#0b1230"], [0.45, "#27306a"], [0.62, "#b0567a"], [0.72, "#f0a060"], [1, "#f0a060"]], fog: 0x6a4a66, near: 120, far: 620, hemi: [0xaab4ff, 0x3a3038, 0.85], sun: [0xffb070, 0.9, [-0.6, 0.35, 0.5]], glow: 0.85, win: 0.75, ground: 0x23272b, photo: 0xb8aab4 },
     night: { sky: [[0, "#02040c"], [0.6, "#0a1430"], [0.75, "#1c2340"], [1, "#2a2a3a"]], fog: 0x141a2c, near: 90, far: 520, hemi: [0x5a6aa0, 0x10121a, 0.5], sun: [0x8aa0ff, 0.25, [0.3, 0.6, -0.4]], glow: 1.1, win: 1, ground: 0x15171a, photo: 0x6a6e80 },
   };
+  let skyFlat = null;
   function setTime(m) {
     const THREE = T();
     const c = TIMES[m] || TIMES.day;
@@ -5088,15 +5107,75 @@ const City = (() => {
     try {
       localStorage.setItem("city_time", timeMode);
     } catch (e) {}
-    const cv = document.createElement("canvas");
-    cv.width = 4;
-    cv.height = 256;
-    const x = cv.getContext("2d"), gr = x.createLinearGradient(0, 0, 0, 256);
-    for (const [o, col] of c.sky) gr.addColorStop(o, col);
+    // 空: ぐるり360度の絵にして、雲・太陽(夜は月と星)・地平線のかすみを描く。窓や車にも、この空が映る
+    const cv = document.createElement("canvas"), SW = 2048, SH = 1024;
+    cv.width = SW;
+    cv.height = SH;
+    const x = cv.getContext("2d"), gr = x.createLinearGradient(0, 0, 0, SH / 2);
+    // 色の変わり目を地平線の近くに寄せる(空の高い所まで青く。寄せないと、見える範囲がほとんど白っぽくなる)
+    for (const [o, col] of c.sky) gr.addColorStop(Math.pow(o, 0.4), col);
     x.fillStyle = gr;
-    x.fillRect(0, 0, 4, 256);
+    x.fillRect(0, 0, SW, SH / 2);
+    x.fillStyle = c.sky[c.sky.length - 1][1];
+    x.fillRect(0, SH / 2, SW, SH / 2);
+    const sdir = new THREE.Vector3(...c.sun[2]).normalize();
+    const sunX = (Math.atan2(sdir.z, sdir.x) / (2 * Math.PI) + 0.5) * SW, sunY = (0.5 - Math.asin(sdir.y) / Math.PI) * SH;
+    const night = m === "night", dusk = m === "dusk";
+    // 星(夜)
+    if (night) for (let i = 0; i < 700; i++) ((x.fillStyle = `rgba(255,255,${220 + Math.floor(hash(i * 3) * 35)},${0.3 + hash(i * 5) * 0.7})`), x.fillRect(hash(i * 7) * SW, hash(i * 11) * SH * 0.46, hash(i * 13) < 0.1 ? 2 : 1, hash(i * 13) < 0.1 ? 2 : 1));
+    // 太陽(月)と、そのまわりの光
+    for (const ox of [0, SW, -SW]) {
+      const g2 = x.createRadialGradient(sunX + ox, sunY, 0, sunX + ox, sunY, night ? 90 : 420);
+      g2.addColorStop(0, night ? "rgba(235,240,255,0.9)" : dusk ? "rgba(255,220,170,1)" : "rgba(255,255,244,1)");
+      g2.addColorStop(night ? 0.14 : 0.035, night ? "rgba(235,240,255,0.85)" : dusk ? "rgba(255,200,140,0.95)" : "rgba(255,255,240,0.95)");
+      g2.addColorStop(night ? 0.2 : 0.09, night ? "rgba(160,180,255,0.18)" : dusk ? "rgba(255,170,100,0.5)" : "rgba(255,250,225,0.45)");
+      g2.addColorStop(1, "rgba(255,255,255,0)");
+      x.fillStyle = g2;
+      x.fillRect(sunX + ox - 430, sunY - 430, 860, 860);
+    }
+    // 雲: やわらかい丸を重ねたかたまり。上が明るく、下が少し暗い。地平線に近いほど小さく、つぶれて見える
+    const cl = night ? [40, 46, 70] : dusk ? [255, 190, 160] : [255, 255, 255], sh2 = night ? [20, 24, 40] : dusk ? [120, 80, 110] : [176, 188, 204];
+    for (let i = 0; i < 46; i++) {
+      const cx = hash(i * 17 + 3) * SW, v = 0.06 + hash(i * 19 + 5) * 0.4, cy = v * SH, k = 0.35 + v * 1.6, w = (60 + hash(i * 23) * 150) / k, n = 14 + Math.floor(hash(i * 29) * 14);
+      for (let pass = 0; pass < 2; pass++)
+        for (let q = 0; q < n; q++) {
+          const px = cx + (hash(i * 31 + q * 7) - 0.5) * w * 2.2, py = cy + (hash(i * 37 + q * 11) - 0.5) * w * 0.34 + (pass ? -w * 0.08 : w * 0.06), r = w * (0.22 + hash(i * 41 + q * 13) * 0.3);
+          const col = pass ? cl : sh2;
+          for (const ox of [0, SW, -SW]) {
+            const g3 = x.createRadialGradient(px + ox, py, 0, px + ox, py, r);
+            g3.addColorStop(0, `rgba(${col[0]},${col[1]},${col[2]},${pass ? 0.5 : 0.34})`);
+            g3.addColorStop(1, `rgba(${col[0]},${col[1]},${col[2]},0)`);
+            x.fillStyle = g3;
+            x.save();
+            x.translate(px + ox, py);
+            x.scale(1, 0.5);
+            x.fillRect(-r, -r, r * 2, r * 2);
+            x.restore();
+          }
+        }
+    }
+    // 地平線のかすみ
+    const hz = x.createLinearGradient(0, SH * 0.445, 0, SH * 0.51);
+    const fc = new THREE.Color(c.fog), fs = `${Math.round(fc.r * 255)},${Math.round(fc.g * 255)},${Math.round(fc.b * 255)}`;
+    hz.addColorStop(0, `rgba(${fs},0)`);
+    hz.addColorStop(0.8, `rgba(${fs},0.75)`);
+    hz.addColorStop(1, `rgba(${fs},1)`);
+    x.fillStyle = hz;
+    x.fillRect(0, SH * 0.445, SW, SH * 0.6);
     const tx = new THREE.CanvasTexture(cv);
     tx.encoding = THREE.sRGBEncoding;
+    tx.mapping = THREE.EquirectangularReflectionMapping;
+    // 映り込みを撮るとき用の、かんたんな空(色のぼかしだけ)。360度の絵は、映り込みの撮影では黒く写ってしまうため
+    const fcv = document.createElement("canvas");
+    fcv.width = 4;
+    fcv.height = 256;
+    const fx = fcv.getContext("2d"), fg = fx.createLinearGradient(0, 0, 0, 256);
+    for (const [o, col] of c.sky) fg.addColorStop(o, col);
+    fx.fillStyle = fg;
+    fx.fillRect(0, 0, 4, 256);
+    if (skyFlat) skyFlat.dispose();
+    skyFlat = new THREE.CanvasTexture(fcv);
+    skyFlat.encoding = THREE.sRGBEncoding;
     if (scene.background && scene.background.dispose) scene.background.dispose();
     scene.background = tx;
     // 窓に映る空の色(真上と、地平線のあたり)。夜は映り込みを弱める
