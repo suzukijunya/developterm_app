@@ -1150,8 +1150,9 @@
         ${tab("ride", "🚴", ride ? "走行中" : "走る")}
         ${tab("history", "📋", "記録")}
         <a class="tab" href="garage.html"><span>🔧</span>ガレージ</a>
+        <a class="tab" href="city.html"><span>🏙️</span>シティ</a>
         ${tab("settings", "⚙️", "設定")}`;
-    const TABI = { ride: 0, history: 1, settings: 3 };
+    const TABI = { ride: 0, history: 1, settings: 4 };
     document.getElementById("tabink").style.setProperty("--x", TABI[view] || 0);
     renderMarquee();
     bind();
@@ -2544,7 +2545,7 @@ print("このファイルをスマホに送って(AirDrop など)、アプリの
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2027.1.28";
+  const APP_VERSION = "2027.1.29";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });

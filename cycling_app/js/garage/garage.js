@@ -467,7 +467,7 @@
 
   // ---------- 画面の骨組み(3Dの入れ物は作り直さない) ----------
   el.innerHTML = `
-    <header class="topbar"><div class="topbar-inner g-top"><a href="index.html" class="g-back">←</a>RIDE <span>ASSEMBLY</span></div></header>
+    <header class="topbar"><div class="topbar-inner g-top"><a href="index.html" class="g-back">←</a>RIDE <span>ASSEMBLY</span><a href="city.html" class="g-city" title="このバイクで、実際の街を3Dで走る">🏙️ シティ<i>デュエル</i></a></div></header>
     <div class="g-stage" id="stage">
       ${has3D ? "" : `<p class="g-no3d">3D表示を読み込めませんでした。通信状況を確認してください。数値の計算はこのまま使えます。</p>`}
       <div class="g-builds" id="builds"></div>

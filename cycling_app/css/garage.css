@@ -1742,3 +1742,6 @@ ol.g-svc-l { padding-left: 1.4em; }
 .g-diy-tool.inset { opacity: 0.75; cursor: default; }
 .g-maint-easy { margin-top: 10px; }
 .g-maint-easy > summary { cursor: pointer; font-size: 0.85rem; opacity: 0.85; }
+.g-city { margin-left: auto; font-size: 0.78rem; font-weight: 800; letter-spacing: 0; padding: 6px 12px; border-radius: 999px; background: linear-gradient(90deg, #ff8a1f, #ff5a3a); color: #fff; text-decoration: none; white-space: nowrap; }
+.g-city i { font-style: normal; }
+@media (max-width: 520px) { .g-city { padding: 5px 10px; margin-right: 4px; } .g-city i { display: none; } }
