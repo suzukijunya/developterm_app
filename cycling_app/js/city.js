@@ -1083,7 +1083,7 @@ const City = (() => {
       Shops.seen.add(key);
       await rest();
       try {
-        const o = Shops.place(kind, q, d.along);
+        const o = Shops.place(kind, q, d.along, nm0);
         if (o) group.add(o);
       } catch (e) {
         console.error(e);
@@ -1226,13 +1226,14 @@ const City = (() => {
       })();
       M = {
         wall: L(0xeeede8), dark: L(0x3c4046), grey: L(0x9a9da0), white: L(0xfafaf8), asph: L(0x55585c), line: L(0xf2f2ee), red: new THREE.MeshBasicMaterial({ color: 0xff3828 }), gold: L(0xc9a23a), pump: L(0xd8dadc), glass: new THREE.MeshStandardMaterial({ color: 0x7f97aa, metalness: 0.85, roughness: 0.08 }), inside,
-        conv: sign("#5b3fa8", "#f2c230", "コンビニ  24"), sup: sign("#c8362c", "#ffffff", "スーパーマーケット"), gas: sign("#1c8c8a", "#ffffff", "GS  セルフ"), koban: sign("#f4f4f0", "#2c4a8c", "交番  KOBAN", "#1c2c58"), post: sign("#d8402c", "#ffffff", "〒  郵便局"), bank: sign("#1f5f9e", "#d8c070", "銀行  ATM"),
+        conv: sign("#5b3fa8", "#f2c230", "コンビニ  24"), convA: sign("#1c2c58", "#d8b040", "コンビニ  A"), convC: sign("#1f5a3c", "#ffffff", "コンビニ  C"), convD: sign("#6a4a30", "#f0e0c0", "コンビニ"),
+        poleA: sign("#1c2c58", "#d8b040", "A", "#fff", 128, 128), poleCc: sign("#1f5a3c", "#ffffff", "C", "#fff", 128, 128), poleD: sign("#6a4a30", "#f0e0c0", "24", "#fff", 128, 128), wood: L(0x7a5a3a), sup: sign("#c8362c", "#ffffff", "スーパーマーケット"), gas: sign("#1c8c8a", "#ffffff", "GS  セルフ"), koban: sign("#f4f4f0", "#2c4a8c", "交番  KOBAN", "#1c2c58"), post: sign("#d8402c", "#ffffff", "〒  郵便局"), bank: sign("#1f5f9e", "#d8c070", "銀行  ATM"),
         poleC: sign("#5b3fa8", "#f2c230", "24", "#fff", 128, 128), poleG: sign("#1c8c8a", "#ffffff", "GS", "#fff", 128, 128), poleS: sign("#c8362c", "#ffffff", "P", "#fff", 128, 128),
       };
       return M;
     }
     // 道のどちら側か・道のふちまでの距離から、建てる場所と向きを決める
-    function place(kind, q, along) {
+    function place(kind, q, along, name = "") {
       const THREE = T(), m = mats();
       const p = at(along), r = Roads.ride(along);
       const side = (q[0] - p.x) * p.tz - (q[1] - p.z) * p.tx > 0 ? 1 : -1; // +1 = 進む向きの左
@@ -1272,12 +1273,19 @@ const City = (() => {
       };
       let depth = 0;
       if (kind === "conv") {
+        // チェーンごとに、ちがう見た目にする(3つの大きなチェーンと、それ以外)。実在の看板やロゴ・色づかいは使わず、
+        // このアプリだけの色と形で区別する: A=紺に金の線・角ばった庇 / B=紫に黄の線 / C=深緑に白の線・丸い柱 / ほか=茶
+        const v = /セブン|7-?eleven|seven/i.test(name) ? 0 : /ファミリーマート|family ?mart/i.test(name) ? 1 : /ローソン|lawson/i.test(name) ? 2 : 3;
+        const sg = [m.convA, m.conv, m.convC, m.convD][v], pl = [m.poleA, m.poleC, m.poleCc, m.poleD][v];
         lot(14, 6.5, 4);
-        shop(14, 9, 3.6, m.conv, 2.5, 6.5);
+        shop(14, 9, 3.6, sg, 2.5, 6.5);
+        if (v === 0) add(B(14.6, 0.14, 1.3), m.dark, 0, 2.95, -5.9); // A: 平らな庇
+        if (v === 2) for (const px of [-6.6, 6.6]) add(C(0.16, 3.6), m.white, px, 1.8, -6.3); // C: 丸い柱
+        if (v === 3) add(B(14.2, 0.5, 0.2), m.wood, 0, 2.6, -6.38); // ほか: 木の帯
         add(B(0.7, 1.0, 0.6), m.dark, -5.2, 0.5, -5.9); // ごみ箱
         add(B(0.7, 1.0, 0.6), m.grey, -4.4, 0.5, -5.9);
         add(B(1.2, 1.6, 0.5), m.white, 5.4, 0.8, -6.1); // のぼり・ATMの案内
-        poleSign(6.3, -0.6, m.poleC);
+        poleSign(6.3, -0.6, pl);
         depth = 15.5;
       } else if (kind === "super") {
         lot(24, 8, 8);
@@ -5423,6 +5431,48 @@ const City = (() => {
     window.addEventListener("resize", resize);
     resize();
   }
+  // ゴールの門: 道をまたぐアーチと、市松もようの幕・「GOAL」。目的地の少し手前(8m)に立てる
+  function buildGoal() {
+    const THREE = T();
+    const al = Math.max(0, route.length - 8), p = at(al), r = Roads.ride(al);
+    const W = Math.max(5, (r ? r.W : 5) + 1.2), off = r ? r.off + 0.9 - (r.W || 4) / 2 : 0;
+    const g = new THREE.Group();
+    const post = new THREE.MeshStandardMaterial({ color: 0xe8e8ec, metalness: 0.6, roughness: 0.3 });
+    const cv = document.createElement("canvas");
+    cv.width = 1024;
+    cv.height = 128;
+    const c = cv.getContext("2d");
+    for (let y = 0; y < 4; y++) for (let x = 0; x < 32; x++) ((c.fillStyle = (x + y) % 2 ? "#111" : "#fff"), c.fillRect(x * 32, y * 32, 32, 32));
+    c.fillStyle = "#d8302a";
+    c.fillRect(352, 0, 320, 128);
+    c.fillStyle = "#fff";
+    c.font = "900 96px sans-serif";
+    c.textAlign = "center";
+    c.textBaseline = "middle";
+    c.fillText("GOAL", 512, 68);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.encoding = THREE.sRGBEncoding;
+    const banner = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.9, W), [new THREE.MeshBasicMaterial({ map: tex }), new THREE.MeshBasicMaterial({ map: tex }), post, post, post, post]);
+    banner.position.y = 4.6;
+    g.add(banner);
+    for (const sz of [-1, 1]) {
+      const q = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 5.1, 12), post);
+      q.position.set(0, 2.55, (sz * W) / 2);
+      const base = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.3, 0.7), new THREE.MeshLambertMaterial({ color: 0x2a2c30 }));
+      base.position.set(0, 0.15, (sz * W) / 2);
+      g.add(q, base);
+    }
+    // 路面のゴールライン
+    const line = new THREE.Mesh(new THREE.PlaneGeometry(0.9, W), new THREE.MeshBasicMaterial({ map: tex }));
+    line.rotation.x = -Math.PI / 2;
+    line.position.y = 0.09;
+    g.add(line);
+    const x = p.x + p.tz * off, z = p.z - p.tx * off;
+    g.position.set(x, H(x, z), z);
+    g.rotation.y = -Math.atan2(p.tz, p.tx);
+    g.traverse((o) => o.isMesh && (o.castShadow = true));
+    scene.add(g);
+  }
   function buildRouteStrip() {
     const THREE = T();
     const pos = [];
@@ -5472,6 +5522,7 @@ const City = (() => {
     wantPhotos(0);
     Plateau.want(0);
     Roads.want(0);
+    buildGoal();
     Traffic._tpl(); // 車と人の形は、待っている間に作っておく(走り出してから作ると、その瞬間に引っかかる)
     hudDuel();
     // 最初の街が出るまで待つ(長くても40秒。出なければ道の線だけで走り出す)
