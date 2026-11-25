@@ -2973,8 +2973,13 @@ const City = (() => {
         // 進む(車は前に自分がいたら速さを合わせる)
         let v = e.v;
         if (e.kind === "car" && e.dir > 0) {
-          const ahead = list.find((o) => o !== e && o.kind === "car" && o.dir > 0 && o.along > e.along && o.along - e.along < 12 && Math.abs(o.lane - e.lane) < 0.3);
-          if (ahead) v = Math.min(v, ahead.v);
+          // 前の車(同じ車線)との間をあける: 7mより近づいたら止まる(信号待ちで重ならないように)
+          let ahead = null;
+          for (const o of list) if (o !== e && o.kind === "car" && o.dir > 0 && o.along > e.along && o.along - e.along < 14 && (!ahead || o.along < ahead.along)) ahead = o;
+          if (ahead) {
+            const gap = ahead.along - e.along;
+            v = gap < 7 ? 0 : Math.min(v, (ahead.cv || 0) + (gap - 7) * 0.9);
+          }
         }
         // 車は自転車(自分)をひかない: 後ろから来た車は、横に1m以上あけて追い越す。あけられない狭い道では、後ろについて走る。
         // 前を走る車に自分が追いついたら、車のほうが先へ逃げる
@@ -3006,6 +3011,9 @@ const City = (() => {
             if (st === "g" || (st === "y" && d < (v * v) / 6 - 1)) continue;
             v = Math.min(v, d <= 0.3 ? 0 : Math.sqrt(5 * Math.max(0, d)));
           }
+        // 向こうから来る車どうしも、前の車との間をあける
+        if (e.kind === "car" && e.dir < 0) for (const o of list) if (o !== e && o.kind === "car" && o.dir < 0 && o.along < e.along && e.along - o.along < 7) v = 0;
+        e.cv = v;
         e.along += e.dir * v * dt;
         r = Roads.ride(e.along);
         const p = at(e.along);
@@ -3068,7 +3076,7 @@ const City = (() => {
       }
       return Math.min(1.2, Math.max(0, d));
     }
-    return { update, dodge, score: () => score, passed: () => passed, _tpl: templates };
+    return { update, dodge, score: () => score, passed: () => passed, _tpl: templates, objs: () => list.map((e) => e.obj) };
   })();
 
   // ---------- 信号と交差点 ----------
@@ -4510,8 +4518,10 @@ const City = (() => {
         const yaw = bike.rotation.y, dx = Math.cos(-yaw), dz = Math.sin(-yaw);
         // 自転車の斜め後ろの上に浮かぶ(カメラから自転車が隠れないように、左右と上に分ける)
         const back = L.slot === 2 ? 2.6 : 1.8, lat = L.slot === 0 ? 1.7 : L.slot === 1 ? -1.7 : 0;
-        const bob = Math.sin(t * 1.7 + L.slot * 2) * 0.15;
-        const tx = bike.position.x - dx * back + dz * lat, tz = bike.position.z - dz * back - dx * lat, ty = bike.position.y + (L.slot === 2 ? 3.4 : 2.3) + bob;
+        // 飛んでいる感じ: 大きくゆっくり上下しながら、ときどき深く沈んで舞い上がる。左右にもゆれる
+        const ph = t * 0.9 + L.slot * 2.1, bob = Math.sin(ph) * 0.55 + Math.sin(ph * 2.3 + 1) * 0.18 + Math.max(0, Math.sin(ph * 0.37)) ** 6 * -0.9;
+        const sway = Math.sin(ph * 0.7 + 0.5) * 0.45;
+        const tx = bike.position.x - dx * back + dz * (lat + sway), tz = bike.position.z - dz * back - dx * (lat + sway), ty = bike.position.y + (L.slot === 2 ? 3.6 : 2.6) + bob;
         const k = 1 - Math.exp(-dt * 5);
         const o = L.obj;
         if (o.scale.x < 0.05) o.position.set(tx, ty, tz);
@@ -4520,6 +4530,9 @@ const City = (() => {
         o.position.z += (tz - o.position.z) * k;
         o.rotation.y = yaw;
         L.body.rotation.y = Math.sin(t * 0.8 + L.slot) * 0.25;
+        // 上がるときは頭を上げ、下がるときは下げる。横へ動くときは体を傾ける
+        L.body.rotation.z = Math.cos(ph) * 0.3 + Math.cos(ph * 2.3 + 1) * 0.1;
+        L.body.rotation.x = -Math.cos(ph * 0.7 + 0.5) * 0.3;
         L.ring.rotation.z += dt * 1.5;
         if (L.fb && L.fb.userData.tick) L.fb.userData.tick(performance.now() / 1000 + L.slot * 1.3);
         // 出てくるときは光って大きくなり、やられたら小さくなって消える
@@ -4532,7 +4545,7 @@ const City = (() => {
         }
       }
     }
-    return { update, _proc: proc };
+    return { update, _proc: proc, objs: () => [...live.values()].map((L) => L.obj) };
   })();
 
   function nameTag(text, color) {
@@ -4609,6 +4622,182 @@ const City = (() => {
             localStorage.setItem("city_refl", v ? "1" : "0");
           } catch (e) {}
       },
+    };
+  })();
+  // ---------- 写真の街: 道で撮った写真(Google のストリートビューの画像)を、3Dの街の形に貼って走る ----------
+  // ストリートビューの画面を切り替えて見せるのではなく、写真を「光」のように3Dの建物・道・地面へ映す。
+  // 形は国のデータ(建物)と道路、色は写真。カメラは3Dの中を自由に動けるので、写真の実写感のまま、奥行きのある空間として走れる。
+  // 画像は Map Tiles API の Street View Tiles から取る(保存はしない)。料金がかからないよう、この端末では月の枚数に上限を付ける。
+  const PV = (() => {
+    const STEP = 28, Z = 2, CAP_M = 24000; // 28mごとに1枚。1枚=タイル8枚(2048×1024)。月の上限(タイルの枚数)
+    let on = false, session = null, sessionP = null, err = "", mat = null, sky = null, walkT = 0, told = false, copy = "";
+    const panos = new Map(); // i(道のり/STEP) → { state, tex, x, y, z, hd, al }
+    const usage = () => {
+      const d = new Date(), m = d.getFullYear() + "-" + (d.getMonth() + 1);
+      let u = null;
+      try {
+        u = JSON.parse(localStorage.getItem("city_pvuse") || "null");
+      } catch (e) {}
+      return u && u.m === m ? u : { m, n: 0 };
+    };
+    const count = (k) => {
+      const u = usage();
+      u.n += k;
+      try {
+        localStorage.setItem("city_pvuse", JSON.stringify(u));
+      } catch (e) {}
+    };
+    const api = "https://tile.googleapis.com/v1/";
+    async function getSession() {
+      if (session) return session;
+      if (!sessionP)
+        sessionP = fetch(api + "createSession?key=" + encodeURIComponent(G3.getKey()), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mapType: "streetview", language: "ja-JP", region: "JP" }) }).then(async (r) => {
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok || !j.session) throw new Error((j.error && j.error.message) || "HTTP " + r.status);
+          return (session = j.session);
+        });
+      return sessionP;
+    }
+    async function load(i) {
+      const P = { state: "load", al: i * STEP };
+      panos.set(i, P);
+      try {
+        const ses = await getSession(), q = `session=${ses}&key=${encodeURIComponent(G3.getKey())}`;
+        const a = at(P.al), lat = route.lat0 - a.z / route.kz, lng = route.lon0 + a.x / route.kx;
+        const md = await (await fetch(`${api}streetview/metadata?${q}&lat=${lat}&lng=${lng}&radius=40`)).json();
+        if (!md.panoId) throw new Error((md.error && md.error.message) || "写真なし");
+        // 同じ写真をもう持っていれば使い回す
+        for (const o of panos.values()) if (o !== P && o.id === md.panoId && o.tex) return Object.assign(P, { state: "ok", tex: o.tex, shared: true, id: o.id, x: o.x, y: o.y, z: o.z, hd: o.hd });
+        const cols = 2 ** Z, rows = 2 ** (Z - 1), tw = md.tileWidth || 512, th = md.tileHeight || 512;
+        if (usage().n + cols * rows > CAP_M) throw new Error("今月の上限");
+        count(cols * rows);
+        const cv = document.createElement("canvas");
+        // 写真の実際の大きさ(このズームでの幅と高さ)。端のタイルは、はみ出しぶんが黒いので切り落とす
+        const fullW = md.imageWidth / 2 ** (5 - Z), fullH = md.imageHeight / 2 ** (5 - Z);
+        cv.width = Math.min(cols * tw, Math.round(fullW) || cols * tw);
+        cv.height = Math.min(rows * th, Math.round(fullH) || rows * th);
+        const c = cv.getContext("2d");
+        await Promise.all(
+          Array.from({ length: cols * rows }, async (_, k) => {
+            const tx = k % cols, ty = Math.floor(k / cols);
+            const r = await fetch(`${api}streetview/tiles/${Z}/${tx}/${ty}?${q}&panoId=${encodeURIComponent(md.panoId)}`);
+            if (!r.ok) return;
+            const bm = await createImageBitmap(await r.blob());
+            c.drawImage(bm, tx * tw, ty * th);
+          })
+        );
+        const THREE = T();
+        const tex = new THREE.CanvasTexture(cv);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.minFilter = THREE.LinearFilter;
+        tex.generateMipmaps = false;
+        const [x, z] = project(md.lat, md.lng);
+        copy = md.copyright || copy;
+        Object.assign(P, { state: "ok", tex, id: md.panoId, x, z, y: H(x, z) + 2.5, hd: ((md.heading || 0) * Math.PI) / 180 });
+      } catch (e) {
+        P.state = "fail";
+        err = String((e && e.message) || e).slice(0, 80);
+        if (!told) (told = true), ticker("写真の街: 写真を取れません(" + err + ")", "opp");
+      }
+    }
+    function material() {
+      if (mat) return mat;
+      const THREE = T();
+      const U = (v) => ({ value: v });
+      mat = new THREE.ShaderMaterial({
+        side: THREE.DoubleSide,
+        uniforms: { tA: U(null), tB: U(null), cA: U(new THREE.Vector4()), cB: U(new THREE.Vector4()), mixK: U(0), has: U(new THREE.Vector2(0, 0)) },
+        vertexShader: `varying vec3 vW;
+          void main() {
+            vec4 p = vec4(position, 1.0);
+            #ifdef USE_INSTANCING
+              p = instanceMatrix * p;
+            #endif
+            vec4 w = modelMatrix * p;
+            vW = w.xyz;
+            gl_Position = projectionMatrix * viewMatrix * w;
+          }`,
+        // その点が、写真を撮った場所から見てどの向きにあるかで、写真のどこを貼るかを決める(北=-z・東=+x)
+        fragmentShader: `uniform sampler2D tA; uniform sampler2D tB; uniform vec4 cA; uniform vec4 cB; uniform float mixK; uniform vec2 has;
+          varying vec3 vW;
+          vec3 pano(sampler2D t, vec4 c) {
+            vec3 d = normalize(vW - c.xyz);
+            float yaw = atan(d.x, -d.z) - c.w;
+            vec2 uv = vec2(yaw / 6.2831853 + 0.5, 0.5 + asin(clamp(d.y, -1.0, 1.0)) / 3.14159265);
+            return texture2D(t, uv).rgb;
+          }
+          void main() {
+            vec3 a = has.x > 0.5 ? pano(tA, cA) : vec3(0.55);
+            vec3 b = has.y > 0.5 ? pano(tB, cB) : a;
+            gl_FragColor = vec4(mix(a, b, has.x > 0.5 ? mixK : 1.0), 1.0);
+          }`,
+      });
+      sky = new THREE.Mesh(new THREE.SphereGeometry(1200, 24, 16), new THREE.MeshBasicMaterial({ color: 0x888888 }));
+      sky.layers.set(2);
+      sky.frustumCulled = false;
+      scene.add(sky);
+      return mat;
+    }
+    // 写真を貼る物(動かない建物・道・地面)に2番、上に重ねて描く物(自分・ライバル・車と人・モンスター)に1番の印を付ける
+    function mark() {
+      const dyn = new Set([me.g, rival.g, ...Traffic.objs(), ...Mons.objs()]);
+      const walk = (o, d) => {
+        if (dyn.has(o)) d = true;
+        if (d) o.layers.enable(1);
+        else if (o.isMesh && !o.isInstancedMesh && !o.isSkinnedMesh && o !== sky && o.material && !o.material.transparent && o.material.depthTest !== false && !o.userData.blob) o.layers.enable(2);
+        for (const ch of o.children) walk(ch, d);
+      };
+      walk(scene, false);
+    }
+    // 写真の街として描く。描けたら true(ふつうの描き方はしない)
+    function render(p, s, real) {
+      if (!on) return false;
+      const THREE = T(), i0 = Math.floor(s.along / STEP);
+      for (const i of [i0, i0 + 1, i0 + 2]) if (i * STEP <= route.length && !panos.has(i)) load(i);
+      for (const [i, P] of panos)
+        if (i < i0 - 2 || i > i0 + 5) {
+          if (P.tex && !P.shared && ![...panos.values()].some((o) => o !== P && o.tex === P.tex)) P.tex.dispose();
+          panos.delete(i);
+        }
+      const A = panos.get(i0), B = panos.get(i0 + 1), okA = A && A.state === "ok", okB = B && B.state === "ok";
+      if (!okA && !okB) return false; // まだ1枚もない間は、ふつうの3Dの街
+      const m = material(), u = m.uniforms;
+      if (okA) (u.tA.value = A.tex), u.cA.value.set(A.x, A.y, A.z, A.hd);
+      if (okB) (u.tB.value = B.tex), u.cB.value.set(B.x, B.y, B.z, B.hd);
+      u.has.value.set(okA ? 1 : 0, okB ? 1 : 0);
+      // 2枚の写真の間を、進み具合でなめらかに入れ替える(真ん中あたりでゆっくり替わる)
+      const f = (s.along - i0 * STEP) / STEP;
+      u.mixK.value = okB ? Math.min(1, Math.max(0, (f - 0.3) / 0.5)) ** 2 * (3 - 2 * Math.min(1, Math.max(0, (f - 0.3) / 0.5))) : 0;
+      if ((walkT -= real) <= 0) (walkT = 0.7), mark();
+      sky.position.copy(camera.position);
+      const bg = scene.background, fog = scene.fog;
+      scene.background = null;
+      scene.fog = null;
+      scene.overrideMaterial = m;
+      camera.layers.set(2);
+      renderer.autoClear = true;
+      renderer.render(scene, camera);
+      // その上に、動く物をふつうの描き方で重ねる(建物のかげに入れば隠れる)
+      scene.overrideMaterial = null;
+      camera.layers.set(1);
+      renderer.autoClear = false;
+      renderer.render(scene, camera);
+      renderer.autoClear = true;
+      camera.layers.set(0);
+      scene.background = bg;
+      scene.fog = fog;
+      return true;
+    }
+    return {
+      render,
+      on: () => on,
+      set(v) {
+        on = v && !!G3.getKey();
+        if (!on) err = "";
+        return on;
+      },
+      info: () => `写真の街: 今月のタイル ${usage().n}/${CAP_M}・持っている写真 ${[...panos.values()].filter((x) => x.state === "ok").length}${err ? "・" + err : ""}`,
+      credit: () => copy,
     };
   })();
   const TIMES = {
@@ -5417,7 +5606,7 @@ const City = (() => {
     Perf.lap("映り込み");
     // 影は2コマに1回だけ作り直す(見た目はほぼ同じで、描く量が減る)
     if (renderer.shadowMap.enabled) (renderer.shadowMap.autoUpdate = false), (renderer.shadowMap.needsUpdate = s.frameN % 2 === 0);
-    renderer.render(scene, camera);
+    if (!PV.render(p, s, real)) renderer.render(scene, camera);
     Perf.lap("描く");
     autoRes(real);
     if ((s.hudT = (s.hudT || 0) + real) > 0.12) (s.hudT = 0), hud();
@@ -5457,7 +5646,7 @@ const City = (() => {
     const el = $("ct-perf");
     if (!el || el.hidden) return;
     const r = Perf.report(), inf = renderer.info.render;
-    el.innerHTML = `<b>${r.fps.toFixed(0)}コマ/秒</b> 遅いコマ ${r.slow}/${r.n} ・最悪 ${r.worst.toFixed(0)}ms<br>描く量 ${(inf.triangles / 10000).toFixed(0)}万面・${inf.calls}回 ・細かさ×${renderer.getPixelRatio().toFixed(2)}${renderer.shadowMap.enabled ? "・影あり" : ""}<br>平均: ${r.avg.join(" / ")}<br>最悪: ${r.top.join(" / ")}${SV.on() ? `<br>ストリートビュー: ${SV.info()}` : ""}`;
+    el.innerHTML = `<b>${r.fps.toFixed(0)}コマ/秒</b> 遅いコマ ${r.slow}/${r.n} ・最悪 ${r.worst.toFixed(0)}ms<br>描く量 ${(inf.triangles / 10000).toFixed(0)}万面・${inf.calls}回 ・細かさ×${renderer.getPixelRatio().toFixed(2)}${renderer.shadowMap.enabled ? "・影あり" : ""}<br>平均: ${r.avg.join(" / ")}<br>最悪: ${r.top.join(" / ")}${SV.on() ? `<br>ストリートビュー: ${SV.info()}` : ""}${PV.on() ? `<br>${PV.info()}` : ""}`;
     if ((Perf.resetT = (Perf.resetT || 0) + 1) >= 10) (Perf.resetT = 0), (Perf.max = {}), (Perf.sum = {}), (Perf.n = 0);
   }
 
@@ -5681,6 +5870,23 @@ const City = (() => {
     const su = SV.usage();
     if ($("ct-svuse")) $("ct-svuse").textContent = `ストリートビューを開いた回数(この端末): 今月 ${su.n}/${su.capM}回・今日 ${su.dn}/${su.capD}回`;
     if ($("ct-perf0")) $("ct-perf0").onchange = (e) => ($("ct-perf").hidden = !e.target.checked);
+    // 写真の街
+    for (const id of ["ct-pv", "ct-pv0"])
+      if ($(id)) {
+        try {
+          $(id).checked = localStorage.getItem("city_pv") === "1" && !!G3.getKey();
+        } catch (err) {}
+        $(id).onchange = (e) => {
+          const v = PV.set(e.target.checked);
+          for (const k of ["ct-pv", "ct-pv0"]) if ($(k)) $(k).checked = v;
+          try {
+            localStorage.setItem("city_pv", v ? "1" : "0");
+          } catch (err) {}
+          if (e.target.checked && !v) $("ct-msg").textContent = "写真の街を使うには、APIキーを入れてください";
+          $("ct-gm").hidden = !(v || G3.on());
+        };
+      }
+    if ($("ct-pv0") && $("ct-pv0").checked) PV.set(true);
     if ($("ct-refl")) {
       $("ct-refl").checked = Refl.on();
       $("ct-refl").onchange = (e) => Refl.set(e.target.checked);
