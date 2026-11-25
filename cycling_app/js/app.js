@@ -928,11 +928,14 @@
     try {
       placeForm.results = await Geocode.search(q, nearPoint() || (await locateOnce()));
       placeForm.status = placeForm.results.length
-        ? "近い順に表示しています。候補をタップすると地図で位置を確認できます"
+        ? "いちばん近い候補を地図に出しました。合っていれば「この場所で登録」を押してください(違えば下の候補をタップ)"
         : "見つかりませんでした。下の「Googleマップで探す」を使ってください";
     } catch (e) {
       placeForm.status = "検索できませんでした。通信状況を確認するか、Googleマップの「緯度,経度」を貼り付けてください";
     }
+    // 候補が出たら、いちばん上をすぐ地図に出して「この場所で登録」まで進める(候補のタップに気づかず、現在地の登録を押してしまうので)
+    const r0 = placeForm.results[0];
+    if (r0) return openPick({ lat: r0.lat, lon: r0.lon, label: r0.label, from: 0 });
     render();
   }
 
@@ -2560,7 +2563,7 @@ print("このファイルをスマホに送って(AirDrop など)、アプリの
 
   // ホーム画面に追加したアプリは古いファイルを使い続けることがあるので、
   // 起動時と画面に戻ったときに最新のバージョンを確認し、新しければ読み込み直す(走行中はしない)
-  const APP_VERSION = "2027.1.37";
+  const APP_VERSION = "2027.1.38";
   async function checkUpdate() {
     try {
       const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });
