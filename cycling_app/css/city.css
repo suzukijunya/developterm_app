@@ -167,3 +167,6 @@ body.city { margin: 0; overflow: hidden; background: #050608; color: #fff; font-
 /* ストリートビュー: 隠すときも大きさは残す(大きさ0で作ると、写真が出ない) */
 .ct-sv.off { visibility: hidden; }
 iframe.ct-sv-pano { width: 100%; height: 100%; border: 0; display: block; pointer-events: none; }
+/* ストリートビューの上に、3Dの乗り手を重ねる: 描画の面を写真より手前に。絵のバイクは使わない */
+#ct-view > canvas { position: relative; z-index: 3; }
+.ct-sv-bike, .ct-sv-rival { display: none !important; }

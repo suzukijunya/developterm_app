@@ -3510,7 +3510,7 @@ const City = (() => {
     }
     let sentH = null;
     const info = () => `準備 ${hello ? "○" : "×"}/${ready ? "○" : "×"}・写真 ${lastId ? "あり" : "なし"}・状態 ${status || "-"}・失敗 ${miss}${why ? "(" + why + ")" : ""}<br>${draw}${logs ? "<br>エラー: " + esc(logs) : ""}`;
-    return { start, stop, update, info, on: () => on, showing: () => on && !!el && !el.classList.contains("off"), err: () => err, usage: () => Object.assign(usage(), { capM: CAP_M, capD: CAP_D, over: over() }) };
+    return { start, stop, update, info, heading: () => (hdg == null || isNaN(hdg) ? 0 : hdg), on: () => on, showing: () => on && !!el && !el.classList.contains("off"), err: () => err, usage: () => Object.assign(usage(), { capM: CAP_M, capD: CAP_D, over: over() }) };
   })();
 
   // 地図の区画のうち、施設の看板だけは残す(Googleの3Dでも、どこを走っているかわかるように)
@@ -4303,7 +4303,7 @@ const City = (() => {
   function init3D() {
     const THREE = T();
     const el = $("ct-view");
-    renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" }); // alpha: ストリートビューの上に、乗り手だけを重ねて描くため
     renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     renderer.outputEncoding = THREE.sRGBEncoding;
     // 明るい所が白く飛ばず、影がしまる(映画のフィルムに近い色の出し方)
@@ -4316,6 +4316,8 @@ const City = (() => {
     lights.hemi = new THREE.HemisphereLight(0xaab4ff, 0x3a3038, 0.85);
     lights.sun = new THREE.DirectionalLight(0xffb070, 0.9);
     scene.add(lights.hemi, lights.sun, lights.sun.target);
+    lights.hemi.layers.enable(1); // 1番の層 = ストリートビューに重ねる物(自分とライバル)
+    lights.sun.layers.enable(1);
     // 影(PCだけ。自分のまわり140m四方に、建物・木・電柱・自転車の影を落とす)
     if (innerWidth >= 900) {
       renderer.shadowMap.enabled = true;
@@ -5017,6 +5019,7 @@ const City = (() => {
     SV.update(real, p, s);
     // ストリートビューのときは、3Dの街は描かない(下に隠れて見えないので、その分軽くする)
     if (SV.showing()) {
+      svRender(p);
       if ((s.hudT = (s.hudT || 0) + real) > 0.12) (s.hudT = 0), hud();
       if ((s.perfT = (s.perfT || 0) + real) > 1) (s.perfT = 0), perfHud();
       return;
@@ -5036,6 +5039,33 @@ const City = (() => {
     Perf.lap("表示");
     Perf.loopMs = performance.now() - Perf.t0;
     if ((s.perfT = (s.perfT || 0) + real) > 1) (s.perfT = 0), perfHud();
+  }
+  // ストリートビューの写真の上に、3Dの自分とライバルだけを重ねて描く(街は描かない。背景は透明)。
+  // カメラは、写真を撮った車の屋根の高さ(約2.4m)で、自分の5.5m後ろから、写真と同じ向き・同じ画角で見る
+  let svLayered = false;
+  function svRender(p) {
+    const THREE = T();
+    if (!svLayered) {
+      svLayered = true;
+      for (const b of [me, rival]) b.g.traverse((o) => o.layers.enable(1));
+    }
+    const h = (SV.heading() * Math.PI) / 180, dx = Math.sin(h), dz = -Math.cos(h); // 北=0・東=90
+    camera.position.set(p.x - dx * 5.5, p.y + 2.4, p.z - dz * 5.5);
+    camera.lookAt(camera.position.x + dx * 10, camera.position.y - Math.tan((4 * Math.PI) / 180) * 10, camera.position.z + dz * 10);
+    // ストリートビューの標準の画角は、横に90度
+    camera.fov = (2 * Math.atan(1 / Math.max(0.3, camera.aspect)) * 180) / Math.PI;
+    camera.updateProjectionMatrix();
+    const bg = scene.background, fog = scene.fog, env = scene.environment;
+    scene.background = null;
+    scene.fog = null;
+    camera.layers.set(1);
+    renderer.setClearColor(0x000000, 0);
+    renderer.render(scene, camera);
+    camera.layers.set(0);
+    scene.background = bg;
+    scene.fog = fog;
+    scene.environment = env;
+    sim.camPos = null; // 3Dの街に戻ったとき、カメラを置き直す
   }
   // 性能の表示(左上のパネルの「性能を表示」)。カクつくときに、何が重いかを見る
   function perfHud() {
