@@ -377,6 +377,81 @@ const City = (() => {
     const S = 256;
     // mask: ガラスの場所(白)。空を映すのに使う
     let mask = null, kind = 0;
+    const RES = 4;
+    // ---- 細かい描きこみ(本物の建物らしく見せるための部品) ----
+    // 窓: 枠・ガラスの上の影・カーテン・下の水切り(出っ張り)とその影
+    const win = (w, x, y, ww, hh, o = {}) => {
+      w.fillStyle = o.frame || "#c9c9c4";
+      w.fillRect(x - 2.5, y - 2.5, ww + 5, hh + 5);
+      glass(w, x, y, ww, hh, o.top || "#93a8ba", o.bot || "#2f3d4b");
+      // カーテン(左右)やブラインド
+      const sd = x * 7 + y * 13;
+      if (o.blind) {
+        if (hash(sd) < 0.6) {
+          const bh = hh * (0.3 + hash(sd + 1) * 0.6);
+          w.fillStyle = "rgba(236,234,226,0.9)";
+          w.fillRect(x, y, ww, bh);
+          w.fillStyle = "rgba(0,0,0,0.12)";
+          for (let q = y; q < y + bh; q += 1.6) w.fillRect(x, q, ww, 0.5);
+          if (mask) (mask.fillStyle = "#000"), mask.fillRect(x, y, ww, bh);
+        }
+      } else if (hash(sd) < 0.75) {
+        const cw = ww * (0.14 + hash(sd + 2) * 0.22), col = ["rgba(240,236,226,0.92)", "rgba(226,214,196,0.92)", "rgba(206,218,226,0.92)", "rgba(232,222,226,0.92)"][Math.floor(hash(sd + 3) * 4)];
+        for (const cx of hash(sd + 4) < 0.5 ? [x, x + ww - cw] : [x]) {
+          w.fillStyle = col;
+          w.fillRect(cx, y, cw, hh);
+          w.fillStyle = "rgba(0,0,0,0.1)";
+          for (let q = cx + 1; q < cx + cw; q += 2.2) w.fillRect(q, y, 0.5, hh);
+          if (mask) (mask.fillStyle = "#000"), mask.fillRect(cx, y, cw, hh);
+        }
+      }
+      // ガラスの上と左の影(窓が壁より奥にあるように見せる)
+      let gr = w.createLinearGradient(0, y, 0, y + 7);
+      gr.addColorStop(0, "rgba(0,0,0,0.5)");
+      gr.addColorStop(1, "rgba(0,0,0,0)");
+      w.fillStyle = gr;
+      w.fillRect(x, y, ww, 7);
+      gr = w.createLinearGradient(x, 0, x + 4, 0);
+      gr.addColorStop(0, "rgba(0,0,0,0.35)");
+      gr.addColorStop(1, "rgba(0,0,0,0)");
+      w.fillStyle = gr;
+      w.fillRect(x, y, 4, hh);
+      // 真ん中の桟
+      w.fillStyle = o.frame || "#d6d6d1";
+      for (let q = 1; q < (o.panes || 2); q++) w.fillRect(x + (ww * q) / (o.panes || 2) - 0.8, y, 1.6, hh);
+      // 水切りと、その下の影・雨だれ
+      w.fillStyle = "#e4e4e0";
+      w.fillRect(x - 4, y + hh + 2, ww + 8, 2.4);
+      w.fillStyle = "rgba(0,0,0,0.22)";
+      w.fillRect(x - 4, y + hh + 4.4, ww + 8, 1.6);
+      for (let q = 0; q < 5; q++) {
+        const sx = x + hash(sd + 20 + q) * ww, sl = 6 + hash(sd + 30 + q) * 16;
+        const sg = w.createLinearGradient(0, y + hh + 6, 0, y + hh + 6 + sl);
+        sg.addColorStop(0, "rgba(60,58,52,0.16)");
+        sg.addColorStop(1, "rgba(60,58,52,0)");
+        w.fillStyle = sg;
+        w.fillRect(sx, y + hh + 6, 1 + hash(sd + 40 + q) * 1.5, sl);
+      }
+    };
+    // 壁の汚れ・色むら(大きなしみ)と、雨どい
+    const grime = (w, n, a = 0.05) => {
+      for (let i = 0; i < n; i++) {
+        const x = hash(i * 17 + 1) * S, y = hash(i * 23 + 2) * S, r = 14 + hash(i * 29) * 40;
+        const g2 = w.createRadialGradient(x, y, 0, x, y, r);
+        g2.addColorStop(0, hash(i * 31) < 0.6 ? `rgba(70,64,54,${a})` : `rgba(255,255,255,${a})`);
+        g2.addColorStop(1, "rgba(0,0,0,0)");
+        w.fillStyle = g2;
+        for (const [ox, oy] of [[0, 0], [S, 0], [-S, 0], [0, S], [0, -S]]) w.fillRect(x - r + ox, y - r + oy, r * 2, r * 2);
+      }
+    };
+    const pipe = (w, x) => {
+      w.fillStyle = "rgba(0,0,0,0.18)";
+      w.fillRect(x + 2.2, 0, 1.4, S);
+      w.fillStyle = "#b9bab6";
+      w.fillRect(x, 0, 2.4, S);
+      w.fillStyle = "#8f908c";
+      for (let y = 20; y < S; y += 64) w.fillRect(x - 0.8, y, 4, 1.6);
+    };
     const lin = (cv) => {
       const t = new THREE.CanvasTexture(cv);
       t.wrapS = t.wrapT = THREE.RepeatWrapping;
@@ -384,17 +459,23 @@ const City = (() => {
       return t;
     };
     const mk = (draw) => {
+      // 絵は4倍の細かさ(1024px)で描く。描くときの数字は、今までどおり256のマス目のまま
       const a = document.createElement("canvas"), b = document.createElement("canvas"), k = document.createElement("canvas");
-      a.width = a.height = b.width = b.height = k.width = k.height = S;
+      a.width = a.height = k.width = k.height = S * RES;
+      b.width = b.height = S;
       const w = a.getContext("2d"), g = b.getContext("2d");
       mask = k.getContext("2d");
+      w.scale(RES, RES);
+      mask.scale(RES, RES);
       mask.fillStyle = "#000";
       mask.fillRect(0, 0, S, S);
       g.fillStyle = "#000";
       g.fillRect(0, 0, S, S);
       draw(w, g);
       // 窓ガラスには、まわりの景色が本当に映る(下の facMat で、ガラスの所だけ鏡のようにする)
-      const m = new THREE.MeshStandardMaterial({ map: tex(a), emissiveMap: tex(b), emissive: 0xffffff, emissiveIntensity: 0, vertexColors: true, roughness: 0.92, metalness: 0, envMapIntensity: 1 });
+      const mapT = tex(a);
+      mapT.anisotropy = 8;
+      const m = new THREE.MeshStandardMaterial({ map: mapT, emissiveMap: tex(b), emissive: 0xffffff, emissiveIntensity: 0, vertexColors: true, roughness: 0.92, metalness: 0, envMapIntensity: 1 });
       const gf = groundFloor(kind);
       m.userData.fac = { mask: lin(k), ground: tex(gf.cv), gmask: lin(gf.mk), gw: gf.gw, fw: [7, 7.2, 6][kind] };
       kind++;
@@ -411,7 +492,7 @@ const City = (() => {
     // 1階の絵(高さ3.2m)。玄関・窓・室外機、マンションの入口と郵便受け、店のガラスと看板・ひさし・自販機。
     // 横幅は 外壁の模様3〜4枚ぶん。st: 0=戸建て 1=マンション 2=店・オフィス
     function groundFloor(st) {
-      const GW = [21, 21.6, 24][st], W = 1024, Hh = 128, X = W / GW, Y = Hh / 3.2;
+      const GW = [21, 21.6, 24][st], W = 2048, Hh = 256, X = W / GW, Y = Hh / 3.2;
       const cv = document.createElement("canvas"), mkc = document.createElement("canvas");
       cv.width = mkc.width = W;
       cv.height = mkc.height = Hh;
@@ -431,8 +512,8 @@ const City = (() => {
       };
       const lines = (x, y, w, h, step, col, vert) => {
         c.fillStyle = col;
-        if (vert) for (let q = x; q < x + w; q += step) c.fillRect(q * X, Hh - (y + h) * Y, 1, h * Y);
-        else for (let q = y; q < y + h; q += step) c.fillRect(x * X, Hh - (q + 0.01) * Y, w * X, 1);
+        if (vert) for (let q = x; q < x + w; q += step) c.fillRect(q * X, Hh - (y + h) * Y, 2, h * Y);
+        else for (let q = y; q < y + h; q += step) c.fillRect(x * X, Hh - (q + 0.01) * Y, w * X, 2);
       };
       const acUnit = (x) => {
         R(x, 0.05, 0.8, 0.58, "#e4e4e0");
@@ -542,31 +623,83 @@ const City = (() => {
         w.fillStyle = "#f4f2ee";
         w.fillRect(0, 0, S, S);
         for (let y = 0; y < S; y += 8) (w.fillStyle = "rgba(0,0,0,0.05)"), w.fillRect(0, y, S, 1);
-        for (const fy of [0, 128])
+        // サイディングの継ぎ目(縦)と、階のさかいの帯
+        for (let x = 0; x < S; x += 36.5) (w.fillStyle = "rgba(0,0,0,0.07)"), w.fillRect(x, 0, 0.7, S);
+        grime(w, 16);
+        for (const fy of [0, 128]) {
+          w.fillStyle = "rgba(0,0,0,0.1)";
+          w.fillRect(0, fy + 125, S, 1.2);
           for (const [x, ww] of [[34, 74], [150, 56]]) {
-            w.fillStyle = "#d8d8d4";
-            w.fillRect(x - 4, fy + 34, ww + 8, 62);
-            glass(w, x, fy + 38, ww, 54, "#9fb2c4", "#3c4a58");
-            w.fillStyle = "#e9e9e6";
-            w.fillRect(x + ww / 2 - 1, fy + 38, 2, 54);
+            win(w, x, fy + 38, ww, 54, { panes: ww > 60 ? 2 : 2 });
             lit(g, x, fy + 38, ww, 54, x * 3 + fy);
           }
+          // 換気口
+          for (const vx of [18, 128]) {
+            w.fillStyle = "#cfcfca";
+            w.beginPath();
+            w.arc(vx, fy + 24, 3.2, 0, 7);
+            w.fill();
+            w.fillStyle = "rgba(0,0,0,0.3)";
+            w.fillRect(vx - 2.4, fy + 23.4, 4.8, 0.7);
+            w.fillRect(vx - 2.4, fy + 25, 4.8, 0.7);
+          }
+        }
+        pipe(w, 244);
       }),
       // マンション: 7.2m×2階(5.8m)。ベランダの手すりと掃き出し窓、住戸の仕切り
       mk((w, g) => {
         w.fillStyle = "#eeece6";
         w.fillRect(0, 0, S, S);
+        grime(w, 14, 0.04);
         for (const fy of [0, 128]) {
-          glass(w, 14, fy + 20, 100, 70, "#a9bccc", "#46566a");
-          glass(w, 142, fy + 20, 100, 70, "#a9bccc", "#46566a");
+          // ベランダの奥(暗いへこみ)と、掃き出し窓・室外機・物干し
+          w.fillStyle = "rgba(0,0,0,0.16)";
+          w.fillRect(8, fy + 4, 116, 110);
+          w.fillRect(134, fy + 4, 122, 110);
+          win(w, 14, fy + 20, 100, 70, { panes: 2, top: "#9db0c2", bot: "#34424f" });
+          win(w, 142, fy + 20, 100, 70, { panes: 2, top: "#9db0c2", bot: "#34424f" });
           lit(g, 14, fy + 20, 100, 70, fy + 11);
           lit(g, 142, fy + 20, 100, 70, fy + 29);
-          w.fillStyle = "rgba(120,126,134,0.88)";
+          for (const ax of [98, 226]) {
+            w.fillStyle = "#e2e2de";
+            w.fillRect(ax, fy + 70, 20, 15);
+            w.fillStyle = "#a9acad";
+            w.beginPath();
+            w.arc(ax + 7, fy + 77.5, 5, 0, 7);
+            w.fill();
+          }
+          w.fillStyle = "#c8c8c4";
+          w.fillRect(10, fy + 12, 112, 0.9);
+          w.fillRect(136, fy + 12, 112, 0.9);
+          // 上の階のベランダの床の影
+          let sh = w.createLinearGradient(0, fy, 0, fy + 12);
+          sh.addColorStop(0, "rgba(0,0,0,0.45)");
+          sh.addColorStop(1, "rgba(0,0,0,0)");
+          w.fillStyle = sh;
+          w.fillRect(0, fy, S, 12);
+          // 手すり(半透明のパネルと、上の笠木・たての柱)
+          w.fillStyle = "rgba(150,158,166,0.9)";
           w.fillRect(0, fy + 84, S, 30);
-          w.fillStyle = "rgba(255,255,255,0.18)";
-          for (let x = 4; x < S; x += 9) w.fillRect(x, fy + 84, 2, 30);
+          sh = w.createLinearGradient(0, fy + 84, 0, fy + 114);
+          sh.addColorStop(0, "rgba(255,255,255,0.22)");
+          sh.addColorStop(1, "rgba(0,0,0,0.12)");
+          w.fillStyle = sh;
+          w.fillRect(0, fy + 84, S, 30);
+          w.fillStyle = "rgba(255,255,255,0.3)";
+          for (let x = 4; x < S; x += 9) w.fillRect(x, fy + 86, 0.8, 27);
+          w.fillStyle = "#eeeeea";
+          w.fillRect(0, fy + 82.5, S, 2.2);
           w.fillStyle = "#dcdad4";
           w.fillRect(0, fy + 114, S, 14);
+          w.fillStyle = "rgba(0,0,0,0.25)";
+          w.fillRect(0, fy + 126.4, S, 1.6);
+          for (let x = 30; x < S; x += 60) {
+            const sg = w.createLinearGradient(0, fy + 116, 0, fy + 128);
+            sg.addColorStop(0, "rgba(60,58,52,0.2)");
+            sg.addColorStop(1, "rgba(60,58,52,0)");
+            w.fillStyle = sg;
+            w.fillRect(x + hash(x + fy) * 20, fy + 116, 1.6, 12);
+          }
           w.fillStyle = "#f6f5f2";
           w.fillRect(0, fy, 8, 128);
           w.fillRect(124, fy, 10, 128);
@@ -585,10 +718,30 @@ const City = (() => {
           w.fillStyle = "#c9ccd0";
           w.fillRect(0, fy + 98, S, 30);
           for (let x = 30; x < S; x += 64) {
-            w.fillStyle = "#59626c";
+            // ブラインド(窓ごとに下ろし具合が違う)と、たての方立て・その影
+            if (hash(x * 3 + fy) < 0.7) {
+              const bh = 20 + hash(x + fy * 7) * 70;
+              w.fillStyle = "rgba(232,232,226,0.55)";
+              w.fillRect(x - 28, fy + 2, 60, bh);
+              w.fillStyle = "rgba(0,0,0,0.08)";
+              for (let q = fy + 2; q < fy + 2 + bh; q += 1.8) w.fillRect(x - 28, q, 60, 0.5);
+            }
+            w.fillStyle = "#4d565f";
             w.fillRect(x, fy, 4, 98);
+            w.fillStyle = "rgba(255,255,255,0.35)";
+            w.fillRect(x, fy, 0.8, 98);
+            w.fillStyle = "rgba(0,0,0,0.25)";
+            w.fillRect(x + 4, fy, 2, 98);
+            w.fillStyle = "rgba(0,0,0,0.3)";
+            w.fillRect(x - 30, fy + 48, 64, 1);
             lit(g, x - 26, fy + 6, 56, 88, x + fy * 5);
           }
+          // 階のさかいの帯の影と目地
+          w.fillStyle = "rgba(0,0,0,0.3)";
+          w.fillRect(0, fy + 98, S, 2);
+          w.fillStyle = "rgba(255,255,255,0.25)";
+          w.fillRect(0, fy + 126.5, S, 1.5);
+          for (let x = 0; x < S; x += 32) (w.fillStyle = "rgba(0,0,0,0.12)"), w.fillRect(x, fy + 100, 0.7, 28);
         }
       }),
     ];
@@ -710,11 +863,13 @@ const City = (() => {
         if (vWall > 0.5 && vFh < 3.2) totalEmissiveRadiance *= 0.0;`)
           // ガラスの所: つるつるで、鏡に近い(まわりの景色が映る)。色も暗いガラスの色にする
           .replace("#include <metalnessmap_fragment>", `#include <metalnessmap_fragment>
+        // 地面の近くは、はね返りの汚れで少し暗く
+        if (vWall > 0.5) diffuseColor.rgb *= 0.86 + 0.14 * smoothstep(0.0, 1.8, vFh);
         roughnessFactor = mix(roughnessFactor, 0.05, facGlass);
         metalnessFactor = mix(metalnessFactor, 0.92 * uRefl, facGlass);
         diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.52, 0.6, 0.68), facGlass * 0.7);`);
     };
-    m.customProgramCacheKey = () => "fac2";
+    m.customProgramCacheKey = () => "fac3";
     return m;
   }
   // anc の4つ目(出はじめる時刻)を入れる。建物ごとに少しずつずらす
