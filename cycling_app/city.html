@@ -8,12 +8,12 @@
 <meta name="theme-color" content="#050608" />
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-<link rel="stylesheet" href="css/style.css?v=2027.1.8" />
-<link rel="stylesheet" href="css/duelist.css?v=2027.1.8" />
-<link rel="stylesheet" href="css/cinema.css?v=2027.1.8" />
-<link rel="stylesheet" href="css/board.css?v=2027.1.8" />
-<link rel="stylesheet" href="css/tcard.css?v=2027.1.8" />
-<link rel="stylesheet" href="css/city.css?v=2027.1.8" />
+<link rel="stylesheet" href="css/style.css?v=2027.1.9" />
+<link rel="stylesheet" href="css/duelist.css?v=2027.1.9" />
+<link rel="stylesheet" href="css/cinema.css?v=2027.1.9" />
+<link rel="stylesheet" href="css/board.css?v=2027.1.9" />
+<link rel="stylesheet" href="css/tcard.css?v=2027.1.9" />
+<link rel="stylesheet" href="css/city.css?v=2027.1.9" />
 </head>
 <body class="city">
 <div id="ct-view"></div>
@@ -32,7 +32,7 @@
   <label>ライバルの速さ<select id="ct-rival"><option value="22">ゆっくり(22km/h)</option><option value="25" selected>ふつう(25km/h)</option><option value="28">速い(28km/h)</option><option value="32">とても速い(32km/h)</option></select></label>
   <label class="ct-check"><input type="checkbox" id="ct-auto0" /> 自動でこぐ(見るだけ)</label>
   <label class="ct-check"><input type="checkbox" id="ct-plateau0" checked /> 実物の建物(PLATEAU・国交省の3D都市モデル)<small>東京都内。壁の写真つき・区画ごとに数MBを読み込みます</small></label>
-  <label class="ct-check"><input type="checkbox" id="ct-tcr0" /> 写真から作ったバイクで走る(GIANT TCR)<small>ガレージの「回して見る」と同じバイク。乗り手の姿勢は、このバイクのサドルとブラケットの位置に合わせます。近くで見ると絵が粗く見えます。オフなら、ガレージの3Dのバイク(黒いTCRの形)で走ります</small></label>
+  <label class="ct-check" hidden><input type="checkbox" id="ct-tcr0" /> 写真から作ったバイクで走る(GIANT TCR)<small>ガレージの「回して見る」と同じバイク。乗り手の姿勢は、このバイクのサドルとブラケットの位置に合わせます。近くで見ると絵が粗く見えます。オフなら、ガレージの3Dのバイク(黒いTCRの形)で走ります</small></label>
   <details class="ct-g3" id="ct-g3">
     <summary>Googleの3D(Googleマップの3Dと同じ写真の街)</summary>
     <label class="ct-check"><input type="checkbox" id="ct-google0" /> Googleの3Dで走る<small>Google Maps Platform の APIキーが要ります。月1,000回の開始までは無料、超えると1,000回あたり約6ドル(Googleの料金)</small></label>
@@ -121,28 +121,28 @@
 } }
 </script>
 <script src="https://unpkg.com/three@0.149.0/build/three.min.js"></script>
-<script src="js/vendor/gltf-loader.js?v=2027.1.8"></script>
-<script src="js/garage/parts.js?v=2027.1.8"></script>
-<script src="js/garage/fit.js?v=2027.1.8"></script>
-<script src="js/garage/view3d.js?v=2027.1.8"></script>
-<script src="js/store.js?v=2027.1.8"></script>
-<script src="js/nav.js?v=2027.1.8"></script>
-<script src="js/physics.js?v=2027.1.8"></script>
-<script src="js/eta.js?v=2027.1.8"></script>
-<script src="js/duel.js?v=2027.1.8"></script>
-<script src="js/cardgen.js?v=2027.1.8"></script>
-<script src="js/battle.js?v=2027.1.8"></script>
-<script src="js/tcard.js?v=2027.1.8"></script>
-<script src="js/bikespin.js?v=2027.1.8"></script>
-<script src="js/duelfx.js?v=2027.1.8"></script>
-<script src="js/cinema.js?v=2027.1.8"></script>
-<script src="js/board.js?v=2027.1.8"></script>
-<script src="js/monart.js?v=2027.1.8"></script>
-<script src="js/voice.js?v=2027.1.8"></script>
-<script src="js/duellines.js?v=2027.1.8"></script>
-<script src="js/plateau-roads.js?v=2027.1.8"></script>
-<script src="js/plateau-index.js?v=2027.1.8"></script>
-<script src="js/city.js?v=2027.1.8"></script>
-<script src="js/update.js?v=2027.1.8"></script>
+<script src="js/vendor/gltf-loader.js?v=2027.1.9"></script>
+<script src="js/garage/parts.js?v=2027.1.9"></script>
+<script src="js/garage/fit.js?v=2027.1.9"></script>
+<script src="js/garage/view3d.js?v=2027.1.9"></script>
+<script src="js/store.js?v=2027.1.9"></script>
+<script src="js/nav.js?v=2027.1.9"></script>
+<script src="js/physics.js?v=2027.1.9"></script>
+<script src="js/eta.js?v=2027.1.9"></script>
+<script src="js/duel.js?v=2027.1.9"></script>
+<script src="js/cardgen.js?v=2027.1.9"></script>
+<script src="js/battle.js?v=2027.1.9"></script>
+<script src="js/tcard.js?v=2027.1.9"></script>
+<script src="js/bikespin.js?v=2027.1.9"></script>
+<script src="js/duelfx.js?v=2027.1.9"></script>
+<script src="js/cinema.js?v=2027.1.9"></script>
+<script src="js/board.js?v=2027.1.9"></script>
+<script src="js/monart.js?v=2027.1.9"></script>
+<script src="js/voice.js?v=2027.1.9"></script>
+<script src="js/duellines.js?v=2027.1.9"></script>
+<script src="js/plateau-roads.js?v=2027.1.9"></script>
+<script src="js/plateau-index.js?v=2027.1.9"></script>
+<script src="js/city.js?v=2027.1.9"></script>
+<script src="js/update.js?v=2027.1.9"></script>
 </body>
 </html>

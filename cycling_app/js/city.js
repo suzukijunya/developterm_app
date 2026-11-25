@@ -3312,7 +3312,7 @@ const City = (() => {
   // 写真は十数mおきにしかないので、景色は数秒ごとに切り替わる(なめらかな3Dにはならない)。
   // 料金は「ストリートビューを開いた回数」で数えるはずなので、1回のライドで1回だけ開く。この端末では1日20回・月450回で止める。
   const SV = (() => {
-    let on = false, pano = null, svc = null, loading = null, err = "", el = null, lastAlong = -1e9, busy = false, lastId = "", hdg = null, povT = 0, miss = 0;
+    let on = false, pano = null, svc = null, loading = null, err = "", el = null, lastAlong = -1e9, busy = false, lastId = "", hdg = null, povT = 0, miss = 0, failed = false;
     const CAP_M = 450, CAP_D = 20;
     const usage = () => {
       const d = new Date(), m = d.getFullYear() + "-" + (d.getMonth() + 1), day = m + "-" + d.getDate();
@@ -3335,7 +3335,9 @@ const City = (() => {
         window.__svReady = () => res();
         window.gm_authFailure = () => {
           err = "キーが使えません。Google Cloud で「Maps JavaScript API」を有効にして、キーの「APIの制限」にも加えてください";
+          failed = true;
           stop();
+          ticker("ストリートビューを表示できないので、3Dの街に戻しました。" + err, "opp");
         };
         const sc = document.createElement("script");
         sc.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(G3.getKey()) + "&v=weekly&loading=async&callback=__svReady";
@@ -3347,6 +3349,7 @@ const City = (() => {
     async function start() {
       err = "";
       if (!G3.getKey()) return (err = "APIキーを入れてください"), false;
+      if (failed) return (err = "キーで Maps JavaScript API が使えません(Google Cloud で有効にして、キーの「API の制限」に加えたあと、ページを読み込み直してください)"), false;
       if (!pano && over()) return (err = over() + "。料金がかからないように止めています"), false;
       try {
         await load();
@@ -3405,6 +3408,17 @@ const City = (() => {
           })
           .catch(() => miss++)
           .finally(() => (busy = false));
+      }
+      // Google の部品が「エラーが発生しました」を出したら、やめて3Dの街に戻す(キーの設定が足りないとき)
+      if (el.querySelector(".gm-err-container")) {
+        err = "キーで Maps JavaScript API が使えません。Google Cloud で「Maps JavaScript API」を有効にして、キーの「API の制限」にも加えてください";
+        failed = true;
+        stop();
+        try {
+          localStorage.setItem("city_sv", "0");
+        } catch (e) {}
+        ticker("ストリートビューを表示できないので、3Dの街に戻しました。" + err, "opp");
+        return;
       }
       const msg = el.querySelector(".ct-sv-msg");
       msg.hidden = miss < 3;
@@ -3760,7 +3774,9 @@ const City = (() => {
       // 写真から作ったバイクで走るときは、乗り手の姿勢をそのバイクの形に合わせる。
       // (絵のバイクは、ガレージのバイクとサドル・ブラケットの位置が違う。そのままだと手が届かず、サドルから浮く)
       try {
-        spriteOn = localStorage.getItem("city_tcr2") === "1" && typeof BikeSpin !== "undefined";
+        // 写真のバイク(1枚の絵)は使わない。絵は決まった角度からの見た目しか持たないので、見る向きによって
+        // 体の向きとずれ、手がハンドルから外れ、サドルから浮いて見える。体に合わせて作る3Dのバイク(黒いTCRの形)だけにした
+        spriteOn = false;
       } catch (e) {}
       if (spriteOn) {
         // 絵(横向きのコマ)の中で測った位置。BB を原点に、前が+x・上が+y。単位は「車輪の半径=150」のときの長さ
