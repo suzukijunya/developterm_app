@@ -3384,7 +3384,7 @@ const City = (() => {
   // 写真は十数mおきにしかないので、景色は数秒ごとに切り替わる(なめらかな3Dにはならない)。
   // 料金は「ストリートビューを開いた回数」で数えるはずなので、1回のライドで1回だけ開く。この端末では1日20回・月450回で止める。
   const SV = (() => {
-    let on = false, pano = null, svc = null, loading = null, err = "", el = null, lastAlong = -1e9, busy = false, lastId = "", hdg = null, povT = 0, miss = 0, failed = false, tryAt = 0, why = "", told = false;
+    let on = false, err = "", el = null, lastAlong = -1e9, busy = false, lastId = "", hdg = null, povT = 0, miss = 0, failed = false, tryAt = 0, why = "", told = false;
     const CAP_M = 450, CAP_D = 20;
     const usage = () => {
       const d = new Date(), m = d.getFullYear() + "-" + (d.getMonth() + 1), day = m + "-" + d.getDate();
@@ -3400,116 +3400,97 @@ const City = (() => {
       const u = usage();
       return u.n >= CAP_M ? `今月の上限(${CAP_M}回)に達しました` : u.dn >= CAP_D ? `今日の上限(${CAP_D}回)に達しました` : "";
     };
-    function load() {
-      if (loading) return loading;
-      loading = new Promise((res, rej) => {
-        if (window.google && google.maps && google.maps.StreetViewPanorama) return res();
-        window.__svReady = () => res();
-        window.gm_authFailure = () => {
-          err = "キーが使えません。Google Cloud で「Maps JavaScript API」を有効にして、キーの「APIの制限」にも加えてください";
-          failed = true;
-          stop();
-          ticker("ストリートビューを表示できないので、3Dの街に戻しました。" + err, "opp");
-        };
-        const sc = document.createElement("script");
-        sc.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(G3.getKey()) + "&v=weekly&loading=async&callback=__svReady";
-        sc.onerror = () => rej(new Error("読み込めませんでした"));
-        document.head.appendChild(sc);
-      });
-      return loading;
+    // ストリートビューは、別のページ(sv.html)を画面いっぱいに埋めこんで出す。
+    // この画面の中に直接作ると、見た目の決まり(CSS)や大きさの影響で、写真が真っ黒になることがあった。
+    let frame = null, ready = false, hello = false, status = "";
+    const post = (m) => frame && frame.contentWindow && frame.contentWindow.postMessage(Object.assign({ sv: 1 }, m), location.origin);
+    function fail(text) {
+      err = text;
+      failed = true;
+      stop();
+      try {
+        localStorage.setItem("city_sv", "0");
+      } catch (e) {}
+      ticker("ストリートビューを表示できないので、3Dの街に戻しました。" + err, "opp");
     }
+    window.addEventListener("message", (e) => {
+      const d = e.data;
+      if (e.origin !== location.origin || !d || !d.sv || !frame || e.source !== frame.contentWindow) return;
+      if (d.t === "hello") (hello = true), post({ t: "key", key: G3.getKey() });
+      else if (d.t === "ready") ready = true;
+      else if (d.t === "auth") fail("キーで Maps JavaScript API が使えません。Google Cloud で「Maps JavaScript API」を有効にして、キーの「API の制限」にも加えてください");
+      else if (d.t === "fail") fail(d.why || "");
+      else if (d.t === "status") status = d.s;
+      else if (d.t === "ok") (busy = false), (miss = 0), (lastId = d.id);
+      else if (d.t === "miss") {
+        busy = false;
+        miss++;
+        why = d.why || "";
+        // 3回続けて取れなかったら、理由を1度だけ知らせる
+        if (miss === 3 && !told) (told = true), ticker(`ストリートビューの写真を取れません(${why || "理由不明"})。3Dの街で走ります`, "opp");
+      }
+    });
     async function start() {
       err = "";
       if (!G3.getKey()) return (err = "APIキーを入れてください"), false;
       if (failed) return (err = "キーで Maps JavaScript API が使えません(Google Cloud で有効にして、キーの「API の制限」に加えたあと、ページを読み込み直してください)"), false;
-      if (!pano && over()) return (err = over() + "。料金がかからないように止めています"), false;
-      try {
-        await load();
-      } catch (e) {
-        loading = null;
-        return (err = "Google の地図の部品を読み込めませんでした"), false;
-      }
+      if (!frame && over()) return (err = over() + "。料金がかからないように止めています"), false;
       if (!el) {
         el = document.createElement("div");
-        el.className = "ct-sv";
-        el.innerHTML = `<div class="ct-sv-pano"></div><div class="ct-sv-rival" hidden><i></i><b></b></div><div class="ct-sv-bike"></div><p class="ct-sv-msg" hidden></p>`;
+        el.className = "ct-sv off";
+        el.innerHTML = `<iframe class="ct-sv-pano" title="ストリートビュー" tabindex="-1"></iframe><div class="ct-sv-rival" hidden><i></i><b></b></div><div class="ct-sv-bike"></div>`;
         $("ct-view").appendChild(el);
       }
-      if (!pano) {
+      if (!frame) {
         const u = usage();
         u.n++;
         u.dn++;
         try {
           localStorage.setItem("city_svuse", JSON.stringify(u));
         } catch (e) {}
-        pano = new google.maps.StreetViewPanorama(el.firstChild, { disableDefaultUI: true, clickToGo: false, linksControl: false, panControl: false, zoomControl: false, addressControl: false, fullscreenControl: false, motionTracking: false, motionTrackingControl: false, scrollwheel: false, showRoadLabels: true, zoom: 0.4, visible: true });
-        svc = new google.maps.StreetViewService();
+        frame = el.firstChild;
+        const me = document.querySelector('script[src*="js/city.js"]');
+        frame.src = "sv.html" + (me && me.src.includes("?") ? "?" + me.src.split("?")[1] : "");
       }
-      el.hidden = true; // 最初の写真が届いてから出す
+      el.classList.add("off"); // 最初の写真が届いてから出す
       on = true;
       lastAlong = -1e9;
       lastId = "";
       miss = 0;
+      busy = false;
       return true;
     }
     function stop() {
       on = false;
-      if (el) el.hidden = true;
+      if (el) el.classList.add("off");
       const c = $("ct-sv");
       if (c) c.checked = false;
     }
     // 走っている向き(北=0・東=90)
     const heading = (p) => ((Math.atan2(p.tx, -p.tz) * 180) / Math.PI + 360) % 360;
     function update(dt, p, s) {
-      if (!on || !pano) return;
+      if (!on || !ready) return;
       // 向き: 道の向きへ、なめらかに回す
       const want = heading(p);
-      if (hdg == null) hdg = want;
+      if (hdg == null || isNaN(hdg)) hdg = want;
       hdg = (hdg + ((((want - hdg) % 360) + 540) % 360 - 180) * Math.min(1, dt * 2.5) + 360) % 360;
-      if ((povT += dt) > 0.1) (povT = 0), pano.setPov({ heading: hdg, pitch: -4 });
-      // 写真を先へ進める: 15mごと(速いときは、1.5秒に1回までに間引く)
-      const step = Math.max(15, s.v * s.speedX * 1.5);
+      if ((povT += dt) > 0.1 && !isNaN(hdg)) (povT = 0), post({ t: "pov", h: hdg });
+      // 写真を先へ進める: 15mごと(速いときは、1.5秒に1回までに間引く)。
       // まだ1枚も出せていない間(出発地点のそばに写真が無いなど)は、2秒おきに、範囲を広げて探し直す
-      const retry = (!lastId || miss > 0) && performance.now() - tryAt > 2000;
+      const step = Math.max(15, s.v * s.speedX * 1.5), now = performance.now();
+      if (busy && now - tryAt > 8000) busy = false; // 返事が来ないとき
+      const retry = (!lastId || miss > 0) && now - tryAt > 2000;
       if (!busy && (Math.abs(s.along - lastAlong) >= step || retry)) {
         lastAlong = s.along;
-        tryAt = performance.now();
+        tryAt = now;
         busy = true;
         const q = at(s.along + 6);
-        const loc = { lat: route.lat0 - q.z / route.kz, lng: route.lon0 + q.x / route.kx };
-        const rq = { location: loc, radius: miss > 0 || !lastId ? 150 : 35, preference: google.maps.StreetViewPreference.NEAREST };
-        if (!(miss > 1)) rq.sources = [google.maps.StreetViewSource.OUTDOOR];
-        svc.getPanorama(rq)
-          .then((r) => {
-            const id = r.data.location.pano;
-            miss = 0;
-            if (id !== lastId) (lastId = id), pano.setPano(id);
-          })
-          .catch((e) => {
-            miss++;
-            why = String((e && (e.code || e.message)) || e || "").slice(0, 60);
-            // 3回続けて取れなかったら、理由を1度だけ知らせる
-            if (miss === 3 && !told) (told = true), ticker(`ストリートビューの写真を取れません(${why || "理由不明"})。3Dの街で走ります`, "opp");
-          })
-          .finally(() => (busy = false));
-      }
-      // Google の部品が「エラーが発生しました」を出したら、やめて3Dの街に戻す(キーの設定が足りないとき)
-      if (el.querySelector(".gm-err-container")) {
-        err = "キーで Maps JavaScript API が使えません。Google Cloud で「Maps JavaScript API」を有効にして、キーの「API の制限」にも加えてください";
-        failed = true;
-        stop();
-        try {
-          localStorage.setItem("city_sv", "0");
-        } catch (e) {}
-        ticker("ストリートビューを表示できないので、3Dの街に戻しました。" + err, "opp");
-        return;
+        post({ t: "find", lat: route.lat0 - q.z / route.kz, lng: route.lon0 + q.x / route.kx, r: miss > 0 || !lastId ? 150 : 35, outdoor: !(miss > 1) });
       }
       // 写真を出せている間だけ、写真の画面にする。出せない間は、下の3Dの街を見せる(真っ黒にしない)
       const show = !!lastId && miss < 3;
-      if (el.hidden === show) {
-        el.hidden = !show;
-        // 隠している間に作った画面は大きさが0なので、出すときに大きさを測り直させる
-        if (show) setTimeout(() => window.google && google.maps.event.trigger(pano, "resize"), 50);
+      if (el.classList.contains("off") === show) {
+        el.classList.toggle("off", !show);
         if (!show && lastId) ticker("このあたりはストリートビューの写真がないので、3Dの街で走ります", "opp");
       }
       // ライバル: 前にいるときだけ、距離に合わせた大きさで出す
@@ -3521,7 +3502,8 @@ const City = (() => {
         rv.lastChild.textContent = `${Math.round(d)}m`;
       }
     }
-    return { start, stop, update, on: () => on, showing: () => on && !!el && !el.hidden, err: () => err, usage: () => Object.assign(usage(), { capM: CAP_M, capD: CAP_D, over: over() }) };
+    const info = () => `準備 ${hello ? "○" : "×"}/${ready ? "○" : "×"}・写真 ${lastId ? "あり" : "なし"}・状態 ${status || "-"}・失敗 ${miss}${why ? "(" + why + ")" : ""}`;
+    return { start, stop, update, info, on: () => on, showing: () => on && !!el && !el.classList.contains("off"), err: () => err, usage: () => Object.assign(usage(), { capM: CAP_M, capD: CAP_D, over: over() }) };
   })();
 
   // 地図の区画のうち、施設の看板だけは残す(Googleの3Dでも、どこを走っているかわかるように)
@@ -5029,6 +5011,7 @@ const City = (() => {
     // ストリートビューのときは、3Dの街は描かない(下に隠れて見えないので、その分軽くする)
     if (SV.showing()) {
       if ((s.hudT = (s.hudT || 0) + real) > 0.12) (s.hudT = 0), hud();
+      if ((s.perfT = (s.perfT || 0) + real) > 1) (s.perfT = 0), perfHud();
       return;
     }
     G3.update(real);
@@ -5052,7 +5035,7 @@ const City = (() => {
     const el = $("ct-perf");
     if (!el || el.hidden) return;
     const r = Perf.report(), inf = renderer.info.render;
-    el.innerHTML = `<b>${r.fps.toFixed(0)}コマ/秒</b> 遅いコマ ${r.slow}/${r.n} ・最悪 ${r.worst.toFixed(0)}ms<br>描く量 ${(inf.triangles / 10000).toFixed(0)}万面・${inf.calls}回 ・細かさ×${renderer.getPixelRatio().toFixed(2)}${renderer.shadowMap.enabled ? "・影あり" : ""}<br>平均: ${r.avg.join(" / ")}<br>最悪: ${r.top.join(" / ")}`;
+    el.innerHTML = `<b>${r.fps.toFixed(0)}コマ/秒</b> 遅いコマ ${r.slow}/${r.n} ・最悪 ${r.worst.toFixed(0)}ms<br>描く量 ${(inf.triangles / 10000).toFixed(0)}万面・${inf.calls}回 ・細かさ×${renderer.getPixelRatio().toFixed(2)}${renderer.shadowMap.enabled ? "・影あり" : ""}<br>平均: ${r.avg.join(" / ")}<br>最悪: ${r.top.join(" / ")}${SV.on() ? `<br>ストリートビュー: ${SV.info()}` : ""}`;
     if ((Perf.resetT = (Perf.resetT || 0) + 1) >= 10) (Perf.resetT = 0), (Perf.max = {}), (Perf.sum = {}), (Perf.n = 0);
   }
 

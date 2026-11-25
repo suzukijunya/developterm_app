@@ -164,3 +164,6 @@ body.city { margin: 0; overflow: hidden; background: #050608; color: #fff; font-
 /* Google の部品の中の重なり順が、上に重ねるバイクや文字より前に出ないようにする */
 .ct-sv-pano { z-index: 0; isolation: isolate; }
 .ct-sv-bike, .ct-sv-rival, .ct-sv-msg { z-index: 1; }
+/* ストリートビュー: 隠すときも大きさは残す(大きさ0で作ると、写真が出ない) */
+.ct-sv.off { visibility: hidden; }
+iframe.ct-sv-pano { width: 100%; height: 100%; border: 0; display: block; pointer-events: none; }

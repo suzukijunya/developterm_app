@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<title>ストリートビュー</title>
+<!-- シティデュエルの中に埋めこむ、ストリートビューだけのページ。
+     ほかの画面の見た目の決まり(CSS)や大きさの影響を受けないよう、別のページに分けてある。
+     キーは親のページから受け取る(このページにもURLにも書かない)。 -->
+<style>
+html, body, #p { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0a0f1c; }
+</style>
+</head>
+<body>
+<div id="p"></div>
+<script>
+(() => {
+  let pano = null, svc = null, lastId = "", busy = false, started = false;
+  const send = (m) => parent.postMessage(Object.assign({ sv: 1 }, m), location.origin);
+  window.gm_authFailure = () => send({ t: "auth" });
+  window.__svInit = () => {
+    try {
+      pano = new google.maps.StreetViewPanorama(document.getElementById("p"), { disableDefaultUI: true, clickToGo: false, linksControl: false, panControl: false, zoomControl: false, addressControl: false, fullscreenControl: false, motionTracking: false, motionTrackingControl: false, scrollwheel: false, showRoadLabels: true, zoom: 0.4 });
+      svc = new google.maps.StreetViewService();
+      pano.addListener("status_changed", () => send({ t: "status", s: String(pano.getStatus()) }));
+      send({ t: "ready" });
+    } catch (e) {
+      send({ t: "fail", why: String((e && e.message) || e).slice(0, 80) });
+    }
+  };
+  addEventListener("message", (e) => {
+    if (e.origin !== location.origin || !e.data || !e.data.sv) return;
+    const d = e.data;
+    if (d.t === "key" && !started) {
+      started = true;
+      const sc = document.createElement("script");
+      sc.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(d.key) + "&v=weekly&loading=async&callback=__svInit";
+      sc.onerror = () => send({ t: "fail", why: "読み込めませんでした" });
+      document.head.appendChild(sc);
+    }
+    if (d.t === "pov" && pano) pano.setPov({ heading: d.h, pitch: -4 });
+    if (d.t === "find" && svc && !busy) {
+      busy = true;
+      const rq = { location: { lat: d.lat, lng: d.lng }, radius: d.r, preference: google.maps.StreetViewPreference.NEAREST };
+      if (d.outdoor) rq.sources = [google.maps.StreetViewSource.OUTDOOR];
+      svc.getPanorama(rq)
+        .then((r) => {
+          const id = r.data.location.pano;
+          if (id !== lastId) {
+            lastId = id;
+            pano.setPano(id);
+            pano.setVisible(true);
+          }
+          send({ t: "ok", id });
+        })
+        .catch((er) => send({ t: "miss", why: String((er && (er.code || er.message)) || er || "").slice(0, 60) }))
+        .finally(() => (busy = false));
+    }
+  });
+  // Google の部品が「エラーが発生しました」を出したら知らせる(キーの設定が足りないとき)
+  setInterval(() => document.querySelector(".gm-err-container") && send({ t: "auth" }), 1000);
+  send({ t: "hello" });
+})();
+</script>
+</body>
+</html>
