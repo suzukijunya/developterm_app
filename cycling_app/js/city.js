@@ -805,7 +805,7 @@ const City = (() => {
   // 実物の建物: 読み込めたら、建物ごとに地面からばねのように立ち上がる(急にパッと出ない)。
   // anc = 建物の中心x・足もとy・中心z・出はじめる時刻(秒)。頂点シェーダーで高さを 0→1 に伸ばす
   // uG3: Googleの3Dと組み合わせるとき。自分の位置(x,z)と、きれいな建物を立てる範囲(ここまで全部 / ここから先は無し)。w=0 なら使わない
-  const popU = { uPopT: { value: 0 }, uG3: { value: null } };
+  const popU = { uPopT: { value: 0 }, uG3: { value: null }, uShops: { value: null } };
   // 道・木・電柱など: Googleの3Dと組み合わせるときは、近くだけ描く(遠くは Google の街にまかせる)
   const clipU = { uClip: { value: 1e9 } };
   function clipMat(m) {
@@ -822,16 +822,19 @@ const City = (() => {
       sh.uniforms.uPopT = popU.uPopT;
       if (!popU.uG3.value) popU.uG3.value = new (T().Vector4)(0, 0, 0, 0);
       sh.uniforms.uG3 = popU.uG3;
-      sh.vertexShader = "attribute vec4 anc;\nuniform float uPopT;\nuniform vec4 uG3;\n" + sh.vertexShader.replace("#include <begin_vertex>", `#include <begin_vertex>
+      sh.uniforms.uShops = popU.uShops;
+      sh.vertexShader = "attribute vec4 anc;\nuniform float uPopT;\nuniform vec4 uG3;\nuniform vec3 uShops[16];\n" + sh.vertexShader.replace("#include <begin_vertex>", `#include <begin_vertex>
         float popT = clamp((uPopT - anc.w) / 0.95, 0.0, 1.0);
         float popK = popT >= 1.0 ? 1.0 : (popT <= 0.0 ? 0.0 : 1.0 - exp(-6.0 * popT) * cos(8.0 * popT));
         // Googleの3Dと組み合わせるとき: 建物ごとに、近くのものだけ立てる
         if (uG3.w > 0.0) popK *= 1.0 - smoothstep(uG3.z, uG3.w, distance(anc.xz, uG3.xy));
+        // 店や施設を専用の形で建てた場所では、もとの建物(その敷地に中心があるもの)は出さない
+        for (int si = 0; si < 16; si++) if (uShops[si].z > 0.0 && distance(anc.xz, uShops[si].xy) < uShops[si].z) popK = 0.0;
         transformed.y = anc.y + (transformed.y - anc.y) * popK - (1.0 - min(popK, 1.0)) * 1.5;`);
       // 壁の写真は暗く写っていることが多いので、少し明るく起こす
       if (photo) sh.fragmentShader = sh.fragmentShader.replace("#include <map_fragment>", "#include <map_fragment>\n diffuseColor.rgb = pow(diffuseColor.rgb, vec3(0.78)) * 1.12;");
     };
-    m.customProgramCacheKey = () => "pop3" + (photo ? 1 : 0);
+    m.customProgramCacheKey = () => "pop4" + (photo ? 1 : 0);
     return m;
   }
   // 外壁の材質: 1階には専用の絵(入口・店)を貼り、窓ガラスには空を映す(見る角度が浅いほど強く映る)
@@ -869,7 +872,7 @@ const City = (() => {
         metalnessFactor = mix(metalnessFactor, 0.92 * uRefl, facGlass);
         diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.52, 0.6, 0.68), facGlass * 0.7);`);
     };
-    m.customProgramCacheKey = () => "fac3";
+    m.customProgramCacheKey = () => "fac4";
     return m;
   }
   // anc の4つ目(出はじめる時刻)を入れる。建物ごとに少しずつずらす
@@ -1069,6 +1072,23 @@ const City = (() => {
       const [x, z] = project(la, lo);
       info.places.push({ name: nm, cls, x, z });
     }
+    // 店や施設(コンビニ・スーパー・ガソリンスタンド・交番・郵便局・銀行)は、種類ごとの形で道ぞいに建てる
+    for (const [nm0, cls, sub, la, lo] of data.poi || []) {
+      const kind = Shops.kindOf(cls, sub);
+      if (!kind) continue;
+      const q = project(la, lo), d = routeDist(q);
+      if (d > 45) continue;
+      const key = kind + ":" + Math.round(q[0] / 12) + ":" + Math.round(q[1] / 12);
+      if (Shops.seen.has(key)) continue;
+      Shops.seen.add(key);
+      await rest();
+      try {
+        const o = Shops.place(kind, q, d.along);
+        if (o) group.add(o);
+      } catch (e) {
+        console.error(e);
+      }
+    }
     const got = new Set();
     for (const [nm0, cls, sub, la, lo, rank] of data.poi || []) {
       await rest();
@@ -1132,6 +1152,188 @@ const City = (() => {
     out.along = along;
     return out;
   }
+  // ---------- 店や施設の形 ----------
+  // 実在のチェーンの名前・ロゴ・配色は使わない(色の帯と、種類を表すふつうの言葉だけ)
+  const Shops = (() => {
+    const seen = new Set(), all = []; // all: [敷地の中心x, z, 半径]
+    let M = null;
+    // 自分に近い16か所を、建物を消す場所として渡す
+    function update(px, pz) {
+      const THREE = T();
+      if (!popU.uShops.value) popU.uShops.value = Array.from({ length: 16 }, () => new THREE.Vector3());
+      const near = all.map((a) => [a, (a[0] - px) ** 2 + (a[1] - pz) ** 2]).sort((a, b) => a[1] - b[1]).slice(0, 16);
+      popU.uShops.value.forEach((v, i) => (near[i] ? v.set(near[i][0][0], near[i][0][1], near[i][0][2]) : v.set(0, 0, 0)));
+    }
+    function kindOf(cls, sub) {
+      if (sub === "convenience") return "conv";
+      if (sub === "supermarket") return "super";
+      if (cls === "fuel" || sub === "fuel") return "gas";
+      if (cls === "police" || sub === "police") return "koban";
+      if (cls === "post" || sub === "post_office") return "post";
+      if (cls === "bank" || sub === "bank") return "bank";
+      return null;
+    }
+    function mats() {
+      if (M) return M;
+      const THREE = T();
+      const L = (c, o) => new THREE.MeshLambertMaterial(Object.assign({ color: c }, o || {}));
+      // 看板の帯: 地の色・線の色・文字
+      const sign = (bg, line, text, fg = "#fff", w = 512, h = 96) => {
+        const cv = document.createElement("canvas");
+        cv.width = w;
+        cv.height = h;
+        const c = cv.getContext("2d");
+        c.fillStyle = bg;
+        c.fillRect(0, 0, w, h);
+        c.fillStyle = line;
+        c.fillRect(0, h * 0.78, w, h * 0.1);
+        c.fillStyle = fg;
+        c.font = `900 ${Math.round(h * 0.52)}px sans-serif`;
+        c.textAlign = "center";
+        c.textBaseline = "middle";
+        c.fillText(text, w / 2, h * 0.42);
+        const t = new THREE.CanvasTexture(cv);
+        t.encoding = THREE.sRGBEncoding;
+        t.anisotropy = 8;
+        return new THREE.MeshBasicMaterial({ map: t });
+      };
+      // 店の中(棚と明かり)が見えるガラス
+      const inside = (() => {
+        const cv = document.createElement("canvas");
+        cv.width = 512;
+        cv.height = 128;
+        const c = cv.getContext("2d");
+        const g = c.createLinearGradient(0, 0, 0, 128);
+        g.addColorStop(0, "#f4f6f2");
+        g.addColorStop(1, "#b9c2c4");
+        c.fillStyle = g;
+        c.fillRect(0, 0, 512, 128);
+        for (let x = 0; x < 512; x += 64) {
+          c.fillStyle = "#e9e6dc";
+          c.fillRect(x + 6, 40, 52, 80);
+          for (let r = 0; r < 4; r++) for (let q = 0; q < 6; q++) ((c.fillStyle = ["#d8463a", "#3a7ad0", "#e8b82a", "#49a868", "#f0f0ea", "#8a55b8", "#e07a30"][(q + r * 2 + x) % 7]), c.fillRect(x + 9 + q * 8, 44 + r * 19, 6, 14));
+        }
+        c.fillStyle = "#fff";
+        for (let x = 20; x < 512; x += 90) c.fillRect(x, 8, 56, 6); // 天井の明かり
+        c.fillStyle = "rgba(180,205,225,0.28)";
+        c.fillRect(0, 0, 512, 128);
+        c.fillStyle = "#4a4e52";
+        for (let x = 0; x <= 512; x += 128) c.fillRect(x - 2, 0, 4, 128); // サッシ
+        const t = new THREE.CanvasTexture(cv);
+        t.encoding = THREE.sRGBEncoding;
+        t.wrapS = THREE.RepeatWrapping;
+        return new THREE.MeshBasicMaterial({ map: t });
+      })();
+      M = {
+        wall: L(0xeeede8), dark: L(0x3c4046), grey: L(0x9a9da0), white: L(0xfafaf8), asph: L(0x55585c), line: L(0xf2f2ee), red: new THREE.MeshBasicMaterial({ color: 0xff3828 }), gold: L(0xc9a23a), pump: L(0xd8dadc), glass: new THREE.MeshStandardMaterial({ color: 0x7f97aa, metalness: 0.85, roughness: 0.08 }), inside,
+        conv: sign("#5b3fa8", "#f2c230", "コンビニ  24"), sup: sign("#c8362c", "#ffffff", "スーパーマーケット"), gas: sign("#1c8c8a", "#ffffff", "GS  セルフ"), koban: sign("#f4f4f0", "#2c4a8c", "交番  KOBAN", "#1c2c58"), post: sign("#d8402c", "#ffffff", "〒  郵便局"), bank: sign("#1f5f9e", "#d8c070", "銀行  ATM"),
+        poleC: sign("#5b3fa8", "#f2c230", "24", "#fff", 128, 128), poleG: sign("#1c8c8a", "#ffffff", "GS", "#fff", 128, 128), poleS: sign("#c8362c", "#ffffff", "P", "#fff", 128, 128),
+      };
+      return M;
+    }
+    // 道のどちら側か・道のふちまでの距離から、建てる場所と向きを決める
+    function place(kind, q, along) {
+      const THREE = T(), m = mats();
+      const p = at(along), r = Roads.ride(along);
+      const side = (q[0] - p.x) * p.tz - (q[1] - p.z) * p.tx > 0 ? 1 : -1; // +1 = 進む向きの左
+      const W = r ? r.W : 6, left = r ? r.off + 0.9 : 3, edge = (side > 0 ? left : Math.max(1.5, W - left)) + 2.2; // 車道のふち + 歩道
+      const nx = p.tz * side, nz = -p.tx * side; // 道から外へ
+      const g = new THREE.Group();
+      const add = (geo, mat, x, y, z, ry = 0, par = g) => {
+        const o = new THREE.Mesh(geo, mat);
+        o.position.set(x, y, z);
+        o.rotation.y = ry;
+        o.castShadow = o.receiveShadow = true;
+        par.add(o);
+        return o;
+      };
+      const B = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+      const C = (r0, h, n = 10) => new THREE.CylinderGeometry(r0, r0, h, n);
+      // 店の箱: 正面(+z)にガラス、上に看板の帯。w 幅・d 奥行き・h 高さ・gh ガラスの高さ
+      const shop = (w, d, h, sg, gh = 2.5, lot = 0) => {
+        add(B(w, h, d), m.wall, 0, h / 2, -lot - d / 2);
+        add(B(w + 0.1, 0.25, d + 0.1), m.grey, 0, h + 0.12, -lot - d / 2); // 屋根のふち
+        add(new THREE.PlaneGeometry(w - 0.6, gh), m.inside, 0, 0.35 + gh / 2, -lot + 0.02).material.map.repeat.set(Math.max(1, Math.round(w / 7)), 1);
+        add(B(w - 0.6, 0.35, 0.08), m.grey, 0, 0.17, -lot + 0.03); // 腰
+        add(B(w + 0.3, 0.85, 0.3), sg, 0, 0.35 + gh + 0.5, -lot + 0.1); // 看板の帯
+        add(B(1.9, gh, 0.06), m.glass, w * 0.18, 0.35 + gh / 2, -lot + 0.05); // 自動ドア
+        add(B(0.05, gh, 0.08), m.dark, w * 0.18, 0.35 + gh / 2, -lot + 0.07);
+        add(B(2.4, 0.03, 1.2), m.dark, w * 0.18, 0.02, -lot + 0.65); // 入口のマット
+      };
+      const poleSign = (x, z, mat, hgt = 6) => {
+        add(C(0.09, hgt), m.grey, x, hgt / 2, z);
+        add(B(1.5, 1.5, 0.22), mat, x, hgt - 0.2, z);
+      };
+      const lot = (w, d, n) => {
+        // 駐車場: アスファルトと白線・車止め
+        add(B(w, 0.04, d), m.asph, 0, 0.02, -d / 2);
+        for (let k = 0; k <= n; k++) add(B(0.1, 0.05, d * 0.62), m.line, -w / 2 + 0.6 + (k * (w - 1.2)) / n, 0.03, -d * 0.58);
+        for (let k = 0; k < n; k++) add(B(1.4, 0.12, 0.14), m.white, -w / 2 + 0.6 + ((k + 0.5) * (w - 1.2)) / n, 0.08, -d + 0.5);
+      };
+      let depth = 0;
+      if (kind === "conv") {
+        lot(14, 6.5, 4);
+        shop(14, 9, 3.6, m.conv, 2.5, 6.5);
+        add(B(0.7, 1.0, 0.6), m.dark, -5.2, 0.5, -5.9); // ごみ箱
+        add(B(0.7, 1.0, 0.6), m.grey, -4.4, 0.5, -5.9);
+        add(B(1.2, 1.6, 0.5), m.white, 5.4, 0.8, -6.1); // のぼり・ATMの案内
+        poleSign(6.3, -0.6, m.poleC);
+        depth = 15.5;
+      } else if (kind === "super") {
+        lot(24, 8, 8);
+        shop(24, 16, 7, m.sup, 3.2, 8);
+        add(B(10, 0.25, 3), m.grey, 4, 3.9, -6.6); // 入口の庇
+        for (const x of [-0.6, 8.6]) add(C(0.1, 3.9), m.grey, x, 1.95, -5.3);
+        for (let k = 0; k < 6; k++) add(B(0.06, 0.9, 1.4), m.grey, -9 + k * 0.7, 0.45, -7.2); // 駐輪場のラック
+        for (let k = 0; k < 4; k++) add(B(0.6, 0.9, 0.9), m.pump, 9.5, 0.45, -7.4 + k * 0.0 - k * 0.001, 0); // カート置き場
+        poleSign(11, -0.6, m.poleS, 7);
+        depth = 24;
+      } else if (kind === "gas") {
+        add(B(22, 0.04, 14), m.asph, 0, 0.02, -7);
+        add(B(16, 0.5, 9), m.white, 0, 5.2, -6); // 大きな屋根(キャノピー)
+        add(B(16.1, 0.75, 0.12), m.gas, 0, 5.2, -1.48);
+        for (const [x, z] of [[-6, -3], [6, -3], [-6, -9], [6, -9]]) add(C(0.22, 5), m.grey, x, 2.5, z);
+        for (const x of [-4, 0, 4]) {
+          add(B(2.6, 0.18, 1.1), m.grey, x, 0.09, -6); // 給油機の島
+          add(B(0.9, 1.7, 0.6), m.pump, x, 1.0, -6);
+          add(B(0.7, 0.45, 0.62), m.dark, x, 1.5, -6);
+          add(B(0.92, 0.25, 0.62), m.gas, x, 1.98, -6);
+        }
+        shop(8, 5, 3.2, m.gas, 2.2, 12.5);
+        poleSign(-10, -0.8, m.poleG, 7);
+        depth = 17.5;
+      } else if (kind === "koban") {
+        add(B(5, 3.4, 4.5), m.wall, 0, 1.7, -2.25);
+        add(B(5.6, 0.22, 5.6), m.grey, 0, 3.5, -2.0); // ひさし
+        add(new THREE.PlaneGeometry(2.6, 2.0), m.glass, 0.7, 1.45, 0.02);
+        add(B(1.0, 2.2, 0.06), m.dark, -1.5, 1.1, 0.03); // 戸
+        add(B(3.6, 0.6, 0.12), m.koban, 0, 3.05, 0.08);
+        add(new THREE.SphereGeometry(0.2, 12, 10), m.red, 0, 3.95, 0.6); // 赤い灯
+        add(C(0.05, 0.4), m.grey, 0, 3.75, 0.6);
+        add(C(0.18, 0.04, 16), m.gold, -1.5, 2.6, 0.06).rotation.x = Math.PI / 2; // 記章(ただの丸)
+        add(B(1.6, 1.2, 0.1), m.white, 3.4, 1.3, -0.3); // 掲示板
+        for (const x of [2.7, 4.1]) add(C(0.04, 1.9), m.grey, x, 0.95, -0.3);
+        depth = 4.5;
+      } else {
+        const pm = kind === "post";
+        shop(pm ? 9 : 11, 8, pm ? 3.8 : 6.5, pm ? m.post : m.bank, 2.4, 0);
+        if (pm) {
+          add(B(0.5, 1.1, 0.45), m.red, -3.6, 0.75, 0.9); // ポスト
+          add(C(0.06, 0.4), m.grey, -3.6, 0.2, 0.9);
+        } else add(B(2.2, 2.3, 0.1), m.dark, -3.8, 1.5, 0.06); // ATMコーナー
+        depth = 8;
+      }
+      // 置く: 正面(+z)を道へ向ける。道のふちから少し下げて、地面の高さに
+      const x = p.x + nx * edge, z = p.z + nz * edge;
+      g.position.set(x, H(x, z) + 0.05, z);
+      g.rotation.y = Math.atan2(-nx, -nz);
+      g.userData.shop = kind;
+      all.push([x + nx * depth * 0.5, z + nz * depth * 0.5, depth * 0.5 + 3]);
+      return g;
+    }
+    return { kindOf, place, seen, update };
+  })();
+
   // 施設の名前の看板(空に浮かべる。建物の向こうでも見える)
   function signSprite(lm) {
     const THREE = T();
@@ -5579,6 +5781,7 @@ const City = (() => {
     camera.updateProjectionMatrix();
     updateGround(p);
     popU.uPopT.value = performance.now() / 1000;
+    if (s.frameN % 30 === 0 || !popU.uShops.value) Shops.update(p.x, p.z);
     // 影の地図は2コマに1回だけ作り直す。光の位置も同じコマでだけ動かす(ずれると影がガタガタ揺れる)
     s.frameN = (s.frameN || 0) + 1;
     if (lights.sun.castShadow && s.frameN % 2 === 0) {
@@ -5953,5 +6156,5 @@ const City = (() => {
   }
 
   if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", bind);
-  return { at, turnAhead, readTile, _H: (x, z) => H(x, z), _state: () => ({ Mons, G3, popU, clipU, sim, route, tiles, failed, camera, Plateau, Roads, scene, me, Traffic, Signals, renderer, Perf }), ride: (a) => Roads.ride(a) };
+  return { at, turnAhead, readTile, _H: (x, z) => H(x, z), _state: () => ({ Shops, Mons, G3, popU, clipU, sim, route, tiles, failed, camera, Plateau, Roads, scene, me, Traffic, Signals, renderer, Perf }), ride: (a) => Roads.ride(a) };
 })();
