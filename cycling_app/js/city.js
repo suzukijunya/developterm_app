@@ -2140,30 +2140,82 @@ const City = (() => {
         trunk: new THREE.MeshLambertMaterial({ color: 0x5a4632 }),
         leaf: new THREE.MeshLambertMaterial({ color: 0xffffff }),
         // 葉のかたまりの絵(すき間のある葉むら)。板に貼って、いろいろな向きに重ねる
-        leafCard: new THREE.MeshLambertMaterial({
-          map: (() => {
-            const cv = document.createElement("canvas");
-            cv.width = cv.height = 256;
-            const c = cv.getContext("2d");
-            for (let i = 0; i < 420; i++) {
-              const a = hash(i * 3) * 6.28, r = Math.sqrt(hash(i * 5 + 1)) * 112, x = 128 + Math.cos(a) * r, y = 128 + Math.sin(a) * r * 0.92;
-              const l = 150 + Math.floor(hash(i * 7) * 90), sh = 0.55 + (1 - y / 256) * 0.5;
-              c.fillStyle = `rgb(${Math.floor(l * 0.62 * sh)},${Math.floor(l * sh)},${Math.floor(l * 0.5 * sh)})`;
-              c.save();
-              c.translate(x, y);
-              c.rotate(hash(i * 11) * 6.28);
-              c.beginPath();
-              c.ellipse(0, 0, 9 + hash(i * 13) * 7, 4 + hash(i * 17) * 3, 0, 0, 6.28);
-              c.fill();
-              c.restore();
-            }
-            const t = new THREE.CanvasTexture(cv);
-            t.encoding = THREE.sRGBEncoding;
-            t.anisotropy = 4;
-            return t;
-          })(),
-          alphaTest: 0.45, side: THREE.DoubleSide, color: 0xffffff,
-        }),
+        // 葉むらの絵(小枝と、先のとがった葉。葉には葉脈と明るいふち、奥の葉は暗く)。板に貼って、いろいろな向きに重ねる
+        leafCard: (() => {
+          const cv = document.createElement("canvas");
+          cv.width = cv.height = 512;
+          const c = cv.getContext("2d");
+          // 小枝
+          c.strokeStyle = "#4a3a28";
+          c.lineCap = "round";
+          for (let i = 0; i < 9; i++) {
+            let x = 256, y = 256, a = (i / 9) * 6.28 + hash(i * 3) * 0.5;
+            c.lineWidth = 5;
+            c.beginPath();
+            c.moveTo(x, y);
+            for (let k = 0; k < 7; k++) ((a += (hash(i * 7 + k) - 0.5) * 0.7), (x += Math.cos(a) * 30), (y += Math.sin(a) * 30), c.lineTo(x, y));
+            c.stroke();
+          }
+          // 葉: 奥(暗い)→ 手前(明るい)の順に重ねる
+          for (let i = 0; i < 900; i++) {
+            const layer = i / 900, a = hash(i * 3) * 6.28, r = Math.sqrt(hash(i * 5 + 1)) * 226, x = 256 + Math.cos(a) * r, y = 256 + Math.sin(a) * r * 0.94;
+            const l = (70 + layer * 110 + hash(i * 7) * 50) * (0.7 + (1 - y / 512) * 0.45), L2 = 11 + hash(i * 13) * 10, W2 = 4.5 + hash(i * 17) * 4;
+            c.save();
+            c.translate(x, y);
+            c.rotate(hash(i * 11) * 6.28);
+            c.fillStyle = `rgb(${Math.floor(l * 0.58)},${Math.floor(l)},${Math.floor(l * 0.42)})`;
+            c.beginPath();
+            c.moveTo(-L2, 0);
+            c.quadraticCurveTo(0, -W2 * 1.5, L2, 0);
+            c.quadraticCurveTo(0, W2 * 1.5, -L2, 0);
+            c.fill();
+            c.strokeStyle = `rgba(${Math.floor(l * 0.8)},${Math.min(255, Math.floor(l * 1.25))},${Math.floor(l * 0.55)},0.8)`;
+            c.lineWidth = 0.8;
+            c.beginPath();
+            c.moveTo(-L2, 0);
+            c.lineTo(L2, 0);
+            c.stroke();
+            c.restore();
+          }
+          const t = new THREE.CanvasTexture(cv);
+          t.encoding = THREE.sRGBEncoding;
+          t.anisotropy = 8;
+          const lm = new THREE.MeshLambertMaterial({ map: t, alphaTest: 0.5, side: THREE.DoubleSide, color: 0xffffff });
+          // 風でゆれる(葉むらごとに、少しずつずれて)。Googleの3Dと組み合わせるときは、遠くを描かない
+          lm.onBeforeCompile = (sh) => {
+            sh.uniforms.uT = popU.uPopT;
+            sh.uniforms.uClip = clipU.uClip;
+            sh.vertexShader = "uniform float uT;\n" + sh.vertexShader.replace("#include <begin_vertex>", `#include <begin_vertex>
+              #ifdef USE_INSTANCING
+                float wph = instanceMatrix[3][0] * 0.7 + instanceMatrix[3][2] * 0.9 + instanceMatrix[3][1] * 1.3;
+                transformed.x += sin(uT * 1.7 + wph) * 0.05 + sin(uT * 3.9 + wph * 2.0 + position.y * 2.0) * 0.02;
+                transformed.y += sin(uT * 2.3 + wph * 1.3 + position.x * 2.0) * 0.03;
+              #endif`);
+            sh.fragmentShader = "uniform float uClip;\n" + sh.fragmentShader.replace("#include <clipping_planes_fragment>", "if (length(vViewPosition) > uClip) discard;\n#include <clipping_planes_fragment>");
+          };
+          lm.customProgramCacheKey = () => "leafwind";
+          return lm;
+        })(),
+        // 幹: 樹皮のたてのすじ
+        bark: (() => {
+          const cv = document.createElement("canvas");
+          cv.width = 64;
+          cv.height = 128;
+          const c = cv.getContext("2d");
+          c.fillStyle = "#6a5642";
+          c.fillRect(0, 0, 64, 128);
+          for (let i = 0; i < 90; i++) {
+            const v = 50 + Math.floor(hash(i * 3) * 70);
+            c.fillStyle = `rgba(${v + 20},${v + 5},${v - 10},0.55)`;
+            c.fillRect(hash(i * 5) * 64, hash(i * 7) * 128, 1 + hash(i * 11) * 2.5, 8 + hash(i * 13) * 34);
+          }
+          const t = new THREE.CanvasTexture(cv);
+          t.encoding = THREE.sRGBEncoding;
+          t.wrapS = t.wrapT = THREE.RepeatWrapping;
+          return new THREE.MeshLambertMaterial({ map: t });
+        })(),
+        soil: new THREE.MeshLambertMaterial({ color: 0x4a3c2c }),
+        grate: new THREE.MeshLambertMaterial({ color: 0x8c8a84 }),
         rail: new THREE.MeshLambertMaterial({ color: 0xf4f4f0, side: THREE.DoubleSide }),
         stripe: new THREE.MeshBasicMaterial({ color: 0x35d6ff, transparent: true, opacity: 0.42, depthWrite: false, side: THREE.DoubleSide }),
       };
@@ -2317,7 +2369,11 @@ const City = (() => {
       // 植木ばち(鉢と葉)
       const pl = props.filter((p) => p.kind === "plant");
       inst(new THREE.CylinderGeometry(0.2, 0.15, 0.34, 8), pm.pot, pl, (p) => at(p, 0, 0.17, 0.12), (p) => (p.r < 0.4 ? 0xa8623e : p.r < 0.7 ? 0x8c8e90 : 0xd8d2c4));
-      inst(new THREE.IcosahedronGeometry(0.3, 0), pm.pot, pl, (p) => at(p, 0, 0.55 + p.r * 0.1, 0.12).multiply(tr.makeScale(1, 1.1 + p.r * 0.5, 1)), (p) => c.setHSL(0.27 + p.r * 0.08, 0.45, 0.24 + p.r * 0.08).getHex());
+      // 鉢の草木: 葉むらの板を十字に2枚。3つに1つは花(小さな色の玉)がつく
+      const lc = mats().leafCard;
+      for (const ry of [0, Math.PI / 2]) inst(new THREE.PlaneGeometry(0.85, 0.85), lc, pl, (p) => at(p, 0, 0.66 + p.r * 0.12, 0.12, ry + p.r * 3).multiply(tr.makeScale(1, 1 + p.r * 0.5, 1)), (p) => c.setHSL(0.27 + p.r * 0.08, 0.42, 0.26 + p.r * 0.08).getHex());
+      const fl = pl.filter((p) => p.r > 0.62);
+      for (const [dx, dy, dz] of [[0.12, 0.8, 0.1], [-0.1, 0.72, 0.2], [0.02, 0.9, 0.02], [-0.14, 0.84, 0.06]]) inst(new THREE.IcosahedronGeometry(0.05, 0), pm.body, fl, (p) => at(p, dx, dy, dz + 0.12), (p) => [0xe8506a, 0xf2c230, 0xf4f4f0, 0xb060d8][Math.floor(p.r * 31) % 4]);
       // 電柱: 足もとの黄色と黒のしま、広告の板(色だけ)
       const pp = poles.map((q) => ({ x: q.x, z: q.z, ox: Math.sin(q.ang), oz: -Math.cos(q.ang), r: hash(Math.round(q.x * 9) + Math.round(q.z * 4)) }));
       inst(new THREE.CylinderGeometry(0.19, 0.2, 0.9, 10), pm.tiger, pp.filter((q) => q.r < 0.55), (p) => at(p, 0, 1.0, 0));
@@ -2518,42 +2574,60 @@ const City = (() => {
       if (trees.length) {
         // 幹は枝分かれした1つの形(幹 + 太い枝3本)。葉は、葉むらの絵を貼った板を 18枚、いろいろな向きに重ねる。
         // 中に暗い緑のかたまりを1つ入れて、すき間から向こうが見えすぎないようにする
-        const K = 18;
+        // 木の種類を3つ(丸く広がる木 / 背の高い細い木 / 低く横に広い木)。葉むらの板は1本に30枚
+        const K = 30;
         const tg = [];
         const cyl = (r0, r1, len, px, py, pz, rx, rz) => {
-          const q = new THREE.CylinderGeometry(r0, r1, len, 6);
+          const q = new THREE.CylinderGeometry(r0, r1, len, 7);
           q.translate(0, len / 2, 0);
           q.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(px, py, pz), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, 0, rz)), new THREE.Vector3(1, 1, 1)));
           return q.toNonIndexed();
         };
-        tg.push(cyl(0.085, 0.16, 2.5, 0, 0, 0, 0, 0), cyl(0.05, 0.085, 1.5, 0, 2.4, 0, 0.5, 0.25), cyl(0.045, 0.08, 1.4, 0, 2.3, 0, -0.45, -0.4), cyl(0.04, 0.075, 1.3, 0, 2.5, 0, 0.1, 0.6), cyl(0.04, 0.07, 1.2, 0, 2.5, 0, -0.2, -0.55));
-        const tpos = [], tnor = [];
-        for (const q of tg) (tpos.push(...q.attributes.position.array), tnor.push(...q.attributes.normal.array));
+        // 幹(根もとが少し広がる)と、太い枝5本、その先の細い枝
+        tg.push(cyl(0.1, 0.2, 0.5, 0, 0, 0, 0, 0), cyl(0.085, 0.1, 2.1, 0, 0.45, 0, 0.03, -0.02));
+        for (const [rx, rz, y0] of [[0.55, 0.25, 2.3], [-0.5, -0.4, 2.2], [0.1, 0.65, 2.45], [-0.25, -0.6, 2.45], [0.02, 0.05, 2.5]]) {
+          tg.push(cyl(0.045, 0.085, 1.5, 0, y0, 0, rx, rz));
+          const ex = -Math.sin(rz) * 1.4, ey = y0 + Math.cos(rz) * Math.cos(rx) * 1.4, ez = Math.sin(rx) * 1.4;
+          tg.push(cyl(0.02, 0.04, 0.9, ex, ey, ez, rx * 1.6 + 0.2, rz * 0.5), cyl(0.02, 0.04, 0.8, ex, ey, ez, rx * 0.4 - 0.3, rz * 1.7));
+        }
+        const tpos = [], tnor = [], tuv = [];
+        for (const q of tg) (tpos.push(...q.attributes.position.array), tnor.push(...q.attributes.normal.array), tuv.push(...q.attributes.uv.array));
         const trunkG = new THREE.BufferGeometry();
         trunkG.setAttribute("position", new THREE.Float32BufferAttribute(tpos, 3));
         trunkG.setAttribute("normal", new THREE.Float32BufferAttribute(tnor, 3));
-        const trunk = new THREE.InstancedMesh(trunkG, m.trunk, trees.length);
-        const card = new THREE.InstancedMesh(new THREE.PlaneGeometry(2.3, 2.3), m.leafCard, trees.length * K);
+        trunkG.setAttribute("uv", new THREE.Float32BufferAttribute(tuv, 2));
+        const trunk = new THREE.InstancedMesh(trunkG, m.bark, trees.length);
+        const card = new THREE.InstancedMesh(new THREE.PlaneGeometry(2.0, 2.0), m.leafCard, trees.length * K);
         const core = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), m.leaf, trees.length);
-        const bush = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.5, 0), m.leaf, trees.length);
+        // 根もと: 土の植えます(四角)と、低い下草(葉むらの板を3枚)
+        const pit = new THREE.InstancedMesh(new THREE.BoxGeometry(1.3, 0.06, 1.3), m.soil, trees.length);
+        const rim = new THREE.InstancedMesh(new THREE.BoxGeometry(1.5, 0.04, 1.5), m.grate, trees.length);
+        const bush = new THREE.InstancedMesh(new THREE.PlaneGeometry(1.1, 0.7), m.leafCard, trees.length * 3);
         const mt = new THREE.Matrix4(), sc = new THREE.Matrix4(), ro = new THREE.Matrix4(), c = new THREE.Color(), eu = new THREE.Euler();
         trees.forEach(([x, z], i) => {
           const hs = (n) => hash(Math.round(x * 5) * 3 + Math.round(z * 3) * 7 + n * 131);
-          const s = 0.85 + hs(0) * 0.5, h = H(x, z) + 0.17, hue = 0.24 + hs(1) * 0.08, yaw = hs(2) * 6.28;
-          trunk.setMatrixAt(i, mt.makeTranslation(x, h, z).multiply(ro.makeRotationY(yaw)).multiply(sc.makeScale(s, s, s)));
+          const kind = hs(3) < 0.5 ? 0 : hs(3) < 0.8 ? 1 : 2; // 丸い / 細くて高い / 低くて広い
+          const s = (0.85 + hs(0) * 0.5) * [1, 1.15, 0.85][kind], h = H(x, z) + 0.17, yaw = hs(2) * 6.28;
+          const hue = [0.25, 0.2, 0.3][kind] + hs(1) * 0.06, sx = [1.25, 0.75, 1.5][kind], sy = [1.05, 1.7, 0.8][kind], cy = [3.8, 4.3, 3.4][kind];
+          trunk.setMatrixAt(i, mt.makeTranslation(x, h, z).multiply(ro.makeRotationY(yaw)).multiply(sc.makeScale(s, s * (kind === 1 ? 1.15 : 1), s)));
           for (let k = 0; k < K; k++) {
-            // 葉むらは、木の上のほうの丸い範囲に散らす
-            const a = hs(10 + k) * 6.28, el = (hs(20 + k) - 0.35) * 1.5, rr = (0.55 + hs(30 + k) * 0.75) * s;
-            const px = Math.cos(a) * Math.cos(el) * rr * 1.15, py = 3.75 * s + Math.sin(el) * rr * 0.95, pz = Math.sin(a) * Math.cos(el) * rr * 1.15, rs = (0.75 + hs(40 + k) * 0.5) * s;
+            // 葉むらは、木の上のほうの範囲(種類ごとの形)の、外側に多く散らす
+            const a = hs(10 + k) * 6.28, el = (hs(20 + k) - 0.3) * 1.7, rr = (0.45 + Math.sqrt(hs(30 + k)) * 0.75) * s;
+            const px = Math.cos(a) * Math.cos(el) * rr * sx, py = cy * s + Math.sin(el) * rr * sy, pz = Math.sin(a) * Math.cos(el) * rr * sx, rs = (0.7 + hs(40 + k) * 0.5) * s;
             card.setMatrixAt(i * K + k, mt.makeTranslation(x + px, h + py, z + pz).multiply(ro.makeRotationFromEuler(eu.set((hs(50 + k) - 0.5) * 1.6, hs(60 + k) * 6.28, (hs(70 + k) - 0.5) * 1.2))).multiply(sc.makeScale(rs, rs, rs)));
-            // 上の葉は明るく、下と内側は暗く
-            card.setColorAt(i * K + k, c.setHSL(hue + (hs(80 + k) - 0.5) * 0.04, 0.3 + hs(90 + k) * 0.12, 0.2 + Math.max(0, Math.sin(el)) * 0.13 + hs(95 + k) * 0.06));
+            // 上と外側の葉は明るく、下と内側は暗く
+            card.setColorAt(i * K + k, c.setHSL(hue + (hs(80 + k) - 0.5) * 0.04, 0.2 + hs(90 + k) * 0.1, 0.13 + Math.max(0, Math.sin(el)) * 0.11 + (rr / s - 0.45) * 0.05 + hs(95 + k) * 0.04));
           }
-          core.setMatrixAt(i, mt.makeTranslation(x, h + 3.7 * s, z).multiply(sc.makeScale(1.05 * s, 0.9 * s, 1.05 * s)));
-          core.setColorAt(i, c.setHSL(hue, 0.4, 0.13));
-          bush.setMatrixAt(i, mt.makeTranslation(x, h + 0.22, z).multiply(sc.makeScale(1.5, 0.7, 1.1)));
-          bush.setColorAt(i, c.setHSL(hue + 0.02, 0.45, 0.2));
+          core.setMatrixAt(i, mt.makeTranslation(x, h + cy * s, z).multiply(sc.makeScale(0.8 * s * sx, 0.8 * s * sy, 0.8 * s * sx)));
+          core.setColorAt(i, c.setHSL(hue, 0.4, 0.1));
+          pit.setMatrixAt(i, mt.makeTranslation(x, h + 0.03, z).multiply(ro.makeRotationY(yaw)));
+          rim.setMatrixAt(i, mt.makeTranslation(x, h + 0.015, z).multiply(ro.makeRotationY(yaw)));
+          for (let k = 0; k < 3; k++) {
+            bush.setMatrixAt(i * 3 + k, mt.makeTranslation(x, h + 0.36, z).multiply(ro.makeRotationY(yaw + (k * Math.PI) / 3)));
+            bush.setColorAt(i * 3 + k, c.setHSL(hue + 0.03, 0.26, 0.13 + hs(100 + k) * 0.05));
+          }
         });
+        g.add(pit, rim);
         trunk.castShadow = card.castShadow = core.castShadow = true;
         g.add(trunk, card, core, bush);
       }
