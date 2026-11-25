@@ -104,6 +104,11 @@
 /* 画面の右側に立つときは、カードを持つ手が内側に来るように左右を返す */
 .cn-av .cn-hero { position: absolute; left: 0; bottom: 0; height: 90%; overflow: visible; }
 .cn-av.two .cn-hero, .cn-av.rival .cn-hero, .cn-split.opp .cn-hero { transform: scaleX(-1); }
+/* 下からあおる構図: 足もとを軸に上を奥へ倒す */
+.cn-av.swing .cn-hero, .cn-av.hold .cn-hero, .cn-av.finish .cn-hero { transform-origin: 50% 100%; transform: perspective(170vh) rotateX(10deg); }
+.cn-av.rival .cn-hero { transform-origin: 50% 100%; transform: perspective(170vh) rotateX(10deg) scaleX(-1); }
+/* 漫画風のカットイン: 突き出した腕が画面に収まるよう左へ寄せる */
+.cn-cam .bm-av .cn-hero { left: -13vw; }
 .dl-img.real.rival { filter: contrast(1.15) saturate(1.1) drop-shadow(0 0 8px #ff3d6a); }
 .cn-av.opp .dl-img.rival { filter: contrast(1.15) saturate(1.15) drop-shadow(0 0 0.3vh #ffd0da) drop-shadow(0 0 3.5vh #ff3d6a); }
 
@@ -307,8 +312,8 @@
 .cn-vs.opp { clip-path: polygon(0 0, 58% 0, 42% 100%, 0 100%); animation: cn-from-l 0.45s cubic-bezier(0.2, 1, 0.3, 1) both; }
 .cn-vs.you { clip-path: polygon(58% 0, 100% 0, 100% 100%, 42% 100%); animation: cn-from-r 0.45s cubic-bezier(0.2, 1, 0.3, 1) both; }
 .cn-av.vs { bottom: -4vh; height: 100vh; width: 80vh; }
-.cn-vs.opp .cn-av.vs { left: 1vw; }
-.cn-vs.you .cn-av.vs { right: 1vw; transform: scaleX(-1); }
+.cn-vs.opp .cn-av.vs { left: -5vw; }
+.cn-vs.you .cn-av.vs { right: -5vw; transform: scaleX(-1); }
 .cn-fan { position: absolute; width: 0; height: 0; z-index: 2; }
 .cn-fan.top { left: 33vw; top: 96vh; } .cn-fan.bot { left: 67vw; top: 96vh; }
 .cn-fan i { position: absolute; left: -6vh; top: -17vh; width: 12vh; height: 17.4vh; transform-origin: 50% 160%; transform: rotate(calc(var(--k) * 12deg)); animation: cn-fan 0.5s 0.3s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
@@ -349,8 +354,8 @@
   .cn-arc { left: -6vw; width: 112vw; top: 22vh; height: 34vh; }
   .cn-cb { right: 8vw; top: 13vh; width: 24vw; height: 34.6vw; }
   .cn-kt.draw { left: 0; right: 0; bottom: 21vh; text-align: center; white-space: normal; font-size: 17vw; line-height: 1; }
-  .cn-av.hold { left: -40vw; width: 116vw; height: 78vh; bottom: 5vh; }
-  .cn-card.hold, .cn-halo.hold { left: 68vw; top: 40vh; --cs: calc(var(--cnw) * 0.46 / 88); }
+  .cn-av.hold { left: -18vw; width: 116vw; height: 62vh; bottom: 5vh; }
+  .cn-card.hold, .cn-halo.hold { left: 68vw; top: 28vh; --cs: calc(var(--cnw) * 0.46 / 88); }
   .cn-card.up, .cn-halo.up { left: 50vw; top: 44vh; --cs: calc(var(--cnw) * 0.64 / 88); }
   .cn-halo::before, .cn-halo::after { left: -75vw; top: -75vw; width: 150vw; height: 150vw; }
   .cn-mon.low { left: 0; right: 0; top: 10vh; bottom: 30vh; }
@@ -381,7 +386,7 @@
   .cn-dmgw, .cn-dmgw.opp { left: 0; right: 0; top: 47vh; }
   .cn-dmgw small { font-size: 4.8vw; letter-spacing: 0.3em; } .cn-dmg { font-size: 24vw; } .cn-dmgw em { font-size: 4vw; }
   .cn-eyes { top: 35vh; height: 24vh; }
-  .cn-eyei { width: 300vw; margin-left: -150vw; top: calc(12vh - 75vw); transform-origin: 50% 75vw; }
+  .cn-eyei { width: 200vw; margin-left: -100vw; top: calc(12vh - 50vw); transform-origin: 50% 50vw; }
   .cn-lp { top: 13vh; } .cn-lp small { font-size: 4.2vw; } .cn-lp .cn-num { font-size: 22vw; } .cn-lp em { top: auto; bottom: -3.6vh; margin-left: -12vw; width: 24vw; font-size: 3.4vw; }
   .cn-ecg { top: 62vh; height: 9vh; }
   .cn-kt.rev { top: 24vh; font-size: 25vw; } .cn-kt.rev.long { font-size: 17vw; top: 27vh; }
@@ -398,6 +403,7 @@
   .cn-av.vs { width: 80vw; height: 50vh; }
   .cn-vs.opp .cn-av.vs { left: -12vw; top: 5vh; bottom: auto; } .cn-vs.you .cn-av.vs { right: -14vw; bottom: 5vh; }
   .cn-fan.top { left: 80vw; top: 33vh; } .cn-fan.bot { left: 20vw; top: 90vh; }
+  .cn-cam .bm-av .cn-hero { left: -8vw; }
   .cn-fan i { left: -6.5vw; top: -19vw; width: 13vw; height: 19vw; border-width: 2px; }
   .cn-kt.duel { top: 40vh; font-size: 21vw; transform: rotate(-14deg); }
   /* 目のアップは、横長の帯にして中央に置く */

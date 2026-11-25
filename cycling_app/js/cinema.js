@@ -241,84 +241,169 @@ const Cinema = (() => {
     return cuts;
   }
 
-  // ---------- 見せ場の人物(オリジナルのロードレーサー) ----------
-  // エアロヘルメットに透けるアイウェア、鋭い目、サイクルジャージ。片手でカードを顔の横に構える決めポーズ。
-  // 自分は白×青緑×オレンジ、相手は黒×赤×紫(同じ画風)。目の高さは絵の上から2割(ピンチの目元の帯が合わせている)
-  function heroSvg(side) {
+  // ---------- 見せ場の人物(オリジナルのキャラクター: ロードバイク乗りのカードデュエリスト) ----------
+  // セルアニメ調: 主線は外側を太く内側を細く、塗りは 地の色+影2段+逆光のふち。顔は斜め向きで、鋭い目と風になびく髪。
+  // 自分=紺の髪・青緑の目・白い上着(裏地オレンジ) / 相手=銀の長髪・赤い目・黒い上着(裏地赤)。
+  // pose: base(カードを顔の横に構える) / draw(カードを引き抜く) / thrust(腕を前へ突き出す) / win(こぶしを突き上げる) / pinch(目元の帯に使う顔のアップ)
+  // 目の高さは絵の上から2割(ピンチの目元の帯が合わせている)。腕は絵の枠の外まで伸びる(overflow: visible)
+  let heroSeq = 0;
+  const HERO_POSE = {
+    base: { head: [211, 120, -4], lean: 0, sk: -3, far: [348, 378, 336, 272], fh: "card", near: [60, 396, 98, 484], nh: "fist", ex: "smile" },
+    draw: { head: [218, 122, 5], lean: 5, sk: -6, far: [378, 236, 446, 138], fh: "card", near: [76, 404, 164, 430], nh: "deck", ex: "shout" },
+    thrust: { head: [216, 121, 2], lean: 4, sk: -8, far: [390, 284, 478, 252], fh: "open", near: [44, 366, 100, 434], nh: "fist", ex: "shout" },
+    win: { head: [206, 122, -9], lean: -4, sk: 2, far: [364, 204, 356, 104], fh: "fist", near: [56, 392, 112, 460], nh: "fist", ex: "grin" },
+  };
+  function heroSvg(side, pose) {
     const o = side === "opp";
     const C = o
-      ? { j1: "#1a1d26", j2: "#c8163c", j3: "#0c0d12", ac: "#b03dff", h1: "#20232c", h2: "#e0284f", vis: ["#ff5a78", "#7a1ad0"], iris: "#ff3d5a", hair: "#d9dde6", hair2: "#8f97a8", s1: "#ecc6aa", s2: "#c99680", gl: "#2a0a14" }
-      : { j1: "#f4f7fb", j2: "#12b5a5", j3: "#10223c", ac: "#ff8a1f", h1: "#f6f8fb", h2: "#12b5a5", vis: ["#ffb02e", "#16c7b0"], iris: "#1fd0b0", hair: "#141a2a", hair2: "#34507a", s1: "#f4cba6", s2: "#d79b78", gl: "#10223c" };
-    const K = "#0a111e", id = "cnH" + (o ? "o" : "y");
-    const vents = [[-44, 14], [-23, 6], [0, 3], [23, 6], [44, 14]].map(([dx, dy]) => `<path d="M${196 + dx} ${24 + dy} L${190 + dx * 1.12} ${60 + dy * 0.5} L${210 + dx * 1.12} ${60 + dy * 0.5} L${204 + dx} ${24 + dy}Z"/>`).join("");
-    const eye = (sx) => `<g transform="translate(200 0) scale(${sx} 1)">
-        <path d="M-44 102 L-16 96 L-13 105 L-40 108Z" fill="#fff"/>
-        <circle cx="-27" cy="101.5" r="6" fill="${C.iris}"/><circle cx="-27" cy="101.5" r="2.6" fill="#05070c"/><circle cx="-29" cy="99.5" r="1.4" fill="#fff"/>
-        <path d="M-48 101 L-13 93.5 L-12 97 L-46 104Z" fill="${K}"/>
-        <path d="M-50 93 L-12 86 L-12 90 L-48 96Z" fill="${C.hair}"/></g>`;
+      ? { K: "#12060f", rim: "#ff9fd0", skin: ["#f4d6c6", "#d8a393", "#b07a7c"], hair: ["#e6e2f4", "#aaa2cf", "#6c6398"], hi: "#ffffff", brow: "#4f477c", jk: ["#2b2636", "#17131f", "#0b0910"], ac: "#b03dff", ln: ["#b3143a", "#7d0d29", "#4d0719"], js: ["#262231", "#16121d", "#0b0910"], js2: "#4b1876", st: "#e0284f", st2: "#b03dff", gl: ["#b3172f", "#7c0d20", "#4d0713"], iris: ["#5c0716", "#e0203f", "#ff8a8a"], lip: "#8a4350" }
+      : { K: "#0b1424", rim: "#b8fff0", skin: ["#fcdcc0", "#eaab8b", "#c98069"], hair: ["#1f4468", "#132b4d", "#0a1730"], hi: "#5fd2de", brow: "#10233e", jk: ["#f7fafc", "#c5d5e7", "#90a8ca"], ac: "#ff8a1f", ln: ["#109c94", "#0b6f74", "#084a56"], js: ["#f4f8fb", "#c2d2e5", "#8fa6c8"], js2: "#17324f", st: "#12b5a5", st2: "#ff8a1f", gl: ["#1c2d48", "#111c33", "#0a1120"], iris: ["#06414f", "#12b5a5", "#7dffe0"], lip: "#9a4a3c" };
+    const K = C.K, id = "cnH" + heroSeq++;
+    let cn = 0;
+    const f = (v) => Math.round(v * 10) / 10;
+    // 部品: 外形を 逆光のふち→濃い影→薄い影→地の色 の順に少しずつずらして重ね、外形で切り抜く。inner は上に重ねる模様や影
+    const part = (d, m, inner = "", sw = 3, k = 1, od = d) => {
+      const c = id + "c" + cn++;
+      return `<clipPath id="${c}"><path d="${d}"/></clipPath><path d="${d}" fill="${k ? C.rim : m[0]}"/><g clip-path="url(#${c})">${k ? `<path d="${d}" fill="${m[2]}" transform="translate(${f(2.6 * k)} ${f(0.6 * k)})"/><path d="${d}" fill="${m[1]}" transform="translate(${f(7 * k)} ${f(2.4 * k)})"/><path d="${d}" fill="${m[0]}" transform="translate(${f(13 * k)} ${f(5.5 * k)})"/>` : ""}${inner}</g><path d="${od}" fill="none" stroke="${K}" stroke-width="${sw}" stroke-linecap="round"/>`;
+    };
+    // 先細りの手足(袖)。at(t, s) は軸に沿った位置 t・幅方向 s の点
+    const limb = (ax, ay, bx, by, ra, rb, k1 = 0.06, k2 = 0.06) => {
+      const dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L, nx = uy, ny = -ux;
+      const at = (t, s) => `${f(ax + dx * t + nx * s * (ra + (rb - ra) * t))} ${f(ay + dy * t + ny * s * (ra + (rb - ra) * t))}`;
+      const c1 = `${f(ax + dx / 2 + nx * ((ra + rb) / 2 + L * k1))} ${f(ay + dy / 2 + ny * ((ra + rb) / 2 + L * k1))}`, c2 = `${f(ax + dx / 2 - nx * ((ra + rb) / 2 + L * k2))} ${f(ay + dy / 2 - ny * ((ra + rb) / 2 + L * k2))}`;
+      const od = `M${at(0, 1)}Q${c1} ${at(1, 1)}A${rb} ${rb} 0 0 1 ${at(1, -1)}Q${c2} ${at(0, -1)}`;
+      return { d: `${od}A${ra} ${ra} 0 0 1 ${at(0, 1)}Z`, od, at, ang: (Math.atan2(dy, dx) * 180) / Math.PI, L };
+    };
+    const band = (l, t0, t1, col) => `<path d="M${l.at(t0, -1.5)}L${l.at(t0, 1.5)}L${l.at(t1, 1.5)}L${l.at(t1, -1.5)}Z" fill="${col}"/>`;
+    const fold = (l, t, s0, s1, bend = 0.05) => `<path d="M${l.at(t, s0)}Q${l.at(t + bend, (s0 + s1) / 2)} ${l.at(t - bend * 0.4, s1)}" fill="none" stroke="${K}" stroke-width="1.5" stroke-linecap="round"/>`;
+    // 髪の房: 根元 A-B から先 T へ、しなって尖る。房ごとに影とハイライト
+    const lock = ([ax, ay, bx, by, tx, ty, c = 0.18], sw = 2.4) => {
+      const mx = (ax + bx) / 2, my = (ay + by) / 2, dx = tx - mx, dy = ty - my, px = -dy * c, py = dx * c;
+      const q = (x, y, kk) => [(x + tx) / 2 + px * kk, (y + ty) / 2 + py * kk];
+      const qa = q(ax, ay, 1.5), qb = q(bx, by, 0.5), qm = q(mx, my, 1.05);
+      const od = `M${ax} ${ay}Q${f(qa[0])} ${f(qa[1])} ${tx} ${ty}Q${f(qb[0])} ${f(qb[1])} ${bx} ${by}`;
+      const h0 = q(mx, my, 1.05), bp = (t, w) => `${f((1 - t) * (1 - t) * mx + 2 * t * (1 - t) * (h0[0] + px * w) + t * t * tx)} ${f((1 - t) * (1 - t) * my + 2 * t * (1 - t) * (h0[1] + py * w) + t * t * ty)}`;
+      return part(od + "Z", C.hair, `<path d="M${bp(0.18, 0)}Q${bp(0.4, 0.22)} ${bp(0.66, 0)}Q${bp(0.4, -0.12)} ${bp(0.18, 0)}Z" fill="${C.hi}" opacity=".9"/>`, sw, 0.45, od);
+    };
+    // 目(外側の目尻が左)。上まぶたは太く跳ね上げ、虹彩は上が暗く下が明るい。ハイライト2つ
+    const eye = (cx, cy, w, h, flip, ex) => {
+      const c = id + "c" + cn++, W = "M-15 -5C-9 -11.5 4 -12 13 -4C13.5 0 12 4 10 6C3 9.5 -7 9 -12 5C-14 2 -15 -2 -15 -5Z";
+      const sq = ex === "grit" ? 0.8 : 1;
+      return `<g transform="translate(${cx} ${cy}) scale(${f((flip ? -1 : 1) * w / 28)} ${f((h / 20) * sq)})"><clipPath id="${c}"><path d="${W}"/></clipPath>
+        <path d="${W}" fill="#fff"/><g clip-path="url(#${c})">
+        <path d="M-16 -5C-9 -12 4 -12 14 -4L14 0C4 -8 -8 -8 -16 -1Z" fill="#b4c2d8"/>
+        <ellipse cx="0" cy="-1.6" rx="7.8" ry="9.8" fill="url(#${id}i)" stroke="${K}" stroke-width="1.5"/>
+        <path d="M-8 -3C-4 -7 4 -7 8 -3L8 -12L-8 -12Z" fill="${C.iris[0]}" opacity=".8"/>
+        <ellipse cx="0" cy="-1.2" rx="3" ry="4.4" fill="#04070c"/>
+        <path d="M-5.6 3.4C-2 7 2 7 5.6 3.4C3 9 -3 9 -5.6 3.4Z" fill="${C.iris[2]}"/>
+        </g><ellipse cx="-3.6" cy="-5.6" rx="2.9" ry="2.2" fill="#fff" transform="rotate(-20 -3.6 -5.6)"/><circle cx="3.8" cy="2.8" r="1.4" fill="#fff"/>
+        <path d="M-20.5 -10.5C-17.5 -8 -16.2 -6.4 -15.2 -3.6C-9 -10.6 4 -11.2 13.4 -3L14.6 -5.6C6 -15.8 -9.4 -16 -15.8 -10Z" fill="${K}"/>
+        <path d="M-15.4 -4.6L-20.6 -4L-14.4 -0.8Z" fill="${K}"/>
+        <path d="M-11.5 6C-6 9.6 3 10 9.4 7" fill="none" stroke="${K}" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M-11 -15C-4 -18.6 6 -17.6 13 -11" fill="none" stroke="${C.skin[2]}" stroke-width="1.2" stroke-linecap="round"/></g>`;
+    };
+    const HAIR = o
+      ? { back: [[-44, -56, -55, -20, -112, 22, 0.3], [-55, -30, -53, 4, -120, 78, 0.22], [-54, -6, -46, 24, -104, 122, 0.16], [-50, 14, -36, 40, -82, 132, 0.1]], top: [], bang: [[47, -20, 30, -46, 45, 16, -0.16], [32, -46, 4, -50, -8, 2, 0.26], [8, -50, -18, -47, -27, 7, 0.22], [-16, -47, -42, -34, -41, 13, 0.18], [-38, -38, -53, -6, -49, 54, 0.1]] }
+      : { back: [[-46, 22, -34, 42, -150, 78, 0.24], [-30, -68, -55, -24, -100, -64, 0.3], [-55, -36, -52, 10, -106, -12, 0.3], [-53, -4, -38, 38, -84, 34, 0.3]], top: [[-48, -48, -6, -78, -92, -96, 0.34], [-18, -77, 40, -66, -40, -116, 0.3], [24, -74, 48, -46, 20, -98, 0.22]], bang: [[48, -22, 36, -42, 43, -1, -0.14], [40, -40, 20, -46, 27, -12, 0.2], [26, -46, -2, -48, 5, 9, 0.2], [2, -48, -22, -46, -13, -8, 0.2], [-18, -46, -42, -36, -32, -5, 0.2], [-38, -38, -53, -8, -45, 36, 0.14]] };
+    const mouth = {
+      smirk: `<path d="M0 44.6C7 46 14 44.6 22 38.6" fill="none" stroke="${K}" stroke-width="2" stroke-linecap="round"/><path d="M20.6 36.4L24.4 39.4" fill="none" stroke="${K}" stroke-width="1.6" stroke-linecap="round"/><path d="M6 51.6L12 51" fill="none" stroke="${C.skin[2]}" stroke-width="1.6" stroke-linecap="round"/>`,
+      smile: `<path d="M-2 44C5 48.4 15 46.6 21.5 39.4" fill="none" stroke="${K}" stroke-width="2" stroke-linecap="round"/><path d="M20 37.6L23.6 39.6" fill="none" stroke="${K}" stroke-width="1.6" stroke-linecap="round"/><path d="M5 52.6L12 52" fill="none" stroke="${C.skin[2]}" stroke-width="1.6" stroke-linecap="round"/>`,
+      shout: `<path d="M-4 39C4 36 16 36 23 38.4C23 52 15 61 8 61C0 60 -4 50 -4 39Z" fill="#6e1626" stroke="${K}" stroke-width="2"/><path d="M-2.6 39.6C4 37.4 16 37.4 21.8 39.2L21 43C14 41.4 4 41.6 -2 43.4Z" fill="#fff"/><path d="M1 54C5 50 13 50 16.6 54C14 59.6 5 60 1 54Z" fill="#ef7f86"/>`,
+      grin: `<path d="M-5 38C4 41.6 16 40.6 25 34C24.4 48 16 56 8 56C0 55 -4.4 47 -5 38Z" fill="#6e1626" stroke="${K}" stroke-width="2"/><path d="M-3.6 39.4C4 42.6 16 41.6 23.6 36.4L22.6 42C15 46 4 46.6 -2.6 44Z" fill="#fff"/><path d="M2 51C6 48 13 48 16 50.6C13 55 5 55 2 51Z" fill="#ef7f86"/>`,
+      grit: `<path d="M-3 41.6L21 39L20 47L-2 48.6Z" fill="#fff" stroke="${K}" stroke-width="2"/><path d="M-2.6 45L20.6 43M3 41L3.6 48M9 40.4L9.6 47.6M15 39.8L15.4 47.2" fill="none" stroke="${K}" stroke-width="1.1"/>`,
+    };
+    // 顔(斜め右向き)。原点は両目の間、あごは y=64
+    const head = (ex) => {
+      const S = C.skin, fr = (ex === "grit" ? 3 : 0) + (o ? 1.8 : 0);
+      const FACE = "M-42 -42C-47 -18 -46 12 -41 27C-34 43 -19 57 0 64.6C8 67.6 16 66.6 21 61.6C30 52 39 38 41.4 22C42.6 12 39.4 5 39 -3C39.4 -14 43 -28 39 -42Z";
+      const faceIn = `<path d="M-48 -44L46 -44L43 -15C34 -22 24 -9 15 -15C10 -3 3 6 -2 -12C-9 -5 -17 -17 -24 -9C-30 -4 -38 -8 -46 -2Z" fill="${S[1]}"/>
+        <path d="M-48 -10C-41 8 -37 30 -20 50C-30 46 -43 32 -49 4Z" fill="${S[1]}"/><path d="M-48 2C-43 22 -36 38 -22 49C-34 44 -45 30 -50 12Z" fill="${S[2]}"/>
+        <path d="M20 64C30 52 39 38 41.4 22L44 24L30 66Z" fill="#fff" opacity=".5"/>`;
+      // 頭にのせたアイウェア(一枚レンズ)
+      const shades = `<path d="M-41 -45L-56 -30" fill="none" stroke="${K}" stroke-width="5" stroke-linecap="round"/><path d="M-41 -45L-55 -31" fill="none" stroke="#f7fafc" stroke-width="2.4" stroke-linecap="round"/>
+        <path d="M-42 -50C-22 -66 22 -68 47 -50C48 -42 42 -36 33 -39C22 -44 10 -46 5 -43C-6 -46 -24 -44 -34 -36C-41 -39 -44 -44 -42 -50Z" fill="url(#${id}v)" stroke="${K}" stroke-width="2.4"/>
+        <path d="M-42 -50C-22 -66 22 -68 47 -50" fill="none" stroke="#f7fafc" stroke-width="3.4" stroke-linecap="round"/><path d="M-30 -52L-18 -58L-24 -42L-33 -39ZM-12 -59L-6 -60L-12 -45L-17 -44Z" fill="#fff" opacity=".7"/>`;
+      const brow = (d) => `<path d="${d}" fill="${C.brow}" stroke="${C.brow}" stroke-width="${o ? 0.6 : 1.6}"/>`;
+      return `${HAIR.back.map((l) => lock(l, 2.8)).join("")}${o ? "" : `<path d="M-58 30L-50 46L-58 50L-66 34Z" fill="${C.st2}" stroke="${K}" stroke-width="2"/>`}
+        ${part("M-41 -4C-51 -11 -58 2 -54 15C-52 24 -46 29 -41 25Z", S, `<path d="M-46 0C-52 4 -51 16 -46 21" fill="none" stroke="${S[2]}" stroke-width="2"/>`, 2.4, 0.3)}
+        ${part(FACE, S, faceIn, 2.8, 0)}
+        <path d="M13.6 21L17.4 29.6L11.6 31.6" fill="none" stroke="${K}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.6 23L16.4 30L11 31.4Z" fill="${S[1]}"/>
+        ${mouth[o && (ex === "smile" || ex === "grin") ? "smirk" : ex] || mouth.smile}
+        ${eye(-17, 4 + fr * 0.4, 27, o ? 15 : 19, 0, ex)}${eye(24, 3 + fr * 0.4, 19.5, o ? 14.4 : 18, 1, ex)}
+        ${brow(`M-36 ${-15 + fr * 0.3}C-25 ${-18.6 + fr} -12 ${-15.4 + fr} -2.6 ${-9.4 + fr}L-3.6 ${-5.6 + fr}C-14 ${-10.6 + fr} -25 ${-13 + fr} -35 ${-11 + fr * 0.3}Z`)}${brow(`M38 ${-15.6 + fr * 0.3}C31 ${-18 + fr} 20 ${-14 + fr} 12.4 ${-9.4 + fr}L13 ${-5.8 + fr}C21 ${-10 + fr} 30 ${-13 + fr} 37.6 ${-11.6 + fr * 0.3}Z`)}
+        ${ex === "grit" ? `<path d="M30 30C27 36 27.4 40 30.4 40.6C33.4 40 33.4 36 30 30Z" fill="#dff6ff" stroke="${K}" stroke-width="1.2"/>` : ""}
+        ${part("M-53 2C-64 -34 -46 -75 -4 -77C31 -79 53 -54 48 -16L40 -34L-40 -30Z", C.hair, `<path d="M-38 -44C-30 -58 -14 -64 2 -62C-12 -58 -26 -52 -34 -40ZM10 -62C22 -60 32 -54 38 -44C30 -50 20 -56 8 -58Z" fill="${C.hi}" opacity=".85"/>`, 2.8, 0.7)}
+        ${HAIR.top.map((l) => lock(l, 2.8)).join("")}${o ? "" : shades}${HAIR.bang.map((l) => lock(l, 1.7)).join("")}`;
+    };
+    if (pose === "pinch")
+      return `<svg class="cn-hero dl-svg" viewBox="0 0 400 500" preserveAspectRatio="xMidYMax meet" aria-hidden="true"><defs><linearGradient id="${id}i" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${C.iris[0]}"/><stop offset=".55" stop-color="${C.iris[1]}"/><stop offset="1" stop-color="${C.iris[2]}"/></linearGradient><linearGradient id="${id}v" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd23d"/><stop offset=".5" stop-color="#ff8a1f"/><stop offset="1" stop-color="#e0407a"/></linearGradient></defs><g stroke-linejoin="round" transform="translate(192 90) scale(2.3)">${head("grit")}</g></svg>`;
+    const P = HERO_POSE[pose] || HERO_POSE.base, J = C.jk;
+    // カード(裏面)
+    const cardG = (x, y, r, s = 1) => `<g transform="translate(${x} ${y}) rotate(${r}) scale(${s})"><rect x="-24" y="-35" width="48" height="70" rx="4.5" fill="#24120a" stroke="${K}" stroke-width="2.6"/><rect x="-19.5" y="-30.5" width="39" height="61" rx="2.5" fill="#3a1c0c" stroke="#c9a24a" stroke-width="2"/><path d="M-19 -30L19 30M19 -30L-19 30" stroke="#c9a24a" stroke-width="1" opacity=".5"/><circle r="10.5" fill="#24120a" stroke="#c9a24a" stroke-width="2"/><circle r="4.4" fill="#ffcf3d"/><path d="M-22 -33L-6 -33L-22 -8Z" fill="#fff" opacity=".22"/></g>`;
+    // 指(付け根から先へ)
+    const finger = (x, y, a, len, w) => `<g transform="translate(${x} ${y}) rotate(${a})">${part(`M${-w / 2} 2L${-w / 2 + 0.6} ${-len + w * 0.45}Q0 ${-len - w * 0.35} ${w / 2 - 0.6} ${-len + w * 0.45}L${w / 2} 2Z`, C.skin, `<path d="M${-w / 2} ${-len * 0.5}L${w / 2} ${-len * 0.52}" stroke="${C.skin[2]}" stroke-width="1" fill="none"/>`, 2, 0.25)}</g>`;
+    // 手(原点は手首、指先は上)。指切りグローブ
+    const hand = (kind, x, y, a, s, flip) => {
+      const palm = (d) => part(d, C.gl, `<path d="M-17 -5L17 -5L17 -11L-17 -11Z" fill="${C.st2}"/><path d="M-6 -17L0 -25L6 -17L0 -13Z" fill="${C.st}"/>`, 2.6, 0.5);
+      let h = "";
+      if (kind === "card") h = `${cardG(-2, -92, flip ? 12 : -12)}${finger(2, -34, 3, 43, 9.6)}${palm("M-15 2L-17.6 -30C-17 -38 15 -40 16.6 -33L15 2Z")}${finger(13, -33, 16, 17, 8.4)}${finger(6, -35, 6, 19, 9)}${finger(-10, -33, -5, 41, 9.8)}${part("M-16 -8C-27 -13 -30 -27 -23 -36C-19 -40 -14 -37 -15 -32L-13 -20Z", C.skin, "", 2, 0.25)}`;
+      else if (kind === "open") h = `${finger(15, -30, 30, 29, 8.4)}${finger(8.6, -35, 13, 38, 9)}${finger(0, -36, -1, 42, 9.6)}${finger(-9.6, -33, -15, 38, 9.4)}${palm("M-15 2L-17.6 -30C-17 -38 15 -40 16.6 -33L15 2Z")}${part("M-15 -6C-28 -10 -38 -22 -39 -34C-35 -38 -31 -36 -29 -31L-15 -22Z", C.skin, "", 2, 0.25)}`;
+      else if (kind === "deck") h = `<g transform="rotate(-12)"><rect x="-27" y="-74" width="50" height="66" rx="4" fill="#e9dcc0" stroke="${K}" stroke-width="2.4"/><path d="M-27 -66L23 -66M-27 -60L23 -60" stroke="#8a7350" stroke-width="1"/></g>${cardG(0, -44, -12, 0.96)}${palm("M-15 2L-17.6 -24C-17 -32 15 -34 16.6 -27L15 2Z")}${[-12, -4, 4, 12].map((dx, i) => finger(dx, -27, -4 + i * 2, 15 - Math.abs(i - 1.2) * 1.6, 8.6)).join("")}${part("M-16 -6C-27 -11 -30 -25 -23 -34C-19 -38 -14 -35 -15 -30L-13 -18Z", C.skin, "", 2, 0.25)}`;
+      else h = `${part("M-16 2L-18.6 -27C-19 -41 17 -43 18 -30L15.6 2Z", C.gl, `<path d="M-17 -5L17 -5L17 -11L-17 -11Z" fill="${C.st2}"/>`, 2.6, 0.5)}${part("M-18.4 -27C-20 -45 18 -47 18 -31C18 -25 -18 -22 -18.4 -27Z", C.skin, `<path d="M-9.6 -42L-9 -25M-0.6 -43L0 -26M8.6 -42L9 -27" stroke="${K}" stroke-width="1.5" fill="none"/>`, 2.2, 0.3)}${part("M-19 -14C-25 -22 -21 -31 -12 -30L2 -27C7 -24 5 -18 0 -18L-11 -16Z", C.skin, "", 2, 0.25)}`;
+      return `<g transform="translate(${f(x)} ${f(y)}) rotate(${f(a)}) scale(${flip ? -s : s} ${s})">${h}</g>`;
+    };
+    // 腕: 半袖のジャージから出た素肌の腕。上腕(up)と前腕+手(fo)を分けて返す。holder=前腕に巻いたカードホルダー
+    const arm = (sx, sy, [ex, ey, wx, wy], hk, holder, flip) => {
+      const S = C.skin, up = limb(sx, sy, ex, ey, 31, 25, 0.06, 0.03), fo = limb(ex, ey, wx, wy, 24.5, 16.5, 0.08, 0.02);
+      const sl = limb(sx, sy, sx + (ex - sx) * 0.56, sy + (ey - sy) * 0.56, 34, 31, 0.03, 0.03);
+      const mus = (l, t, s0, s1, b) => `<path d="M${l.at(t, s0)}Q${l.at(t + b, (s0 + s1) / 2)} ${l.at(t - b * 0.4, s1)}" fill="none" stroke="${S[2]}" stroke-width="1.6" stroke-linecap="round"/>`;
+      const upS = part(up.d, S, `${mus(up, 0.86, -0.9, 0.1, 0.08)}`, 3.2, 1.5) + part(sl.d, C.js, `${band(sl, 0.78, 1.3, C.st)}${band(sl, 0.7, 0.78, C.st2)}${fold(sl, 0.3, 1, 0.1, -0.08)}${fold(sl, 0.5, -1, -0.2, 0.08)}`, 3.2);
+      let hd = "";
+      if (holder) {
+        const L = fo.L, r = 22;
+        hd = `<g transform="translate(${ex} ${ey}) rotate(${f(fo.ang)})"><rect x="${f(L * 0.2)}" y="${-r - 2}" width="7" height="${r * 2 + 4}" rx="2" fill="${C.gl[1]}" stroke="${K}" stroke-width="1.8"/><rect x="${f(L * 0.6)}" y="${-r + 2}" width="7" height="${r * 2 - 4}" rx="2" fill="${C.gl[1]}" stroke="${K}" stroke-width="1.8"/>
+          <path d="M${f(L * 0.64)} -11L${f(L * 0.9)} -9L${f(L * 0.9)} 9L${f(L * 0.64)} 11Z" fill="#f2e7cc" stroke="${K}" stroke-width="1.8"/><path d="M${f(L * 0.64)} -6L${f(L * 0.84)} -4.6L${f(L * 0.84)} 5L${f(L * 0.64)} 6Z" fill="#c9a24a" stroke="${K}" stroke-width="1.4"/>
+          <rect x="${f(L * 0.14)}" y="-14.5" width="${f(L * 0.56)}" height="29" rx="5" fill="${C.gl[0]}" stroke="${K}" stroke-width="2.4"/><path d="M${f(L * 0.18)} -10.5L${f(L * 0.66)} -10.5" stroke="${C.st}" stroke-width="2.4" fill="none"/><path d="M${f(L * 0.32)} 6L${f(L * 0.4)} -3L${f(L * 0.48)} 6" stroke="${C.st2}" stroke-width="2.6" fill="none" stroke-linejoin="miter"/><path d="M${f(L * 0.18)} 11L${f(L * 0.66)} 11" stroke="#000" stroke-width="2" opacity=".35" fill="none"/></g>`;
+      }
+      const foS = part(fo.d, S, `${mus(fo, 0.12, -1, 0, -0.08)}${mus(fo, 0.5, 1, 0.5, 0.2)}`, 3.2, 1.5, fo.od);
+      const dx = wx - ex, dy = wy - ey;
+      return { up: upS, fo: `${foS}${hd}${hand(hk, wx + (dx / fo.L) * 6, wy + (dy / fo.L) * 6, fo.ang + 90, 1.22, flip)}` };
+    };
+    const [hx, hy, hr] = P.head, hsc = 1.3;
+    const neck = limb(hx - 5, hy + 56, 212, 248, 23, 26, 0, 0);
+    const emblem = `<g transform="translate(166 326) scale(1.25)" fill="none" stroke="${C.st2}" stroke-width="2.6"><circle r="12"/><circle r="4.4"/><path d="M0 -12L0 -17M0 12L0 17M-12 0L-17 0M12 0L17 0M-8.5 -8.5L-12 -12M8.5 8.5L12 12M-8.5 8.5L-12 12M8.5 -8.5L12 -12"/></g>`;
+    // 胴(斜め向き: 前の合わせは奥側へ寄る)
+    const jersey = part("M152 620C142 462 128 412 120 352C114 322 104 300 98 284C108 258 150 246 186 238L240 236C266 242 290 254 300 272C300 302 298 332 294 358C290 412 286 462 284 620Z", C.js,
+      `<path d="M86 250L182 236L204 262L228 268L240 258L244 234L320 250L320 296L262 276L228 298L168 280L86 312Z" fill="${C.js2}"/>
+       <path d="M96 392Q170 420 228 438Q270 414 310 382L310 406Q270 440 228 464Q170 446 96 420Z" fill="${C.st}"/><path d="M96 426Q170 452 228 470Q270 446 310 412L310 421Q270 456 228 480Q170 462 96 436Z" fill="${C.st2}"/>
+       <path d="M96 330L134 342C130 400 138 470 158 620L96 620Z" fill="${C.js2}"/><path d="M320 330L286 340C288 400 284 470 276 620L320 620Z" fill="${C.js2}"/>
+       ${emblem}
+       <path d="M126 366C150 392 204 394 226 378C230 384 228 390 224 394C200 404 150 400 126 366ZM232 378C246 388 270 384 290 362C276 392 248 398 234 392Z" fill="${C.js[1]}"/><path d="M100 300C112 330 116 360 112 400L130 620L100 620Z" fill="${C.js[1]}"/>
+       <path d="M228 272C232 340 230 430 224 620" fill="none" stroke="${K}" stroke-width="2"/>
+       <path d="M150 292C160 322 160 352 152 384M276 286C270 316 272 344 280 374M176 504C188 494 206 490 224 492M262 502C252 494 240 492 230 492" fill="none" stroke="${K}" stroke-width="1.4" opacity=".55"/>`, 3.2, 1.7)
+      + part("M180 240C194 258 212 268 228 272C236 264 242 252 244 236L256 244C252 268 242 282 228 288C204 282 182 268 166 248Z", [C.js2, C.js2, C.js2], "", 2.4, 0)
+      + `<path d="M223 286L233 286L233 302L223 302Z" fill="${C.st2}" stroke="${K}" stroke-width="1.6"/>`;
+    // 肩に羽織った上着: 後ろへ大きくなびく(外側の布と裏地)、空の袖、立てた襟
+    const cape = `${part("M300 268C344 290 372 340 362 404C380 436 370 478 344 560L286 620Z", C.ln, `<path d="M330 330C346 370 346 420 330 470" fill="none" stroke="${K}" stroke-width="1.5" opacity=".6"/>`, 3.2, 1.4)}
+      ${part("M120 372C76 396 22 392 -44 356C-22 404 -34 446 -70 472C-20 486 30 500 20 620L150 620Z", C.ln, `<path d="M112 404C60 420 4 412 -22 392M120 470C70 474 0 466 -40 462" fill="none" stroke="${K}" stroke-width="1.5" opacity=".6"/>`, 3.2, 1.4)}
+      ${part("M70 286C24 268 -34 232 -84 176L-106 204C-56 256 -4 296 52 322Z", J, `<path d="M-84 176L-106 204L-94 216L-70 190Z" fill="${C.ac}"/><path d="M-78 198L-60 180" stroke="${K}" stroke-width="1.4" fill="none"/><path d="M40 290C10 276 -20 258 -44 236" fill="none" stroke="${K}" stroke-width="1.5" opacity=".6"/>`, 3.2)}
+      ${part("M110 262C60 282 4 280 -56 244C-34 300 -48 340 -84 364C-30 380 4 404 -14 452C36 440 80 452 126 482Z", J, `<path d="M-56 244C-34 300 -48 340 -84 364L-66 370C-32 344 -22 300 -38 256Z" fill="${C.ac}"/><path d="M-14 452C36 440 80 452 126 482L126 466C80 438 30 428 -8 438Z" fill="${C.ac}"/><path d="M100 300C52 314 6 304 -24 286M110 380C60 380 0 366 -40 356M112 430C80 420 40 416 14 420" fill="none" stroke="${K}" stroke-width="1.5" opacity=".6"/>`, 3.2, 1.4)}`;
+    const yoke = `${part("M190 232C156 234 112 248 88 272C84 280 88 290 96 294C120 270 158 256 196 250Z", J, `<path d="M96 294C120 270 158 256 196 250L195 243C156 248 114 264 90 288Z" fill="${C.ac}"/>`, 3, 0.6)}${part("M238 230C264 234 294 246 312 266C316 274 312 284 304 286C288 266 266 254 240 248Z", J, `<path d="M304 286C288 266 266 254 240 248L240 241C268 246 294 260 310 280Z" fill="${C.ac}"/>`, 3, 0.6)}
+      ${part("M184 246L152 184C176 194 202 222 212 260Z", J, `<path d="M184 246L152 184L163 189L195 250Z" fill="${C.ln[0]}"/>`, 2.8, 0.5)}${part("M246 244L274 186C258 198 244 224 232 260Z", J, `<path d="M246 244L274 186L265 193L238 250Z" fill="${C.ln[0]}"/>`, 2.8, 0.5)}`;
+    const fa = arm(298, 278, P.far, P.fh, false, true), na = arm(102, 286, P.near, P.nh, true, false);
     return `<svg class="cn-hero dl-svg" viewBox="0 0 400 500" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
-      <defs>
-        <linearGradient id="${id}v" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${C.vis[0]}" stop-opacity=".5"/><stop offset="1" stop-color="${C.vis[1]}" stop-opacity=".38"/></linearGradient>
-        <linearGradient id="${id}j" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#000" stop-opacity=".34"/><stop offset=".38" stop-color="#000" stop-opacity="0"/><stop offset=".8" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".25"/></linearGradient>
-        <clipPath id="${id}t"><path d="M58 500 L64 332 C66 272 100 242 152 228 L248 228 C300 242 334 272 336 332 L342 500Z"/></clipPath>
-      </defs>
-      <g stroke="${K}" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round">
-        <path d="M40 432 L96 442 L92 504 L32 504Z" fill="${C.s1}"/>
-        <path d="M68 296 C50 318 40 380 36 432 L98 444 C100 392 106 340 112 300Z" fill="${C.j2}"/>
-        <path d="M36 414 L99 426 L98 444 L35 432Z" fill="${C.j3}"/>
-        <path d="M58 500 L64 332 C66 272 100 242 152 228 L248 228 C300 242 334 272 336 332 L342 500Z" fill="${C.j1}"/>
-        <g clip-path="url(#${id}t)" stroke="none">
-          <path d="M50 250 L152 222 L200 262 L248 222 L350 250 L350 300 L250 262 L200 300 L150 262 L50 300Z" fill="${C.j3}"/>
-          <path d="M40 372 L360 318 L360 352 L40 408Z" fill="${C.j2}"/>
-          <path d="M40 416 L360 360 L360 370 L40 427Z" fill="${C.ac}"/>
-          <path d="M40 300 L96 300 L84 500 L40 500Z M360 300 L304 300 L316 500 L360 500Z" fill="${C.j3}" opacity=".9"/>
-          <g fill="none" stroke="${C.ac}" stroke-width="3"><circle cx="262" cy="300" r="13"/><circle cx="262" cy="300" r="5"/><path d="M262 283 L262 287 M262 313 L262 317 M245 300 L249 300 M275 300 L279 300 M250 288 L253 291 M271 309 L274 312 M250 312 L253 309 M271 291 L274 288"/></g>
-          <rect x="40" y="220" width="320" height="290" fill="url(#${id}j)"/>
-        </g>
-        <path d="M200 266 L200 500" fill="none" stroke-width="2.5"/>
-        <path d="M176 168 L176 232 L200 256 L224 232 L224 168Z" fill="${C.s1}"/>
-        <path d="M176 176 L224 176 L224 200 L200 214 L176 198Z" fill="${C.s2}" stroke="none"/>
-        <path d="M162 224 L200 262 L238 224 L246 240 L200 284 L154 240Z" fill="${C.j3}"/>
-        <g transform="translate(0 30) rotate(-4 200 180) translate(200 186) scale(1.2) translate(-200 -186)">
-          <path d="M146 104 L138 112 L142 134 L150 138Z M254 104 L262 112 L258 134 L250 138Z" fill="${C.s2}"/>
-          <path d="M146 78 L148 130 L170 168 L200 186 L230 168 L252 130 L254 78Z" fill="${C.s1}"/>
-          <path d="M200 186 L230 168 L252 130 L254 78 L240 78 L236 128 L216 162Z" fill="${C.s2}" stroke="none"/>
-          <path d="M146 80 L136 132 L152 116 L150 146 L164 108Z M254 80 L264 132 L248 116 L250 146 L236 108Z" fill="${C.hair}"/>
-          <path d="M152 74 L160 98 L172 80 L184 106 L196 80 L208 104 L220 80 L232 98 L248 74Z" fill="${C.hair}"/>
-          <path d="M184 106 L190 84 L196 80Z M208 104 L214 84 L220 80Z" fill="${C.hair2}" stroke="none"/>
-          <path d="M201 116 L196 138 L205 140" fill="none" stroke="${C.s2}" stroke-width="3"/>
-          <path d="${o ? "M184 158 Q200 152 216 158" : "M184 154 Q202 162 218 150"}" fill="none" stroke="#7a3a30" stroke-width="3"/>
-          <path d="M150 92 L178 172 M250 92 L222 172" fill="none" stroke="${C.gl}" stroke-width="4"/>
-          <path d="M144 84 L256 84 L252 112 C238 126 214 120 200 111 C186 120 162 126 148 112Z" fill="url(#${id}v)" stroke-width="3"/>
-          <g stroke="none">${eye(1)}${eye(-1)}</g>
-          <path d="M156 88 L170 88 L160 114 L152 110Z M178 88 L183 88 L176 104 L172 105Z" fill="#fff" opacity=".45" stroke="none"/>
-          <path d="M128 90 C120 30 166 4 200 4 C236 4 282 30 272 90 L258 80 C240 68 160 68 142 80Z" fill="${C.h1}"/>
-          <path d="M200 4 C236 4 282 30 272 90 L258 80 C262 44 240 16 200 4Z" fill="#000" opacity=".16" stroke="none"/>
-          <path d="M128 90 C126 76 127 62 131 50 L146 58 C142 66 141 74 142 80Z M272 90 C274 76 273 62 269 50 L254 58 C258 66 259 74 258 80Z" fill="${C.h2}"/>
-          <g fill="${K}" stroke="none">${vents}</g>
-          <path d="M142 80 C160 68 240 68 258 80" fill="none" stroke="${C.h2}" stroke-width="5"/>
-        </g>
-        <g transform="translate(18 8)">
-        <path d="M298 248 C340 254 374 300 388 372 L332 394 C324 342 308 312 286 298Z" fill="${C.j2}"/>
-        <path d="M388 372 L332 394 L328 376 L384 354Z" fill="${C.j3}"/>
-        <path d="M386 376 L334 394 L300 226 L342 210Z" fill="${C.s1}"/>
-        <path d="M386 376 L366 383 L330 216 L342 210Z" fill="${C.s2}" stroke="none"/>
-        <g transform="rotate(-14 323 130)">
-          <rect x="290" y="78" width="66" height="96" rx="6" fill="#1a0f08"/>
-          <rect x="296" y="84" width="54" height="84" rx="3" fill="none" stroke="#c9a24a" stroke-width="2.5"/>
-          <circle cx="323" cy="126" r="13" fill="none" stroke="#c9a24a" stroke-width="2.5"/><circle cx="323" cy="126" r="5" fill="#ffcf3d" stroke="none"/>
-          <path d="M296 84 L350 168 M350 84 L296 168" stroke="#c9a24a" stroke-width="1.2" opacity=".5"/>
-        </g>
-        <path d="M294 232 C284 204 292 178 312 166 L350 176 C360 198 354 220 344 234Z" fill="${C.gl}"/>
-        <path d="M304 180 L346 190" fill="none" stroke="${C.ac}" stroke-width="4"/>
-        <path d="M300 178 L306 150 L318 152 L314 182Z M316 180 L324 150 L336 153 L330 184Z M332 184 L340 158 L351 162 L346 188Z" fill="${C.s1}"/>
-        <path d="M296 214 L282 188 L292 180 L308 204Z" fill="${C.s1}"/>
-        </g>
+      <defs><linearGradient id="${id}i" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${C.iris[0]}"/><stop offset=".55" stop-color="${C.iris[1]}"/><stop offset="1" stop-color="${C.iris[2]}"/></linearGradient><linearGradient id="${id}v" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd23d"/><stop offset=".5" stop-color="#ff8a1f"/><stop offset="1" stop-color="#e0407a"/></linearGradient></defs>
+      <g stroke-linejoin="round" transform="translate(0 520) skewX(${P.sk}) rotate(${P.lean}) translate(-205 -520) translate(205 0)">
+        ${cape}${fa.up}${na.up}
+        ${part(neck.d, C.skin, `<path d="M${hx - 34} ${hy + 46}L${hx + 34} ${hy + 70}L${hx + 30} ${hy + 104}L${hx - 34} ${hy + 86}Z" fill="${C.skin[2]}"/>`, 2.8, 0.5)}
+        ${jersey}${yoke}
+        <g transform="translate(${hx} ${hy}) rotate(${hr}) scale(${hsc})">${head(P.ex)}</g>
+        ${fa.fo}${na.fo}
       </g>
     </svg>`;
   }
   // 設定で自分の画像を入れているときはそれを使う。それ以外は上のオリジナルの人物
-  function avatarHtml(side) {
+  function avatarHtml(side, pose) {
     let own = "";
     try {
       own = side === "you" ? localStorage.getItem(DuelFx.IMG_KEY) || "" : "";
@@ -326,12 +411,12 @@ const Cinema = (() => {
       own = "";
     }
     if (own) return DuelFx.avatarHtml(side);
-    return heroSvg(side);
+    return heroSvg(side, pose);
   }
 
   // ---------- 画角 ----------
   const hasArt = (m, side) => typeof MonsterArt !== "undefined" && !!MonsterArt.src(m, side);
-  const av = (side, cls = "") => `<div class="cn-av ${side} ${cls}">${avatarHtml(side)}</div>`;
+  const av = (side, cls = "", pose = "base") => `<div class="cn-av ${side} ${cls} p-${pose}">${avatarHtml(side, pose)}</div>`;
   const stars = (n) => "★".repeat(Math.max(1, Math.min(12, n || 4)));
   // 背景: 奥のグラデーション・光の筋・流れる線・ボケを重ねる
   const bg = (kind = "") => `<div class="cn-bg ${kind}"><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i></div>`;
@@ -379,15 +464,15 @@ const Cinema = (() => {
     const s = c.side;
     switch (c.shot) {
       case "draw":
-        return `${bg("speed")}<svg class="cn-arc" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="cnArc" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" style="stop-color:var(--c1)" stop-opacity=".9"/><stop offset=".85" style="stop-color:var(--hi)"/><stop offset="1" stop-color="#fff"/></linearGradient></defs><path d="M20 590 C300 580 700 400 980 30 C760 330 420 500 20 590Z" fill="url(#cnArc)"/><path d="M200 585 C440 540 760 360 985 60 C800 330 500 500 200 585Z" fill="#fff" opacity=".7"/></svg>${av(s, "swing")}<i class="cn-cb"></i>${kt(c.gold ? "DESTINY DRAW!!" : "DRAW!!", "draw")}`;
+        return `${bg("speed")}<svg class="cn-arc" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="cnArc" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" style="stop-color:var(--c1)" stop-opacity=".9"/><stop offset=".85" style="stop-color:var(--hi)"/><stop offset="1" stop-color="#fff"/></linearGradient></defs><path d="M20 590 C300 580 700 400 980 30 C760 330 420 500 20 590Z" fill="url(#cnArc)"/><path d="M200 585 C440 540 760 360 985 60 C800 330 500 500 200 585Z" fill="#fff" opacity=".7"/></svg>${av(s, "swing", "draw")}<i class="cn-cb"></i>${kt(c.gold ? "DESTINY DRAW!!" : "DRAW!!", "draw")}`;
       case "hold":
-        return `${bg("speed")}${av(s, "hold")}${cardBox(c.card, "hold")}`;
+        return `${bg("speed")}${av(s, "hold", "thrust")}${cardBox(c.card, "hold")}`;
       case "cardup":
         return `${bg("deep")}${cardBox(c.card, "up")}`;
       case "low":
         return `${bg("deep")}${floor()}<div class="cn-pillar"></div>${monster(c.mon, "low", s)}${plate(c.mon)}`;
       case "two":
-        return `${bg("speed")}${floor()}${monster(c.mon, "two", s)}${av(s, "two")}${plate(c.mon)}`;
+        return `${bg("speed")}${floor()}${monster(c.mon, "two", s)}${av(s, "two", "thrust")}${plate(c.mon)}`;
       case "synchro": {
         const n = Math.max(1, Math.min(12, c.lv || 6));
         const born = c.mon ? monster(c.mon, "born", s) : `<div class="cn-mon emo born"><div class="cn-monb">${crest(`<small>Lv</small>${n}`, "lvl")}</div></div>`;
@@ -405,16 +490,16 @@ const Cinema = (() => {
           <div class="cn-dmgw ${s}">${c.direct ? `<small>DIRECT ATTACK</small>` : ""}<div class="cn-dmg">${num(c.dmg, 830, 480, "−")}</div><em>DAMAGE</em></div>`;
       }
       case "pinch":
-        return `${bg("deep")}<div class="cn-eyes"><div class="cn-eyei">${avatarHtml("you")}</div></div><svg class="cn-ecg" viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="M0 60 L300 60 L322 44 L340 60 L352 60 L366 14 L384 96 L398 60 L430 60 L452 48 L474 60 L760 60 L782 44 L800 60 L812 60 L826 14 L844 96 L858 60 L890 60 L912 48 L934 60 L1000 60"/></svg><div class="cn-lp"><small>LIFE POINT</small>${num(c.lp || 0, 150, 500)}<em>DANGER</em></div>`;
+        return `${bg("deep")}<div class="cn-eyes"><div class="cn-eyei">${avatarHtml("you", "pinch")}</div></div><svg class="cn-ecg" viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="M0 60 L300 60 L322 44 L340 60 L352 60 L366 14 L384 96 L398 60 L430 60 L452 48 L474 60 L760 60 L782 44 L800 60 L812 60 L826 14 L844 96 L858 60 L890 60 L912 48 L934 60 L1000 60"/></svg><div class="cn-lp"><small>LIFE POINT</small>${num(c.lp || 0, 150, 500)}<em>DANGER</em></div>`;
       case "reversal":
         return `<div class="cn-rev ${s}">${bg("deep")}</div><svg class="cn-crack" viewBox="0 0 1000 400" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="M-10 300 L120 250 L190 290 L330 170 L410 230 L520 120 L600 200 L720 90 L800 150 L1010 30"/></svg>${kt(s === "you" ? "逆転!!" : "逆転…!?", s === "you" ? "rev" : "rev long")}
           <div class="cn-lps"><span class="side-you"><small>YOU</small>${num(c.lp[0], 1050, 500)}</span><i>VS</i><span class="side-opp"><small>${esc(ev.foe ? ev.foe.name : "RIVAL")}</small>${num(c.lp[1], 1150, 500)}</span></div>`;
       case "finish":
-        return `${bg("deep")}${av(c.win ? "you" : "opp", "finish")}<div class="cn-fin ${c.win ? "win" : "lose"}">${kt("DUEL", "in l1")}${kt(c.win ? "WIN!!" : "LOSE…", "in l2")}<p>${c.win ? "VICTORY" : "DEFEAT"}</p></div><div class="cn-flash"></div>`;
+        return `${bg("deep")}${av(c.win ? "you" : "opp", "finish", "win")}<div class="cn-fin ${c.win ? "win" : "lose"}">${kt("DUEL", "in l1")}${kt(c.win ? "WIN!!" : "LOSE…", "in l2")}<p>${c.win ? "VICTORY" : "DEFEAT"}</p></div><div class="cn-flash"></div>`;
       case "duel":
         return duelHtml();
       case "manga":
-        return `<div class="bmanga ${s}"><div class="bm-lines"></div><div class="bm-av">${avatarHtml(s)}</div><div class="bm-dodo"><b>ド</b><b>ド</b><b>ド</b><b>ド</b></div></div>`;
+        return `<div class="bmanga ${s}"><div class="bm-lines"></div><div class="bm-av">${avatarHtml(s, "thrust")}</div><div class="bm-dodo"><b>ド</b><b>ド</b><b>ド</b><b>ド</b></div></div>`;
       case "glare":
         return `${bg("speed")}${eyeSvg(s)}`;
       case "rival":
@@ -433,7 +518,7 @@ const Cinema = (() => {
   // 片目の極端なアップ(オリジナルの絵柄)。肌と瞳を段階的に塗り分け、まつげ・虹彩の筋・映り込みを描く。自分は青緑、相手は赤の瞳
   function eyeSvg(side) {
     const opp = side === "opp";
-    const H = opp ? ["#1c060e", "#4a1022", "#8a2440", "#d05a78"] : ["#081424", "#15324f", "#2a5f8a", "#7fc0e8"];
+    const H = opp ? ["#6c6398", "#aaa2cf", "#e6e2f4", "#ffffff"] : ["#0a1730", "#1f4468", "#2f6f96", "#5fd2de"];
     const I = opp ? ["#ffc2cc", "#ff5a78", "#c01a40", "#4a0514"] : ["#d6fff4", "#4fe6c4", "#12a08c", "#06343f"];
     const E = "M430 520 C520 360 760 290 980 320 C1080 334 1150 380 1190 430 C1160 520 1050 610 860 625 C700 636 540 600 430 520Z";
     const cx = 810, cy = 468;
