@@ -4046,7 +4046,7 @@ const City = (() => {
             for (let t = (32 - poleRun) % 32; t < L; t += 32) {
               const x = ax + ex * t + ox * 0.35, z = az + ez * t + oz * 0.35;
               if (hash(Math.round(x) * 73 + Math.round(z) * 31) < 0.45) continue;
-              poles.push({ x, z, ang: Math.atan2(ez, ex), prev: lastPole && Math.hypot(lastPole.x - x, lastPole.z - z) < 48 ? lastPole : null, tr: hash(Math.round(x * 3) + Math.round(z)) < 0.3 });
+              poles.push({ x, z, rx: -ox, rz: -oz, ang: Math.atan2(ez, ex), prev: lastPole && Math.hypot(lastPole.x - x, lastPole.z - z) < 48 ? lastPole : null, tr: hash(Math.round(x * 3) + Math.round(z)) < 0.3 });
               lastPole = poles[poles.length - 1];
             }
             poleRun = (poleRun + L) % 32;
@@ -4251,6 +4251,37 @@ const City = (() => {
               (px = x), (py = yy), (pz = z);
             }
           }
+        }
+        // 街灯: 電柱の半分ほどに、道の上へ張り出した腕とLEDの灯具。夕方・夜は灯具が光り、足もとの道を丸く照らす
+        const lit = poles.filter((p) => p.rx != null && hash(Math.round(p.x * 7) * 13 + Math.round(p.z * 5)) < 0.55);
+        if (lit.length) {
+          const LM = lampMats();
+          const bk = new THREE.InstancedMesh(new THREE.BoxGeometry(0.06, 0.06, 1.3), m.dark, lit.length);
+          const hd = new THREE.InstancedMesh(new THREE.BoxGeometry(0.22, 0.07, 0.5), m.dark, lit.length);
+          const ld = new THREE.InstancedMesh(new THREE.BoxGeometry(0.18, 0.02, 0.42), LM.head, lit.length);
+          const pl = new THREE.InstancedMesh(new THREE.CircleGeometry(1, 28).rotateX(-Math.PI / 2), LM.pool, lit.length);
+          const q = new THREE.Quaternion(), e = new THREE.Euler(), sc = new THREE.Vector3(1, 1, 1), pos = new THREE.Vector3();
+          lit.forEach((p, i) => {
+            const yaw = Math.atan2(p.rx, p.rz); // 腕(ローカル +z)を道の側へ向ける
+            q.setFromEuler(e.set(-0.18, yaw, 0));
+            bk.setMatrixAt(i, mt.compose(pos.set(p.x + p.rx * 0.65, p.h + 7.35, p.z + p.rz * 0.65), q, sc));
+            q.setFromEuler(e.set(-0.05, yaw, 0));
+            hd.setMatrixAt(i, mt.compose(pos.set(p.x + p.rx * 1.45, p.h + 7.5, p.z + p.rz * 1.45), q, sc));
+            ld.setMatrixAt(i, mt.compose(pos.set(p.x + p.rx * 1.45, p.h + 7.455, p.z + p.rz * 1.45), q, sc));
+            const cx = p.x + p.rx * 2.2, cz = p.z + p.rz * 2.2;
+            pl.setMatrixAt(i, mt.compose(pos.set(cx, H(cx, cz) + 0.085, cz), q.identity(), sc.set(5.5, 1, 5.5)));
+            sc.set(1, 1, 1);
+          });
+          pl.renderOrder = 2;
+          bk.castShadow = hd.castShadow = true;
+          // 灯具のまわりのにじむ光(夜だけ)
+          const gp = [];
+          for (const p of lit) gp.push(p.x + p.rx * 1.45, p.h + 7.38, p.z + p.rz * 1.45);
+          const gg = new THREE.BufferGeometry();
+          gg.setAttribute("position", new THREE.Float32BufferAttribute(gp, 3));
+          const halo = new THREE.Points(gg, LM.halo);
+          halo.renderOrder = 3;
+          g.add(bk, hd, ld, pl, halo);
         }
         shaft.castShadow = arm.castShadow = true;
         g.add(shaft, arm);
@@ -8680,7 +8711,38 @@ const City = (() => {
     night: { sky: [[0, "#02040c"], [0.6, "#0a1430"], [0.75, "#1c2340"], [1, "#2a2a3a"]], fog: 0x141a2c, near: 90, far: 520, hemi: [0x5a6aa0, 0x10121a, 0.5], sun: [0x8aa0ff, 0.25, [0.3, 0.6, -0.4]], glow: 1.1, win: 1, ground: 0x15171a, photo: 0x6a6e80 },
   };
   let skyFlat = null;
+  // 街灯の灯具と、足もとの光の輪(昼は消える)。材質は1つずつにして、時間帯で明るさだけ変える
+  let LAMP = null;
+  function lampMats() {
+    if (LAMP) return LAMP;
+    const THREE = T();
+    const cv = document.createElement("canvas");
+    cv.width = cv.height = 128;
+    const x = cv.getContext("2d"), gr = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gr.addColorStop(0, "rgba(255,236,196,1)");
+    gr.addColorStop(0.35, "rgba(255,226,180,0.55)");
+    gr.addColorStop(0.75, "rgba(255,214,160,0.12)");
+    gr.addColorStop(1, "rgba(255,210,150,0)");
+    x.fillStyle = gr;
+    x.fillRect(0, 0, 128, 128);
+    const tex = new THREE.CanvasTexture(cv);
+    LAMP = {
+      head: new THREE.MeshBasicMaterial({ color: 0x55575b }),
+      pool: new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -8, fog: false }),
+    };
+    LAMP.halo = new THREE.PointsMaterial({ map: tex, size: 2.6, sizeAttenuation: true, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+    LAMP.pool.visible = LAMP.halo.visible = false;
+    return LAMP;
+  }
+  function lampTime(m) {
+    const L = lampMats(), on = m === "night" ? 1 : m === "dusk" ? 0.55 : 0;
+    L.head.color.setHex(on ? 0xfff4dc : 0x55575b);
+    L.pool.opacity = on * 0.6;
+    L.halo.opacity = on * 0.85;
+    L.pool.visible = L.halo.visible = on > 0;
+  }
   function setTime(m) {
+    lampTime(TIMES[m] ? m : "day");
     const THREE = T();
     const c = TIMES[m] || TIMES.day;
     timeMode = TIMES[m] ? m : "day";
