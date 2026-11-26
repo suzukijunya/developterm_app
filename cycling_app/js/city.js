@@ -8405,7 +8405,7 @@ const City = (() => {
   // 画像は Map Tiles API の Street View Tiles から取る(保存はしない)。料金がかからないよう、この端末では月の枚数に上限を付ける。
   const PV = (() => {
     const STEP = 28, Z = 2, CAP_M = 24000; // 28mごとに1枚。1枚=タイル8枚(2048×1024)。月の上限(タイルの枚数)
-    let on = false, session = null, sessionP = null, err = "", mat = null, walkT = 0, told = false, copy = "";
+    let on = false, session = null, sessionP = null, err = "", mat = null, walkT = 0, stT = 0, told = false, copy = "";
     const panos = new Map(); // i(道のり/STEP) → { state, tex, x, y, z, hd, al }
     const usage = () => {
       const d = new Date(), m = d.getFullYear() + "-" + (d.getMonth() + 1);
@@ -8430,6 +8430,9 @@ const City = (() => {
           const j = await r.json().catch(() => ({}));
           if (!r.ok || !j.session) throw new Error((j.error && j.error.message) || "HTTP " + r.status);
           return (session = j.session);
+        }).catch((e) => {
+          sessionP = null; // 失敗を覚えたままにしない(次に写真を取るときに、もう一度つなぐ)
+          throw e;
         });
       return sessionP;
     }
@@ -8473,7 +8476,10 @@ const City = (() => {
         Object.assign(P, { state: "ok", tex, id: md.panoId, x, z, y: H(x, z) + 2.5, hd: ((md.heading || 0) * Math.PI) / 180 });
       } catch (e) {
         P.state = "fail";
+        P.failT = performance.now();
         err = String((e && e.message) || e).slice(0, 80);
+        // 期限切れなどで写真が取れなくなったら、つなぎ直す
+        if (/session|expired|unauth|40[13]/i.test(err)) session = null;
         if (!told) (told = true), ticker("写真の街: 写真を取れません(" + err + ")", "opp");
       }
     }
@@ -8603,7 +8609,19 @@ const City = (() => {
     function render(p, s, real) {
       if (!on) return false;
       const i0 = Math.floor(s.along / STEP);
-      for (const i of [i0, i0 + 1, i0 + 2]) if (i * STEP <= route.length && !panos.has(i)) load(i);
+      for (const i of [i0, i0 + 1, i0 + 2]) {
+        const P = panos.get(i);
+        // 取れなかった所は、写真が無い所を除いて20秒おきに取り直す
+        if (P && P.state === "fail" && !/写真なし|道の写真なし|今月の上限/.test(err) && performance.now() - P.failT > 20000) panos.delete(i);
+        if (i * STEP <= route.length && !panos.has(i)) load(i);
+      }
+      // チェックの横に、いまの状態を出す(止まっているのに気づけるように)
+      if ((stT = (stT || 0) + 1) % 30 === 0) {
+        let ok = 0, ng = 0;
+        for (const P of panos.values()) P.state === "ok" ? ok++ : P.state === "fail" && ng++;
+        const st = !ok && ng ? `止まっています: ${err}` : usage().n + 8 > CAP_M ? "今月の上限" : "";
+        for (const id of ["ct-pv-st"]) if ($(id) && $(id).textContent !== st) $(id).textContent = st;
+      }
       for (const [i, P] of panos)
         if (i < i0 - 2 || i > i0 + 5) {
           if (P.tex && ![...panos.values()].some((o) => o !== P && o.tex === P.tex)) P.tex.dispose();
