@@ -105,7 +105,11 @@
 .cn-av .cn-hero { position: absolute; left: 0; bottom: 0; height: 90%; overflow: visible; }
 .cn-av.two .cn-hero, .cn-av.rival .cn-hero, .cn-split.opp .cn-hero { transform: scaleX(-1); }
 /* 下からあおる構図: 足もとを軸に上を奥へ倒す */
-.cn-av.swing .cn-hero, .cn-av.hold .cn-hero, .cn-av.finish .cn-hero { transform-origin: 50% 100%; transform: perspective(170vh) rotateX(10deg); }
+.cn-av.swing .cn-hero, .cn-av.hold .cn-hero, .cn-av.finish .cn-hero { transform-origin: 50% 100%; }
+/* 下から大きくあおり、斜めに傾ける */
+.cn-av.swing .cn-hero { transform: perspective(110vh) rotateX(18deg) rotate(-6deg) scale(1.25); }
+.cn-av.hold .cn-hero { transform: perspective(110vh) rotateX(20deg) rotate(-8deg) scale(1.3); }
+.cn-av.finish .cn-hero { transform: perspective(110vh) rotateX(22deg) rotate(6deg) scale(1.3); }
 .cn-av.rival .cn-hero { transform-origin: 50% 100%; transform: perspective(170vh) rotateX(10deg) scaleX(-1); }
 /* 漫画風のカットイン: 突き出した腕が画面に収まるよう左へ寄せる */
 .cn-cam .bm-av .cn-hero { left: -13vw; }
@@ -149,11 +153,11 @@
 .cn-kt.draw { right: 5vw; bottom: 25vh; font-size: min(17vh, 7.6vw); --d: 0.6s; }
 
 /* ② カードを突き出す / ③ カードのアップ(傾けて、光が走る) */
-.cn-av.hold { left: 3vw; bottom: -4vh; height: 106vh; width: 85vh; animation: cn-hold 1.7s ease-out both; }
+.cn-av.hold { left: -5vw; bottom: -4vh; height: 106vh; width: 85vh; animation: cn-hold 1.7s ease-out both; }
 @keyframes cn-hold { from { transform: scale(1.1) translateX(-5vw); } to { transform: none; } }
 .cn-card, .cn-halo { width: 0; height: 0; z-index: 3; }
 .cn-card { perspective: 120vh; }
-.cn-card.hold, .cn-halo.hold { left: 68vw; top: 46vh; --cs: calc(var(--cnh) * 0.56 / 130); }
+.cn-card.hold, .cn-halo.hold { left: 78vw; top: 44vh; --cs: calc(var(--cnh) * 0.56 / 130); }
 .cn-card.up, .cn-halo.up { left: 50vw; top: 46vh; --cs: calc(var(--cnh) * 0.66 / 130); }
 .cn-cardb { position: absolute; left: -44px; top: -65px; width: 88px; height: 130px; border-radius: 5px; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4), 0 0 12px rgba(var(--hir), 0.9), 0 0 34px rgba(var(--c1r), 0.9), 4px 10px 22px rgba(0, 0, 0, 0.7); }
 .cn-cardb .df-card { margin: 0; animation: none; box-shadow: none; }
@@ -287,7 +291,7 @@
 .cn-lps > i { font-family: var(--disp); font-size: min(4.4vh, 2.8vw); color: #fff; text-shadow: 0 0 1.4vh #fff; }
 
 /* ⑪ 決着 */
-.cn-av.finish { left: 4vw; bottom: -4vh; height: 104vh; width: 84vh; transform-origin: 50% 100%; animation: cn-finish 2.8s cubic-bezier(0.2, 1, 0.3, 1) both; }
+.cn-av.finish { left: 0vw; bottom: -4vh; height: 104vh; width: 84vh; transform-origin: 50% 100%; animation: cn-finish 2.8s cubic-bezier(0.2, 1, 0.3, 1) both; }
 @keyframes cn-finish { from { transform: scale(1.5) translateY(8vh); filter: brightness(3); } 20% { filter: none; } to { transform: scale(1.04); } }
 .cn-fin { left: 44vw; right: 2vw; top: 19vh; text-align: center; z-index: 4; transform: rotate(-5deg); }
 .cn-fin .cn-kt { display: block; transform: none; }
@@ -354,8 +358,9 @@
   .cn-arc { left: -6vw; width: 112vw; top: 22vh; height: 34vh; }
   .cn-cb { right: 8vw; top: 13vh; width: 24vw; height: 34.6vw; }
   .cn-kt.draw { left: 0; right: 0; bottom: 21vh; text-align: center; white-space: normal; font-size: 17vw; line-height: 1; }
-  .cn-av.hold { left: -18vw; width: 116vw; height: 62vh; bottom: 5vh; }
-  .cn-card.hold, .cn-halo.hold { left: 68vw; top: 28vh; --cs: calc(var(--cnw) * 0.46 / 88); }
+  .cn-av.hold { left: -33vw; width: 116vw; height: 62vh; bottom: 5vh; }
+  .cn-av.hold .cn-hero { transform: perspective(110vh) rotateX(14deg) rotate(-17deg) scale(0.84); }
+  .cn-card.hold, .cn-halo.hold { left: 66vw; top: 24vh; --cs: calc(var(--cnw) * 0.46 / 88); }
   .cn-card.up, .cn-halo.up { left: 50vw; top: 44vh; --cs: calc(var(--cnw) * 0.64 / 88); }
   .cn-halo::before, .cn-halo::after { left: -75vw; top: -75vw; width: 150vw; height: 150vw; }
   .cn-mon.low { left: 0; right: 0; top: 10vh; bottom: 30vh; }
