@@ -226,8 +226,8 @@ const City = (() => {
   // ---------- 街のデータ(OpenFreeMap の地図タイル。鍵なし・1枚 約2km四方) ----------
   const ROAD_W = { motorway: 16, trunk: 16, primary: 14, secondary: 11, tertiary: 9, unclassified: 6.5, residential: 6, living_street: 5, service: 4, pedestrian: 5, cycleway: 2.5, footway: 2.2, path: 2, steps: 2, track: 3 };
   const CLASS = { motorway: "motorway", trunk: "trunk", primary: "primary", secondary: "secondary", tertiary: "tertiary", minor: "residential", service: "service", track: "track", path: "footway", busway: "service" };
-  const WANT = new Set(["building", "transportation", "transportation_name", "place", "poi", "water", "park", "landuse", "landcover"]);
-  const AREA = { university: "campus", college: "campus", school: "campus", hospital: "hospital", cemetery: "park", stadium: "park", pitch: "park", playground: "park", railway: "rail" };
+  const WANT = new Set(["building", "transportation", "transportation_name", "place", "poi", "water", "waterway", "park", "landuse", "landcover"]);
+  const AREA = { university: "campus", college: "campus", school: "campus", hospital: "hospital", cemetery: "park", stadium: "park", pitch: "park", playground: "park", railway: "rail", track: "ground" };
   const Z = 14, NT = 2 ** Z;
   const tileX = (lon) => Math.floor(((lon + 180) / 360) * NT);
   const tileY = (lat) => Math.floor(((1 - Math.asinh(Math.tan((lat * Math.PI) / 180)) / Math.PI) / 2) * NT);
@@ -262,7 +262,7 @@ const City = (() => {
       }
     };
     const str = (a, b) => new TextDecoder().decode(u8.subarray(a, b));
-    const out = { b: [], r: [], n: [], pl: [], poi: [], a: [] };
+    const out = { b: [], r: [], n: [], pl: [], poi: [], a: [], w: [], pk: [] }; // w: 川・水路の線 pk: 駐車場の点
     let n = 0;
     each(u8.length, (f, w, a, b) => {
       if (f !== 3 || w !== 2) return;
@@ -348,11 +348,23 @@ const City = (() => {
             }
           } else if (name === "place" && type === 1 && pr.name && rings[0]) {
             out.pl.push([String(pr.name), String(pr.class || ""), ...toLL(rings[0][0], rings[0][1]), +pr.rank || 99]);
+          } else if (name === "poi" && type === 1 && pr.class === "parking" && pr.subclass === "parking" && rings[0] && !pr.name) {
+            out.pk.push(toLL(rings[0][0], rings[0][1]));
+          } else if (name === "waterway" && type === 2 && pr.brunnel !== "tunnel" && !pr.intermittent && /^(river|canal|stream|drain|ditch)$/.test(pr.class)) {
+            for (const rg of rings) {
+              if (rg.length < 4) continue;
+              const pts = [];
+              for (let i = 0; i < rg.length; i += 2) pts.push(...toLL(rg[i], rg[i + 1]));
+              out.w.push([String(pr.class), pts, pr.brunnel === "bridge" ? 1 : 0]);
+            }
           } else if (name === "poi" && type === 1 && pr.name && rings[0]) {
+            if (pr.class === "parking" && pr.subclass === "parking") out.pk.push(toLL(rings[0][0], rings[0][1]));
             out.poi.push([String(pr.name), String(pr.class || ""), String(pr.subclass || ""), ...toLL(rings[0][0], rings[0][1]), +pr.rank || 99]);
           } else if ((name === "water" || name === "park" || name === "landuse" || name === "landcover") && type === 3) {
-            const kind = name === "water" ? "water" : name === "park" ? "park" : name === "landcover" ? (pr.class === "grass" || pr.class === "wood" ? "park" : "") : AREA[pr.class] || "";
+            const kind = name === "water" ? "water" : name === "park" ? "park" : name === "landcover" ? (pr.class === "grass" || pr.class === "wood" ? "park" : pr.class === "sand" ? "ground" : "") : AREA[pr.class] || "";
             if (!kind) continue;
+            // 細かい種類(地面の形を作るため): 層の頭文字 + 種類 + 小分類
+            const cls = { water: "w", park: "p", landuse: "lu", landcover: "lc" }[name] + ":" + pr.class + "/" + (pr.subclass || "");
             for (const rg of rings) {
               if (rg.length < 6) continue;
               let area = 0;
@@ -363,7 +375,7 @@ const City = (() => {
               if (area <= 0) continue;
               const pts = [];
               for (let i = 0; i < rg.length; i += 2) pts.push(...toLL(rg[i], rg[i + 1]));
-              out.a.push([kind, pts]);
+              out.a.push([kind, pts, cls]);
             }
           } else if (name === "transportation" && type === 2 && (pr.class === "rail" || pr.class === "transit")) {
             if (pr.brunnel === "tunnel") continue;
@@ -373,7 +385,7 @@ const City = (() => {
               if (rg.length < 4) continue;
               const pts = [];
               for (let i = 0; i < rg.length; i += 2) pts.push(...toLL(rg[i], rg[i + 1]));
-              out.r.push([-(++n), "rail", pts, 0, lv, 0]);
+              out.r.push([-(++n), "rail", pts, 0, lv, 0, String(pr.subclass || pr.class)]);
             }
           } else if (name === "transportation" && type === 2) {
             const kind = pr.class === "path" && pr.subclass === "cycleway" ? "cycleway" : CLASS[pr.class];
@@ -415,7 +427,7 @@ const City = (() => {
     return tmpl.replace("{z}", Z).replace("{x}", x).replace("{y}", y);
   }
   async function fetchTile(ix, iy) {
-    const key = `v7:${Z}:${ix}:${iy}`;
+    const key = `v8:${Z}:${ix}:${iy}`;
     const hit = await cacheGet(key);
     if (hit) return hit;
     try {
@@ -1290,7 +1302,7 @@ const City = (() => {
     // 公園・水面・学校や病院の敷地(地面の色を変える)
     {
       const pos = [], col = [];
-      const COL = { water: [0.16, 0.36, 0.62], park: [0.2, 0.42, 0.24], campus: [0.42, 0.38, 0.3], hospital: [0.44, 0.32, 0.34], rail: [0.26, 0.24, 0.24] };
+      const COL = { water: [0.16, 0.36, 0.62], park: [0.2, 0.42, 0.24], campus: [0.42, 0.38, 0.3], hospital: [0.44, 0.32, 0.34], rail: [0.26, 0.24, 0.24], ground: [0.5, 0.44, 0.34] };
       for (const [kind, ll] of data.a || []) {
         await rest();
         const pts = [];
@@ -1312,6 +1324,12 @@ const City = (() => {
         geo.computeVertexNormals();
         group.add(new THREE.Mesh(geo, mats.area));
       }
+    }
+    // 川・公園・駐車場・線路・校庭の形
+    try {
+      await Land.build(data, ix, iy, group, xp, rest);
+    } catch (e) {
+      console.error(e);
     }
     // いまどこを走っているかを出すための名前(道・町)と、目印になる施設
     const info = { names: [], places: [], lms: [] };
@@ -1698,6 +1716,7 @@ const City = (() => {
         scene.remove(t.group);
         t.group.traverse((o) => o.geometry && o.geometry.dispose());
         tiles.delete(key);
+        Land.touch();
       }
     }
     pump();
@@ -3940,6 +3959,68 @@ const City = (() => {
       inst(new THREE.CylinderGeometry(0.19, 0.2, 0.9, 10), pm.tiger, pp.filter((q) => q.r < 0.55), (p) => at(p, 0, 1.0, 0));
       inst(new THREE.BoxGeometry(0.42, 1.2, 0.04), pm.body, pp.filter((q) => q.r > 0.35), (p) => at(p, 0, 2.9, -0.22), (p) => [0x1f5fae, 0x2f8a4e, 0xf4f4f0, 0xb3261e, 0xe8b020][Math.floor(p.r * 97) % 5]);
     }
+    // 木を植える(3種類)。trees: [x, z, 根もとの高さ(省くと地面), 大きさの倍率]。pit: 根もとの植えます(歩道の木)
+    function plantTrees(g, trees, pit) {
+      const THREE = T(), m = mats();
+      // 幹は枝分かれした1つの形(幹 + 太い枝3本)。葉は、葉むらの絵を貼った板を 18枚、いろいろな向きに重ねる。
+      // 中に暗い緑のかたまりを1つ入れて、すき間から向こうが見えすぎないようにする
+      // 木の種類を3つ(丸く広がる木 / 背の高い細い木 / 低く横に広い木)。葉むらの板は1本に30枚
+      const K = 30;
+      const tg = [];
+      const cyl = (r0, r1, len, px, py, pz, rx, rz) => {
+        const q = new THREE.CylinderGeometry(r0, r1, len, 7);
+        q.translate(0, len / 2, 0);
+        q.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(px, py, pz), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, 0, rz)), new THREE.Vector3(1, 1, 1)));
+        return q.toNonIndexed();
+      };
+      // 幹(根もとが少し広がる)と、太い枝5本、その先の細い枝
+      tg.push(cyl(0.1, 0.2, 0.5, 0, 0, 0, 0, 0), cyl(0.085, 0.1, 2.1, 0, 0.45, 0, 0.03, -0.02));
+      for (const [rx, rz, y0] of [[0.55, 0.25, 2.3], [-0.5, -0.4, 2.2], [0.1, 0.65, 2.45], [-0.25, -0.6, 2.45], [0.02, 0.05, 2.5]]) {
+        tg.push(cyl(0.045, 0.085, 1.5, 0, y0, 0, rx, rz));
+        const ex = -Math.sin(rz) * 1.4, ey = y0 + Math.cos(rz) * Math.cos(rx) * 1.4, ez = Math.sin(rx) * 1.4;
+        tg.push(cyl(0.02, 0.04, 0.9, ex, ey, ez, rx * 1.6 + 0.2, rz * 0.5), cyl(0.02, 0.04, 0.8, ex, ey, ez, rx * 0.4 - 0.3, rz * 1.7));
+      }
+      const tpos = [], tnor = [], tuv = [];
+      for (const q of tg) (tpos.push(...q.attributes.position.array), tnor.push(...q.attributes.normal.array), tuv.push(...q.attributes.uv.array));
+      const trunkG = new THREE.BufferGeometry();
+      trunkG.setAttribute("position", new THREE.Float32BufferAttribute(tpos, 3));
+      trunkG.setAttribute("normal", new THREE.Float32BufferAttribute(tnor, 3));
+      trunkG.setAttribute("uv", new THREE.Float32BufferAttribute(tuv, 2));
+      const trunk = new THREE.InstancedMesh(trunkG, m.bark, trees.length);
+      const card = new THREE.InstancedMesh(new THREE.PlaneGeometry(2.0, 2.0), m.leafCard, trees.length * K);
+      const core = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), m.leaf, trees.length);
+      // 根もと: 土の植えます(四角)と、低い下草(葉むらの板を3枚)
+      const pitM = new THREE.InstancedMesh(new THREE.BoxGeometry(1.3, 0.06, 1.3), m.soil, trees.length);
+      const rimM = new THREE.InstancedMesh(new THREE.BoxGeometry(1.5, 0.04, 1.5), m.grate, trees.length);
+      const bush = new THREE.InstancedMesh(new THREE.PlaneGeometry(1.1, 0.7), m.leafCard, trees.length * 3);
+      const mt = new THREE.Matrix4(), sc = new THREE.Matrix4(), ro = new THREE.Matrix4(), c = new THREE.Color(), eu = new THREE.Euler();
+      trees.forEach(([x, z, y, big], i) => {
+        const hs = (n) => hash(Math.round(x * 5) * 3 + Math.round(z * 3) * 7 + n * 131);
+        const kind = hs(3) < 0.5 ? 0 : hs(3) < 0.8 ? 1 : 2; // 丸い / 細くて高い / 低くて広い
+        const s = (0.85 + hs(0) * 0.5) * [1, 1.15, 0.85][kind] * (big || 1), h = y != null ? y : H(x, z) + 0.17, yaw = hs(2) * 6.28;
+        const hue = [0.25, 0.2, 0.3][kind] + hs(1) * 0.06, sx = [1.25, 0.75, 1.5][kind], sy = [1.05, 1.7, 0.8][kind], cy = [3.8, 4.3, 3.4][kind];
+        trunk.setMatrixAt(i, mt.makeTranslation(x, h, z).multiply(ro.makeRotationY(yaw)).multiply(sc.makeScale(s, s * (kind === 1 ? 1.15 : 1), s)));
+        for (let k = 0; k < K; k++) {
+          // 葉むらは、木の上のほうの範囲(種類ごとの形)の、外側に多く散らす
+          const a = hs(10 + k) * 6.28, el = (hs(20 + k) - 0.3) * 1.7, rr = (0.45 + Math.sqrt(hs(30 + k)) * 0.75) * s;
+          const px = Math.cos(a) * Math.cos(el) * rr * sx, py = cy * s + Math.sin(el) * rr * sy, pz = Math.sin(a) * Math.cos(el) * rr * sx, rs = (0.7 + hs(40 + k) * 0.5) * s;
+          card.setMatrixAt(i * K + k, mt.makeTranslation(x + px, h + py, z + pz).multiply(ro.makeRotationFromEuler(eu.set((hs(50 + k) - 0.5) * 1.6, hs(60 + k) * 6.28, (hs(70 + k) - 0.5) * 1.2))).multiply(sc.makeScale(rs, rs, rs)));
+          // 上と外側の葉は明るく、下と内側は暗く
+          card.setColorAt(i * K + k, c.setHSL(hue + (hs(80 + k) - 0.5) * 0.04, 0.2 + hs(90 + k) * 0.1, 0.13 + Math.max(0, Math.sin(el)) * 0.11 + (rr / s - 0.45) * 0.05 + hs(95 + k) * 0.04));
+        }
+        core.setMatrixAt(i, mt.makeTranslation(x, h + cy * s, z).multiply(sc.makeScale(0.8 * s * sx, 0.8 * s * sy, 0.8 * s * sx)));
+        core.setColorAt(i, c.setHSL(hue, 0.4, 0.1));
+        pitM.setMatrixAt(i, mt.makeTranslation(x, h + 0.03, z).multiply(ro.makeRotationY(yaw)));
+        rimM.setMatrixAt(i, mt.makeTranslation(x, h + 0.015, z).multiply(ro.makeRotationY(yaw)));
+        for (let k = 0; k < 3; k++) {
+          bush.setMatrixAt(i * 3 + k, mt.makeTranslation(x, h + 0.36, z).multiply(ro.makeRotationY(yaw + (k * Math.PI) / 3)));
+          bush.setColorAt(i * 3 + k, c.setHSL(hue + 0.03, 0.26, 0.13 + hs(100 + k) * 0.05));
+        }
+      });
+      if (pit) g.add(pitM, rimM);
+      trunk.castShadow = card.castShadow = core.castShadow = true;
+      g.add(trunk, card, core, bush);
+    }
     function buildTile(polys, rect) {
       const THREE = T();
       const m = mats();
@@ -4207,67 +4288,8 @@ const City = (() => {
         rg.computeVertexNormals();
         g.add(new THREE.Mesh(rg, m.rail));
       }
-      // 街路樹: 幹と、葉のかたまり4つ(大きさ・位置・色を少しずつ変えて、こんもりした形にする)と、根もとの植え込み
-      if (trees.length) {
-        // 幹は枝分かれした1つの形(幹 + 太い枝3本)。葉は、葉むらの絵を貼った板を 18枚、いろいろな向きに重ねる。
-        // 中に暗い緑のかたまりを1つ入れて、すき間から向こうが見えすぎないようにする
-        // 木の種類を3つ(丸く広がる木 / 背の高い細い木 / 低く横に広い木)。葉むらの板は1本に30枚
-        const K = 30;
-        const tg = [];
-        const cyl = (r0, r1, len, px, py, pz, rx, rz) => {
-          const q = new THREE.CylinderGeometry(r0, r1, len, 7);
-          q.translate(0, len / 2, 0);
-          q.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(px, py, pz), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, 0, rz)), new THREE.Vector3(1, 1, 1)));
-          return q.toNonIndexed();
-        };
-        // 幹(根もとが少し広がる)と、太い枝5本、その先の細い枝
-        tg.push(cyl(0.1, 0.2, 0.5, 0, 0, 0, 0, 0), cyl(0.085, 0.1, 2.1, 0, 0.45, 0, 0.03, -0.02));
-        for (const [rx, rz, y0] of [[0.55, 0.25, 2.3], [-0.5, -0.4, 2.2], [0.1, 0.65, 2.45], [-0.25, -0.6, 2.45], [0.02, 0.05, 2.5]]) {
-          tg.push(cyl(0.045, 0.085, 1.5, 0, y0, 0, rx, rz));
-          const ex = -Math.sin(rz) * 1.4, ey = y0 + Math.cos(rz) * Math.cos(rx) * 1.4, ez = Math.sin(rx) * 1.4;
-          tg.push(cyl(0.02, 0.04, 0.9, ex, ey, ez, rx * 1.6 + 0.2, rz * 0.5), cyl(0.02, 0.04, 0.8, ex, ey, ez, rx * 0.4 - 0.3, rz * 1.7));
-        }
-        const tpos = [], tnor = [], tuv = [];
-        for (const q of tg) (tpos.push(...q.attributes.position.array), tnor.push(...q.attributes.normal.array), tuv.push(...q.attributes.uv.array));
-        const trunkG = new THREE.BufferGeometry();
-        trunkG.setAttribute("position", new THREE.Float32BufferAttribute(tpos, 3));
-        trunkG.setAttribute("normal", new THREE.Float32BufferAttribute(tnor, 3));
-        trunkG.setAttribute("uv", new THREE.Float32BufferAttribute(tuv, 2));
-        const trunk = new THREE.InstancedMesh(trunkG, m.bark, trees.length);
-        const card = new THREE.InstancedMesh(new THREE.PlaneGeometry(2.0, 2.0), m.leafCard, trees.length * K);
-        const core = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), m.leaf, trees.length);
-        // 根もと: 土の植えます(四角)と、低い下草(葉むらの板を3枚)
-        const pit = new THREE.InstancedMesh(new THREE.BoxGeometry(1.3, 0.06, 1.3), m.soil, trees.length);
-        const rim = new THREE.InstancedMesh(new THREE.BoxGeometry(1.5, 0.04, 1.5), m.grate, trees.length);
-        const bush = new THREE.InstancedMesh(new THREE.PlaneGeometry(1.1, 0.7), m.leafCard, trees.length * 3);
-        const mt = new THREE.Matrix4(), sc = new THREE.Matrix4(), ro = new THREE.Matrix4(), c = new THREE.Color(), eu = new THREE.Euler();
-        trees.forEach(([x, z], i) => {
-          const hs = (n) => hash(Math.round(x * 5) * 3 + Math.round(z * 3) * 7 + n * 131);
-          const kind = hs(3) < 0.5 ? 0 : hs(3) < 0.8 ? 1 : 2; // 丸い / 細くて高い / 低くて広い
-          const s = (0.85 + hs(0) * 0.5) * [1, 1.15, 0.85][kind], h = H(x, z) + 0.17, yaw = hs(2) * 6.28;
-          const hue = [0.25, 0.2, 0.3][kind] + hs(1) * 0.06, sx = [1.25, 0.75, 1.5][kind], sy = [1.05, 1.7, 0.8][kind], cy = [3.8, 4.3, 3.4][kind];
-          trunk.setMatrixAt(i, mt.makeTranslation(x, h, z).multiply(ro.makeRotationY(yaw)).multiply(sc.makeScale(s, s * (kind === 1 ? 1.15 : 1), s)));
-          for (let k = 0; k < K; k++) {
-            // 葉むらは、木の上のほうの範囲(種類ごとの形)の、外側に多く散らす
-            const a = hs(10 + k) * 6.28, el = (hs(20 + k) - 0.3) * 1.7, rr = (0.45 + Math.sqrt(hs(30 + k)) * 0.75) * s;
-            const px = Math.cos(a) * Math.cos(el) * rr * sx, py = cy * s + Math.sin(el) * rr * sy, pz = Math.sin(a) * Math.cos(el) * rr * sx, rs = (0.7 + hs(40 + k) * 0.5) * s;
-            card.setMatrixAt(i * K + k, mt.makeTranslation(x + px, h + py, z + pz).multiply(ro.makeRotationFromEuler(eu.set((hs(50 + k) - 0.5) * 1.6, hs(60 + k) * 6.28, (hs(70 + k) - 0.5) * 1.2))).multiply(sc.makeScale(rs, rs, rs)));
-            // 上と外側の葉は明るく、下と内側は暗く
-            card.setColorAt(i * K + k, c.setHSL(hue + (hs(80 + k) - 0.5) * 0.04, 0.2 + hs(90 + k) * 0.1, 0.13 + Math.max(0, Math.sin(el)) * 0.11 + (rr / s - 0.45) * 0.05 + hs(95 + k) * 0.04));
-          }
-          core.setMatrixAt(i, mt.makeTranslation(x, h + cy * s, z).multiply(sc.makeScale(0.8 * s * sx, 0.8 * s * sy, 0.8 * s * sx)));
-          core.setColorAt(i, c.setHSL(hue, 0.4, 0.1));
-          pit.setMatrixAt(i, mt.makeTranslation(x, h + 0.03, z).multiply(ro.makeRotationY(yaw)));
-          rim.setMatrixAt(i, mt.makeTranslation(x, h + 0.015, z).multiply(ro.makeRotationY(yaw)));
-          for (let k = 0; k < 3; k++) {
-            bush.setMatrixAt(i * 3 + k, mt.makeTranslation(x, h + 0.36, z).multiply(ro.makeRotationY(yaw + (k * Math.PI) / 3)));
-            bush.setColorAt(i * 3 + k, c.setHSL(hue + 0.03, 0.26, 0.13 + hs(100 + k) * 0.05));
-          }
-        });
-        g.add(pit, rim);
-        trunk.castShadow = card.castShadow = core.castShadow = true;
-        g.add(trunk, card, core, bush);
-      }
+      // 街路樹: 幹と、葉のかたまり(大きさ・位置・色を少しずつ変えて、こんもりした形にする)と、根もとの植え込み
+      if (trees.length) plantTrees(g, trees, true);
       // 道ばたの物
       if (props.length) streetProps(g, props, poles);
       // 歩道の街灯の柱(細い鋼管)
@@ -4640,6 +4662,9 @@ const City = (() => {
       want,
       update,
       ride,
+      plantTrees,
+      kindAt,
+      mats,
       // ルート上の交差点の区間 [始まり, 終わり](m)
       crossings,
       left: () => queue.length + busy,
@@ -5594,6 +5619,1106 @@ const City = (() => {
       for (const m of allMats) m.emissiveIntensity = k;
     }
     return { load, ped, cyclist, setNight, ready: () => ready, _anims: anims, _jobs: () => jobs.length, _flush: () => { while (jobs.length) jobs.shift()(); ready = true; } };
+  })();
+
+  // ---------- 地面の形: 川・池(護岸と水面)・公園(芝生・柵・植え込み・園路・木)・駐車場・地上の線路・校庭 ----------
+  // 地図タイルの面(water / landcover / landuse)・線(waterway / 線路)・点(駐車場)から、区画ごとに1回作る。同じ形はまとめて描く。
+  // 川や池の所は、航空写真の地面に穴をあける(水面は地面より低い)。穴の形は、自分のまわりの「地面の印」の絵に描き、シェーダーで読む。
+  //   印の絵: 赤 = 水(地面を描かない) / 緑 = 車道(芝生や土を描かない)
+  const Land = (() => {
+    const MS = 1600, MP = 2048; // 印の絵: 1600m 四方を 2048 点(1点 約0.8m)
+    const U = { uLandM: { value: null }, uLandC: { value: null } };
+    let cv = null, cx2 = null, tex = null, ctr = null, dirty = true, M = null;
+    function maskTex() {
+      if (tex) return tex;
+      const THREE = T();
+      cv = document.createElement("canvas");
+      cv.width = cv.height = MP;
+      cx2 = cv.getContext("2d");
+      tex = new THREE.CanvasTexture(cv);
+      tex.flipY = false;
+      tex.generateMipmaps = false;
+      tex.minFilter = tex.magFilter = THREE.LinearFilter;
+      U.uLandM.value = tex;
+      U.uLandC.value = new THREE.Vector4(0, 0, MS, 0); // 中心x・中心z・幅・使うか
+      return tex;
+    }
+    // 材質に「印の所は描かない」を足す。road: 車道の所も描かない(芝生・土など)
+    function maskMat(m, road) {
+      maskTex();
+      const prev = m.onBeforeCompile, pk = m.customProgramCacheKey;
+      m.onBeforeCompile = (sh, r) => {
+        if (prev) prev.call(m, sh, r);
+        Object.assign(sh.uniforms, U);
+        sh.vertexShader = "varying vec2 vLandW;\n" + sh.vertexShader.replace("#include <project_vertex>", "#include <project_vertex>\nvLandW = (modelMatrix * vec4(transformed, 1.0)).xz;");
+        sh.fragmentShader =
+          "varying vec2 vLandW;\nuniform sampler2D uLandM;\nuniform vec4 uLandC;\n" +
+          sh.fragmentShader.replace(
+            "#include <clipping_planes_fragment>",
+            `if (uLandC.w > 0.5) {
+              vec2 lq = (vLandW - uLandC.xy) / uLandC.z + 0.5;
+              if (lq.x > 0.002 && lq.x < 0.998 && lq.y > 0.002 && lq.y < 0.998) {
+                vec4 lm = texture2D(uLandM, lq);
+                if (lm.r > 0.5${road ? " || lm.g > 0.5" : ""}) discard;
+              }
+            }
+            #include <clipping_planes_fragment>`
+          );
+      };
+      const key = road ? "|land2" : "|land";
+      m.customProgramCacheKey = () => (pk ? pk.call(m) : "") + key;
+      return m;
+    }
+    // 印の絵を描き直す(区画ができたとき・250m 動いたとき)
+    function redraw(px, pz) {
+      maskTex();
+      const c = cx2, k = MP / MS;
+      ctr = [px, pz];
+      dirty = false;
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      c.globalCompositeOperation = "source-over";
+      c.clearRect(0, 0, MP, MP);
+      c.setTransform(k, 0, 0, k, MP / 2 - px * k, MP / 2 - pz * k);
+      const L = [];
+      for (const t of tiles.values()) if (t.group && t.group.userData.land) L.push(t.group.userData.land);
+      const path = (pts) => {
+        c.beginPath();
+        c.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]);
+      };
+      c.lineCap = c.lineJoin = "round";
+      c.fillStyle = "#f00";
+      for (const l of L) for (const pts of l.water) (path(pts), c.closePath(), c.fill());
+      // 水の穴は、護岸の線より少し内側まで(穴のふちが、護岸の天端の下にかくれるように)
+      c.globalCompositeOperation = "destination-out";
+      c.lineWidth = 0.7;
+      for (const l of L) for (const pts of l.water) (path(pts), c.closePath(), c.stroke());
+      // 橋の所は地面(橋の床)を残す
+      for (const l of L) for (const [pts, w] of l.bridge) ((c.lineWidth = w), path(pts), c.stroke());
+      c.globalCompositeOperation = "source-over";
+      c.strokeStyle = "#0f0";
+      for (const l of L) for (const [pts, w] of l.road) ((c.lineWidth = w), path(pts), c.stroke());
+      // 走る道
+      if (route) {
+        c.lineWidth = 9;
+        c.beginPath();
+        let on = false;
+        for (const q of route.xy) {
+          const far = Math.abs(q[0] - px) > MS * 0.6 || Math.abs(q[1] - pz) > MS * 0.6;
+          if (far) {
+            on = false;
+            continue;
+          }
+          if (on) c.lineTo(q[0], q[1]);
+          else c.moveTo(q[0], q[1]), (on = true);
+        }
+        c.stroke();
+      }
+      tex.needsUpdate = true;
+      U.uLandC.value.set(px, pz, MS, 1);
+    }
+    function update(p) {
+      if (!tex) return;
+      if (dirty || !ctr || Math.hypot(p.x - ctr[0], p.z - ctr[1]) > 250) redraw(p.x, p.z);
+      U.uLandC.value.w = G3.on() ? 0 : 1;
+    }
+    // 区画ができた・消えた: 次のコマで印を描き直す
+    const touch = () => (dirty = true);
+
+    // ---- 材料の絵 ----
+    function mats() {
+      if (M) return M;
+      const THREE = T();
+      const cvs = (S, draw, rep = true) => {
+        const c = document.createElement("canvas");
+        c.width = c.height = S;
+        draw(c.getContext("2d"), S);
+        const t = new THREE.CanvasTexture(c);
+        t.encoding = THREE.sRGBEncoding;
+        if (rep) t.wrapS = t.wrapT = THREE.RepeatWrapping;
+        t.anisotropy = 8;
+        return t;
+      };
+      const rnd = (s) => () => (s = (s * 16807) % 2147483647) / 2147483647;
+      // 芝生: 細かい葉(短い線)を何層にも。明るい葉・暗いすき間・枯れた葉を少し
+      const grass = cvs(512, (c, S) => {
+        const r = rnd(11);
+        c.fillStyle = "#4d6431";
+        c.fillRect(0, 0, S, S);
+        for (let i = 0; i < 26000; i++) {
+          const x = r() * S, y = r() * S, l = 3 + r() * 7, a = -1.57 + (r() - 0.5) * 1.3, dry = r() < 0.07;
+          const v = 0.55 + r() * 0.75;
+          c.strokeStyle = dry ? `rgba(${150 * v},${140 * v},${85 * v},0.8)` : `rgba(${70 * v},${108 * v},${42 * v},0.85)`;
+          c.lineWidth = 0.8 + r() * 0.9;
+          c.beginPath();
+          c.moveTo(x, y);
+          c.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l);
+          c.stroke();
+        }
+        for (let i = 0; i < 1600; i++) ((c.fillStyle = `rgba(20,28,12,${0.25 + r() * 0.3})`), c.fillRect(r() * S, r() * S, 1.5, 1.5));
+      });
+      // 土のグラウンド: 細かい砂の粒と、小石・足あとのむら
+      const dirt = cvs(512, (c, S) => {
+        const r = rnd(23);
+        c.fillStyle = "#a8957a";
+        c.fillRect(0, 0, S, S);
+        for (let i = 0; i < 40; i++) {
+          const x = r() * S, y = r() * S, rr = 20 + r() * 60, g = c.createRadialGradient(x, y, 0, x, y, rr);
+          g.addColorStop(0, r() < 0.5 ? "rgba(120,104,82,0.25)" : "rgba(200,186,160,0.22)");
+          g.addColorStop(1, "rgba(0,0,0,0)");
+          c.fillStyle = g;
+          c.fillRect(x - rr, y - rr, rr * 2, rr * 2);
+        }
+        for (let i = 0; i < 50000; i++) {
+          const v = 120 + r() * 110;
+          c.fillStyle = `rgba(${v},${v * 0.9},${v * 0.74},0.5)`;
+          c.fillRect(r() * S, r() * S, 1, 1);
+        }
+        for (let i = 0; i < 600; i++) {
+          const v = 90 + r() * 120, s = 1.5 + r() * 2.5;
+          c.fillStyle = `rgb(${v},${v * 0.95},${v * 0.88})`;
+          c.fillRect(r() * S, r() * S, s, s * 0.8);
+        }
+      });
+      // 園路: 踏みかためた土に、細かい砂利
+      const path = cvs(256, (c, S) => {
+        const r = rnd(5);
+        c.fillStyle = "#9c8c72";
+        c.fillRect(0, 0, S, S);
+        for (let i = 0; i < 16000; i++) {
+          const v = 100 + r() * 120;
+          c.fillStyle = `rgba(${v},${v * 0.92},${v * 0.8},0.6)`;
+          c.fillRect(r() * S, r() * S, 1 + r() * 1.5, 1 + r());
+        }
+      });
+      // 護岸: コンクリートのブロック(目地)・たてのしみ・水あか
+      const conc = cvs(256, (c, S) => {
+        const r = rnd(41);
+        c.fillStyle = "#a9a69d";
+        c.fillRect(0, 0, S, S);
+        for (let i = 0; i < 9000; i++) {
+          const v = 120 + r() * 90;
+          c.fillStyle = `rgba(${v},${v},${v * 0.96},0.35)`;
+          c.fillRect(r() * S, r() * S, 1.5, 1.5);
+        }
+        // 間知ブロック(ななめに並べた四角)の目地
+        c.strokeStyle = "rgba(70,68,62,0.55)";
+        c.lineWidth = 2;
+        for (let k = -S; k < S * 2; k += 32) {
+          c.beginPath();
+          c.moveTo(k, 0);
+          c.lineTo(k + S, S);
+          c.stroke();
+          c.beginPath();
+          c.moveTo(k, 0);
+          c.lineTo(k - S, S);
+          c.stroke();
+        }
+        for (let i = 0; i < 46; i++) {
+          const x = r() * S, w = 2 + r() * 9, h = 40 + r() * 200;
+          const g = c.createLinearGradient(0, 0, 0, h);
+          g.addColorStop(0, "rgba(60,58,50,0.28)");
+          g.addColorStop(1, "rgba(60,58,50,0)");
+          c.fillStyle = g;
+          c.fillRect(x, 0, w, h);
+        }
+      });
+      // 線路の砂利(バラスト)
+      const ballast = cvs(256, (c, S) => {
+        const r = rnd(77);
+        c.fillStyle = "#77736c";
+        c.fillRect(0, 0, S, S);
+        for (let i = 0; i < 5200; i++) {
+          const v = 70 + r() * 120, x = r() * S, y = r() * S, s = 2 + r() * 4;
+          c.fillStyle = `rgb(${v},${v * 0.97},${v * 0.92})`;
+          c.beginPath();
+          c.ellipse(x, y, s, s * (0.6 + r() * 0.4), r() * 3, 0, 6.3);
+          c.fill();
+        }
+        // 錆びた茶色(レールの下の汚れ)
+        c.fillStyle = "rgba(110,72,40,0.18)";
+        c.fillRect(0, 0, S, S);
+      });
+      // 金網(ひし形)。網の所だけ描く
+      const chain = cvs(128, (c, S) => {
+        c.clearRect(0, 0, S, S);
+        c.strokeStyle = "#cfd3cf";
+        c.lineWidth = 3;
+        for (let k = -S; k < S * 2; k += 16) {
+          c.beginPath();
+          c.moveTo(k, 0);
+          c.lineTo(k + S, S);
+          c.stroke();
+          c.beginPath();
+          c.moveTo(k, 0);
+          c.lineTo(k - S, S);
+          c.stroke();
+        }
+      });
+      // 植え込み(すき間の少ない、こまかい葉)
+      const hedge = cvs(256, (c, S) => {
+        const r = rnd(9);
+        c.fillStyle = "#24361c";
+        c.fillRect(0, 0, S, S);
+        for (let i = 0; i < 5000; i++) {
+          const v = 0.5 + r() * 0.8, x = r() * S, y = r() * S;
+          c.fillStyle = `rgb(${46 * v},${82 * v},${34 * v})`;
+          c.beginPath();
+          c.ellipse(x, y, 3 + r() * 3, 1.6 + r() * 1.5, r() * 3, 0, 6.3);
+          c.fill();
+        }
+      });
+      // アスファルト(駐車場)
+      const asph = cvs(256, (c, S) => {
+        const r = rnd(3);
+        c.fillStyle = "#4e5155";
+        c.fillRect(0, 0, S, S);
+        for (let i = 0; i < 26000; i++) {
+          const v = 50 + r() * 90;
+          c.fillStyle = `rgba(${v},${v},${v + 4},0.55)`;
+          c.fillRect(r() * S, r() * S, 1, 1);
+        }
+        for (let i = 0; i < 14; i++) {
+          const x = r() * S, y = r() * S, rr = 15 + r() * 45, g = c.createRadialGradient(x, y, 0, x, y, rr);
+          g.addColorStop(0, "rgba(30,30,32,0.25)");
+          g.addColorStop(1, "rgba(0,0,0,0)");
+          c.fillStyle = g;
+          c.fillRect(x - rr, y - rr, rr * 2, rr * 2);
+        }
+      });
+      const L = (o) => new THREE.MeshLambertMaterial(o);
+      // 水面: 少し濁った緑灰色。空とまわりが映る(つるつる)。ゆっくり動くさざ波で、面の向きを揺らす
+      const water = new THREE.MeshStandardMaterial({ color: 0x121a12, roughness: 0.08, metalness: 0.05, envMapIntensity: 0.7 });
+      water.onBeforeCompile = (sh) => {
+        sh.uniforms.uT = popU.uPopT;
+        sh.vertexShader = "varying vec2 vWatW;\n" + sh.vertexShader.replace("#include <project_vertex>", "#include <project_vertex>\nvWatW = (modelMatrix * vec4(transformed, 1.0)).xz;");
+        sh.fragmentShader = "varying vec2 vWatW;\nuniform float uT;\n" + sh.fragmentShader.replace(
+          "#include <normal_fragment_maps>",
+          `#include <normal_fragment_maps>
+          {
+            vec2 wp = vWatW; float t = uT;
+            vec2 gr = vec2(0.0);
+            // 向きと長さの違う波をいくつか重ねる(流れの向きに少し寄せる)
+            vec2 d1 = vec2(0.94, 0.34), d2 = vec2(-0.42, 0.91), d3 = vec2(0.72, -0.69), d4 = vec2(-0.85, -0.52), d5 = vec2(0.2, 0.98);
+            gr += d1 * 1.6 * 0.020 * cos(dot(wp, d1) * 1.6 + t * 1.1);
+            gr += d2 * 2.3 * 0.012 * cos(dot(wp, d2) * 2.3 + t * 1.5);
+            gr += d3 * 3.7 * 0.007 * cos(dot(wp, d3) * 3.7 - t * 1.9);
+            gr += d4 * 5.9 * 0.004 * cos(dot(wp, d4) * 5.9 + t * 2.6);
+            gr += d5 * 9.1 * 0.0025 * cos(dot(wp, d5) * 9.1 - t * 3.1 + sin(wp.x * 0.7) * 2.0);
+            vec3 nw = normalize(vec3(-gr.x, 1.0, -gr.y));
+            normal = normalize((viewMatrix * vec4(nw, 0.0)).xyz);
+          }`
+        );
+      };
+      water.customProgramCacheKey = () => "landwater";
+      const rep = (t, n) => ((t.repeat.set(n, n), t));
+      // (この画面の光は強い。ほかの物に合わせて、色は暗めにしておく)
+      M = {
+        lawn: maskMat(L({ map: grass, vertexColors: true, color: 0x686864 }), true),
+        dirt: maskMat(L({ map: dirt, vertexColors: true, color: 0x585858 }), true),
+        path: maskMat(L({ map: path, vertexColors: true, color: 0x5a5a5a }), false),
+        asph: maskMat(L({ map: asph, vertexColors: true, color: 0x7a7a7a }), false),
+        line: L({ color: 0x52524f }),
+        water,
+        conc: L({ map: conc, vertexColors: true, color: 0x5c5c5a, side: THREE.DoubleSide }),
+        stone: L({ color: 0x3e3c38 }),
+        fence: L({ color: 0x262c28, side: THREE.DoubleSide }),
+        brown: L({ color: 0x2a231c, side: THREE.DoubleSide }),
+        white: L({ color: 0x52524f, side: THREE.DoubleSide }),
+        chain: L({ map: chain, alphaTest: 0.5, side: THREE.DoubleSide, color: 0x3c3e3c }),
+        hedge: L({ map: rep(hedge, 1), color: 0x787878 }),
+        ballast: L({ map: ballast, vertexColors: true, color: 0x5d5d5d }),
+        sleeper: L({ color: 0x383836 }),
+        rail: new THREE.MeshStandardMaterial({ color: 0x8b847c, metalness: 0.75, roughness: 0.4 }),
+        mast: L({ color: 0x3a3b3a, side: THREE.DoubleSide }),
+        wire: L({ color: 0x101010, side: THREE.DoubleSide }),
+        stop: L({ color: 0x404040 }),
+        sign: L({
+          color: 0x6a6a6a,
+          map: cvs(
+            128,
+            (c, S) => {
+              c.fillStyle = "#1d4fa8";
+              c.fillRect(0, 0, S, S);
+              c.fillStyle = "#fff";
+              c.font = "900 104px sans-serif";
+              c.textAlign = "center";
+              c.textBaseline = "middle";
+              c.fillText("P", S / 2, S / 2 + 6);
+            },
+            false
+          ),
+        }),
+      };
+      for (const k in M) clipMat(M[k]);
+      return M;
+    }
+
+    // ---- 形を作る道具 ----
+    // b: { p: 位置, u: uv, c: 色 }。A〜D は表から見て左回り
+    const mk = () => ({ p: [], u: [], c: [] });
+    function quad(b, A, B, C, D, uA, uB, uC, uD, cA = 1, cB = cA, cC = cB, cD = cA) {
+      for (const [q, u, c] of [[A, uA, cA], [B, uB, cB], [C, uC, cC], [A, uA, cA], [C, uC, cC], [D, uD, cD]]) {
+        b.p.push(q[0], q[1], q[2]);
+        b.u.push(u[0], u[1]);
+        if (Array.isArray(c)) b.c.push(c[0], c[1], c[2]);
+        else b.c.push(c, c, c);
+      }
+    }
+    // a → e の細長い箱(横 w・たて h)。下面とはしは省く
+    function bar(b, a, e, w, h, col = 1) {
+      const dx = e[0] - a[0], dz = e[2] - a[2], L = Math.hypot(dx, dz) || 1, sx = (-dz / L) * w * 0.5, sz = (dx / L) * w * 0.5;
+      const P = (q, s, y) => [q[0] + sx * s, q[1] + y, q[2] + sz * s];
+      const z2 = [0, 0];
+      quad(b, P(a, 1, 0), P(e, 1, 0), P(e, 1, h), P(a, 1, h), z2, [L, 0], [L, h], [0, h], col);
+      quad(b, P(e, -1, 0), P(a, -1, 0), P(a, -1, h), P(e, -1, h), z2, [L, 0], [L, h], [0, h], col);
+      quad(b, P(a, 1, h), P(e, 1, h), P(e, -1, h), P(a, -1, h), z2, [L, 0], [L, w], [0, w], col);
+    }
+    function toMesh(b, mat, shadow = true, recv = true) {
+      if (!b.p.length) return null;
+      const THREE = T(), geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.Float32BufferAttribute(b.p, 3));
+      geo.setAttribute("uv", new THREE.Float32BufferAttribute(b.u, 2));
+      geo.setAttribute("color", new THREE.Float32BufferAttribute(b.c, 3));
+      geo.computeVertexNormals();
+      const m = new THREE.Mesh(geo, mat);
+      m.castShadow = shadow;
+      m.receiveShadow = recv;
+      return m;
+    }
+    // 同じ形をまとめて置く。list: [x, y, z, 向き, 横の倍率, たての倍率, 色]
+    function inst(g, geo, mat, list, shadow = true) {
+      if (!list.length) return null;
+      const THREE = T(), im = new THREE.InstancedMesh(geo, mat, list.length), mt = new THREE.Matrix4(), ro = new THREE.Matrix4(), sc = new THREE.Matrix4(), c = new THREE.Color();
+      list.forEach((q, i) => {
+        im.setMatrixAt(i, mt.makeTranslation(q[0], q[1], q[2]).multiply(ro.makeRotationY(q[3] || 0)).multiply(sc.makeScale(q[4] || 1, q[5] || 1, q[6] || 1)));
+        if (q[7] != null) im.setColorAt(i, c.set(q[7]));
+      });
+      im.castShadow = shadow;
+      im.receiveShadow = true;
+      g.add(im);
+      return im;
+    }
+    const vnoise = (x, z, s, sd = 0) => {
+      const X = Math.floor(x / s), Z = Math.floor(z / s), fx = x / s - X, fz = z / s - Z;
+      const h = (i, j) => hash(((X + i) * 73856093) ^ ((Z + j) * 19349663) ^ (sd * 83492791));
+      const sx = fx * fx * (3 - 2 * fx), sz = fz * fz * (3 - 2 * fz);
+      return (h(0, 0) * (1 - sx) + h(1, 0) * sx) * (1 - sz) + (h(0, 1) * (1 - sx) + h(1, 1) * sx) * sz;
+    };
+    function inPoly(P, x, z) {
+      if (x < P.box[0] || x > P.box[2] || z < P.box[1] || z > P.box[3]) return false;
+      let c = false;
+      const r = P.pts;
+      for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+        const a = r[i], b = r[j];
+        if (a[1] > z !== b[1] > z && x < ((b[0] - a[0]) * (z - a[1])) / (b[1] - a[1]) + a[0]) c = !c;
+      }
+      return c;
+    }
+    const segD = (x, z, ax, az, bx, bz) => {
+      const vx = bx - ax, vz = bz - az, L = vx * vx + vz * vz;
+      const t = L ? Math.max(0, Math.min(1, ((x - ax) * vx + (z - az) * vz) / L)) : 0;
+      return Math.hypot(x - ax - vx * t, z - az - vz * t);
+    };
+    // 線分の検索(16m のマス目)。dist: いちばん近い線分のふちまでの距離(中なら負)
+    function segIndex() {
+      const g = new Map(), C = 16;
+      const add = (a, b, hw, tag) => {
+        const s = [a[0], a[1], b[0], b[1], hw, tag], m = hw + 5;
+        for (let x = Math.floor((Math.min(a[0], b[0]) - m) / C); x <= Math.floor((Math.max(a[0], b[0]) + m) / C); x++)
+          for (let z = Math.floor((Math.min(a[1], b[1]) - m) / C); z <= Math.floor((Math.max(a[1], b[1]) + m) / C); z++) {
+            const k = x + ":" + z;
+            let l = g.get(k);
+            if (!l) g.set(k, (l = []));
+            l.push(s);
+          }
+      };
+      const dist = (x, z, test, skip) => {
+        const l = g.get(Math.floor(x / C) + ":" + Math.floor(z / C));
+        let best = 1e9;
+        if (l)
+          for (const s of l) {
+            if ((test && !test(s[5])) || s[5] === skip) continue;
+            const d = segD(x, z, s[0], s[1], s[2], s[3]) - s[4];
+            if (d < best) best = d;
+          }
+        return best;
+      };
+      return { add, dist };
+    }
+    // 多角形の検索(25m のマス目)
+    function polyIndex() {
+      const g = new Map(), C = 25;
+      const add = (P) => {
+        for (let x = Math.floor(P.box[0] / C); x <= Math.floor(P.box[2] / C); x++)
+          for (let z = Math.floor(P.box[1] / C); z <= Math.floor(P.box[3] / C); z++) {
+            const k = x + ":" + z;
+            let l = g.get(k);
+            if (!l) g.set(k, (l = []));
+            l.push(P);
+          }
+      };
+      const hit = (x, z, test) => {
+        for (const P of g.get(Math.floor(x / C) + ":" + Math.floor(z / C)) || []) if ((!test || test(P)) && inPoly(P, x, z)) return P;
+        return null;
+      };
+      const inBox = (x0, z0, x1, z1) => {
+        const out = new Set();
+        for (let x = Math.floor(x0 / C); x <= Math.floor(x1 / C); x++) for (let z = Math.floor(z0 / C); z <= Math.floor(z1 / C); z++) for (const P of g.get(x + ":" + z) || []) out.add(P);
+        return out;
+      };
+      return { add, hit, inBox };
+    }
+    const mkPoly = (pts, extra) => {
+      let x0 = 1e9, z0 = 1e9, x1 = -1e9, z1 = -1e9, a = 0;
+      for (let i = 0; i < pts.length; i++) {
+        const p = pts[i], q = pts[(i + 1) % pts.length];
+        (x0 = Math.min(x0, p[0])), (x1 = Math.max(x1, p[0])), (z0 = Math.min(z0, p[1])), (z1 = Math.max(z1, p[1]));
+        a += p[0] * q[1] - q[0] * p[1];
+      }
+      if (a < 0) pts.reverse(); // 左回りにそろえる(外向き = 進む向きの右)
+      return Object.assign({ pts, box: [x0, z0, x1, z1], area: Math.abs(a) / 2 }, extra);
+    };
+    // ルートの線から r m 以内か(近くのマスだけ調べる)
+    function routeNear(x, z, r) {
+      const cx = Math.floor(x / 50), cz = Math.floor(z / 50);
+      for (let i = cx - 1; i <= cx + 1; i++)
+        for (let j = cz - 1; j <= cz + 1; j++)
+          for (const s of route.grid.get(i + ":" + j) || []) {
+            const a = route.xy[s], b = route.xy[s + 1];
+            if (segD(x, z, a[0], a[1], b[0], b[1]) < r) return true;
+          }
+      return false;
+    }
+    // 多角形を c m のマス目で切って、三角形を出す(地面の起伏にそわせるため)。ok(x, z): そのマスを使うか
+    async function fillPoly(P, c, ok, emit, rest) {
+      const edge = new Set(), r = P.pts;
+      for (let i = 0; i < r.length; i++) {
+        const a = r[i], b = r[(i + 1) % r.length], n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / (c / 3));
+        for (let k = 0; k <= n; k++) edge.add(Math.floor((a[0] + ((b[0] - a[0]) * k) / n) / c) + ":" + Math.floor((a[1] + ((b[1] - a[1]) * k) / n) / c));
+      }
+      const THREE = T();
+      let cnt = 0;
+      for (let ix = Math.floor(P.box[0] / c); ix <= Math.floor(P.box[2] / c); ix++) {
+        for (let iz = Math.floor(P.box[1] / c); iz <= Math.floor(P.box[3] / c); iz++) {
+          const x0 = ix * c, z0 = iz * c, x1 = x0 + c, z1 = z0 + c;
+          if (!ok(x0 + c / 2, z0 + c / 2)) continue;
+          if ((++cnt & 255) === 0) await rest();
+          if (!edge.has(ix + ":" + iz)) {
+            if (inPoly(P, x0 + c / 2, z0 + c / 2)) emit([[x0, z0], [x0, z1], [x1, z1]]), emit([[x0, z0], [x1, z1], [x1, z0]]);
+            continue;
+          }
+          // マスの四角で多角形を切る(Sutherland–Hodgman)
+          let poly = r;
+          for (const [ax, v, keepLess] of [[0, x0, false], [0, x1, true], [1, z0, false], [1, z1, true]]) {
+            const out = [];
+            const inside = (q) => (keepLess ? q[ax] <= v : q[ax] >= v);
+            for (let i = 0; i < poly.length; i++) {
+              const p = poly[i], q = poly[(i + 1) % poly.length], pi = inside(p), qi = inside(q);
+              if (pi) out.push(p);
+              if (pi !== qi) {
+                const t = (v - p[ax]) / (q[ax] - p[ax]);
+                out.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]);
+              }
+            }
+            poly = out;
+            if (poly.length < 3) break;
+          }
+          if (poly.length < 3) continue;
+          let tri;
+          try {
+            tri = THREE.ShapeUtils.triangulateShape(poly.map((q) => new THREE.Vector2(q[0], q[1])), []);
+          } catch (e) {
+            continue;
+          }
+          for (const t of tri) emit([poly[t[0]], poly[t[1]], poly[t[2]]]);
+        }
+      }
+    }
+    // 三角形(x, z の3点)を、上向きの面として足す
+    const flat = (b, tri, yOf, su, colOf) => {
+      const [a, e, f] = tri;
+      // 上から見て左回りにする(表が上)
+      const cr = (e[0] - a[0]) * (f[1] - a[1]) - (e[1] - a[1]) * (f[0] - a[0]);
+      const list = cr < 0 ? [a, e, f] : [a, f, e];
+      for (const q of list) {
+        b.p.push(q[0], yOf(q[0], q[1]), q[1]);
+        b.u.push(q[0] / su, q[1] / su);
+        const c = typeof colOf === "function" ? colOf(q[0], q[1]) : colOf == null ? 1 : colOf;
+        if (Array.isArray(c)) b.c.push(c[0], c[1], c[2]);
+        else b.c.push(c, c, c);
+      }
+    };
+    // 線を step m ごとの点に
+    function resample(pts, step) {
+      const out = [pts[0]];
+      for (let i = 1; i < pts.length; i++) {
+        const a = pts[i - 1], b = pts[i], n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / step));
+        for (let k = 1; k <= n; k++) out.push([a[0] + ((b[0] - a[0]) * k) / n, a[1] + ((b[1] - a[1]) * k) / n]);
+      }
+      return out;
+    }
+    const tanAt = (s, i) => {
+      const a = s[Math.max(0, i - 1)], b = s[Math.min(s.length - 1, i + 1)], L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+      return [(b[0] - a[0]) / L, (b[1] - a[1]) / L];
+    };
+
+    // ---- 区画ごとに作る ----
+    const LAWN = /^lc:grass\/(park|grass|recreation_ground|village_green|garden|meadow|grassland)$/, WOOD = /^lc:wood\//, SCRUB = /^lc:grass\/(scrub|shrubbery|flowerbed|heath)$/, DIRT = /^(lu:(pitch|track|playground)\/|lc:sand\/)/;
+    const WW = { river: 9, canal: 7, stream: 3.4, drain: 2.4, ditch: 1.8 };
+    async function build(data, ix, iy, group, xp, rest) {
+      const THREE = T(), m = mats();
+      const h0 = Terrain.h0;
+      const land = { water: [], bridge: [], road: [] };
+      group.userData.land = land;
+      // 区画の四角(となりの区画と同じ物を二重に作らないため、物はこの中だけに置く)
+      const ta = project(tileLat(iy), tileLon(ix)), tb = project(tileLat(iy + 1), tileLon(ix + 1));
+      const X0 = Math.min(ta[0], tb[0]), X1 = Math.max(ta[0], tb[0]), Z0 = Math.min(ta[1], tb[1]), Z1 = Math.max(ta[1], tb[1]);
+      const inTile = (x, z) => x > X0 && x <= X1 && z > Z0 && z <= Z1;
+      const near = (x, z) => isNear([x, z]);
+      const proj = (ll) => {
+        const pts = [];
+        for (let i = 0; i < ll.length; i += 2) pts.push(project(ll[i], ll[i + 1]));
+        return pts;
+      };
+      const ring = (ll) => {
+        const pts = proj(ll);
+        if (pts.length > 3 && pts[0][0] === pts[pts.length - 1][0] && pts[0][1] === pts[pts.length - 1][1]) pts.pop();
+        return pts.length >= 3 ? pts : null;
+      };
+      // 道(地図タイルの線): 車道・歩道・橋
+      const roads = segIndex(), paths = [];
+      for (let ri = 0; ri < data.r.length; ri++) {
+        const [, kind, ll, tunnel, lv] = data.r[ri];
+        if (tunnel || kind === "rail" || (xp && xp.elev.has(ri))) continue;
+        const pts = proj(ll);
+        if (!pts.some(isNear)) continue;
+        const w = ROAD_W[kind] || 4, foot = w <= 3 || kind === "pedestrian";
+        for (let i = 0; i + 1 < pts.length; i++) roads.add(pts[i], pts[i + 1], w / 2, foot ? 2 : 1);
+        if (lv > 0) land.bridge.push([pts, w + 1.2]);
+        else if (!foot) land.road.push([pts, w]);
+        if (foot) paths.push([kind, pts, w]);
+      }
+      const car = (t) => t === 1;
+      // 建物(地図タイル)
+      const blds = polyIndex();
+      for (const [, , ll] of data.b) {
+        const pts = ring(ll);
+        if (pts && near(pts[0][0], pts[0][1])) blds.add(mkPoly(pts));
+      }
+      const inBld = (x, z, r = 0) => !!blds.hit(x, z) || (r > 0 && (!!blds.hit(x + r, z) || !!blds.hit(x - r, z) || !!blds.hit(x, z + r) || !!blds.hit(x, z - r)));
+      const zoneAt = (x, z) => (Xing.any() ? Xing.zone(x, z) : 0);
+      // 置いてよい所(道・建物・掘り下げた所・ルートの上ではない)
+      const free = (x, z, rr = 1, rt = 7) => !routeNear(x, z, rt) && roads.dist(x, z) > rr && !inBld(x, z, rr * 0.7) && !zoneAt(x, z) && !(Roads.kindAt(x, z) >= 0);
+      await rest();
+
+      // ===== 川・池 =====
+      const waters = polyIndex(), wlist = [];
+      for (const [kind, ll, cls] of data.a || []) {
+        if (kind !== "water" || !cls || /swimming_pool/.test(cls)) continue;
+        const pts = ring(ll);
+        if (!pts || !pts.some((q) => near(q[0], q[1]))) continue;
+        const P = mkPoly(pts, { cls, river: /^w:(river|canal|stream|drain|ditch)/.test(cls) });
+        if (P.area < 4) continue;
+        waters.add(P);
+        wlist.push(P);
+      }
+      // 面のない細い川・水路は、線に幅をつけて面にする
+      for (const [cls, ll, br] of data.w || []) {
+        if (br) continue;
+        const pts = resample(proj(ll), 2), w = WW[cls] || 3;
+        if (!pts.some((q) => near(q[0], q[1]))) continue;
+        let run = [];
+        const flush = () => {
+          if (run.length >= 3) {
+            const L = [], R = [];
+            for (let i = 0; i < run.length; i++) {
+              const t = tanAt(run, i);
+              L.push([run[i][0] - t[1] * w * 0.5, run[i][1] + t[0] * w * 0.5]);
+              R.push([run[i][0] + t[1] * w * 0.5, run[i][1] - t[0] * w * 0.5]);
+            }
+            const P = mkPoly(L.concat(R.reverse()), { cls: "w:" + cls, river: true, line: true });
+            waters.add(P);
+            wlist.push(P);
+          }
+          run = [];
+        };
+        for (const q of pts) {
+          if (waters.hit(q[0], q[1], (P) => !P.line)) flush();
+          else run.push(q);
+        }
+        flush();
+      }
+      const bidx = segIndex();
+      if (wlist.length) {
+        for (let ri = 0; ri < data.r.length; ri++) {
+          const [, kind, ll, tunnel, lv] = data.r[ri];
+          if (tunnel || (xp && xp.elev.has(ri))) continue;
+          const pts = proj(ll);
+          if (!pts.some(isNear)) continue;
+          const w = kind === "rail" ? 4 : ROAD_W[kind] || 4, s = resample(pts, 1.5);
+          let wet = lv > 0;
+          for (let i = 0; i < s.length && !wet; i++) if (waters.hit(s[i][0], s[i][1])) wet = true;
+          if (!wet) continue;
+          for (let i = 0; i + 1 < s.length; i++) bidx.add(s[i], s[i + 1], w / 2 + 2.5, 0); // 歩道の分も
+          if (!(lv > 0)) land.bridge.push([pts, w + 1.2]);
+        }
+        const surf = mk(), wall = mk(), cope = mk(), rail = mk(), posts = [];
+        for (const P of wlist) {
+          land.water.push(P.pts);
+          const D = !P.river ? 0.45 : /stream|drain|ditch/.test(P.cls) ? 1.6 : 2.6;
+          // 岸の高さ: ふちにそって 2m ごと。外へ少し出た所の地面も見る(標高のデータでは、ふちが川底に入っていることがある)
+          const bank = [], bg = new Map();
+          const r = P.pts;
+          for (let i = 0; i < r.length; i++) {
+            const a = r[i], b = r[(i + 1) % r.length], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+            if (L < 0.01) continue;
+            const n = Math.max(1, Math.ceil(L / 2)), ox = (b[1] - a[1]) / L, oz = -(b[0] - a[0]) / L;
+            for (let k = 0; k < n; k++) {
+              const x = a[0] + ((b[0] - a[0]) * k) / n, z = a[1] + ((b[1] - a[1]) * k) / n;
+              const s = { x, z, ox, oz, g: h0(x, z), hb: Math.max(h0(x, z), h0(x + ox * 3, z + oz * 3)) };
+              bank.push(s);
+            }
+          }
+          if (bank.length < 3) continue;
+          await rest();
+          for (const s of bank) {
+            const k = Math.floor(s.x / 12) + ":" + Math.floor(s.z / 12);
+            let l = bg.get(k);
+            if (!l) bg.set(k, (l = []));
+            l.push(s);
+          }
+          let lo = 1e9;
+          for (const s of bank) lo = Math.min(lo, s.hb);
+          // 水面の高さ: 近くの岸の高さ(距離で重みをつけた平均)から D 下
+          const level = (x, z) => {
+            let sw = 0, sv = 0;
+            const cx = Math.floor(x / 12), cz = Math.floor(z / 12);
+            for (let R = 1; R <= 4 && sw === 0; R += 3)
+              for (let i = cx - R; i <= cx + R; i++)
+                for (let j = cz - R; j <= cz + R; j++)
+                  for (const s of bg.get(i + ":" + j) || []) {
+                    const w = 1 / ((s.x - x) ** 2 + (s.z - z) ** 2 + 4);
+                    (sw += w), (sv += w * s.hb);
+                  }
+            return (sw ? sv / sw : lo) - D;
+          };
+          // 水面(4m のマス目で、岸の高さにそわせる)
+          await fillPoly(P, 4, (x, z) => inTile(x, z) && !zoneAt(x, z), (t) => flat(surf, t, level, 4), rest);
+          // 護岸の壁: ふちの 2m ごとに。橋の下・道の上・ルートの上には作らない
+          const wallOK = (x, z) => inTile(x, z) && !zoneAt(x, z) && !routeNear(x, z, 6) && bidx.dist(x, z) > 0.3 && !(Roads.kindAt(x, z) >= 0); // 道路(橋の上)にはかけない
+          for (let i = 0; i < bank.length; i++) {
+            const a = bank[i], b = bank[(i + 1) % bank.length];
+            const mx = (a.x + b.x) / 2, mz = (a.z + b.z) / 2;
+            if (Math.hypot(b.x - a.x, b.z - a.z) > 3 || !wallOK(mx, mz)) continue;
+            await (i % 200 === 0 ? rest() : null);
+            const ta2 = a.g + 0.03, tb2 = b.g + 0.03, la = level(a.x, a.z) - 0.3, lb = level(b.x, b.z) - 0.3;
+            const L = Math.hypot(b.x - a.x, b.z - a.z), u0 = i * 2, u1 = u0 + L;
+            if (P.river) {
+              // 壁(少し斜め: 下ほど川の中へ)。水ぎわは水あかで暗く
+              const ba = (ta2 - la) * 0.22, bb = (tb2 - lb) * 0.22;
+              const A = [a.x - a.ox * ba, la, a.z - a.oz * ba], B = [b.x - b.ox * bb, lb, b.z - b.oz * bb];
+              const C = [b.x - b.ox * 0.1, tb2, b.z - b.oz * 0.1], Dd = [a.x - a.ox * 0.1, ta2, a.z - a.oz * 0.1];
+              const dk = [0.46, 0.5, 0.42], wl = Math.min(1, D * 0.4);
+              quad(wall, A, B, C, Dd, [u0 / 2, la / 2], [u1 / 2, lb / 2], [u1 / 2, tb2 / 2], [u0 / 2, ta2 / 2], dk, dk, wl, wl);
+              // 天端(コンクリートの帯。ふちの少し内から外まで、地面より少し高く)
+              const ci = 0.45, co = 0.3, ch = 0.12;
+              const I = (s, t) => [s.x - s.ox * ci, t + ch, s.z - s.oz * ci], O = (s, t) => [s.x + s.ox * co, t + ch, s.z + s.oz * co];
+              quad(cope, I(a, ta2), I(b, tb2), O(b, tb2), O(a, ta2), [u0, 0], [u1, 0], [u1, 0.75], [u0, 0.75], 0.95);
+              quad(cope, [a.x - a.ox * ci, ta2 - 0.5, a.z - a.oz * ci], [b.x - b.ox * ci, tb2 - 0.5, b.z - b.oz * ci], I(b, tb2), I(a, ta2), [u0, 0], [u1, 0], [u1, 0.6], [u0, 0.6], 0.85);
+              quad(cope, O(a, ta2), O(b, tb2), [b.x + b.ox * co, tb2 - 0.05, b.z + b.oz * co], [a.x + a.ox * co, ta2 - 0.05, a.z + a.oz * co], [u0, 0], [u1, 0], [u1, 0.2], [u0, 0.2], 0.85);
+              // 柵: 天端の上。道のふちにかかる所は省く
+              if (roads.dist(mx, mz) > 0.35) {
+                const fa = [a.x + a.ox * 0.08, ta2 + ch, a.z + a.oz * 0.08], fb = [b.x + b.ox * 0.08, tb2 + ch, b.z + b.oz * 0.08];
+                for (const y of [0.5, 1.05]) bar(rail, [fa[0], fa[1] + y, fa[2]], [fb[0], fb[1] + y, fb[2]], 0.05, 0.06);
+                posts.push([fa[0], fa[1], fa[2], 0, 1, 1, 1]);
+              }
+            } else {
+              // 池: 低い石のふち
+              const lv2 = level(a.x, a.z) + 0.3, lv3 = level(b.x, b.z) + 0.3;
+              const A = [a.x - a.ox * 0.35, lv2 - 0.6, a.z - a.oz * 0.35], B = [b.x - b.ox * 0.35, lv3 - 0.6, b.z - b.oz * 0.35];
+              const top = (s, t) => [s.x - s.ox * 0.35, t, s.z - s.oz * 0.35];
+              quad(wall, A, B, top(b, tb2 + 0.12), top(a, ta2 + 0.12), [u0 / 2, 0], [u1 / 2, 0], [u1 / 2, 0.3], [u0 / 2, 0.3], 0.7, 0.7, 0.95, 0.95);
+              quad(cope, top(a, ta2 + 0.12), top(b, tb2 + 0.12), [b.x + b.ox * 0.25, tb2 + 0.12, b.z + b.oz * 0.25], [a.x + a.ox * 0.25, ta2 + 0.12, a.z + a.oz * 0.25], [u0, 0], [u1, 0], [u1, 0.3], [u0, 0.3], 0.8);
+            }
+          }
+        }
+        // 橋: 水の上を通る道の両わきに、橋げたの側面
+        const fas = mk();
+        for (const [pts, w] of land.bridge) {
+          const s = resample(pts, 1.5);
+          for (let i = 0; i + 1 < s.length; i++) {
+            const a = s[i], b = s[i + 1], mx = (a[0] + b[0]) / 2, mz = (a[1] + b[1]) / 2;
+            if (!inTile(mx, mz) || !waters.hit(mx, mz)) continue;
+            const t = tanAt(s, i), hw = (w - 1.2) / 2;
+            for (const sd of [-1, 1]) {
+              const ox = -t[1] * sd * hw, oz = t[0] * sd * hw;
+              // 道路の面の中(実物の道路の形がある所)や走る道のそばには作らない
+              const fx = mx + ox * (1 + 0.4 / hw), fz = mz + oz * (1 + 0.4 / hw);
+              if (routeNear(fx, fz, 8) || Roads.kindAt(fx, fz) >= 0) continue;
+              const ya = h0(a[0], a[1]) + 0.06, yb = h0(b[0], b[1]) + 0.06;
+              const A = [a[0] + ox, ya - 1.1, a[1] + oz], B = [b[0] + ox, yb - 1.1, b[1] + oz], C = [b[0] + ox, yb, b[1] + oz], Dd = [a[0] + ox, ya, a[1] + oz];
+              if (sd > 0) quad(fas, A, B, C, Dd, [0, 0], [0.75, 0], [0.75, 0.5], [0, 0.5], 0.8);
+              else quad(fas, B, A, Dd, C, [0, 0], [0.75, 0], [0.75, 0.5], [0, 0.5], 0.8);
+            }
+            // 橋げたの下の面
+            {
+              const ox = -t[1] * hw, oz = t[0] * hw, ya = h0(a[0], a[1]) - 1.04, yb = h0(b[0], b[1]) - 1.04;
+              quad(fas, [a[0] - ox, ya, a[1] - oz], [b[0] - ox, yb, b[1] - oz], [b[0] + ox, yb, b[1] + oz], [a[0] + ox, ya, a[1] + oz], [0, 0], [1, 0], [1, 1], [0, 1], 0.5);
+            }
+          }
+        }
+        const ws = toMesh(surf, m.water, false, true);
+        if (ws) group.add(ws);
+        for (const [b, mat] of [[wall, m.conc], [cope, m.conc], [fas, m.conc], [rail, m.fence]]) {
+          const q = toMesh(b, mat);
+          if (q) group.add(q);
+        }
+        inst(group, new THREE.BoxGeometry(0.06, 1.12, 0.06).translate(0, 0.56, 0), m.fence, posts);
+        touch();
+      }
+      await rest();
+
+      // ===== 公園・緑地・林・植え込み・校庭 =====
+      const greens = polyIndex(), glist = [], dirts = polyIndex(), dlist = [];
+      for (const [kind, ll, cls] of data.a || []) {
+        if (!cls) continue;
+        const lawn = LAWN.test(cls), wood = WOOD.test(cls), scrub = SCRUB.test(cls), dirt = DIRT.test(cls);
+        if (!lawn && !wood && !scrub && !dirt) continue;
+        const pts = ring(ll);
+        if (!pts || !pts.some((q) => near(q[0], q[1]))) continue;
+        const P = mkPoly(pts, { cls, wood, scrub, park: /park$/.test(cls) });
+        if (P.area < 6) continue;
+        if (dirt) dirts.add(P), dlist.push(P);
+        else greens.add(P), glist.push(P);
+      }
+      const lawnB = mk(), dirtB = mk();
+      const lawnCol = (x, z) => {
+        const a = vnoise(x, z, 14), b = vnoise(x, z, 4.5, 1), dry = vnoise(x, z, 37, 2);
+        const v = 0.78 + a * 0.3 + b * 0.14, d = Math.max(0, dry - 0.55) * 1.4;
+        return [v * (1.14 + d * 0.35), v * (0.94 + d * 0.08), v * (1.08 - d * 0.35)]; // 緑を少しおさえる
+      };
+      const woodCol = (x, z) => {
+        const v = 0.55 + vnoise(x, z, 6) * 0.25;
+        return [v * 1.05, v * 0.95, v * 0.7];
+      };
+      for (const P of glist) {
+        const col = P.wood ? woodCol : lawnCol;
+        await fillPoly(P, 4, (x, z) => inTile(x, z) && near(x, z) && !zoneAt(x, z), (t) => flat(lawnB, t, (x, z) => h0(x, z) + 0.035, 2.6, col), rest);
+      }
+      for (const P of dlist) await fillPoly(P, 4, (x, z) => inTile(x, z) && near(x, z) && !zoneAt(x, z), (t) => flat(dirtB, t, (x, z) => h0(x, z) + 0.045, 3.2, (x, z) => 0.86 + vnoise(x, z, 9) * 0.22), rest);
+      const gm = toMesh(lawnB, m.lawn, false, true), dm = toMesh(dirtB, m.dirt, false, true);
+      if (gm) group.add(gm);
+      if (dm) group.add(dm);
+      if (glist.length || dlist.length) touch();
+      // 園路: 公園の中の歩く道(踏みかためた土)
+      const pathB = mk(), pidx = segIndex();
+      if (glist.length)
+        for (const [kind, pts0, w0] of paths) {
+          const s = resample(pts0, 2), w = Math.max(1.8, w0 + 0.4);
+          for (let i = 0; i + 1 < s.length; i++) {
+            const a = s[i], b = s[i + 1], mx = (a[0] + b[0]) / 2, mz = (a[1] + b[1]) / 2;
+            if (!inTile(mx, mz) || !greens.hit(mx, mz) || routeNear(mx, mz, 5) || zoneAt(mx, mz)) continue;
+            pidx.add(a, b, w / 2, 0);
+            const ta3 = tanAt(s, i), tb3 = tanAt(s, i + 1), hw = w / 2;
+            const P0 = [a[0] - ta3[1] * hw, a[1] + ta3[0] * hw], P1 = [a[0] + ta3[1] * hw, a[1] - ta3[0] * hw], P2 = [b[0] + tb3[1] * hw, b[1] - tb3[0] * hw], P3 = [b[0] - tb3[1] * hw, b[1] + tb3[0] * hw];
+            flat(pathB, [P0, P1, P2], (x, z) => h0(x, z) + 0.05, 2, (x, z) => 0.9 + vnoise(x, z, 5) * 0.15);
+            flat(pathB, [P0, P2, P3], (x, z) => h0(x, z) + 0.05, 2, (x, z) => 0.9 + vnoise(x, z, 5) * 0.15);
+          }
+        }
+      const pm2 = toMesh(pathB, m.path, false, true);
+      if (pm2) group.add(pm2);
+      await rest();
+      // 公園のまわり: 低い柵か植え込み(辺ごとに決める)
+      const fenceB = mk(), fposts = [], hedges = [];
+      for (const P of glist) {
+        if (!P.park) continue;
+        const r = P.pts;
+        for (let i = 0; i < r.length; i++) {
+          const a = r[i], b = r[(i + 1) % r.length], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+          if (L < 1) continue;
+          const tx = (b[0] - a[0]) / L, tz = (b[1] - a[1]) / L, ox = tz, oz = -tx, hedge = hash(Math.round(a[0] * 3) + Math.round(a[1] * 7) * 31) < 0.45;
+          const n = Math.ceil(L / 2);
+          for (let k = 0; k < n; k++) {
+            const s0 = (k * L) / n, s1 = ((k + 1) * L) / n, inset = hedge ? 0.6 : 0.25;
+            const x0 = a[0] + tx * s0 - ox * inset, z0 = a[1] + tz * s0 - oz * inset, x1 = a[0] + tx * s1 - ox * inset, z1 = a[1] + tz * s1 - oz * inset;
+            const mx = (x0 + x1) / 2, mz = (z0 + z1) / 2;
+            if (!inTile(mx, mz) || !near(mx, mz) || !free(mx, mz, 0.6, 4.5) || waters.hit(mx, mz) || pidx.dist(mx, mz) < 0.5) continue;
+            if (hedge) hedges.push([mx, h0(mx, mz) + 0.03, mz, Math.atan2(-tz, tx), (s1 - s0) * 1.02, 0.7 + hash(i + k) * 0.25, 1, 0xffffff]);
+            else {
+              const ya = h0(x0, z0) + 0.03, yb = h0(x1, z1) + 0.03;
+              for (const y of [0.35, 0.65]) bar(fenceB, [x0, ya + y, z0], [x1, yb + y, z1], 0.04, 0.045);
+              fposts.push([x0, ya, z0, 0]);
+            }
+          }
+        }
+      }
+      const fm = toMesh(fenceB, m.brown);
+      if (fm) group.add(fm);
+      inst(group, new THREE.BoxGeometry(0.07, 0.72, 0.07).translate(0, 0.36, 0), m.brown, fposts);
+      inst(group, new THREE.BoxGeometry(1, 1, 0.75).translate(0, 0.5, 0), m.hedge, hedges);
+      // 木: 公園はまばらに、林は多く。道・建物・園路・水・グラウンドを避ける
+      const trees = [], bushes = [];
+      for (const P of glist) {
+        const sp = P.wood ? 5.5 : P.scrub ? 2.6 : 8.5, keep = P.wood ? 0.85 : P.scrub ? 0.8 : /garden/.test(P.cls) ? 0.3 : 0.55;
+        let cnt = 0;
+        for (let gx = Math.floor(P.box[0] / sp); gx <= Math.floor(P.box[2] / sp); gx++)
+          for (let gz = Math.floor(P.box[1] / sp); gz <= Math.floor(P.box[3] / sp); gz++) {
+            const hs = (n) => hash(gx * 7919 + gz * 104729 + n * 31 + (P.wood ? 5 : 0));
+            if (hs(0) > keep) continue;
+            const x = (gx + 0.15 + hs(1) * 0.7) * sp, z = (gz + 0.15 + hs(2) * 0.7) * sp;
+            if (!inTile(x, z) || !near(x, z) || !inPoly(P, x, z)) continue;
+            if ((++cnt & 127) === 0) await rest();
+            if (P.scrub) {
+              if (!free(x, z, 0.8, 6) || waters.hit(x, z) || pidx.dist(x, z) < 0.6) continue;
+              bushes.push([x, h0(x, z) + 0.03, z, hs(3) * 6.28, 0.8 + hs(4) * 0.7, 0.7 + hs(5) * 0.6, 1]);
+              continue;
+            }
+            if (trees.length > 3200 || !free(x, z, 2.2, 8) || waters.hit(x, z) || waters.hit(x + 2, z) || waters.hit(x - 2, z) || dirts.hit(x, z) || pidx.dist(x, z) < 1.4) continue;
+            trees.push([x, z, h0(x, z) + 0.03, (P.wood ? 1.05 : 1) * (0.85 + hs(6) * 0.45)]);
+          }
+      }
+      land.stat = { water: wlist.length, green: glist.length, dirt: dlist.length, trees: trees.length, bushes: bushes.length };
+      if (trees.length) Roads.plantTrees(group, trees, false);
+      if (bushes.length) {
+        const lc = Roads.mats().leafCard, c = new THREE.Color();
+        for (const ry of [0, Math.PI / 3, (Math.PI * 2) / 3])
+          inst(
+            group,
+            new THREE.PlaneGeometry(1.3, 0.9).translate(0, 0.42, 0),
+            lc,
+            bushes.map((q) => [q[0], q[1], q[2], q[3] + ry, q[4], q[5], q[4], c.setHSL(0.26 + hash(Math.round(q[0] * 9)) * 0.06, 0.3, 0.16 + hash(Math.round(q[2] * 7)) * 0.06).getHex()])
+          );
+      }
+      await rest();
+
+      // ===== 駐車場(地図の点から、まわりの建物と道を避けて四角い敷地を決める) =====
+      const lots = [];
+      {
+        const aB = mk(), lineB = mk(), stops = [], lposts = [], lfence = mk(), cars = new Map(), signs = [];
+        let tpl = null;
+        try {
+          tpl = Traffic._tpl().cars.slice(0, 16);
+        } catch (e) {}
+        for (const ll of data.pk || []) {
+          const q = project(ll[0], ll[1]);
+          if (!inTile(q[0], q[1]) || routeDist(q) > 130 || lots.length >= 14) continue;
+          // いちばん近い車道の向き
+          let best = null;
+          for (let ri = 0; ri < data.r.length; ri++) {
+            const e = data.r[ri];
+            if (e[3] || e[1] === "rail" || !(ROAD_W[e[1]] > 3)) continue;
+            const pts = proj(e[2]);
+            for (let i = 0; i + 1 < pts.length; i++) {
+              const a = pts[i], b = pts[i + 1], d = segD(q[0], q[1], a[0], a[1], b[0], b[1]);
+              if (!best || d < best.d) best = { d, a, b, hw: ROAD_W[e[1]] / 2 };
+            }
+          }
+          if (!best || best.d > 30) continue;
+          const L0 = Math.hypot(best.b[0] - best.a[0], best.b[1] - best.a[1]) || 1, tx = (best.b[0] - best.a[0]) / L0, tz = (best.b[1] - best.a[1]) / L0;
+          let nx = -tz, nz = tx;
+          const sgn = (q[0] - best.a[0]) * nx + (q[1] - best.a[1]) * nz;
+          if (sgn < 0) (nx = -nx), (nz = -nz);
+          const along0 = (q[0] - best.a[0]) * tx + (q[1] - best.a[1]) * tz;
+          // 道のふちから奥へ。広い順に、建物や道にかからない大きさを探す
+          const front = best.hw + 1.2;
+          let got = null;
+          for (const [W, D] of [[22, 16], [18, 16], [22, 11], [16, 11], [13, 11], [12, 6], [10, 6], [7.5, 6]]) {
+            for (const shift of [0, -W / 3, W / 3]) {
+              const c0 = [best.a[0] + tx * (along0 + shift) + nx * front, best.a[1] + tz * (along0 + shift) + nz * front];
+              const P = (u, v) => [c0[0] + tx * u + nx * v, c0[1] + tz * u + nz * v];
+              let ok = true;
+              for (let u = -W / 2; u <= W / 2 + 0.01 && ok; u += W / 6)
+                for (let v = 0.3; v <= D + 0.01 && ok; v += D / 5) {
+                  const p = P(u, v);
+                  if (inBld(p[0], p[1]) || roads.dist(p[0], p[1], car) < 0.2 || waters.hit(p[0], p[1]) || routeNear(p[0], p[1], 7) || zoneAt(p[0], p[1]) || lots.some((l) => inPoly(l, p[0], p[1]))) ok = false;
+                }
+              if (!ok) continue;
+              // 建物の角が敷地の中に入っていないか
+              const lp = mkPoly([P(-W / 2, 0), P(W / 2, 0), P(W / 2, D), P(-W / 2, D)]);
+              for (const B of blds.inBox(lp.box[0], lp.box[1], lp.box[2], lp.box[3])) if (ok && B.pts.some((p) => inPoly(lp, p[0], p[1]))) ok = false;
+              if (ok) {
+                got = { W, D, P, lp };
+                break;
+              }
+            }
+            if (got) break;
+          }
+          if (!got) continue;
+          const { W, D, P, lp } = got;
+          lots.push(lp);
+          await rest();
+          // 舗装(1m のマスで地面にそわせる)
+          const yOf = (x, z) => h0(x, z) + 0.045;
+          for (let u = -W / 2; u < W / 2 - 0.01; u += 1.5)
+            for (let v = 0; v < D - 0.01; v += 1.5) {
+              const u1 = Math.min(W / 2, u + 1.5), v1 = Math.min(D, v + 1.5);
+              const A = P(u, v), B = P(u1, v), C = P(u1, v1), Dd = P(u, v1);
+              flat(aB, [A, B, C], yOf, 4, 0.95);
+              flat(aB, [A, C, Dd], yOf, 4, 0.95);
+            }
+          // 駐車枠: 奥に1列(奥行き16mなら手前にもう1列)。白線と車止め
+          const rows = D >= 15 ? [[D - 5, D, -1], [0.0, 5, 1]] : [[D - 5, D, -1]];
+          const n = Math.floor(W / 2.5), u0 = -(n * 2.5) / 2;
+          for (const [v0, v1, dir] of rows) {
+            for (let k = 0; k <= n; k++) {
+              const u = u0 + k * 2.5;
+              const A = P(u - 0.06, v0), B = P(u + 0.06, v0), C = P(u + 0.06, v1), Dd = P(u - 0.06, v1);
+              flat(lineB, [A, B, C], (x, z) => yOf(x, z) + 0.008, 1);
+              flat(lineB, [A, C, Dd], (x, z) => yOf(x, z) + 0.008, 1);
+            }
+            // 枠の前の横線
+            const vf = dir < 0 ? v0 : v1;
+            {
+              const A = P(u0, vf - 0.06), B = P(-u0, vf - 0.06), C = P(-u0, vf + 0.06), Dd = P(u0, vf + 0.06);
+              flat(lineB, [A, B, C], (x, z) => yOf(x, z) + 0.008, 1);
+              flat(lineB, [A, C, Dd], (x, z) => yOf(x, z) + 0.008, 1);
+            }
+            for (let k = 0; k < n; k++) {
+              const u = u0 + (k + 0.5) * 2.5, vs = dir < 0 ? v1 - 0.75 : v0 + 0.75, p = P(u, vs);
+              stops.push([p[0], yOf(p[0], p[1]), p[1], Math.atan2(-tz, tx), 1, 1, 1]);
+              // 止まっている車(6割くらい)
+              const hs = hash(Math.round(p[0] * 13) * 7 + Math.round(p[1] * 11) * 3);
+              if (tpl && tpl.length && hs < 0.62) {
+                const ti = Math.floor(hash(Math.round(p[0] * 5) + Math.round(p[1] * 17) * 13) * tpl.length), cp = P(u, (v0 + v1) / 2 + (dir < 0 ? 0.15 : -0.15));
+                // 車の前(+x)を、枠の奥へ向ける
+                const fx = -nx * dir, fz = -nz * dir;
+                const ang = Math.atan2(-fz, fx) + (hash(k * 3 + 1) - 0.5) * 0.05;
+                if (!cars.has(ti)) cars.set(ti, []);
+                cars.get(ti).push([cp[0], yOf(cp[0], cp[1]) + 0.005, cp[1], ang]);
+              }
+            }
+          }
+          // まわりの柵(奥と両わき。道の側はあける)と、看板
+          const ring2 = [P(-W / 2, 0.3), P(-W / 2, D), P(W / 2, D), P(W / 2, 0.3)];
+          for (let i = 0; i + 1 < ring2.length; i++) {
+            const a = ring2[i], b = ring2[i + 1], L = Math.hypot(b[0] - a[0], b[1] - a[1]), nn = Math.max(1, Math.ceil(L / 2));
+            for (let k = 0; k < nn; k++) {
+              const pa = [a[0] + ((b[0] - a[0]) * k) / nn, a[1] + ((b[1] - a[1]) * k) / nn], pb = [a[0] + ((b[0] - a[0]) * (k + 1)) / nn, a[1] + ((b[1] - a[1]) * (k + 1)) / nn];
+              const ya = yOf(pa[0], pa[1]), yb = yOf(pb[0], pb[1]);
+              for (const y of [0.45, 0.9]) bar(lfence, [pa[0], ya + y, pa[1]], [pb[0], yb + y, pb[1]], 0.045, 0.045);
+              lposts.push([pa[0], ya, pa[1], 0]);
+            }
+            lposts.push([b[0], yOf(b[0], b[1]), b[1], 0]);
+          }
+          const sp2 = P(-W / 2 + 0.4, 0.5);
+          signs.push([sp2[0], yOf(sp2[0], sp2[1]), sp2[1], Math.atan2(-tz, tx) + Math.PI / 2]);
+        }
+        land.stat.lots = lots.map((l) => l.pts[0].map(Math.round));
+        const am = toMesh(aB, m.asph, false, true), lm = toMesh(lineB, m.line, false, true), fm2 = toMesh(lfence, m.white);
+        for (const q of [am, lm, fm2]) if (q) group.add(q);
+        inst(group, new THREE.BoxGeometry(1.5, 0.15, 0.12).translate(0, 0.075, 0), m.stop, stops);
+        inst(group, new THREE.CylinderGeometry(0.035, 0.035, 0.95, 6).translate(0, 0.475, 0), m.white, lposts);
+        if (signs.length) {
+          inst(group, new THREE.CylinderGeometry(0.04, 0.04, 2.6, 6).translate(0, 1.3, 0), m.white, signs);
+          inst(group, new THREE.BoxGeometry(0.6, 0.6, 0.04).translate(0, 2.55, 0.05), m.sign, signs);
+        }
+        // 車: 形ごとに、部品をまとめて置く
+        if (tpl)
+          for (const [ti, list] of cars) {
+            const g0 = tpl[ti];
+            g0.updateMatrixWorld(true);
+            g0.traverse((o) => {
+              if (!o.isMesh || !o.visible || o.userData.beam || o.userData.brake) return;
+              const im = new THREE.InstancedMesh(o.geometry.clone(), o.material, list.length), mt = new THREE.Matrix4(), ro = new THREE.Matrix4();
+              list.forEach((q, i) => im.setMatrixAt(i, mt.makeTranslation(q[0], q[1], q[2]).multiply(ro.makeRotationY(q[3])).multiply(o.matrixWorld)));
+              im.castShadow = true;
+              group.add(im);
+            });
+          }
+      }
+      await rest();
+
+      // ===== 地上の線路: 砂利・まくら木・レール・架線柱と架線・線路わきの柵 =====
+      {
+        const tracks = [], ridx = segIndex();
+        for (let ri = 0; ri < data.r.length; ri++) {
+          const e = data.r[ri];
+          if (e[1] !== "rail" || e[3] || (xp && xp.elev.has(ri)) || /tram|monorail|funicular|subway/.test(e[6] || "")) continue;
+          const pts = proj(e[2]);
+          if (!pts.some(isNear)) continue;
+          const s = resample(pts, 2);
+          tracks.push({ s, ri, pres: e[6] === "preserved" });
+          for (let i = 0; i + 1 < s.length; i++) ridx.add(s[i], s[i + 1], 0, ri);
+        }
+        const stations = [];
+        for (const [, cls, sub, la, lo] of data.poi || []) if (cls === "railway" && /station|halt/.test(sub)) stations.push(project(la, lo));
+        const nearSt = (x, z) => stations.some((p) => Math.hypot(p[0] - x, p[1] - z) < 170);
+        const bal = mk(), rl = mk(), wire = mk(), fen = mk(), sleepers = [], masts = [], arms = [], fposts2 = [];
+        const okAt = (x, z) => inTile(x, z) && near(x, z) && Xing.zone(x, z) !== 1 && !routeNear(x, z, 6) && roads.dist(x, z, car) > 0.4 && !waters.hit(x, z) && !(Roads.kindAt(x, z) >= 0);
+        for (const T0 of tracks) {
+          const s = T0.s;
+          let cnt = 0;
+          for (let i = 0; i + 1 < s.length; i++) {
+            const a = s[i], b = s[i + 1], mx = (a[0] + b[0]) / 2, mz = (a[1] + b[1]) / 2;
+            if (!okAt(mx, mz)) continue;
+            if ((++cnt & 63) === 0) await rest();
+            const ta4 = tanAt(s, i), tb4 = tanAt(s, i + 1), ya = h0(a[0], a[1]), yb = h0(b[0], b[1]);
+            const off = (p, t, o, y) => [p[0] - t[1] * o, y, p[1] + t[0] * o];
+            // 砂利の盛り土(上の幅 2.6m・高さ 0.28m、すそは 3.4m)
+            const TOP = 0.28;
+            const A1 = off(a, ta4, -1.7, ya), A2 = off(a, ta4, -1.3, ya + TOP), A3 = off(a, ta4, 1.3, ya + TOP), A4 = off(a, ta4, 1.7, ya);
+            const B1 = off(b, tb4, -1.7, yb), B2 = off(b, tb4, -1.3, yb + TOP), B3 = off(b, tb4, 1.3, yb + TOP), B4 = off(b, tb4, 1.7, yb);
+            const v0 = i * 0.7, v1 = v0 + 0.7;
+            quad(bal, A1, A2, B2, B1, [0, v0], [0.15, v0], [0.15, v1], [0, v1], 0.8);
+            quad(bal, A2, A3, B3, B2, [0.15, v0], [0.85, v0], [0.85, v1], [0.15, v1], 1);
+            quad(bal, A3, A4, B4, B3, [0.85, v0], [1, v0], [1, v1], [0.85, v1], 0.8);
+            // レール2本(軌間 1.067m)
+            for (const g of [-0.5335, 0.5335]) bar(rl, off(a, ta4, g, ya + TOP + 0.08), off(b, tb4, g, yb + TOP + 0.08), 0.07, 0.15);
+            // まくら木(0.6m おき)
+            const L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+            for (let d = (0.6 - ((i * 2) % 0.6)) % 0.6; d < L; d += 0.6) {
+              const f = d / L, x = a[0] + (b[0] - a[0]) * f, z = a[1] + (b[1] - a[1]) * f;
+              sleepers.push([x, ya + (yb - ya) * f + TOP - 0.06, z, Math.atan2(-ta4[1], ta4[0]), 1, 1, 1]);
+            }
+            if (T0.pres) continue;
+            // 架線(トロリー線 5.1m・ちょう架線 6.1m)
+            for (const [hgt, w2] of [[5.1, 0.014], [6.1, 0.018]]) bar(wire, off(a, ta4, 0, ya + TOP + hgt), off(b, tb4, 0, yb + TOP + hgt), w2, w2);
+            // 架線柱(50m おき)。となりの線路がない側に立てる
+            if (i % 25 === 0) {
+              for (const sd of [1, -1]) {
+                const p = off(a, ta4, sd * 2.7, 0);
+                if (ridx.dist(p[0], p[2], null, T0.ri) < 2.2 || !free(p[0], p[2], 0.4, 6)) continue;
+                const yg = h0(p[0], p[2]);
+                masts.push([p[0], yg, p[2], Math.atan2(-ta4[1], ta4[0]), 1, 1, 1]);
+                const ang = Math.atan2(-ta4[1], ta4[0]) + (sd > 0 ? 0 : Math.PI);
+                arms.push([p[0], yg + TOP + 6.25, p[2], ang]);
+                break;
+              }
+            }
+          }
+          // 線路わきの柵(外側の線路から 3.4m。駅のまわりは省く)
+          for (const sd of [1, -1]) {
+            let prev = null;
+            for (let i = 0; i < s.length; i++) {
+              const t = tanAt(s, i), p = [s[i][0] - t[1] * sd * 3.4, s[i][1] + t[0] * sd * 3.4];
+              const ok = inTile(p[0], p[1]) && near(p[0], p[1]) && ridx.dist(p[0], p[1], null, T0.ri) > 3.0 && free(p[0], p[1], 0.5, 6) && !nearSt(p[0], p[1]) && !waters.hit(p[0], p[1]);
+              if (ok && prev) {
+                const ya = h0(prev[0], prev[1]), yb = h0(p[0], p[1]), L = Math.hypot(p[0] - prev[0], p[1] - prev[1]);
+                if (L < 3) {
+                  const A = [prev[0], ya, prev[1]], B = [p[0], yb, p[1]];
+                  quad(fen, A, B, [B[0], yb + 1.8, B[2]], [A[0], ya + 1.8, A[2]], [0, 0], [L / 0.9, 0], [L / 0.9, 2], [0, 2], 1);
+                  bar(rl, [A[0], ya + 1.78, A[2]], [B[0], yb + 1.78, B[2]], 0.04, 0.04);
+                  fposts2.push([p[0], yb, p[1], 0]);
+                }
+              }
+              prev = ok ? p : null;
+            }
+          }
+        }
+        for (const [b, mat, sh] of [[bal, m.ballast, false], [rl, m.rail, true], [wire, m.wire, false], [fen, m.chain, false]]) {
+          const q = toMesh(b, mat, sh);
+          if (q) group.add(q);
+        }
+        land.stat.tracks = tracks.length;
+        land.stat.sleepers = sleepers.length;
+        inst(group, new THREE.BoxGeometry(0.24, 0.16, 2.0), m.sleeper, sleepers, false);
+        inst(group, new THREE.BoxGeometry(0.3, 7.0, 0.3).translate(0, 3.5, 0), m.mast, masts);
+        inst(group, new THREE.BoxGeometry(0.12, 0.12, 3.2).translate(0, 0, -1.5), m.mast, arms);
+        inst(group, new THREE.CylinderGeometry(0.04, 0.04, 1.85, 6).translate(0, 0.92, 0), m.mast, fposts2);
+      }
+    }
+    return { build, maskMat, update, touch };
   })();
 
   // ---------- 道の上の人と車: 後ろから来る車・対向車・歩行者・ほかの自転車 ----------
@@ -6885,7 +8010,7 @@ const City = (() => {
       const geo = new THREE.BufferGeometry();
       geo.setAttribute("position", new THREE.Float32BufferAttribute(P, 3));
       geo.setAttribute("uv", new THREE.Float32BufferAttribute(U, 2));
-      const mesh = new THREE.Mesh(geo, Xing.holeMat(groundDetail(new THREE.MeshBasicMaterial({ color: 0xa9aec4, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 6 }), Math.hypot(b[0] - a[0], b[1] - a[1]))));
+      const mesh = new THREE.Mesh(geo, Land.maskMat(Xing.holeMat(groundDetail(new THREE.MeshBasicMaterial({ color: 0xa9aec4, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 6 }), Math.hypot(b[0] - a[0], b[1] - a[1])))));
       mesh.visible = false;
       mesh.userData.g3hide = true;
       photos.set(key, mesh);
@@ -6958,6 +8083,7 @@ const City = (() => {
       if (g && tiles.get(key) === t) {
         t.group = g;
         t.state = "ok";
+        Land.touch();
         if (G3.on()) hideOwnCity(t.group, true);
         riseIn(t.group);
         scene.add(t.group);
@@ -10170,7 +11296,7 @@ const City = (() => {
       sh.normalBias = 0.04;
     }
     camera = new THREE.PerspectiveCamera(60, 1, 0.3, 1400);
-    ground = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), Xing.holeMat(new THREE.MeshLambertMaterial({ color: 0x23272b })));
+    ground = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), Land.maskMat(Xing.holeMat(new THREE.MeshLambertMaterial({ color: 0x23272b }))));
     ground.rotation.x = -Math.PI / 2;
     scene.add(ground);
     // 金属や塗装(ガレージのバイク)に空が映り込むように、周りの景色を作る
@@ -10967,6 +12093,7 @@ const City = (() => {
     camera.fov = s.vw[4] + Math.min(16, s.v * 1.1);
     camera.updateProjectionMatrix();
     updateGround(p);
+    Land.update(p);
     popU.uPopT.value = performance.now() / 1000;
     if (s.frameN % 30 === 0 || !popU.uShops.value) Shops.update(p.x, p.z);
     // 影の地図は1秒に約30回だけ作り直す(60Hzなら2コマに1回)。光の位置も同じコマでだけ動かす(ずれると影がガタガタ揺れる)
