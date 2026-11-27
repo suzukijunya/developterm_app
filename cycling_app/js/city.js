@@ -8641,10 +8641,12 @@ const City = (() => {
     function mark() {
       const dyn = new Set([me.g, rival.g, ...Traffic.objs(), ...Mons.objs()]);
       const walk = (o) => {
-        if (dyn.has(o)) return;
+        if (!o || dyn.has(o)) return;
         if (o.isMesh && !o.isInstancedMesh && !o.isSkinnedMesh && o.material && !o.material.transparent && o.material.depthTest !== false && !o.userData.blob && !o.userData.sign) {
           // アンダーパスの近くでは、穴をあけた地面には写真を貼らない(穴をふさいでしまう)
-          if (o.material.userData.holed && Xing.near(sim.along)) o.layers.disable(2);
+          // 材質が組(配列)のメッシュもある。userData の無い材質で止まらないように調べる
+          const holed = Array.isArray(o.material) ? o.material.some((x) => x && x.userData && x.userData.holed) : o.material.userData && o.material.userData.holed;
+          if (holed && Xing.near(sim.along)) o.layers.disable(2);
           else o.layers.enable(2);
         }
         for (const ch of o.children) walk(ch);
