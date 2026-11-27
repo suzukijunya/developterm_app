@@ -11813,7 +11813,7 @@ const City = (() => {
             c.drawImage(bm, tx * tw, ty * th);
           })
         );
-        await unmark(c, cv, cols, rows, tw, th);
+        // 写真の中の「© Google」の表示は、Google の規約で消したり隠したりしてはいけないので、そのまま残す
         const THREE = T();
         const tex = new THREE.CanvasTexture(cv);
         tex.wrapS = THREE.RepeatWrapping;
@@ -11832,89 +11832,6 @@ const City = (() => {
         if (/session|expired|unauth|40[13]/i.test(err)) session = null;
         if (!told) (told = true), ticker("写真の街: 写真を取れません(" + err + ")", "opp");
       }
-    }
-    // Google の写真のタイルには、どのタイルにも同じ位置に「© Google」の透かしの文字が入っていることがある。
-    // そのまま貼ると、道や壁に大きな文字が写る。タイルどうしをくらべて、同じ位置にある細い明るい線(文字)を探し、
-    // そこだけ、まわりの色でぬりつぶす。見つからなければ何もしない。
-    // 著作の表示は、画面の隅の表示で別に出している(ここで消すのは、写真の中の文字だけ)
-    async function unmark(c, cv, cols, rows, tw, th) {
-      if (rows < 2) return;
-      const W = cv.width, H = cv.height, N = tw * th;
-      const hit = [new Uint8Array(N), new Uint8Array(N)]; // [上の段, 下の段] それぞれ、何枚のタイルで明るい線があったか
-      const lum = new Float32Array(N), I = new Float32Array((tw + 1) * (th + 1));
-      let tiles = 0;
-      for (let ty = 0; ty < rows; ty++)
-        for (let tx = 0; tx < cols; tx++) {
-          const w = Math.min(tw, W - tx * tw), h = Math.min(th, H - ty * th);
-          if (w < tw || h < th) continue; // 端の切り落としたタイルは数えない
-          const d = c.getImageData(tx * tw, ty * th, tw, th).data;
-          for (let i = 0; i < N; i++) lum[i] = d[i * 4] * 0.3 + d[i * 4 + 1] * 0.59 + d[i * 4 + 2] * 0.11;
-          // まわり5×5の平均を速く出すための、足し合わせの表
-          for (let y = 0; y < th; y++) {
-            let row = 0;
-            for (let x = 0; x < tw; x++) (row += lum[y * tw + x]), (I[(y + 1) * (tw + 1) + x + 1] = I[y * (tw + 1) + x + 1] + row);
-          }
-          const hs = hit[ty ? 1 : 0];
-          for (let y = 4; y < th - 4; y++)
-            for (let x = 4; x < tw - 4; x++) {
-              const m = (I[(y + 3) * (tw + 1) + x + 3] - I[(y - 2) * (tw + 1) + x + 3] - I[(y + 3) * (tw + 1) + x - 2] + I[(y - 2) * (tw + 1) + x - 2]) / 25;
-              if (lum[y * tw + x] - m > 16) hs[y * tw + x]++;
-            }
-          tiles++;
-          await new Promise((r) => setTimeout(r, 0)); // 1枚ずつ休む(走っている絵が止まらないように)
-        }
-      const fc = Math.floor(W / tw); // 1段にある、切り落としの無いタイルの数
-      if (fc < 3 || tiles < fc * 2) return;
-      // 上の段・下の段の両方で、ほとんどのタイル(4枚なら3枚以上)の同じ位置に明るい線がある所 = 透かし。8×8の升目でまとめる
-      const need = fc - 1, G = 8, gw = tw / G, gh = th / G, cell = new Uint8Array(gw * gh);
-      for (let y = 0; y < th; y++)
-        for (let x = 0; x < tw; x++) if (hit[0][y * tw + x] >= need && hit[1][y * tw + x] >= need) cell[((y / G) | 0) * gw + ((x / G) | 0)]++;
-      const on = new Uint8Array(gw * gh);
-      let n = 0;
-      for (let i = 0; i < gw * gh; i++) if (cell[i] >= 6) (on[i] = 1), n++;
-      // 何も無い・広すぎる(模様がたまたまそろった)ときは、透かしではないとみなす
-      if (!n || n > gw * gh * 0.04) return;
-      const mk = new Uint8Array(gw * gh); // まわり1升ぶん広げる
-      for (let y = 0; y < gh; y++)
-        for (let x = 0; x < gw; x++) {
-          if (!on[y * gw + x]) continue;
-          for (let dy = -1; dy <= 1; dy++) for (let dx = -2; dx <= 2; dx++) if (y + dy >= 0 && y + dy < gh && x + dx >= 0 && x + dx < gw) mk[(y + dy) * gw + x + dx] = 1;
-        }
-      for (let ty = 0; ty < rows; ty++)
-        for (let tx = 0; tx < cols; tx++) {
-          const w = Math.min(tw, W - tx * tw), h = Math.min(th, H - ty * th);
-          if (w <= 0 || h <= 0) continue;
-          const im = c.getImageData(tx * tw, ty * th, w, h), d = im.data, M = (x, y) => mk[((y / G) | 0) * gw + ((x / G) | 0)];
-          // 文字の所を、上と下の色をなめらかにつないだ色でぬりつぶす(穴にすると、そこだけ写真が欠けて見える)
-          for (let x = 0; x < w; x++)
-            for (let y = 0; y < h; y++) {
-              if (!M(x, y)) continue;
-              let y1 = y;
-              while (y1 < h && M(x, y1)) y1++;
-              const a = y > 0 ? y - 1 : y1 < h ? y1 : -1, b = y1 < h ? y1 : a;
-              if (a < 0) {
-                for (let yy = y; yy < y1; yy++) d[(yy * w + x) * 4 + 3] = 0; // つなぐ色が無いときだけ透明に
-              } else
-                for (let yy = y; yy < y1; yy++) {
-                  const t = (yy - y + 1) / (y1 - y + 1);
-                  for (let ch = 0; ch < 3; ch++) d[(yy * w + x) * 4 + ch] = d[(a * w + x) * 4 + ch] * (1 - t) + d[(b * w + x) * 4 + ch] * t;
-                }
-              y = y1;
-            }
-          // 縦の筋が目立たないように、ぬった所だけ横に少しぼかす
-          const src = new Uint8ClampedArray(d);
-          for (let y = 0; y < h; y++)
-            for (let x = 0; x < w; x++) {
-              if (!M(x, y)) continue;
-              for (let ch = 0; ch < 3; ch++) {
-                let sum = 0, n = 0;
-                for (let k = -6; k <= 6; k++) if (x + k >= 0 && x + k < w) (sum += src[(y * w + x + k) * 4 + ch]), n++;
-                d[(y * w + x) * 4 + ch] = sum / n;
-              }
-            }
-          c.putImageData(im, tx * tw, ty * th);
-        }
-      wmark = n;
     }
     let wmark = 0;
     // 写真を貼るための材質。もとの街をふつうに描いたあと、その上に重ねて描く。
