@@ -12388,8 +12388,8 @@ const City = (() => {
     if (s.brake) F -= s.mass * 4;
     // 曲がり角では、曲がれる速さまで自動で落とす
     const turn = turnAhead(s.along);
-    // 赤信号・黄色: 停止線までに止まれる速さまで落とす(止まったら青まで待つ)
-    const vsig = Signals.limit(s.along, s.t, s.v);
+    // 信号: 主人公とライバルは信号待ちをしない(赤でもそのまま進む。信号は街の車と人だけが守る)
+    const vsig = 99;
     const vmax = Math.min(turn > 75 ? 16 / KMH : turn > 50 ? 23 / KMH : turn > 28 ? 31 / KMH : 99, vsig);
     s.v = Math.max(0, s.v + (F / s.mass) * dt);
     if (s.v > vmax) s.v = Math.max(vmax, s.v - (vsig < 99 ? 4 : 6) * dt);
@@ -12401,15 +12401,10 @@ const City = (() => {
     const rmax = rt > 75 ? 16 / KMH : rt > 50 ? 23 / KMH : rt > 28 ? 31 / KMH : 99;
     // ライバルも、上りでは遅く・下りでは速く(1%で約7%)
     const rg = Terrain.grade(s.rAlong);
-    const target = Math.min(rmax, Signals.limit(s.rAlong, s.t, s.rV), s.rivalV * Math.max(0.45, Math.min(1.3, 1 - rg * 0.07)) * (1 + 0.09 * Math.sin(s.t / 37) + 0.05 * Math.sin(s.t / 11 + 2)));
+    const target = Math.min(rmax, s.rivalV * Math.max(0.45, Math.min(1.3, 1 - rg * 0.07)) * (1 + 0.09 * Math.sin(s.t / 37) + 0.05 * Math.sin(s.t / 11 + 2)));
     s.rV += Math.max(-4, Math.min(0.55, target - s.rV)) * Math.min(1, dt * 1.2);
-    // 赤信号・黄色: 自分と同じように、停止線までに必ず止まる(ゆっくり減速するだけだと、止まりきれずに通り抜けていた)
-    const rsig = Signals.limit(s.rAlong, s.t, s.rV);
-    if (s.rV > rsig) s.rV = Math.max(rsig, s.rV - 5 * dt);
-    if (rsig === 0 && s.rV < 0.3) s.rV = 0;
-    const rNext = Signals.gate(s.rAlong, s.rAlong + s.rV * dt, s.t);
-    if (rNext < s.rAlong + s.rV * dt - 1e-6) s.rV = 0;
-    s.rAlong = Math.min(route.length, rNext);
+    // ライバルも信号待ちはしない
+    s.rAlong = Math.min(route.length, s.rAlong + s.rV * dt);
     s.t += dt;
   }
 
