@@ -347,16 +347,16 @@ const Cinema = (() => {
   }
   const HERO_POSE = {
     base: { head: [211, 121, -4], lean: 0, sk: -3, dn: [0, 0], df: [0, 0], far: [[350, 404], [344, 262], "card", { a: -4 }], near: [[56, 424], [104, 506], "fist", {}], ex: "smile" },
-    draw: { head: [218, 123, 5], lean: 5, sk: -6, dn: [0, 2], df: [6, -8], far: [[396, 218], [474, 108], "card", { a: 6 }], near: [[66, 420], [166, 446], "deck", {}], ex: "shout" },
-    thrust: { head: [216, 122, 2], lean: 4, sk: -8, dn: [-6, 2], df: [14, 2], far: [[396, 284], [488, 256], "open", { pitch: -30 }], near: [[40, 392], [98, 456], "fist", {}], ex: "shout" },
+    draw: { head: [218, 123, 5], lean: 5, sk: -6, dn: [0, 2], df: [6, -8], far: [[410, 236], [476, 114], "card", { a: 6 }], near: [[66, 420], [166, 446], "deck", {}], ex: "shout" },
+    thrust: { head: [216, 122, 2], lean: 4, sk: -8, dn: [-6, 2], df: [14, 2], far: [[398, 292], [488, 258], "open", { pitch: -30 }], near: [[40, 392], [98, 456], "fist", {}], ex: "shout" },
     win: { head: [206, 123, -9], lean: -4, sk: 2, dn: [0, 2], df: [4, -10], far: [[376, 196], [368, 82], "fistUp", {}], near: [[52, 414], [112, 486], "fist", {}], ex: "grin" },
   };
   // 自分(主人公)のポーズ。口は閉じるか、小さく開けて言い放つ
   const HERO_POSE_YOU = {
     base: { head: [214, 130, -5], lean: 0, sk: -3, dn: [0, 0], df: [0, 0], far: [[358, 414], [374, 266], "card", { a: -4 }], near: [[50, 432], [104, 512], "fist", {}], ex: "calm" },
-    draw: { head: [220, 132, 4], lean: 5, sk: -7, dn: [0, 2], df: [8, -8], far: [[410, 226], [492, 112], "card", { a: 8 }], near: [[62, 428], [168, 452], "deck", {}], ex: "say" },
-    thrust: { head: [218, 131, 1], lean: 4, sk: -9, dn: [-6, 2], df: [16, 4], far: [[408, 300], [500, 278], "open", { pitch: -30 }], near: [[34, 402], [94, 466], "fist", {}], ex: "say" },
-    win: { head: [210, 132, -8], lean: -3, sk: 1, dn: [0, 2], df: [6, -10], far: [[388, 322], [398, 190], "card", { a: 2 }], near: [[46, 432], [110, 500], "fist", {}], ex: "quiet" },
+    draw: { head: [220, 132, 4], lean: 5, sk: -7, dn: [0, 2], df: [8, -8], far: [[424, 246], [494, 120], "card", { a: 8 }], near: [[62, 428], [168, 452], "deck", {}], ex: "say" },
+    thrust: { head: [218, 131, 1], lean: 4, sk: -9, dn: [-6, 2], df: [16, 4], far: [[410, 310], [502, 282], "open", { pitch: -30 }], near: [[34, 402], [94, 466], "fist", {}], ex: "say" },
+    win: { head: [210, 132, -8], lean: -3, sk: 1, dn: [0, 2], df: [6, -10], far: [[400, 330], [404, 194], "card", { a: 2 }], near: [[46, 432], [110, 500], "fist", {}], ex: "quiet" },
   };
   const HERO_CACHE = {};
   function heroSvg(side, pose) {
@@ -365,7 +365,7 @@ const Cinema = (() => {
   }
   function drawHero(o, pose, id) {
     const C = o
-      ? { K: "#12060f", rim: "#ff9fd0", skin: ["#f4d6c6", "#d8a393", "#b07a7c"], hair: ["#e6e2f4", "#aaa2cf", "#6c6398"], hi: "#ffffff", hi2: "#ffffff", brow: "#4f477c", jk: ["#2b2636", "#17131f", "#0b0910"], jhi: "#4a4258", ac: "#b03dff", ln: ["#b3143a", "#7d0d29", "#4d0719"], js: ["#262231", "#16121d", "#0b0910"], js2: "#4b1876", st: "#e0284f", st2: "#b03dff", gl: ["#b3172f", "#7c0d20", "#4d0713"], iris: ["#5c0716", "#e0203f", "#ff8a8a"], nail: "#f9e2d8" }
+      ? { K: "#12060f", rim: "#ff9fd0", skin: ["#f4d6c6", "#d8a393", "#b07a7c"], hair: ["#e6e2f4", "#aaa2cf", "#6c6398"], hi: "#ffffff", hi2: "#ffffff", brow: "#4f477c", jk: ["#332c40", "#1e1928", "#0e0b14"], jhi: "#7d6f9c", ac: "#b03dff", ln: ["#b3143a", "#7d0d29", "#4d0719"], js: ["#362f43", "#231d2e", "#130f1a"], js2: "#4b1876", st: "#e0284f", st2: "#b03dff", gl: ["#b3172f", "#7c0d20", "#4d0713"], iris: ["#5c0716", "#e0203f", "#ff8a8a"], nail: "#f9e2d8" }
       : { K: "#070d18", rim: "#9fe9e0", skin: ["#f6d3b6", "#dfa283", "#b97862"], hair: ["#1c3556", "#11223d", "#081224"], hi: "#6f9cc4", hi2: "#b8dcf6", brow: "#0b1830", jk: ["#323e55", "#1f2839", "#121825"], jhi: "#53648a", ac: "#ff8a1f", ln: ["#0f8f88", "#0a6468", "#07444e"], js: ["#14a99c", "#0c7c7a", "#08555a"], js2: "#0a4148", st: "#1fd0bb", st2: "#ff8a1f", gl: ["#3a4660", "#252e40", "#141a27"], iris: ["#053642", "#14b8a6", "#8dffe6"], nail: "#fae0cc" };
     const K = C.K, S = C.skin, J = C.jk, DEG = Math.PI / 180, f = hf;
     let cn = 0;
@@ -411,10 +411,10 @@ const Cinema = (() => {
       return A.concat(B.reverse());
     };
     // 筒を一周する帯(円柱らしく弓なり)
-    const ring = (T, t0, t1, bow = 0.03, m = 6) => {
+    const ring = (T, t0, t1, bow = 0.03, m = 6, w = 1.2) => {
       const A = [], B = [];
       for (let i = 0; i <= m; i++) {
-        const s = -1.2 + (2.4 * i) / m, b = bow * (1 - Math.min(1, s * s));
+        const s = -w + (2 * w * i) / m, b = bow * (1 - Math.min(1, s * s));
         A.push(T.at(t0 + b, s));
         B.push(T.at(t1 + b, s));
       }
@@ -598,7 +598,7 @@ const Cinema = (() => {
     // 手の形: 指 [開き, 付け根・第2・第1関節の曲げ]、親指 [向き, 手のひら側へのひねり, 曲げ3つ]、roll=前腕まわりの回転、pitch=前後の傾き
     const HANDS = {
       card: { f: [[-5, 6, 8, 4, 3], [3, 8, 10, 6, -3], [10, 92, 100, 52], [16, 88, 98, 50]], t: [-40, 30, 10, 16, 12], roll: 10, pitch: -14, card: { c: [-5, -90, -2], r: -8, s: 1 } },
-      open: { f: [[-14, 10, 12, 6], [-3, 6, 10, 5], [8, 8, 12, 6], [19, 14, 16, 8]], t: [-42, 34, 10, 14, 10], roll: 170, pitch: -12 },
+      open: { f: [[-22, 6, 8, 5], [-6, 5, 9, 5], [10, 10, 13, 7], [27, 18, 18, 10]], t: [-52, 30, 8, 12, 10], roll: 170, pitch: -12 },
       fist: { f: [[-2, 92, 100, 62], [0, 94, 100, 62], [3, 94, 100, 60], [6, 92, 100, 60]], t: [-30, 50, 40, 55, 42], roll: 30, pitch: 0 },
       fistUp: { f: [[-2, 92, 100, 62], [0, 94, 100, 62], [3, 94, 100, 60], [6, 92, 100, 60]], t: [-30, 50, 40, 55, 42], roll: 190, pitch: -20 },
       deck: { f: [[-4, 40, 62, 30], [0, 38, 66, 32], [4, 40, 66, 30], [8, 44, 62, 28]], t: [-26, 64, 12, 18, 14], roll: 160, pitch: -10, deck: { c: [1, -36, -18], r: 2, s: 0.82 } },
@@ -752,40 +752,109 @@ const Cinema = (() => {
 
     // ---------- 腕 ----------
     // 自分: ジャケットの長袖(三角筋のふくらみ→上腕→ひじ→前腕はひじ側が太く手首へ細く→リブの袖口)。相手: 半袖のジャージから素肌の腕(上腕二頭筋・三頭筋・腕橈骨筋)
+    // 腕は肩からひじ・手首まで1本の輪郭: 肩の上は胴の肩の線(P0)からそのまま続き、ひじは外側に骨の角・内側にしわの谷。付け根は袖の縫い目(わきの下→P0)で閉じる
     const PROF = o
-      ? { up: [[0, 26, 26], [0.2, 27, 25], [0.5, 24.6, 23], [0.8, 21, 20.6], [1, 20, 20]], fo: [[0, 20, 20], [0.16, 23.4, 21.6], [0.42, 21, 19.4], [0.75, 16.6, 15.6], [1, 14.6, 14]], sl: [[0, 32, 32], [0.5, 31, 30], [1, 29.4, 28.4]] }
-      : { up: [[0, 21, 21], [0.16, 27.4, 25], [0.48, 26, 24.2], [0.82, 23.6, 22.6], [1, 22.6, 22.6]], fo: [[0, 22.6, 22.6], [0.18, 24.6, 23.2], [0.5, 21.6, 20.4], [0.8, 18.4, 17.6], [0.86, 17.6, 17], [1, 17, 16.6]] };
-    const arm = (Sp, E, W, hk, hv, holder, flip) => {
+      ? { up: [[0, 26, 26], [0.2, 27.4, 25.6], [0.5, 25, 23.6], [0.8, 21.6, 21], [1, 20, 20]], fo: [[0, 20, 20], [0.16, 23.8, 22], [0.42, 21.4, 19.8], [0.75, 16.8, 15.8], [1, 14.6, 14]] }
+      : { up: [[0, 27, 27], [0.2, 28.4, 26.6], [0.5, 26.4, 25], [0.82, 23.6, 23], [1, 22.6, 22.6]], fo: [[0, 22.6, 22.6], [0.2, 25.4, 24], [0.5, 22.4, 21.2], [0.8, 18.8, 18], [0.86, 17.8, 17.2], [1, 17.2, 16.8]] };
+    const lerp = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k];
+    const bul = (t, a, b, k) => k * Math.sin(Math.PI * Math.max(0, Math.min(1, (t - a) / (b - a))));
+    const arm = (Sp, E, W, hk, hv, holder, flip, P0, P0b) => {
       const ux = W[0] - E[0], uy = W[1] - E[1], FL = Math.hypot(ux, uy), fx = ux / FL, fy = uy / FL;
       const up = tube(Sp, E, PROF.up), fo = tube(E, [W[0] - fx * 2, W[1] - fy * 2], PROF.fo);
       const dot = up.u[0] * fo.u[0] + up.u[1] * fo.u[1], bend = 1 - dot;
       const sIn = -up.u[0] * fo.n[0] - up.u[1] * fo.n[1] > 0 ? 1 : -1, sInU = fo.u[0] * up.n[0] + fo.u[1] * up.n[1] > 0 ? 1 : -1;
       const wr = tube([W[0] - fx * 16, W[1] - fy * 16], [W[0] + fx * 6, W[1] + fy * 6], [[0, 12.4, 12.4], [1, 12, 12]]);
       const hd = hand(hk, [W[0] + fx * 4, W[1] + fy * 4], fo.ang + 90 + (hv.a || 0), o ? 1.26 : 1.3, flip, hv);
-      let upS, foS;
+      // わきの下の側(腰に近い側 sA)と肩の上の側(sT)
+      const hip = [Sp[0] + (flip ? -40 : 40), Sp[1] + 150], dh = (s) => Math.hypot(up.at(0.1, s)[0] - hip[0], up.at(0.1, s)[1] - hip[1]);
+      const sA = dh(1) < dh(-1) ? 1 : -1, sT = -sA;
+      // ひじ: 曲がりの二等分の向き d(内側へ)。内側の谷 cr、外側の骨の角 tip。谷の手前で上腕・前腕の内側の線を止める
+      let bx = fo.u[0] - up.u[0], by = fo.u[1] - up.u[1], bl = Math.hypot(bx, by);
+      if (bl < 0.05) (bx = up.n[0] * sInU), (by = up.n[1] * sInU), (bl = 1);
+      const d = [bx / bl, by / bl], sh = Math.sqrt((1 + dot) / 2), ch = Math.sqrt(Math.max(0, (1 - dot) / 2)), rE = PROF.up[PROF.up.length - 1][1];
+      const off = (rE * ch) / Math.max(sh, 0.35), sharp = bend > 0.15;
+      const cr = [E[0] + (d[0] * rE * 0.96) / Math.max(sh, 0.6), E[1] + (d[1] * rE * 0.96) / Math.max(sh, 0.6), sharp ? 1 : 0];
+      const tk = 1.03 + 0.1 * Math.min(1, bend * 3), tip = [E[0] - d[0] * rE * tk, E[1] - d[1] * rE * tk];
+      const tU = Math.min(0.9, 1 - (off + 5) / up.L), tF = Math.max(0.08, (off + 5) / fo.L);
+      // 肩の上の線は P0 から外へふくらむ点だけを使う(へこみを作らない)
+      const Q = up.at(0.45, sT), qx = Q[0] - P0[0], qy = Q[1] - P0[1], ql = Math.hypot(qx, qy) || 1;
+      let nC = [-qy / ql, qx / ql];
+      if (nC[0] * up.n[0] * sT + nC[1] * up.n[1] * sT < 0) nC = [-nC[0], -nC[1]];
+      const sideU = (s, t1 = s === sInU ? tU : 0.9, mul = 1) => {
+        const top = s === sT, t0 = top ? 0.02 : 0.14, r = [];
+        for (let i = 0; i <= 7; i++) {
+          const t = t0 + ((t1 - t0) * i) / 7, q = up.at(t, s * mul * (1 + (top ? bul(t, -0.12, 0.56, 0.1) : bul(t, 0.2, 0.85, 0.05))));
+          if (top && t < 0.45 && (q[0] - P0[0]) * nC[0] + (q[1] - P0[1]) * nC[1] < 1) continue;
+          r.push(q);
+        }
+        // P0 の先に胴の肩の線をそのまま延ばした点を足す(肩の線が角を作らずに腕の上の線へつながる)
+        if (s === sT && r.length) {
+          const g = Math.hypot(r[0][0] - P0[0], r[0][1] - P0[1]) * 0.4, tx = P0[0] - P0b[0], ty = P0[1] - P0b[1], tl = Math.hypot(tx, ty) || 1;
+          r.unshift([P0[0] + (tx / tl) * g, P0[1] + (ty / tl) * g]);
+        }
+        return r;
+      };
+      const sideF = (s) => {
+        const inn = s === sInU, fs = inn ? sIn : -sIn, t0 = inn ? tF : 0.1, r = [];
+        for (let i = 0; i <= 6; i++) {
+          const t = t0 + ((1 - t0) * i) / 6;
+          r.push(fo.at(t, fs * (1 + bul(t, -0.05, 0.6, 0.05))));
+        }
+        return r;
+      };
+      const side = (s) => [...sideU(s), s === sInU ? cr : tip, ...sideF(s)];
+      const A = side(sT), B = side(sA).reverse(), PA = B[B.length - 1];
+      // 袖の縫い目(わきの下→肩)は胴の内側(腰の向き)へふくらむ。肩の上の線と広い角度で分かれるので細いすき間ができない
+      const sm = (PA0, k = 0.22) => {
+        const m = lerp(PA0, P0, 0.5), g = Math.hypot(PA0[0] - P0[0], PA0[1] - P0[1]), hx = hip[0] - m[0], hy = hip[1] - m[1], hl = Math.hypot(hx, hy) || 1;
+        return [m[0] + (hx / hl) * g * k, m[1] + (hy / hl) * g * k];
+      };
+      const capM = [fo.B[0] + fo.u[0] * 9, fo.B[1] + fo.u[1] * 9];
+      const P0c = [P0[0], P0[1]], shape = [P0c, ...A, capM, ...B.slice(0, -1), [PA[0], PA[1], 1], sm(PA)];
+      // 上腕と前腕の陰影はひじの二等分線で分けて塗る
+      let mx = up.u[0] + fo.u[0], my = up.u[1] + fo.u[1], ml = Math.hypot(mx, my) || 1;
+      (mx /= ml), (my /= ml);
+      const gx = -my, gy = mx, BIG = 900;
+      const halfU = [[E[0] + gx * BIG, E[1] + gy * BIG, 1], [E[0] + gx * BIG - mx * BIG, E[1] + gy * BIG - my * BIG, 1], [E[0] - gx * BIG - mx * BIG, E[1] - gy * BIG - my * BIG, 1], [E[0] - gx * BIG, E[1] - gy * BIG, 1]];
+      const halfFo = [[E[0] + gx * BIG, E[1] + gy * BIG, 1], [E[0] + gx * BIG + mx * BIG, E[1] + gy * BIG + my * BIG, 1], [E[0] - gx * BIG + mx * BIG, E[1] - gy * BIG + my * BIG, 1], [E[0] - gx * BIG, E[1] - gy * BIG, 1]];
+      const so = -sInU, sof = -sIn;
+      let upIn, foIn, elbIn, M, sleeve = "";
       if (!o) {
-        const upIn = `${tshade(up, J, 1)}${fill(tband(up, 0.08, 0.62, (t) => -up.sd * (0.3 + bump(0.08, 0.62, 0.1)(t)), (t) => -up.sd * (0.3 + bump(0.08, 0.62, 0.42)(t))), C.jhi, 0.8)}
-          ${fill(ring(up, 0.34, 0.39), C.st)}${fill(ring(up, 0.42, 0.445), C.st2)}
-          ${ink(tl(up, [[0.06, -0.5], [0.16, 0], [0.2, 0.5]]), 1.3, 0.3, 0.5)}${ink(tl(up, [[0.12, up.sd * 0.9], [0.24, up.sd * 0.4]]), 1.2, 0.3, 0.5)}
-          <path d="${hPath(tl(up, [[0, -up.sd * 0.62], [0.33, -up.sd * 0.6], [0.47, -up.sd * 0.6], [1, -up.sd * 0.58]]), false)}" fill="none" stroke="${C.jhi}" stroke-width=".9" stroke-dasharray="2.4 2"/>
-          ${bend > 0.2 ? `${ink(tl(up, [[0.74, sInU * 1.05], [0.84, sInU * 0.55], [0.86, sInU * 0.15]]), 1.6, 0.2, 0.6)}${ink(tl(up, [[0.86, sInU * 1.05], [0.92, sInU * 0.6]]), 1.3, 0.2, 0.6)}${fill(tband(up, 0.82, 1.05, sInU * 1.3, sInU * 0.55), J[2], 0.7)}` : ""}`;
-        upS = part(up.pts, J, upIn, { k: 0.5, w: [1.2, 3.4] });
-        const foIn = `${tshade(fo, J, 2, 0.12)}${fill(tband(fo, 0.08, 0.7, (t) => -fo.sd * (0.32 + bump(0.08, 0.7, 0.08)(t)), (t) => -fo.sd * (0.32 + bump(0.08, 0.7, 0.36)(t))), C.jhi, 0.75)}
-          ${bend > 0.2 ? `${fill(tband(fo, -0.04, 0.16, sIn * 1.3, sIn * 0.5), J[2], 0.8)}${ink(tl(fo, [[0.0, sIn * 0.95], [0.1, sIn * 0.55], [0.18, sIn * 0.2]]), 1.6, 0.2, 0.6)}${ink(tl(fo, [[0.05, sIn * 1.05], [0.18, sIn * 0.75], [0.3, sIn * 0.5]]), 1.4, 0.2, 0.6)}${ink(tl(fo, [[0.12, sIn * 1.05], [0.22, sIn * 0.85]]), 1.1, 0.2, 0.6)}` : ""}
+        M = J;
+        upIn = `${tshade(up, J, 1)}${fill(tband(up, 0.1, 0.62, (t) => -up.sd * (0.3 + bump(0.1, 0.62, 0.1)(t)), (t) => -up.sd * (0.3 + bump(0.1, 0.62, 0.42)(t))), C.jhi, 0.8)}
+          ${fill(ring(up, 0.36, 0.41, 0.03, 6, 1.5), C.st)}${fill(ring(up, 0.44, 0.465, 0.03, 6, 1.5), C.st2)}
+          ${ink(tl(up, [[0.16, sA * 1.05], [0.26, sA * 0.6], [0.3, sA * 0.2]]), 1.3, 0.2, 0.6)}${ink(tl(up, [[0.58, sA * 1.0], [0.66, sA * 0.55]]), 1.1, 0.2, 0.6)}
+          <path d="${hPath(tl(up, [[0.12, -up.sd * 0.62], [0.35, -up.sd * 0.6], [0.6, -up.sd * 0.6], [tU, -up.sd * 0.58]]), false)}" fill="none" stroke="${C.jhi}" stroke-width=".9" stroke-dasharray="2.4 2"/>`;
+        foIn = `${tshade(fo, J, 2, 0.12)}${fill(tband(fo, 0.12, 0.7, (t) => -fo.sd * (0.32 + bump(0.12, 0.7, 0.08)(t)), (t) => -fo.sd * (0.32 + bump(0.12, 0.7, 0.36)(t))), C.jhi, 0.75)}
           ${ink(tl(fo, [[0.4, -1], [0.47, -0.4], [0.46, 0.25]]), 1.3, 0.3, 0.6)}${ink(tl(fo, [[0.58, 0.95], [0.63, 0.3]]), 1.2, 0.3, 0.6)}${ink(tl(fo, [[0.7, -0.9], [0.74, -0.2], [0.73, 0.4]]), 1.1, 0.3, 0.6)}
-          ${fill(tband(fo, 0.84, 1.1, -1.3, 1.3), J[2])}${[-0.7, -0.42, -0.14, 0.14, 0.42, 0.7].map((s) => ink(tl(fo, [[0.865, s], [0.99, s * 0.96]]), 0.9, 0.2, 0.2, "#000", 0.6)).join("")}
+          ${fill(tband(fo, 0.84, 1.1, -1.4, 1.4), J[2])}${[-0.7, -0.42, -0.14, 0.14, 0.42, 0.7].map((s) => ink(tl(fo, [[0.865, s], [0.99, s * 0.96]]), 0.9, 0.2, 0.2, "#000", 0.6)).join("")}
           ${fill(ring(fo, 0.81, 0.84), C.st)}${fill(ring(fo, 0.87, 0.882), C.st2)}`;
-        foS = part(fo.pts, J, foIn, { k: 0.5, w: [1.2, 3.4] });
+        // ひじの袖: 内側は谷から扇に寄るしわと濃い影、外側は布が張って骨の角に沿う線と照り
+        elbIn = sharp
+          ? `${fill([up.at(tU - 0.12, sInU * 1.3), up.at(tU - 0.1, sInU * 0.55), lerp(cr, E, 0.75), fo.at(tF + 0.12, sIn * 0.5), fo.at(tF + 0.14, sIn * 1.3), cr], J[2], 0.75)}
+            ${ink([cr, up.at(tU - 0.05, sInU * 0.5), up.at(tU - 0.16, sInU * 0.05)], 1.6, 0.1, 0.6)}${ink([cr, lerp(cr, E, 0.55), lerp(E, tip, 0.12)], 1.4, 0.1, 0.6)}${ink([cr, fo.at(tF + 0.07, sIn * 0.45), fo.at(tF + 0.17, sIn * -0.05)], 1.5, 0.1, 0.6)}${ink([fo.at(tF + 0.1, sIn * 1.02), fo.at(tF + 0.2, sIn * 0.6), fo.at(tF + 0.24, sIn * 0.3)], 1.2, 0.2, 0.6)}
+            ${fill([up.at(0.8, so * 0.92), lerp(tip, E, 0.12), fo.at(0.2, sof * 0.92), fo.at(0.16, sof * 0.55), lerp(tip, E, 0.4), up.at(0.82, so * 0.55)], C.jhi, 0.55)}
+            ${ink([up.at(0.78, so * 0.78), lerp(tip, cr, 0.2), fo.at(0.2, sof * 0.76)], 1.2, 0.3, 0.3, K, 0.85)}`
+          : `${ink([up.at(0.86, sInU * 1.02), up.at(0.92, sInU * 0.5), up.at(0.93, sInU * 0.1)], 1.4, 0.2, 0.6)}${ink([fo.at(0.04, sIn * 1.02), fo.at(0.1, sIn * 0.55)], 1.3, 0.2, 0.6)}${ink([up.at(0.95, so * 0.95), up.at(1.0, so * 0.5)], 1.1, 0.2, 0.6, K, 0.8)}${ink([fo.at(0.1, sof * 1.0), fo.at(0.16, sof * 0.45), fo.at(0.15, sof * 0.05)], 1.2, 0.2, 0.6)}`;
       } else {
-        const sl = tube(Sp, up.at(0.56, 0), PROF.sl), mus = `${tshade(up, S, 1.4, 0.18)}${ink(tl(up, [[0.55, sInU * 0.7], [0.72, sInU * 0.9], [0.9, sInU * 0.62]]), 1.2, 0.4, 0.5, S[2])}${ink(tl(up, [[0.58, -sInU * 0.5], [0.76, -sInU * 0.75], [0.92, -sInU * 0.4]]), 1, 0.4, 0.5, S[2], 0.8)}${fill(tband(up, 0.56, 0.72, -0.2, 0.9), S[2], 0.5)}`;
-        upS = part(up.pts, S, mus, { k: 0.5, w: [1.2, 3.4] }) + part(sl.pts, C.js, `${tshade(sl, C.js, 0.3, 0.2)}${fill(ring(sl, 0.8, 1.2), C.st)}${fill(ring(sl, 0.72, 0.8), C.st2)}${ink(tl(sl, [[0.2, 0.9], [0.4, 0.4], [0.5, -0.1]]), 1.3, 0.3, 0.5)}${ink(tl(sl, [[0.5, -0.95], [0.62, -0.4]]), 1.3, 0.3, 0.5)}`, { k: 0.6, w: [1.2, 3.4] });
-        const foIn = `${tshade(fo, S, 2.3, 0.14)}${ink(tl(fo, [[0.04, 0.9], [0.2, 1.02], [0.42, 0.7], [0.6, 0.35]]), 1.3, 0.4, 0.6, S[2])}${ink(tl(fo, [[0.62, -0.3], [0.8, -0.2], [0.94, -0.15]]), 0.9, 0.4, 0.4, S[2], 0.8)}${ink(tl(fo, [[0.66, 0.25], [0.84, 0.22]]), 0.8, 0.4, 0.4, S[2], 0.7)}
-          ${bend > 0.2 ? ink(tl(fo, [[0.0, sIn * 1.0], [0.06, sIn * 0.55], [0.08, sIn * 0.2]]), 1.3, 0.3, 0.5) + ink(tl(up, [[0.92, -sInU * 0.98], [1.04, -sInU * 0.6]]), 1.1, 0.3, 0.5, S[2]) : ""}
-          ${fill(tband(fo, 0.88, 1.1, -1.3, 1.3), C.gl[0])}${fill(tband(fo, 0.88, 1.1, fo.sd * 1.3, fo.sd * 0.3), C.gl[1])}${fill(ring(fo, 0.88, 0.905), C.st2)}`;
-        foS = part(fo.pts, S, foIn, { k: 0.5, w: [1.2, 3.4] });
+        M = S;
+        upIn = `${tshade(up, S, 1.4, 0.18)}${ink(tl(up, [[0.58, sInU * 0.7], [0.72, sInU * 0.9], [0.86, sInU * 0.62]]), 1.2, 0.4, 0.5, S[2])}${ink(tl(up, [[0.6, -sInU * 0.5], [0.76, -sInU * 0.75], [0.9, -sInU * 0.4]]), 1, 0.4, 0.5, S[2], 0.8)}${fill(tband(up, 0.56, 0.72, -0.2, 0.9), S[2], 0.5)}`;
+        foIn = `${tshade(fo, S, 2.3, 0.14)}${ink(tl(fo, [[0.06, 0.9], [0.2, 1.02], [0.42, 0.7], [0.6, 0.35]]), 1.3, 0.4, 0.6, S[2])}${ink(tl(fo, [[0.62, -0.3], [0.8, -0.2], [0.94, -0.15]]), 0.9, 0.4, 0.4, S[2], 0.8)}${ink(tl(fo, [[0.66, 0.25], [0.84, 0.22]]), 0.8, 0.4, 0.4, S[2], 0.7)}
+          ${fill(tband(fo, 0.88, 1.1, -1.4, 1.4), C.gl[0])}${fill(tband(fo, 0.88, 1.1, fo.sd * 1.4, fo.sd * 0.3), C.gl[1])}${fill(ring(fo, 0.88, 0.905, 0.03, 6, 1.5), C.st2)}`;
+        // 素肌のひじ: 内側に短いしわ、外側に骨の出っぱり(小さな山と照り)
+        elbIn = sharp
+          ? `${fill([up.at(tU - 0.1, sInU * 1.2), lerp(cr, E, 0.5), fo.at(tF + 0.1, sIn * 1.2), cr], S[2], 0.7)}${ink([cr, lerp(cr, E, 0.5)], 1.4, 0.1, 0.6)}${ink([up.at(tU - 0.04, sInU * 0.8), lerp(cr, E, 0.35), fo.at(tF + 0.05, sIn * 0.75)], 0.9, 0.3, 0.3, S[2])}
+            ${ink([up.at(0.86, so * 0.7), lerp(tip, E, 0.3), fo.at(0.12, sof * 0.72)], 1.1, 0.3, 0.3, S[2])}${ink([lerp(tip, E, 0.12), lerp(tip, E, 0.2)].map((p, i) => [p[0] + (i ? fo.u[0] : -up.u[0]) * 5, p[1] + (i ? fo.u[1] : -up.u[1]) * 5]), 1.2, 0.4, 0.4, "#fff", 0.5)}`
+          : `${ink([up.at(0.9, sInU * 0.9), up.at(0.98, sInU * 0.4)], 1.1, 0.3, 0.5, S[2])}${ink([up.at(0.92, so * 0.6), up.at(1.03, so * 0.85)], 1, 0.3, 0.5, S[2], 0.8)}`;
+        // 半袖: 肩を包んで少し広がり、すそに赤と紫の帯
+        const sA2 = sideU(sA, 0.58, 1.16), sT2 = sideU(sT, 0.58, 1.16), PB = sA2[0];
+        const slv = [P0c, ...sT2, up.at(0.61, sT * 0.6), up.at(0.62, 0), up.at(0.61, sA * 0.6), ...sA2.slice(1).reverse(), [PB[0], PB[1], 1], sm(PB, 0.22)];
+        sleeve = part(slv, C.js, `${tshade(up, C.js, 0.3, 0.2)}${fill(ring(up, 0.49, 0.6, 0.04, 6, 1.6), C.st)}${fill(ring(up, 0.45, 0.49, 0.04, 6, 1.6), C.st2)}${ink(tl(up, [[0.12, sA * 1.1], [0.22, sA * 0.5], [0.28, sA * -0.1]]), 1.3, 0.3, 0.5)}${ink(tl(up, [[0.28, sT * 1.05], [0.35, sT * 0.45]]), 1.3, 0.3, 0.5)}${fill([P0, ...sT2.slice(0, 3), up.at(0.14, sT * 0.6), up.at(0.06, 0)], C.jhi, 0.45)}`, { k: 0.6, w: [0, 0] }) + ink([P0, ...sT2, up.at(0.61, sT * 0.6), up.at(0.62, 0), up.at(0.61, sA * 0.6), ...sA2.slice(1).reverse()], 3.2, 0.12, 0.06) + ink([PB, sm(PB, 0.22), P0], 1.3, 0.2, 0.5, K, 0.85);
       }
-      // ひじ: 曲がりの外側に骨の出っぱり
-      const elb = bend > 0.3 ? ink([up.at(0.9, -sInU * 0.95), up.at(1.02, -sInU * 0.9), fo.at(0.06, -sIn * 0.98)], 1.6, 0.3, 0.4) : "";
+      const inner = `${clip(halfU, upIn)}${clip(halfFo, foIn)}${elbIn}`;
+      // 外形の太い線: 肩の上は胴の線から入り、わきの下で抜く。縫い目は細く
+      const line = `${ink([P0, ...A, capM, ...B], 3.4, 0.04, 0.05)}${ink([PA, sm(PA), P0], 1.3, 0.25, 0.5, K, 0.85)}${o ? "" : `<path d="${hPath([PA, sm(PA, 0.2), P0].map((p) => lerp(p, Sp, 0.08)), false)}" fill="none" stroke="${C.jhi}" stroke-width=".9" stroke-dasharray="2.4 2"/>`}`;
+      const body = `${part(shape, M, inner, { k: 0.5, w: [0, 0] })}${line}${sleeve}`;
       let hold = "";
       if (holder) {
         const Lh = fo.L, r = o ? 21 : 23;
@@ -798,7 +867,14 @@ const Cinema = (() => {
           <g transform="translate(${f(Lh * 0.42)} 0)"><rect x="-8" y="-6" width="16" height="12" rx="2.4" fill="#c8d0dc" stroke="${K}" stroke-width="1.4"/><rect x="-5" y="-3" width="10" height="6" rx="1.4" fill="#5c6678" stroke="${K}" stroke-width=".8"/><path d="M-6 -4.6L5 -4.6" stroke="#fff" stroke-width="1.2" opacity=".8"/><circle cx="-12" cy="0" r="1.8" fill="#c8d0dc" stroke="${K}" stroke-width=".8"/><circle cx="12" cy="0" r="1.8" fill="#c8d0dc" stroke="${K}" stroke-width=".8"/></g>
           <path d="M${f(Lh * 0.48)} -6L${f(Lh * 0.52)} 0L${f(Lh * 0.48)} 6" fill="none" stroke="${C.st2}" stroke-width="2" opacity="0"/></g>`;
       }
-      return { up: upS, fo: `${part(wr.pts, S, tshade(wr, S, 0, 0.3), { k: 0.4, w: [1, 2.6] })}${elb}${foS}${hold}${hd}` };
+      const wrist = part(wr.pts, S, tshade(wr, S, 0, 0.3), { k: 0.4, w: [1, 2.6] });
+      if (!flip) return { up: wrist + body, fo: hold + hd };
+      // 奥の腕: 胴の後ろに描き、肩のつなぎ目と上腕の先・前腕だけを胴と顔の上へ重ね直す(同じ絵を use で切り抜く)
+      const gid = id + "a" + cn++, k0 = up.at(0.4, 0), out = (p, k) => [p[0] + (p[0] - Sp[0]) * k, p[1] + (p[1] - Sp[1]) * k, 1];
+      // 相手は肩に羽織った上着が肩の上をおおうので、つなぎ目は重ね直さない
+      const conn = o ? [] : [out(P0, 0.12), ...[0.02, 0.12, 0.22, 0.32, 0.42].map((t) => up.at(t, sT * 1.25)), up.at(0.42, sA * 1.25), out(PA, 0.12), out(sm(PA), 0.1)];
+      const far = [[k0[0] + up.n[0] * BIG, k0[1] + up.n[1] * BIG, 1], [k0[0] + up.n[0] * BIG + up.u[0] * BIG, k0[1] + up.n[1] * BIG + up.u[1] * BIG, 1], [k0[0] - up.n[0] * BIG + up.u[0] * BIG, k0[1] - up.n[1] * BIG + up.u[1] * BIG, 1], [k0[0] - up.n[0] * BIG, k0[1] - up.n[1] * BIG, 1]];
+      return { up: `<g id="${gid}">${body}</g>`, fo: `${wrist}<clipPath id="${gid}k">${conn.length ? `<path d="${hPath(conn)}"/>` : ""}<path d="${hPath(far)}"/><path d="${hPath(halfFo)}"/></clipPath><use href="#${gid}" clip-path="url(#${gid}k)"/>${hold}${hd}` };
     };
 
     // ---------- 首 ----------
@@ -809,7 +885,7 @@ const Cinema = (() => {
     // 襟が首に落とす影
     const neck = part(neckPts, S, neckIn + (o ? "" : fill([TP(172, 222, 0.3), TP(194, 240, 0.2), TP(214, 254), TP(234, 244, 0, 0.2), TP(254, 220, 0, 0.3), TP(254, 278, 0, 0.3), TP(174, 280, 0.3)], S[2], 0.75)), { k: 0.5, w: [1, 3] });
     const SN = o ? TP(102, 288, 1) : TP(104, 300, 1), SF = o ? TP(298, 280, 0, 1) : TP(304, 296, 0, 1);
-    const fa = arm(SF, P.far[0], P.far[1], P.far[2], P.far[3], false, true), na = arm(SN, P.near[0], P.near[1], P.near[2], P.near[3], true, false);
+    const fa = arm(SF, P.far[0], P.far[1], P.far[2], P.far[3], false, true, o ? TP(266, 246, 0, 0.6) : TP(274, 256, 0, 0.6), o ? TP(240, 237, 0, 0.2) : TP(252, 246, 0, 0.3)), na = arm(SN, P.near[0], P.near[1], P.near[2], P.near[3], true, false, o ? TP(130, 260, 0.8) : TP(126, 268, 0.9), o ? TP(160, 248, 0.5) : TP(150, 258, 0.7));
 
     // ---------- 胴 ----------
     let back = "", torso = "", collar = "";
@@ -827,7 +903,7 @@ const Cinema = (() => {
         ${fill([TP(190, 390), TP(229, 418), TP(272, 386), TP(273, 400), TP(229, 432), TP(190, 404)], C.st2)}${fill([TP(190, 410), TP(229, 438), TP(274, 404), TP(275, 424), TP(229, 456), TP(190, 430)], C.js2)}
         ${fill(eL.map((p) => [p[0] - 4, p[1]]).concat([...eL].reverse().map((p) => [p[0] + 13, p[1] + 2])), C.js[1])}${fill(eL.map((p) => [p[0] - 4, p[1]]).concat([...eL].reverse().map((p) => [p[0] + 5, p[1] + 1])), C.js[2])}
         ${fill([TP(192, 252, 0.2), TP(250, 252, 0, 0.2), TP(254, 282), TP(228, 294), TP(196, 284)], C.js[2], 0.85)}
-        ${fill([TP(200, 344), TP(214, 356), TP(228, 360), TP(226, 368), TP(210, 366), TP(198, 358)], C.js[1])}${fill([TP(234, 356), TP(250, 352), TP(264, 344), TP(266, 356), TP(250, 364), TP(236, 366)], C.js[1], 0.8)}
+        ${ink([TP(198, 336), TP(206, 352), TP(218, 362), TP(226, 364)], 6, 0.2, 0.75, C.js[1])}${ink([TP(240, 358), TP(254, 352), TP(266, 338)], 4.4, 0.7, 0.2, C.js[1], 0.8)}
         ${ink([TP(244, 300), TP(254, 324), TP(262, 340)], 1.2, 0.4, 0.5, C.js[2])}${ink([TP(212, 470), TP(228, 480), TP(244, 476)], 1.2, 0.4, 0.5, C.js[2])}
         <path d="M${f(zx(272))} 272L${f(zx(620))} 620" stroke="${K}" stroke-width="4.4"/><path d="M${f(zx(272))} 272L${f(zx(620))} 620" stroke="#b9c4d0" stroke-width="2.6" stroke-dasharray="1.4 1.3"/><path d="M${f(zx(272))} 272L${f(zx(620))} 620" stroke="${K}" stroke-width=".6"/>
         <path d="M${f(zx(278) - 3)} 276L${f(zx(278) + 3)} 276L${f(zx(278) + 3.6)} 288L${f(zx(278) - 3.6)} 288Z" fill="#c8d0dc" stroke="${K}" stroke-width="1.1"/><path d="M${f(zx(286) - 3.4)} 287C${f(zx(286) - 4)} 296 ${f(zx(286) - 2)} 303 ${f(zx(286) + 1)} 304C${f(zx(286) + 4)} 303 ${f(zx(286) + 5)} 296 ${f(zx(286) + 3.4)} 287Z" fill="${C.st2}" stroke="${K}" stroke-width="1.2"/><ellipse cx="${f(zx(296) + 0.6)}" cy="298" rx="1.2" ry="2" fill="${K}"/>`;
@@ -887,18 +963,19 @@ const Cinema = (() => {
       const tin = `${fill([TP(86, 250, 1), TP(182, 236, 0.3), TP(204, 262), TP(228, 268), TP(240, 258), TP(244, 234, 0, 0.3), TP(320, 250, 0, 1), TP(320, 296, 0, 1), TP(262, 276, 0, 0.4), TP(228, 298), TP(168, 280, 0.4), TP(86, 312, 1)], C.js2)}
         ${ink([TP(96, 304, 1), TP(168, 284, 0.4), TP(228, 302), TP(262, 280, 0, 0.4), TP(316, 298, 0, 1)], 2.4, 0, 0, C.st2)}
         ${fill([TP(96, 392), TP(170, 420), TP(228, 438), TP(270, 414), TP(310, 382), TP(310, 406), TP(270, 440), TP(228, 464), TP(170, 446), TP(96, 420)], C.st)}${fill([TP(96, 426), TP(170, 452), TP(228, 470), TP(270, 446), TP(310, 412), TP(310, 421), TP(270, 456), TP(228, 480), TP(170, 462), TP(96, 436)], C.st2)}
-        ${fill([TP(96, 330, 0.6), TP(134, 342, 0.3), TP(130, 400), TP(138, 470), TP(158, 620), TP(96, 620)], C.js[1])}${fill([TP(96, 330, 0.6), TP(118, 338, 0.4), TP(116, 400), TP(124, 470), TP(140, 620), TP(96, 620)], C.js[2])}
-        ${fill([TP(126, 366), TP(150, 392), TP(204, 394), TP(226, 378), TP(228, 390), TP(200, 404), TP(150, 400)], C.js[1])}${fill([TP(232, 378), TP(246, 388), TP(270, 384), TP(290, 362), TP(276, 392), TP(248, 398), TP(234, 392)], C.js[1])}
-        ${fill([TP(270, 300, 0, 0.6), TP(290, 290, 0, 0.9), TP(294, 340, 0, 0.5), TP(284, 372), TP(278, 340)], C.jhi, 0.6)}
+        ${fill([TP(92, 322, 0.6), TP(124, 334, 0.4), TP(144, 356), TP(150, 380), TP(178, 398), TP(214, 396), TP(186, 410), TP(150, 404), TP(136, 430), TP(142, 480), TP(158, 540), TP(170, 620), TP(92, 620)], C.js[1])}${fill([TP(92, 330, 0.6), TP(116, 340, 0.4), TP(128, 370), TP(122, 410), TP(124, 470), TP(136, 540), TP(142, 620), TP(92, 620)], C.js[2])}
+        ${ink([TP(150, 384), TP(176, 396), TP(204, 396), TP(222, 386)], 5, 0.15, 0.75, C.js[2], 0.9)}${ink([TP(240, 380), TP(258, 380), TP(276, 370), TP(288, 354)], 4, 0.7, 0.2, C.js[1])}
+        ${ink([TP(186, 336), TP(204, 330), TP(220, 336)], 5, 0.5, 0.5, C.jhi, 0.3)}${fill([TP(258, 316, 0, 0.4), TP(276, 300, 0, 0.6), TP(290, 292, 0, 0.9), TP(294, 340, 0, 0.5), TP(286, 366), TP(280, 340), TP(270, 324)], C.jhi, 0.55)}
+        ${ink([TP(292, 296, 0, 0.9), TP(296, 330, 0, 0.6), TP(292, 380, 0, 0.2), TP(288, 440)], 2.2, 0.3, 0.5, C.rim, 0.55)}
         <g transform="translate(${hpt(TP(166, 326))}) scale(1.25)" fill="none" stroke="${C.st2}" stroke-width="2.6"><circle r="12"/><circle r="4.4"/>${[0, 1, 2, 3, 4, 5, 6, 7].map((i) => `<path d="M${f(Math.cos(i * 0.785) * 12)} ${f(Math.sin(i * 0.785) * 12)}L${f(Math.cos(i * 0.785) * 17)} ${f(Math.sin(i * 0.785) * 17)}"/>`).join("")}</g>
         <path d="M${f(zx(272))} 272L${f(zx(620))} 620" stroke="${K}" stroke-width="4"/><path d="M${f(zx(272))} 272L${f(zx(620))} 620" stroke="#8a8098" stroke-width="2.2" stroke-dasharray="1.4 1.3"/>
-        ${[[TP(150, 292), TP(160, 322), TP(152, 384)], [TP(276, 286, 0, 0.4), TP(270, 316), TP(280, 374)], [TP(176, 504), TP(200, 492), TP(224, 492)], [TP(262, 502), TP(246, 492), TP(230, 492)], [TP(130, 300, 0.6), TP(150, 312), TP(170, 330)]].map((l) => ink(l, 1.4, 0.3, 0.6)).join("")}`;
+        ${[[TP(134, 332), TP(146, 352), TP(150, 376)], [TP(284, 318, 0, 0.4), TP(290, 344)], [TP(176, 504), TP(200, 492), TP(224, 492)], [TP(262, 502), TP(246, 492), TP(230, 492)], [TP(130, 300, 0.6), TP(150, 312), TP(170, 330)]].map((l) => ink(l, 1.4, 0.3, 0.6)).join("")}`;
       // 体に沿うジャージ: わきの下から胸へ引かれるしわ、腰の横じわ、肩の上の面の照り
       const oF = [
         [[TP(110, 330, 0.8), TP(134, 340, 0.4), TP(158, 346, 0.2)], 4],
         [[TP(292, 326, 0, 0.8), TP(274, 338, 0, 0.4), TP(254, 344, 0, 0.2)], 4],
-        [[TP(132, 404), TP(138, 444), TP(144, 486)], 4],
-        [[TP(282, 404, 0, 0.2), TP(278, 444), TP(276, 490)], 4],
+        [[TP(124, 400), TP(140, 436), TP(156, 470)], 3.6],
+        [[TP(290, 398, 0, 0.2), TP(278, 432), TP(268, 466)], 3.2],
         [[TP(146, 474), TP(164, 466), TP(186, 470)], 3.4],
         [[TP(262, 474), TP(244, 466), TP(224, 472)], 3.4],
         [[TP(156, 498), TP(178, 492), TP(198, 496)], 2.8],
@@ -918,7 +995,7 @@ const Cinema = (() => {
     }
     return `<svg class="cn-hero dl-svg" viewBox="0 0 400 500" preserveAspectRatio="xMidYMax meet" aria-hidden="true">${defs}
       <g stroke-linejoin="round" stroke-linecap="round" transform="translate(0 520) skewX(${P.sk}) rotate(${P.lean}) translate(-205 -520) translate(205 0)">
-        ${back}${fa.up}${neck}${torso}${collar}${na.up}
+        ${back}${fa.up}${neck}${torso}${na.up}${collar}
         <g transform="translate(${hx} ${hy}) rotate(${hr}) scale(${hsc})">${head(P.ex)}</g>
         ${fa.fo}${na.fo}
       </g>
