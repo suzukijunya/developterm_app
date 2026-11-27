@@ -77,8 +77,11 @@
   </div>
   <div class="ct-right">
     <div id="ct-mapbox" class="ct-mapbox">
-      <canvas id="ct-mini" width="200" height="200" title="タップで大きく・ホイールで拡大縮小"></canvas>
+      <canvas id="ct-mini" width="200" height="200" title="タップで大きく・引っぱって移動・ホイールやつまんで拡大縮小"></canvas>
       <div class="ct-mz"><button id="ct-mz-in" type="button" aria-label="拡大">＋</button><button id="ct-mz-out" type="button" aria-label="縮小">−</button><button id="ct-mz-all" type="button" aria-label="ルート全体">全体</button></div>
+      <button id="ct-mz-big" class="ct-mz-big" type="button" aria-label="大きい地図と切りかえ" title="大きい地図と切りかえ">⤢</button>
+      <button id="ct-mz-me" class="ct-mz-me" type="button" aria-label="自分の位置へ戻る" title="自分の位置へ戻る" hidden>◎</button>
+      <div id="ct-mgrip" class="ct-mgrip" title="引っぱって大きさを変える(ダブルクリックで元の大きさ)" aria-hidden="true"></div>
     </div>
     <div id="ct-ticker" class="ct-ticker"></div>
   </div>

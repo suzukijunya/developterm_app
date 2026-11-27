@@ -12646,7 +12646,56 @@ const City = (() => {
     drawMini();
   }
   // 右上の地図: 地図アプリ風(淡い色の地図・青いルート・青い現在地)。＋−やホイールで拡大縮小、「全体」でルート全体
+  // 左下のつまみを引っぱると大きさを自由に変えられる(端末ごとに覚える)。中を引っぱると地図を動かせる(◎で自分の位置へ戻る)
   let miniZ = 16.2, miniFit = false;
+  let miniPan = [0, 0], miniLastZ = 16.2; // 動かした量(メルカトルの0〜1の座標)と、最後に描いたときの拡大の段
+  let miniSize = null, miniBig = false; // 利用者が決めた大きさ{w,h}(CSSのpx)。null なら標準の大きさ
+  const MINI_KEY = "city_minimap_size";
+  try {
+    const v = JSON.parse(localStorage.getItem(MINI_KEY) || "null");
+    if (v && v.w > 0 && v.h > 0) miniSize = { w: +v.w, h: +v.h };
+  } catch (e) {}
+  // 大きさの範囲: ボタンが収まる最小から、画面のほとんど(下のこぐボタンにはかからない)まで
+  function miniLimits() {
+    const box = $("ct-mapbox"), top = box ? box.getBoundingClientRect().top : 70, VW = window.innerWidth;
+    let w1 = VW - 16;
+    // 広い画面では、左上の設定の欄(やめる等)にはかぶせない。狭い画面(スマホ)は横いっぱいまで
+    const op = document.querySelector("#ct-hud .ct-opts"), or = op && op.offsetParent ? op.getBoundingClientRect() : null;
+    if (VW >= 700 && or && or.width > 0 && VW - or.right - 16 >= VW * 0.5) w1 = VW - or.right - 16;
+    // 下は、こぐボタンや手札にかからないところまで(かなり下にあるときだけ。そうでなければ画面の下から96px)
+    let bot = window.innerHeight - 96;
+    for (const id of ["ct-hand", "ct-ctrl"]) {
+      const el = id === "ct-ctrl" ? document.querySelector("#ct-hud .ct-ctrl") : $(id), r = el && el.offsetParent ? el.getBoundingClientRect() : null;
+      if (r && r.height > 0 && r.top - 8 > top + 200) bot = Math.min(bot, r.top - 8);
+    }
+    return { w0: 130, h0: 130, w1: Math.max(130, w1), h1: Math.max(130, bot - Math.max(0, top)) };
+  }
+  function miniApply() {
+    const cv = $("ct-mini");
+    if (!cv) return;
+    const L = miniLimits();
+    let sz = miniSize;
+    if (miniBig) sz = { w: Math.min(L.w1, 720), h: Math.min(L.h1, 560) };
+    if (sz) {
+      cv.style.width = Math.round(Math.max(L.w0, Math.min(L.w1, sz.w))) + "px";
+      cv.style.height = Math.round(Math.max(L.h0, Math.min(L.h1, sz.h))) + "px";
+    } else cv.style.width = cv.style.height = "";
+    $("ct-mapbox").classList.toggle("big", miniBig);
+    // 縦に長くしたときは、下の実況(ティッカー)がこぐボタンに重なるので隠す
+    $("ct-mapbox").classList.toggle("tall", cv.getBoundingClientRect().height > window.innerHeight * 0.42);
+    if (sim && route) drawMini();
+  }
+  function miniSave() {
+    try {
+      if (miniSize) localStorage.setItem(MINI_KEY, JSON.stringify({ w: Math.round(miniSize.w), h: Math.round(miniSize.h) }));
+      else localStorage.removeItem(MINI_KEY);
+    } catch (e) {}
+  }
+  function miniRecenter() {
+    miniPan = [0, 0];
+    $("ct-mz-me").hidden = true;
+    if (sim && route) drawMini();
+  }
   const mapImgs = new Map();
   function mapTile(z, x, y) {
     const key = z + "/" + x + "/" + y;
@@ -12665,9 +12714,88 @@ const City = (() => {
     if (miniFit && route && route.fitZ) miniZ = route.fitZ;
     miniFit = false;
     miniZ = Math.max(11, Math.min(18.6, miniZ + d));
+    if (sim && route) drawMini();
+  }
+  // 地図の上での指・マウス: 引っぱると動かす、2本指でつまむと拡大縮小、動かさずに離すと大きい地図と切りかえ
+  function miniPointers() {
+    const cv = $("ct-mini"), grip = $("ct-mgrip"), pts = new Map();
+    let moved = false, pinch0 = 0;
+    cv.addEventListener("pointerdown", (e) => {
+      if (e.button) return;
+      pts.set(e.pointerId, [e.clientX, e.clientY]);
+      if (pts.size === 1) moved = false;
+      if (pts.size === 2) {
+        const [a, b] = [...pts.values()];
+        pinch0 = Math.hypot(a[0] - b[0], a[1] - b[1]);
+        moved = true;
+      }
+      try {
+        cv.setPointerCapture(e.pointerId);
+      } catch (er) {}
+    });
+    cv.addEventListener("pointermove", (e) => {
+      const q = pts.get(e.pointerId);
+      if (!q) return;
+      const dx = e.clientX - q[0], dy = e.clientY - q[1];
+      if (pts.size >= 2) {
+        q[0] = e.clientX;
+        q[1] = e.clientY;
+        const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+        if (pinch0 > 0 && d > 0 && Math.abs(Math.log2(d / pinch0)) > 0.02) miniZoom(Math.log2(d / pinch0)), (pinch0 = d);
+        return;
+      }
+      if (!moved && Math.hypot(dx, dy) < 6) return; // 少しのぶれはタップのまま
+      moved = true;
+      q[0] = e.clientX;
+      q[1] = e.clientY;
+      const n = 256 * 2 ** miniLastZ;
+      miniPan[0] -= dx / n;
+      miniPan[1] -= dy / n;
+      $("ct-mz-me").hidden = false;
+      if (sim && route) drawMini();
+    });
+    const up = (e) => {
+      if (!pts.delete(e.pointerId)) return;
+      if (e.type === "pointerup" && !moved && pts.size === 0) (miniBig = !miniBig), miniApply();
+      if (pts.size < 2) pinch0 = 0;
+    };
+    cv.addEventListener("pointerup", up);
+    cv.addEventListener("pointercancel", up);
+    cv.addEventListener("wheel", (e) => (e.preventDefault(), miniZoom(e.deltaY < 0 ? 0.35 : -0.35)), { passive: false });
+    // 左下のつまみ: 地図は右上にとめてあるので、左へ・下へ引っぱるほど大きくなる
+    let g = null;
+    grip.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const r = cv.getBoundingClientRect();
+      g = { id: e.pointerId, x: e.clientX, y: e.clientY, w: r.width, h: r.height };
+      try {
+        grip.setPointerCapture(e.pointerId);
+      } catch (er) {}
+    });
+    grip.addEventListener("pointermove", (e) => {
+      if (!g || e.pointerId !== g.id) return;
+      const L = miniLimits();
+      miniBig = false;
+      miniSize = { w: Math.max(L.w0, Math.min(L.w1, g.w + (g.x - e.clientX))), h: Math.max(L.h0, Math.min(L.h1, g.h + (e.clientY - g.y))) };
+      miniApply();
+    });
+    const gUp = (e) => {
+      if (!g || e.pointerId !== g.id) return;
+      g = null;
+      miniSave();
+    };
+    grip.addEventListener("pointerup", gUp);
+    grip.addEventListener("pointercancel", gUp);
+    // つまみをダブルクリックすると標準の大きさへ戻す
+    grip.addEventListener("dblclick", () => ((miniSize = null), (miniBig = false), miniSave(), miniApply()));
+    window.addEventListener("resize", miniApply);
+    miniApply();
   }
   function drawMini() {
-    const cv = $("ct-mini"), dpr = Math.min(2, window.devicePixelRatio || 1);
+    const cv = $("ct-mini");
+    // 画面の細かさそのまま(4Kでもにじまない)。ただし描く面は一辺4096pxまで
+    const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 4096 / Math.max(1, cv.clientWidth, cv.clientHeight)));
     const cw = Math.round(cv.clientWidth * dpr) || 200, ch = Math.round(cv.clientHeight * dpr) || 200;
     if (cv.width !== cw || cv.height !== ch) (cv.width = cw), (cv.height = ch);
     const c = cv.getContext("2d"), W = cw, H = ch;
@@ -12690,6 +12818,9 @@ const City = (() => {
       [cx, cy] = ll(p.x, p.z);
       z = miniZ;
     }
+    cx += miniPan[0];
+    cy += miniPan[1];
+    miniLastZ = z;
     const Z = Math.max(5, Math.min(18, Math.ceil(z - 0.15))), n = 2 ** Z * 256, k = 2 ** (z - Z) * dpr;
     const x0 = cx * n - W / 2 / k, y0 = cy * n - H / 2 / k;
     c.fillStyle = "#f2efe9";
@@ -12769,11 +12900,12 @@ const City = (() => {
     for (const v of [20, 50, 100, 200, 500, 1000, 2000, 5000]) if (v / mpp <= 70) bar = v;
     const bw = (bar / mpp) * dpr;
     c.fillStyle = "rgba(255,255,255,0.85)";
-    c.fillRect(6 * dpr, H - 18 * dpr, bw + 8 * dpr, 14 * dpr);
+    // 左下はつまみがあるので、縮尺はその右に置く
+    c.fillRect(36 * dpr, H - 18 * dpr, bw + 8 * dpr, 14 * dpr);
     c.fillStyle = "#444";
-    c.fillRect(10 * dpr, H - 8 * dpr, bw, 1.5 * dpr);
+    c.fillRect(40 * dpr, H - 8 * dpr, bw, 1.5 * dpr);
     c.font = `${9 * dpr}px sans-serif`;
-    c.fillText(bar >= 1000 ? bar / 1000 + "km" : bar + "m", 10 * dpr, H - 10 * dpr);
+    c.fillText(bar >= 1000 ? bar / 1000 + "km" : bar + "m", 40 * dpr, H - 10 * dpr);
     c.fillStyle = "rgba(255,255,255,0.85)";
     c.fillRect(W - 50 * dpr, H - 13 * dpr, 50 * dpr, 13 * dpr);
     c.fillStyle = "#555";
@@ -13286,11 +13418,12 @@ const City = (() => {
     $("ct-auto").onchange = (e) => sim && (sim.auto = e.target.checked);
     $("ct-x").onchange = (e) => sim && (sim.speedX = +e.target.value);
     $("ct-bgm").onchange = (e) => (e.target.checked ? Bgm.start() : Bgm.stop());
-    $("ct-mini").addEventListener("click", () => $("ct-mapbox").classList.toggle("big"));
-    $("ct-mini").addEventListener("wheel", (e) => (e.preventDefault(), miniZoom(e.deltaY < 0 ? 0.35 : -0.35)), { passive: false });
+    miniPointers();
     $("ct-mz-in").onclick = () => miniZoom(0.6);
     $("ct-mz-out").onclick = () => miniZoom(-0.6);
-    $("ct-mz-all").onclick = () => (miniFit = !miniFit);
+    $("ct-mz-all").onclick = () => ((miniFit = !miniFit), miniRecenter());
+    $("ct-mz-big").onclick = () => ((miniBig = !miniBig), miniApply());
+    $("ct-mz-me").onclick = miniRecenter;
     $("ct-tod").value = timeMode;
     $("ct-tod").onchange = (e) => sim && setTime(e.target.value);
     const gk = $("ct-gkey");
