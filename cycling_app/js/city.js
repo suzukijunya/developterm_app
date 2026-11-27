@@ -11813,11 +11813,14 @@ const City = (() => {
             c.drawImage(bm, tx * tw, ty * th);
           })
         );
+        await unmark(c, cv, cols, rows, tw, th);
         const THREE = T();
         const tex = new THREE.CanvasTexture(cv);
         tex.wrapS = THREE.RepeatWrapping;
-        tex.minFilter = THREE.LinearFilter;
-        tex.generateMipmaps = false;
+        // 縮めて貼る所(遠い壁・浅い角度の道)で、写真の細かい模様が1コマごとにちらつかないように、縮めた絵(ミップマップ)も作る
+        tex.minFilter = THREE.LinearMipmapLinearFilter;
+        tex.generateMipmaps = true;
+        tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
         const [x, z] = project(md.lat, md.lng);
         copy = md.copyright || copy;
         Object.assign(P, { state: "ok", tex, id: md.panoId, x, z, y: H(x, z) + 2.5, hd: ((md.heading || 0) * Math.PI) / 180 });
@@ -11830,13 +11833,100 @@ const City = (() => {
         if (!told) (told = true), ticker("写真の街: 写真を取れません(" + err + ")", "opp");
       }
     }
+    // Google の写真のタイルには、どのタイルにも同じ位置に「© Google」の透かしの文字が入っていることがある。
+    // そのまま貼ると、道や壁に大きな文字が写る。タイルどうしをくらべて、同じ位置にある細い明るい線(文字)を探し、
+    // そこだけ、まわりの色でぬりつぶす。見つからなければ何もしない。
+    // 著作の表示は、画面の隅の表示で別に出している(ここで消すのは、写真の中の文字だけ)
+    async function unmark(c, cv, cols, rows, tw, th) {
+      if (rows < 2) return;
+      const W = cv.width, H = cv.height, N = tw * th;
+      const hit = [new Uint8Array(N), new Uint8Array(N)]; // [上の段, 下の段] それぞれ、何枚のタイルで明るい線があったか
+      const lum = new Float32Array(N), I = new Float32Array((tw + 1) * (th + 1));
+      let tiles = 0;
+      for (let ty = 0; ty < rows; ty++)
+        for (let tx = 0; tx < cols; tx++) {
+          const w = Math.min(tw, W - tx * tw), h = Math.min(th, H - ty * th);
+          if (w < tw || h < th) continue; // 端の切り落としたタイルは数えない
+          const d = c.getImageData(tx * tw, ty * th, tw, th).data;
+          for (let i = 0; i < N; i++) lum[i] = d[i * 4] * 0.3 + d[i * 4 + 1] * 0.59 + d[i * 4 + 2] * 0.11;
+          // まわり5×5の平均を速く出すための、足し合わせの表
+          for (let y = 0; y < th; y++) {
+            let row = 0;
+            for (let x = 0; x < tw; x++) (row += lum[y * tw + x]), (I[(y + 1) * (tw + 1) + x + 1] = I[y * (tw + 1) + x + 1] + row);
+          }
+          const hs = hit[ty ? 1 : 0];
+          for (let y = 4; y < th - 4; y++)
+            for (let x = 4; x < tw - 4; x++) {
+              const m = (I[(y + 3) * (tw + 1) + x + 3] - I[(y - 2) * (tw + 1) + x + 3] - I[(y + 3) * (tw + 1) + x - 2] + I[(y - 2) * (tw + 1) + x - 2]) / 25;
+              if (lum[y * tw + x] - m > 16) hs[y * tw + x]++;
+            }
+          tiles++;
+          await new Promise((r) => setTimeout(r, 0)); // 1枚ずつ休む(走っている絵が止まらないように)
+        }
+      const fc = Math.floor(W / tw); // 1段にある、切り落としの無いタイルの数
+      if (fc < 3 || tiles < fc * 2) return;
+      // 上の段・下の段の両方で、ほとんどのタイル(4枚なら3枚以上)の同じ位置に明るい線がある所 = 透かし。8×8の升目でまとめる
+      const need = fc - 1, G = 8, gw = tw / G, gh = th / G, cell = new Uint8Array(gw * gh);
+      for (let y = 0; y < th; y++)
+        for (let x = 0; x < tw; x++) if (hit[0][y * tw + x] >= need && hit[1][y * tw + x] >= need) cell[((y / G) | 0) * gw + ((x / G) | 0)]++;
+      const on = new Uint8Array(gw * gh);
+      let n = 0;
+      for (let i = 0; i < gw * gh; i++) if (cell[i] >= 6) (on[i] = 1), n++;
+      // 何も無い・広すぎる(模様がたまたまそろった)ときは、透かしではないとみなす
+      if (!n || n > gw * gh * 0.04) return;
+      const mk = new Uint8Array(gw * gh); // まわり1升ぶん広げる
+      for (let y = 0; y < gh; y++)
+        for (let x = 0; x < gw; x++) {
+          if (!on[y * gw + x]) continue;
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -2; dx <= 2; dx++) if (y + dy >= 0 && y + dy < gh && x + dx >= 0 && x + dx < gw) mk[(y + dy) * gw + x + dx] = 1;
+        }
+      for (let ty = 0; ty < rows; ty++)
+        for (let tx = 0; tx < cols; tx++) {
+          const w = Math.min(tw, W - tx * tw), h = Math.min(th, H - ty * th);
+          if (w <= 0 || h <= 0) continue;
+          const im = c.getImageData(tx * tw, ty * th, w, h), d = im.data, M = (x, y) => mk[((y / G) | 0) * gw + ((x / G) | 0)];
+          // 文字の所を、上と下の色をなめらかにつないだ色でぬりつぶす(穴にすると、そこだけ写真が欠けて見える)
+          for (let x = 0; x < w; x++)
+            for (let y = 0; y < h; y++) {
+              if (!M(x, y)) continue;
+              let y1 = y;
+              while (y1 < h && M(x, y1)) y1++;
+              const a = y > 0 ? y - 1 : y1 < h ? y1 : -1, b = y1 < h ? y1 : a;
+              if (a < 0) {
+                for (let yy = y; yy < y1; yy++) d[(yy * w + x) * 4 + 3] = 0; // つなぐ色が無いときだけ透明に
+              } else
+                for (let yy = y; yy < y1; yy++) {
+                  const t = (yy - y + 1) / (y1 - y + 1);
+                  for (let ch = 0; ch < 3; ch++) d[(yy * w + x) * 4 + ch] = d[(a * w + x) * 4 + ch] * (1 - t) + d[(b * w + x) * 4 + ch] * t;
+                }
+              y = y1;
+            }
+          // 縦の筋が目立たないように、ぬった所だけ横に少しぼかす
+          const src = new Uint8ClampedArray(d);
+          for (let y = 0; y < h; y++)
+            for (let x = 0; x < w; x++) {
+              if (!M(x, y)) continue;
+              for (let ch = 0; ch < 3; ch++) {
+                let sum = 0, n = 0;
+                for (let k = -6; k <= 6; k++) if (x + k >= 0 && x + k < w) (sum += src[(y * w + x + k) * 4 + ch]), n++;
+                d[(y * w + x) * 4 + ch] = sum / n;
+              }
+            }
+          c.putImageData(im, tx * tw, ty * th);
+        }
+      wmark = n;
+    }
+    let wmark = 0;
     // 写真を貼るための材質。もとの街をふつうに描いたあと、その上に重ねて描く。
     // 写真を撮った場所から見えない面(建物の裏・かげ)や、遠すぎる面には貼らない(もとの3Dの絵がそのまま見える)
+    // 写真は3枚まで同時に使う(いま使う2枚と、後ろの1枚)。どの枠にどの写真が入っても同じ計算なので、入れかわっても絵は変わらない
+    // 位置はすべて「カメラからの差」で計算する(街の座標は数千mあり、そのままだと細かい差が丸められて、面の向きが1画素ごとにぶれてちらつく)
+    const RES = () => Math.min(renderer.capabilities.maxCubemapSize || 1024, matchMedia("(pointer: coarse)").matches ? 512 : 1024);
     function material() {
       if (mat) return mat;
       const THREE = T();
       const U = (v) => ({ value: v });
-      const VS = `attribute vec4 anc; uniform vec3 uShops[16]; varying vec3 vW;
+      const VS = `attribute vec4 anc; uniform vec3 uShops[16]; uniform vec3 uO; varying vec3 vR;
           void main() {
             vec4 p = vec4(position, 1.0);
             #ifdef USE_INSTANCING
@@ -11845,101 +11935,136 @@ const City = (() => {
             vec4 w = modelMatrix * p;
             // 店を専用の形で建てた敷地の、もとの建物は描かない(ふつうの描き方と同じ決まり)
             if (anc.w > 1.5) for (int si = 0; si < 16; si++) if (uShops[si].z > 0.0 && distance(anc.xz, uShops[si].xy) < uShops[si].z) w.y = -500.0;
-            vW = w.xyz;
+            vR = w.xyz - uO;
             gl_Position = projectionMatrix * viewMatrix * w;
           }`;
       mat = new THREE.ShaderMaterial({
         extensions: { derivatives: true },
-        side: THREE.DoubleSide, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2,
-        uniforms: { tA: U(null), tB: U(null), dA: U(null), dB: U(null), cA: U(new THREE.Vector4()), cB: U(new THREE.Vector4()), mixK: U(0), has: U(new THREE.Vector4(0, 0, 0, 0)), uShops: popU.uShops },
+        // depthWrite: 重なった面(道と、その下の地面など)の両方に写真を重ねると、そこだけ2度ぬりになって濃さがちらつく。
+        // いちばん手前の面にだけ貼るように、貼った所の深さを書く(この後に描く物は無い)
+        side: THREE.DoubleSide, transparent: true, depthWrite: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2,
+        uniforms: {
+          t0: U(null), t1: U(null), t2: U(null), d0: U(null), d1: U(null), d2: U(null),
+          c0: U(new THREE.Vector4()), c1: U(new THREE.Vector4()), c2: U(new THREE.Vector4()),
+          q0: U(new THREE.Vector4()), q1: U(new THREE.Vector4()), q2: U(new THREE.Vector4()),
+          uO: U(new THREE.Vector3()), uEye: U(new THREE.Vector3()), uFade: U(0), uTex: U(256), uShops: popU.uShops,
+        },
         vertexShader: VS,
         // その点が、写真を撮った場所から見てどの向きにあるかで、写真のどこを貼るかを決める(北=-z・東=+x)
-        fragmentShader: `uniform sampler2D tA; uniform sampler2D tB; uniform samplerCube dA; uniform samplerCube dB; uniform vec4 cA; uniform vec4 cB; uniform float mixK; uniform vec4 has;
-          varying vec3 vW;
-          vec4 pano(sampler2D t, samplerCube dm, vec4 c, float hasD) {
-            vec3 v = vW - c.xyz;
+        // c: 撮った場所(カメラからの差)と向き。q: x=いまの重み、y=控えとして使える度合い(読み込み・入れかわりで、なめらかに増減)、w=使うか
+        fragmentShader: `uniform sampler2D t0; uniform sampler2D t1; uniform sampler2D t2; uniform samplerCube d0; uniform samplerCube d1; uniform samplerCube d2;
+          uniform vec4 c0; uniform vec4 c1; uniform vec4 c2; uniform vec4 q0; uniform vec4 q1; uniform vec4 q2;
+          uniform vec3 uEye; uniform float uFade; uniform float uTex;
+          varying vec3 vR;
+          vec3 nn;
+          // 距離の絵の1点: 撮った場所から、この向きでいちばん手前にある面までの距離とくらべる(0〜1でなめらかに)
+          float tap(samplerCube dm, vec3 dir, float dist, float slack) {
+            vec4 e = textureCube(dm, dir);
+            float hitD = (e.r + e.g / 255.0) * 800.0;
+            return clamp((hitD + slack - dist) / 1.4, 0.0, 1.0);
+          }
+          float seen(samplerCube dm, vec3 v, float dist, vec3 d, float gz) {
+            float px = 2.0 / uTex; // 距離の絵の1目の角度(おおよそ)
+            // 撮った場所から浅い角度で見る面ほど、となりの目との距離の差が大きいので、許すずれを広げる
+            float slack = 2.2 + dist * (0.04 + px * 1.5 / max(gz, 0.15));
+            // 面から、撮った場所のほうへ少し浮かせた所で調べる(自分の面で自分をかくしてしまう、しま模様を消す)
+            vec3 n = dot(nn, d) > 0.0 ? -nn : nn;
+            vec3 dd = normalize(v + n * dist * px);
+            vec3 a1 = normalize(cross(dd, abs(dd.y) < 0.9 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0))) * px * 0.9;
+            vec3 a2 = cross(dd, a1);
+            // 5か所で調べて平均する。目の境目が段々(ギザギザ)にならず、カメラが少し動いても、ぱたぱた切りかわらない
+            return (tap(dm, dd, dist, slack) + tap(dm, dd + a1 + a2, dist, slack) + tap(dm, dd + a1 - a2, dist, slack) + tap(dm, dd - a1 + a2, dist, slack) + tap(dm, dd - a1 - a2, dist, slack)) * 0.2;
+          }
+          vec4 pano(sampler2D t, samplerCube dm, vec4 c, vec4 q, out float al) {
+            vec3 v = vR - c.xyz;
             float dist = length(v);
             vec3 d = v / dist;
-            float yaw = atan(d.x, -d.z) - c.w;
-            vec2 uv = vec2(yaw / 6.2831853 + 0.5, 0.5 + asin(clamp(d.y, -1.0, 1.0)) / 3.14159265);
-            // 見えているか: 撮った場所から、この向きでいちばん手前にある面までの距離とくらべる
-            float vis = 1.0;
-            if (hasD > 0.5) {
-              vec4 e = textureCube(dm, v);
-              float hitD = (e.r + e.g / 255.0) * 800.0;
-              vis = clamp((hitD * 1.04 + 2.2 - dist) / 1.4, 0.0, 1.0);
-            }
-            vec3 col = texture2D(t, uv).rgb;
-            // 面を斜めから見る所は、写真が引きのばされて崩れる。面の向きを調べて、斜めすぎる所はもとの絵に戻す
-            vec3 nn = normalize(cross(dFdx(vW), dFdy(vW)));
+            float u = (atan(d.x, -d.z) - c.w) / 6.2831853 + 0.5;
+            // 写真の左右のつなぎ目で、縮めた絵(ミップマップ)の選び方が狂って線が出ないように、つなぎ目の位置をずらした2通りから選ぶ
+            float ua = fract(u), ub = fract(u + 0.5) - 0.5;
+            vec2 uv = vec2(fwidth(ua) <= fwidth(ub) + 1e-6 ? ua : ub, 0.5 + asin(clamp(d.y, -1.0, 1.0)) / 3.14159265);
+            vec4 tx = texture2D(t, uv);
+            // 透かしの文字を消した所は透明(a=0)。色は、まわりとまぜて薄まったぶんを戻す
+            float vis = smoothstep(0.5, 0.95, tx.a);
+            vec3 col = tx.rgb / max(tx.a, 0.02);
             float gz = abs(dot(nn, d));
+            vis *= seen(dm, v, dist, d, gz);
             // いま見ている向きと、写真を撮った向きの近さ(cos)。向きが近いほど、形が実物と少しずれていても崩れが目立たない。
             // 向きが大きく違う所では、形に無い物(止まっている車・人・植え込み・柱)が地面や壁に長く引きのばされて見えるので、もとの絵に戻す
-            float par = dot(normalize(vW - cameraPosition), d);
-            if (abs(nn.y) > 0.7) {
-              // 地面: 撮った場所の近く(約16mまで)だけ。遠い所・浅い角度の所は、写真の1点が地面の長い帯になって流れて見える
-              vis *= smoothstep(0.10, 0.18, gz) * (1.0 - smoothstep(13.0, 21.0, dist)) * smoothstep(0.70, 0.90, par);
-            } else {
-              vis *= clamp((gz - 0.22) / 0.22, 0.0, 1.0) * clamp((60.0 - dist) / 22.0, 0.0, 1.0) * smoothstep(-0.1, 0.35, par);
-              // 壁なのに写真では空が写っている所(実物より形が高い・ずれている)は貼らない
-              float lum = dot(col, vec3(0.3, 0.59, 0.11));
-              float sky = step(0.03, d.y) * smoothstep(0.62, 0.8, lum) * step(col.r, col.b + 0.03);
-              vis *= 1.0 - sky;
-            }
-            return vec4(col, vis);
+            // 見る位置は、カメラの小さなゆれを除いた位置(uEye)。ゆれで境目が行ったり来たりしない
+            float par = dot(normalize(vR - uEye), d);
+            // 地面: 撮った場所の近く(約16mまで)だけ。遠い所・浅い角度の所は、写真の1点が地面の長い帯になって流れて見える。
+            // 撮った場所の真下(撮った車・ぼかし)も貼らない
+            float vg = smoothstep(0.10, 0.18, gz) * (1.0 - smoothstep(13.0, 21.0, dist)) * smoothstep(0.70, 0.90, par) * (1.0 - smoothstep(0.80, 0.92, -d.y));
+            // 壁: 斜めから見る所は写真が引きのばされて崩れるので、もとの絵に戻す
+            float vw = clamp((gz - 0.22) / 0.22, 0.0, 1.0) * clamp((60.0 - dist) / 22.0, 0.0, 1.0) * smoothstep(-0.1, 0.35, par);
+            // 壁なのに写真では空が写っている所(実物より形が高い・ずれている)は貼らない
+            float lum = dot(col, vec3(0.3, 0.59, 0.11));
+            vw *= 1.0 - smoothstep(0.01, 0.05, d.y) * smoothstep(0.62, 0.8, lum) * smoothstep(-0.03, 0.03, col.b + 0.03 - col.r);
+            // 地面か壁かは、面の向きでなめらかに分ける
+            vis *= mix(vw, vg, smoothstep(0.62, 0.78, abs(nn.y)));
+            al = vis * clamp(max(q.x, q.y), 0.0, 1.0);
+            return vec4(col, vis * (q.x + 0.02 * q.y));
           }
           void main() {
-            vec4 a = has.x > 0.5 ? pano(tA, dA, cA, has.z) : vec4(0.0);
-            vec4 b = has.y > 0.5 ? pano(tB, dB, cB, has.w) : vec4(0.0);
-            // 2枚を半々に混ぜると二重にぶれて見えるので、切り替えは短い区間で一気に
-            float mk = smoothstep(0.35, 0.65, mixK);
-            float wa = a.a * (1.0 - mk), wb = b.a * mk;
-            // 片方しか使えない所は、使えるほうだけで
-            if (wa + wb < 0.02) { wa = a.a; wb = b.a; }
-            float sum = wa + wb;
-            if (sum < 0.02) discard;
-            gl_FragColor = vec4((a.rgb * wa + b.rgb * wb) / sum, min(1.0, max(a.a, b.a)));
+            nn = normalize(cross(dFdx(vR), dFdy(vR)));
+            float a0 = 0.0, a1 = 0.0, a2 = 0.0;
+            vec4 p0 = q0.w > 0.5 ? pano(t0, d0, c0, q0, a0) : vec4(0.0);
+            vec4 p1 = q1.w > 0.5 ? pano(t1, d1, c1, q1, a1) : vec4(0.0);
+            vec4 p2 = q2.w > 0.5 ? pano(t2, d2, c2, q2, a2) : vec4(0.0);
+            // 色は重みで混ぜる。重みの小さい写真(控え)は、ほかの写真が見えない所だけを、うすく埋める
+            float sw = p0.a + p1.a + p2.a;
+            float al = max(a0, max(a1, a2)) * uFade;
+            if (sw < 1e-5 || al < 0.004) discard;
+            gl_FragColor = vec4((p0.rgb * p0.a + p1.rgb * p1.a + p2.rgb * p2.a) / sw, al);
           }`,
       });
       // 距離を測るための材質(写真を撮った場所から、まわりの面までの距離を6方向ぶん撮る)
       distMat = new THREE.ShaderMaterial({
         side: THREE.DoubleSide,
-        uniforms: { cP: U(new THREE.Vector3()), uShops: popU.uShops },
+        uniforms: { uO: U(new THREE.Vector3()), uShops: popU.uShops },
         vertexShader: VS,
-        fragmentShader: `uniform vec3 cP; varying vec3 vW;
+        fragmentShader: `varying vec3 vR;
           void main() {
-            float v = clamp(length(vW - cP) / 800.0, 0.0, 0.9999) * 255.0;
+            float v = clamp(length(vR) / 800.0, 0.0, 0.9999) * 255.0;
             gl_FragColor = vec4(floor(v) / 255.0, fract(v), 0.0, 1.0);
           }`,
       });
       return mat;
     }
-    let distMat = null, cubeT = 0, cubeN = 0;
-    function depthOf(P) {
+    let distMat = null, cubeT = 0, sig = 0;
+    // 距離の絵(6面)を撮る。1コマに1面ずつ(6面を一度に撮ると、そのコマだけ重くなって、かくっと止まって見える)。
+    // 6面そろったら使いはじめる(そろうまでは、その写真は使わない)
+    function depthStep(P) {
       const THREE = T();
       if (!P.rt) {
-        P.rt = new THREE.WebGLCubeRenderTarget(256, { generateMipmaps: false, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter });
+        const R = RES();
+        P.rt = new THREE.WebGLCubeRenderTarget(R, { generateMipmaps: false, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter });
         P.cam = new THREE.CubeCamera(0.5, 800, P.rt);
         for (const ch of P.cam.children) ch.layers.set(2);
+        P.res = R;
       }
+      if (!P.job) (P.job = 0), (P.jobSig = sig);
       P.cam.position.set(P.x, P.y, P.z);
       P.cam.updateMatrixWorld(true);
-      distMat.uniforms.cP.value.set(P.x, P.y, P.z);
-      const bg = scene.background, fog = scene.fog, tm = renderer.toneMapping, sm = renderer.shadowMap.autoUpdate, cc = renderer.getClearColor(new THREE.Color()), ca = renderer.getClearAlpha();
+      distMat.uniforms.uO.value.set(P.x, P.y, P.z);
+      const bg = scene.background, fog = scene.fog, tm = renderer.toneMapping, sm = renderer.shadowMap.autoUpdate, cc = renderer.getClearColor(new THREE.Color()), ca = renderer.getClearAlpha(), rt0 = renderer.getRenderTarget();
       scene.background = null;
       scene.fog = null;
       scene.overrideMaterial = distMat;
       renderer.toneMapping = THREE.NoToneMapping;
       renderer.shadowMap.autoUpdate = false;
       renderer.setClearColor(0xffff00, 1); // 何もない向き = いちばん遠い
-      P.cam.update(renderer, scene);
+      renderer.setRenderTarget(P.rt, P.job);
+      renderer.render(scene, P.cam.children[P.job]);
+      renderer.setRenderTarget(rt0);
       renderer.setClearColor(cc, ca);
       renderer.shadowMap.autoUpdate = sm;
       renderer.toneMapping = tm;
       scene.overrideMaterial = null;
       scene.background = bg;
       scene.fog = fog;
-      P.depthAt = performance.now();
+      if (++P.job >= 6) (P.job = 0), (P.depthAt = performance.now()), (P.sig = P.jobSig);
     }
     // 細い物・小さい物か(信号機の柱・腕・灯器、標識、柵など)。写真では、その物の後ろの景色(木・空・建物)が
     // 写っていることが多く、貼ると宙に浮いた写真の切れはしに見える。形の大きさ(世界での箱)で決めて、覚えておく
@@ -11961,6 +12086,7 @@ const City = (() => {
     // 写真を貼る物(動かない建物・道・地面)に2番の印を付ける
     function mark() {
       const dyn = new Set([me.g, rival.g, ...Traffic.objs(), ...Mons.objs()]);
+      let h = 0; // 写真を貼る物の組の印(変わったときだけ、距離の絵を撮り直す)
       const walk = (o) => {
         if (!o || dyn.has(o)) return;
         if (o.isMesh && !o.isInstancedMesh && !o.isSkinnedMesh && o.material && !o.material.transparent && o.material.depthTest !== false && !o.userData.blob && !o.userData.sign) {
@@ -11968,13 +12094,20 @@ const City = (() => {
           // 材質が組(配列)のメッシュもある。userData の無い材質で止まらないように調べる
           const holed = Array.isArray(o.material) ? o.material.some((x) => x && x.userData && x.userData.holed) : o.material.userData && o.material.userData.holed;
           if ((holed && Xing.near(sim.along)) || noPv(o.material) || thin(o)) o.layers.disable(2);
-          else o.layers.enable(2);
+          else o.layers.enable(2), (h = (h * 31 + o.id) | 0);
         }
         for (const ch of o.children) walk(ch);
       };
       walk(scene);
+      sig = h;
     }
     // 写真の街として描く。描けたら true(ふつうの描き方は、この中で済ませる)
+    // 写真の入れかわりは、すべて時間をかけてなめらかに(ぱっと切りかわると、その瞬間に建物や道の絵が跳んで、ちらついて見える)
+    let fadeAll = 0, eye = null;
+    const ss = (a, b, x) => {
+      const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+      return t * t * (3 - 2 * t);
+    };
     function render(p, s, real) {
       if (!on) return false;
       const i0 = Math.floor(s.along / STEP);
@@ -11997,28 +12130,74 @@ const City = (() => {
           if (P.rt) P.rt.dispose();
           panos.delete(i);
         }
-      const A = panos.get(i0), B = panos.get(i0 + 1), okA = A && A.state === "ok", okB = B && B.state === "ok";
-      if (!okA && !okB) return false;
-      // 掘り下げた道(アンダーパス)では写真を貼らない。写真は地上の高さで撮られていることが多く、
-      // 壁や天井に地上の景色が引き伸ばされて、別の世界のように見えてしまう
-      if (Xing.list().some((d) => s.along > d.s0 - 40 && s.along < d.s1 + 40)) return false; // まだ1枚もない間は、ふつうの3Dの街
       const m = material(), u = m.uniforms;
       if ((walkT -= real) <= 0) (walkT = 0.7), mark();
-      // 距離の絵は、街が読み込まれるたびに変わるので、2秒おきに撮り直す(1コマに1枚ずつ)
-      if ((cubeT -= real) <= 0) {
+      // 距離の絵: まだ無い写真(近い順)を先に。街が読み込まれて形が変わったときだけ、2秒以上たってから撮り直す
+      // (形が変わっていないのに撮り直すと、境目が少し動いてちらつく)
+      let job = null;
+      for (const P of panos.values()) if (P.job) job = P; // 撮りかけ
+      if (!job)
+        for (const i of [i0, i0 + 1, i0 + 2, i0 - 1]) {
+          const P = panos.get(i);
+          if (P && P.state === "ok" && !P.depthAt) {
+            job = P;
+            break;
+          }
+        }
+      if (!job && (cubeT -= real) <= 0) {
         cubeT = 0.25;
-        const list = [A, B].filter((P) => P && P.state === "ok").sort((x, y) => (x.depthAt || 0) - (y.depthAt || 0));
-        if (list[0] && (!list[0].depthAt || performance.now() - list[0].depthAt > 2000)) depthOf(list[0]);
+        for (const i of [i0, i0 + 1, i0 + 2, i0 - 1]) {
+          const P = panos.get(i);
+          if (P && P.depthAt && P.sig !== sig && performance.now() - P.depthAt > 2000) {
+            job = P;
+            break;
+          }
+        }
       }
+      if (job) depthStep(job);
+      // それぞれの写真の重み。使える(写真と距離の絵がそろった)写真は、0.5秒かけて出てくる
+      const kt = 1 - Math.exp(-real / 0.15), rd = (P) => (P && P.state === "ok" && P.depthAt ? P.fade || 0 : 0);
+      for (const P of panos.values()) P.fade = P.state === "ok" && P.depthAt ? Math.min(1, (P.fade || 0) + real / 0.5) : 0;
+      // いま使う2枚(A=手前・B=先)は、進み具合で入れかえる。2枚を半々に混ぜると二重にぶれて見えるので、短い区間で一気に
+      const f = s.along / STEP - i0, k = ss(0.25, 0.75, f), mk = ss(0.35, 0.65, k);
+      const A = panos.get(i0), B = panos.get(i0 + 1), C = panos.get(i0 - 1), rA = rd(A), rB = rd(B), rC = rd(C);
+      // 片方がまだ使えなければ、使えるほうに。どちらもまだなら、後ろの写真(C)を使い続ける(写真が消えて、もとの絵に戻らないように)
+      const tA = (1 - mk) * rA + mk * (1 - rB) * rA, tB = mk * rB + (1 - mk) * (1 - rA) * rB, tC = Math.max(0, 1 - tA - tB) * rC;
+      for (const [i, P] of panos) {
+        const t = P === A ? tA : P === B ? tB : P === C && i === i0 - 1 ? tC : 0;
+        P.w = (P.w || 0) + (t - (P.w || 0)) * kt;
+        // 控え: その写真が見える所で、ほかの写真が見えない所を埋める。前後の写真の範囲を、道のりでなめらかに増減する
+        const rel = s.along / STEP - i;
+        P.lk = rd(P) * ss(-1, -0.5, rel) * (1 - ss(1.3, 1.9, rel));
+      }
+      const use = [...panos.values()].filter((P) => P.state === "ok" && P.depthAt && (P.w > 0.002 || P.lk > 0.002)).sort((x, y) => y.w + y.lk - (x.w + x.lk)).slice(0, 3);
+      // 掘り下げた道(アンダーパス)では写真を貼らない。写真は地上の高さで撮られていることが多く、
+      // 壁や天井に地上の景色が引き伸ばされて、別の世界のように見えてしまう
+      const want = use.length && !Xing.list().some((d) => s.along > d.s0 - 40 && s.along < d.s1 + 40) ? 1 : 0;
+      fadeAll += (want - fadeAll) * (1 - Math.exp(-real / 0.25));
+      if (!use.length || (!want && fadeAll < 0.003)) return (fadeAll = want ? fadeAll : 0), false; // まだ1枚もない間は、ふつうの3Dの街
       // 1) ふつうに描く(もとの3Dの街と、動く物)
       renderer.render(scene, camera);
       // 2) その上に、写真を重ねる
-      if (okA) (u.tA.value = A.tex), u.cA.value.set(A.x, A.y, A.z, A.hd), (u.dA.value = A.rt ? A.rt.texture : null);
-      if (okB) (u.tB.value = B.tex), u.cB.value.set(B.x, B.y, B.z, B.hd), (u.dB.value = B.rt ? B.rt.texture : null);
-      u.has.value.set(okA ? 1 : 0, okB ? 1 : 0, okA && A.rt ? 1 : 0, okB && B.rt ? 1 : 0);
-      // 2枚の写真の間を、進み具合でなめらかに入れ替える
-      const f = (s.along - i0 * STEP) / STEP, k = Math.min(1, Math.max(0, (f - 0.25) / 0.5));
-      u.mixK.value = okB ? (okA ? k * k * (3 - 2 * k) : 1) : 0;
+      const cp = camera.position;
+      // 見る向きを調べる位置は、カメラの小さなゆれを除く(なめらかに追いかける)
+      if (!eye || eye.distanceTo(cp) > 8) eye = cp.clone();
+      else eye.lerp(cp, 1 - Math.exp(-real / 0.3));
+      u.uO.value.copy(cp);
+      u.uEye.value.copy(eye).sub(cp);
+      u.uFade.value = Math.min(1, fadeAll);
+      u.uTex.value = (use[0] && use[0].res) || RES();
+      for (let j = 0; j < 3; j++) {
+        const P = use[j], q = u["q" + j].value;
+        if (!P) {
+          q.set(0, 0, 0, 0);
+          continue;
+        }
+        u["t" + j].value = P.tex;
+        u["d" + j].value = P.rt.texture;
+        u["c" + j].value.set(P.x - cp.x, P.y - cp.y, P.z - cp.z, P.hd);
+        q.set(P.w, P.lk, 1, 1);
+      }
       const bg = scene.background, fog = scene.fog;
       scene.background = null;
       scene.fog = null;
@@ -12044,6 +12223,7 @@ const City = (() => {
       info: () => `写真の街: 今月のタイル ${usage().n}/${CAP_M}・持っている写真 ${[...panos.values()].filter((x) => x.state === "ok").length}${err ? "・" + err : ""}`,
       credit: () => copy,
       _panos: () => panos,
+      _wm: () => wmark,
     };
   })();
   const TIMES = {
