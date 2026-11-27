@@ -2676,7 +2676,8 @@ const City = (() => {
           quad([p[0], y0, p[1]], [q[0], y0, q[1]], [q[0], y1, q[1]], [p[0], y1, p[1]], dark, col);
         }
         quad([c[0][0], y1, c[0][1]], [c[1][0], y1, c[1][1]], [c[2][0], y1, c[2][1]], [c[3][0], y1, c[3][1]], col);
-        quad([c[0][0], y0, c[0][1]], [c[1][0], y0, c[1][1]], [c[2][0], y0, c[2][1]], [c[3][0], y0, c[3][1]], dark);
+        // 下の面は下向きに(上の面と同じ順だと上を向いて、下から見えない: アンダーパスの天井の照明が細い線にしか見えなかった)
+        quad([c[0][0], y0, c[0][1]], [c[3][0], y0, c[3][1]], [c[2][0], y0, c[2][1]], [c[1][0], y0, c[1][1]], dark);
       };
       const mesh = () => {
         if (!P.length) return null;
@@ -2875,7 +2876,9 @@ const City = (() => {
             if (step % 3 === 1)
               for (const [q, sd] of [[l, 1], [r, -1]]) {
                 const x = q.t[0] - p.tz * sd * 0.6, z = q.t[2] + p.tx * sd * 0.6;
-                LT.box(x, z, p.tx, p.tz, 0.6, 0.09, yC - 0.18, yC - 0.06, LAMP_ON);
+                // 梁(深さ 0.7m)の下の高さに付ける(天井のすぐ下だと、走る高さからは梁にかくれて見えない)
+                LT.box(x, z, p.tx, p.tz, 0.6, 0.09, yC - 0.86, yC - 0.74, LAMP_ON);
+                for (const e of [-0.45, 0.45]) B.box(x + p.tx * e, z + p.tz * e, p.tx, p.tz, 0.03, 0.03, yC - 0.74, yC, BEAM); // つり金具
               }
           }
           if (prev.lid && S.lid) {
@@ -6117,7 +6120,7 @@ const City = (() => {
   const Land = (() => {
     const MS = 1600, MP = 2048; // 印の絵: 1600m 四方を 2048 点(1点 約0.8m)
     const U = { uLandM: { value: null }, uLandC: { value: null } };
-    let cv = null, cx2 = null, tex = null, ctr = null, dirty = true, M = null;
+    let cv = null, cx2 = null, tex = null, ctr = null, dirty = true, M = null, nightK = -1;
     function maskTex() {
       if (tex) return tex;
       const THREE = T();
@@ -6210,6 +6213,23 @@ const City = (() => {
       if (!tex) return;
       if (dirty || !ctr || Math.hypot(p.x - ctr[0], p.z - ctr[1]) > 250) redraw(p.x, p.z);
       U.uLandC.value.w = G3.on() ? 0 : 1;
+      // 水面とレールの映り込み: まわりを撮った絵がまだ無い間は、昼の空のかんたんな絵が映る。
+      // 夕方・夜はそれが明るすぎて光って見えるので、時間帯に合わせて弱める(撮った絵なら、夜の街がそのまま映る)
+      if (M) {
+        const live = Refl.used(), k = timeMode === "night" ? (live ? 0.9 : 0.1) : timeMode === "dusk" ? (live ? 1 : 0.38) : 1;
+        M.water.envMapIntensity = 0.7 * k;
+        M.rail.envMapIntensity = k;
+        // 夜・夕方の地面(芝生・土・舗装・砂利・踏切の板): 道路(光を受けない材質)と比べて暗くなりすぎ、真っ黒に見えるので、
+        // 月明かりのような青みの光を少し足す(模様の絵に掛けるので、のっぺりしない)
+        const nk = timeMode === "night" ? 1 : timeMode === "dusk" ? 0.3 : 0;
+        if (nk !== nightK) {
+          nightK = nk;
+          for (const n of ["lawn", "dirt", "path", "asph", "line", "ballast", "deck"]) {
+            const f = nk * (n === "line" ? 0.12 : n === "ballast" ? 0.45 : 1); // 白線は絵が無いので弱く。砂利は明るい絵なので弱く
+            M[n].emissive.setRGB(0.3 * f, 0.33 * f, 0.45 * f);
+          }
+        }
+      }
     }
     // 区画ができた・消えた: 次のコマで印を描き直す
     const touch = () => (dirty = true);
@@ -6232,19 +6252,19 @@ const City = (() => {
       // 芝生: 細かい葉(短い線)を何層にも。明るい葉・暗いすき間・枯れた葉を少し
       const grass = cvs(512, (c, S) => {
         const r = rnd(11);
-        c.fillStyle = "#4d6431";
+        c.fillStyle = "#546238";
         c.fillRect(0, 0, S, S);
         for (let i = 0; i < 26000; i++) {
           const x = r() * S, y = r() * S, l = 3 + r() * 7, a = -1.57 + (r() - 0.5) * 1.3, dry = r() < 0.07;
           const v = 0.55 + r() * 0.75;
-          c.strokeStyle = dry ? `rgba(${150 * v},${140 * v},${85 * v},0.8)` : `rgba(${70 * v},${108 * v},${42 * v},0.85)`;
+          c.strokeStyle = dry ? `rgba(${150 * v},${140 * v},${92 * v},0.8)` : `rgba(${74 * v},${102 * v},${50 * v},0.85)`;
           c.lineWidth = 0.8 + r() * 0.9;
           c.beginPath();
           c.moveTo(x, y);
           c.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l);
           c.stroke();
         }
-        for (let i = 0; i < 1600; i++) ((c.fillStyle = `rgba(20,28,12,${0.25 + r() * 0.3})`), c.fillRect(r() * S, r() * S, 1.5, 1.5));
+        for (let i = 0; i < 1600; i++) ((c.fillStyle = `rgba(24,28,16,${0.25 + r() * 0.3})`), c.fillRect(r() * S, r() * S, 1.5, 1.5));
       });
       // 土のグラウンド: 細かい砂の粒と、小石・足あとのむら
       const dirt = cvs(512, (c, S) => {
@@ -6375,6 +6395,95 @@ const City = (() => {
           c.fillRect(x - rr, y - rr, rr * 2, rr * 2);
         }
       });
+      // 踏切の敷板: 濃い灰色のゴムに、すべり止めの粒と継ぎ目。レールの頭(鋼)と、内側のみぞ(黒)
+      const xdeck = cvs(512, (c, S) => {
+        const r = rnd(61), U = (o) => ((o + 1.35) / 2.7) * S;
+        c.fillStyle = "#3b3c3f";
+        c.fillRect(0, 0, S, S);
+        for (let i = 0; i < 30000; i++) {
+          const v = 40 + r() * 40;
+          c.fillStyle = `rgba(${v},${v},${v + 3},0.5)`;
+          c.fillRect(r() * S, r() * S, 1.5, 1.5);
+        }
+        // すべり止め(小さな四角の粒を並べる)
+        c.fillStyle = "rgba(90,91,95,0.55)";
+        for (let y = 6; y < S; y += 18) for (let x = (y / 18) % 2 ? 4 : 13; x < S; x += 18) c.fillRect(x, y, 7, 5);
+        // 車輪の通る所は、すれて少し明るい
+        for (const o of [-1.0, -0.15, 0.15, 1.0]) {
+          const g = c.createLinearGradient(U(o - 0.25), 0, U(o + 0.25), 0);
+          g.addColorStop(0, "rgba(120,118,112,0)");
+          g.addColorStop(0.5, "rgba(120,118,112,0.18)");
+          g.addColorStop(1, "rgba(120,118,112,0)");
+          c.fillStyle = g;
+          c.fillRect(U(o - 0.25), 0, U(o + 0.25) - U(o - 0.25), S);
+        }
+        // 板の継ぎ目(長さ 1m ごと・中央)と、外のふちの鋼の押さえ
+        c.fillStyle = "#1e1f21";
+        c.fillRect(0, 0, S, 3);
+        c.fillRect(U(0) - 1.5, 0, 3, S);
+        c.fillStyle = "#6d6c68";
+        c.fillRect(0, 0, U(-1.3), S);
+        c.fillRect(U(1.3), 0, S - U(1.3), S);
+        for (const sd of [-1, 1]) {
+          const g = sd * 0.5335;
+          // みぞ(車輪のつばが通る所): レールの内側
+          c.fillStyle = "#0d0d0e";
+          c.fillRect(U(sd > 0 ? g - 0.1025 : g + 0.0325), 0, U(0.07) - U(0), S);
+          // レールの頭(車輪で磨かれて、まん中が明るい)
+          const x0 = U(g - 0.0325), x1 = U(g + 0.0325), gg = c.createLinearGradient(x0, 0, x1, 0);
+          gg.addColorStop(0, "#55524d");
+          gg.addColorStop(0.3, "#b9b5ad");
+          gg.addColorStop(0.7, "#c4c0b8");
+          gg.addColorStop(1, "#55524d");
+          c.fillStyle = gg;
+          c.fillRect(x0, 0, x1 - x0, S);
+          // 外側のすき間
+          c.fillStyle = "#18181a";
+          c.fillRect(sd > 0 ? x1 : x0 - 3, 0, 3, S);
+        }
+      });
+      // 警報機の柱: 上は明るい灰色、下 1.6m は黄と黒の斜めのしま(u は柱のまわり、v は高さ。上が v=1)
+      const xpole = cvs(64, (c, S) => {
+        c.fillStyle = "#c9c9c4";
+        c.fillRect(0, 0, S, S * 0.52);
+        c.fillStyle = "#e7b416";
+        c.fillRect(0, S * 0.52, S, S * 0.48);
+        c.fillStyle = "#141414";
+        c.save();
+        c.beginPath();
+        c.rect(0, S * 0.52, S, S * 0.48);
+        c.clip();
+        for (let k = -2; k < 6; k++) {
+          c.beginPath();
+          c.moveTo(0, S * 0.52 + k * 8);
+          c.lineTo(S, S * 0.52 + k * 8 - 10);
+          c.lineTo(S, S * 0.52 + k * 8 - 6);
+          c.lineTo(0, S * 0.52 + k * 8 + 4);
+          c.fill();
+        }
+        c.restore();
+      });
+      // ×の板: 黄色の地に、黒の斜めのしま
+      const xboard = cvs(128, (c, S) => {
+        c.fillStyle = "#e9b512";
+        c.fillRect(0, 0, S, S);
+        c.fillStyle = "#121212";
+        for (let k = -1; k < 9; k++) {
+          c.beginPath();
+          c.moveTo(k * 16, 0);
+          c.lineTo(k * 16 + 8, 0);
+          c.lineTo(k * 16 + 8 + S * 0.25, S);
+          c.lineTo(k * 16 + S * 0.25, S);
+          c.fill();
+        }
+      });
+      // 遮断かん: 黄と黒の帯(長さ 4.4m に 11 本)
+      const xarm = cvs(64, (c, S) => {
+        for (let k = 0; k < 11; k++) {
+          c.fillStyle = k % 2 ? "#141414" : "#ecb817";
+          c.fillRect(0, (k * S) / 11, S, S / 11 + 1);
+        }
+      });
       const L = (o) => new THREE.MeshLambertMaterial(o);
       // 水面: 少し濁った緑灰色。空とまわりが映る(つるつる)。ゆっくり動くさざ波で、面の向きを揺らす
       const water = new THREE.MeshStandardMaterial({ color: 0x121a12, roughness: 0.08, metalness: 0.05, envMapIntensity: 0.7 });
@@ -6438,7 +6547,17 @@ const City = (() => {
             false
           ),
         }),
+        // 踏切の敷板(ゴム)。幅 2.7m を u、長さ 1m を v に。レールの頭とみぞも絵に描く(路面と同じ高さにして、段を作らない)
+        deck: L({ map: xdeck, color: 0x6e6e6e, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -40 }),
+        // 警報機の柱(下が黄と黒のしま)・×の板・遮断かん・黒い箱・赤い灯
+        xpole: L({ map: xpole, color: 0x707070 }),
+        xboard: L({ map: xboard, color: 0x6a6a6a, side: THREE.DoubleSide }),
+        xarm: L({ map: xarm, color: 0x707070 }),
+        xdark: L({ color: 0x0f0f10, side: THREE.DoubleSide }),
+        xlens: L({ color: 0x380a08 }),
       };
+      // 夜の明るさを足すための光(色は update() が時間帯で決める)は、模様の絵に掛ける
+      for (const k of ["lawn", "dirt", "path", "asph", "ballast", "deck"]) M[k].emissiveMap = M[k].map;
       for (const k in M) clipMat(M[k]);
       return M;
     }
@@ -6885,7 +7004,8 @@ const City = (() => {
       const lawnCol = (x, z) => {
         const a = vnoise(x, z, 14), b = vnoise(x, z, 4.5, 1), dry = vnoise(x, z, 37, 2);
         const v = 0.78 + a * 0.3 + b * 0.14, d = Math.max(0, dry - 0.55) * 1.4;
-        return [v * (1.14 + d * 0.35), v * (0.94 + d * 0.08), v * (1.08 - d * 0.35)]; // 緑を少しおさえる
+        // 東京の公園の芝(少し黄みがかった、くすんだ緑)。この画面の強い光でも、あざやかになりすぎないように青を足して緑をおさえる
+        return [v * (1.4 + d * 0.45), v * (1.15 + d * 0.1), v * (1.8 - d * 0.6)];
       };
       const woodCol = (x, z) => {
         const v = 0.55 + vnoise(x, z, 6) * 0.25;
@@ -7118,7 +7238,7 @@ const City = (() => {
       }
       await rest();
 
-      // ===== 地上の線路: 砂利・まくら木・レール・架線柱と架線・線路わきの柵 =====
+      // ===== 地上の線路: 砂利・まくら木・レール・架線柱と架線・線路わきの柵・踏切 =====
       {
         const tracks = [], ridx = segIndex();
         for (let ri = 0; ri < data.r.length; ri++) {
@@ -7133,59 +7253,211 @@ const City = (() => {
         const stations = [];
         for (const [, cls, sub, la, lo] of data.poi || []) if (cls === "railway" && /station|halt/.test(sub)) stations.push(project(la, lo));
         const nearSt = (x, z) => stations.some((p) => Math.hypot(p[0] - x, p[1] - z) < 170);
-        const bal = mk(), rl = mk(), wire = mk(), fen = mk(), sleepers = [], masts = [], arms = [], fposts2 = [];
+        // 踏切を探すための、地上の道(橋・トンネル・階段を除く)
+        const gnd = segIndex(), gsegs = [];
+        if (tracks.length)
+          for (let ri = 0; ri < data.r.length; ri++) {
+            const [, kind, ll, tunnel, lv] = data.r[ri];
+            if (tunnel || lv > 0 || kind === "rail" || kind === "steps" || (xp && xp.elev.has(ri))) continue;
+            const pts = proj(ll);
+            if (!pts.some(isNear)) continue;
+            const hw = Math.max(1.1, (ROAD_W[kind] || 4) / 2);
+            for (let i = 0; i + 1 < pts.length; i++) (gnd.add(pts[i], pts[i + 1], hw, 1), gsegs.push([pts[i], pts[i + 1]]));
+          }
+        const isCarK = (k) => k === 0 || k === 1 || k === 4;
+        // 地上の道の上か(車道の形・道の線・走る道)。橋の上の道は、近くに地上の道の線が無いので外れる
+        const onRoad = (x, z) => {
+          const d = gnd.dist(x, z);
+          return d < 2.5 && (d < 0 || isCarK(Roads.kindAt(x, z)) || routeNear(x, z, 3.2));
+        };
+        const bal = mk(), rl = mk(), wire = mk(), fen = mk(), deckB = mk(), sleepers = [], masts = [], arms = [], fposts2 = [], xs = [];
         const okAt = (x, z) => inTile(x, z) && near(x, z) && Xing.zone(x, z) !== 1 && !routeNear(x, z, 6) && roads.dist(x, z, car) > 0.4 && !waters.hit(x, z) && !(Roads.kindAt(x, z) >= 0);
+        // 踏切に近づく所: 道や走る道のそばでも描く(道の上は除く)
+        const okNear = (x, z) => inTile(x, z) && near(x, z) && Xing.zone(x, z) !== 1 && !waters.hit(x, z) && !onRoad(x, z);
+        const cumOf = (s) => {
+          const c = [0];
+          for (let i = 1; i < s.length; i++) c.push(c[i - 1] + Math.hypot(s[i][0] - s[i - 1][0], s[i][1] - s[i - 1][1]));
+          return c;
+        };
+        const lerp2 = (A, B, f) => [A[0] + (B[0] - A[0]) * f, A[1] + (B[1] - A[1]) * f];
         for (const T0 of tracks) {
-          const s = T0.s;
+          let s = T0.s,
+            cum = cumOf(s);
+          // ---- 踏切: 線路が地上の道を横切る所(道の上の区間が 40m より短い所) ----
+          const X = [];
+          {
+            const rd = s.map((q) => onRoad(q[0], q[1]));
+            // A(道の外)から B(道の上)へ、道のふちまでの割合
+            const edge = (A, B) => {
+              let lo = 0,
+                hi = 1;
+              for (let k = 0; k < 7; k++) {
+                const f = (lo + hi) / 2,
+                  p = lerp2(A, B, f);
+                if (onRoad(p[0], p[1])) hi = f;
+                else lo = f;
+              }
+              return lo;
+            };
+            for (let i = 0; i < s.length; ) {
+              if (!rd[i]) {
+                i++;
+                continue;
+              }
+              let j = i;
+              while (j + 1 < s.length && rd[j + 1]) j++;
+              if (i > 0 && j < s.length - 1 && cum[j] - cum[i] < 40) {
+                let ok = true;
+                for (let k = Math.max(0, i - 5); k <= Math.min(s.length - 1, j + 5) && ok; k++) if (zoneAt(s[k][0], s[k][1]) === 1 || waters.hit(s[k][0], s[k][1])) ok = false;
+                if (ok) {
+                  const e0 = cum[i - 1] + edge(s[i - 1], s[i]) * (cum[i] - cum[i - 1]),
+                    e1 = cum[j + 1] - edge(s[j + 1], s[j]) * (cum[j + 1] - cum[j]);
+                  // 線路の両側に道が続いているか(線路のわきで行き止まりの道は、踏切ではない)
+                  const k = Math.max(i, Math.min(j, Math.round((i + j) / 2))),
+                    t = tanAt(s, k),
+                    q = s[k];
+                  if (onRoad(q[0] - t[1] * 2.6, q[1] + t[0] * 2.6) && onRoad(q[0] + t[1] * 2.6, q[1] - t[0] * 2.6)) X.push([e0 - 1.2, e1 + 1.2]);
+                }
+              }
+              i = j + 1;
+            }
+          }
+          if (X.length) {
+            // 敷板のはしに点を足す(区間の切れ目を、敷板のはしにそろえる)
+            const cuts = X.flat().sort((a, b) => a - b),
+              s2 = [s[0]];
+            let ci = 0;
+            for (let i = 1; i < s.length; i++) {
+              while (ci < cuts.length && cuts[ci] <= cum[i - 1]) ci++;
+              while (ci < cuts.length && cuts[ci] < cum[i]) {
+                const f = (cuts[ci] - cum[i - 1]) / (cum[i] - cum[i - 1]);
+                if (f > 0.03 && f < 0.97) s2.push(lerp2(s[i - 1], s[i], f));
+                ci++;
+              }
+              s2.push(s[i]);
+            }
+            s = s2;
+            cum = cumOf(s);
+          }
+          const inDeck = (d) => X.some(([a, b]) => d > a && d < b);
+          // 敷板のはしからの距離(踏切の前後 9m は、砂利とレールを路面の高さへ下ろす)
+          const toDeck = (d) => {
+            let m = 1e9;
+            for (const [a, b] of X) m = Math.min(m, d < a ? a - d : d > b ? d - b : 0);
+            return m;
+          };
+          const RAMP = 9;
+          const rampK = (d) => {
+            const f = Math.min(1, toDeck(d) / RAMP);
+            return f * f * (3 - 2 * f);
+          };
+          // 高さ(地面から): 砂利の上・レールの頭。踏切では、レールの頭が路面と同じ高さ
+          const topAt = (d) => 0.05 + (0.28 - 0.05) * rampK(d),
+            railAt = (d) => 0.068 + (0.28 + 0.18 - 0.068) * rampK(d);
           let cnt = 0;
           for (let i = 0; i + 1 < s.length; i++) {
-            const a = s[i], b = s[i + 1], mx = (a[0] + b[0]) / 2, mz = (a[1] + b[1]) / 2;
-            if (!okAt(mx, mz)) continue;
+            const a = s[i],
+              b = s[i + 1],
+              mx = (a[0] + b[0]) / 2,
+              mz = (a[1] + b[1]) / 2,
+              md = (cum[i] + cum[i + 1]) / 2;
+            const deck = inDeck(md);
+            if (deck ? !(inTile(mx, mz) && near(mx, mz)) : toDeck(md) < RAMP + 2 ? !okNear(mx, mz) : !okAt(mx, mz)) continue;
             if ((++cnt & 63) === 0) await rest();
-            const ta4 = tanAt(s, i), tb4 = tanAt(s, i + 1), ya = h0(a[0], a[1]), yb = h0(b[0], b[1]);
+            const ta4 = tanAt(s, i),
+              tb4 = tanAt(s, i + 1),
+              ya = h0(a[0], a[1]),
+              yb = h0(b[0], b[1]);
             const off = (p, t, o, y) => [p[0] - t[1] * o, y, p[1] + t[0] * o];
-            // 砂利の盛り土(上の幅 2.6m・高さ 0.28m、すそは 3.4m)
-            const TOP = 0.28;
-            const A1 = off(a, ta4, -1.7, ya), A2 = off(a, ta4, -1.3, ya + TOP), A3 = off(a, ta4, 1.3, ya + TOP), A4 = off(a, ta4, 1.7, ya);
-            const B1 = off(b, tb4, -1.7, yb), B2 = off(b, tb4, -1.3, yb + TOP), B3 = off(b, tb4, 1.3, yb + TOP), B4 = off(b, tb4, 1.7, yb);
-            const v0 = i * 0.7, v1 = v0 + 0.7;
-            quad(bal, A1, A2, B2, B1, [0, v0], [0.15, v0], [0.15, v1], [0, v1], 0.8);
-            quad(bal, A2, A3, B3, B2, [0.15, v0], [0.85, v0], [0.85, v1], [0.15, v1], 1);
-            quad(bal, A3, A4, B4, B3, [0.85, v0], [1, v0], [1, v1], [0.85, v1], 0.8);
-            // レール2本(軌間 1.067m)
-            for (const g of [-0.5335, 0.5335]) bar(rl, off(a, ta4, g, ya + TOP + 0.08), off(b, tb4, g, yb + TOP + 0.08), 0.07, 0.15);
-            // まくら木(0.6m おき)
-            const L = Math.hypot(b[0] - a[0], b[1] - a[1]);
-            for (let d = (0.6 - ((i * 2) % 0.6)) % 0.6; d < L; d += 0.6) {
-              const f = d / L, x = a[0] + (b[0] - a[0]) * f, z = a[1] + (b[1] - a[1]) * f;
-              sleepers.push([x, ya + (yb - ya) * f + TOP - 0.06, z, Math.atan2(-ta4[1], ta4[0]), 1, 1, 1]);
+            if (deck) {
+              // 踏切の敷板: 路面(地面 +6.5cm)とほぼ同じ高さ。左・中・右の3点で地面にそわせる
+              const P3 = (p, t) =>
+                [-1.35, 0, 1.35].map((o) => {
+                  const q = off(p, t, o, 0);
+                  q[1] = Terrain.h(q[0], q[2]) + 0.068;
+                  return q;
+                });
+              const A = P3(a, ta4),
+                B = P3(b, tb4),
+                v0 = cum[i],
+                v1 = cum[i + 1];
+              quad(deckB, A[0], A[1], B[1], B[0], [0, v0], [0.5, v0], [0.5, v1], [0, v1], 1);
+              quad(deckB, A[1], A[2], B[2], B[1], [0.5, v0], [1, v0], [1, v1], [0.5, v1], 1);
+            } else {
+              // 砂利の盛り土(上の幅 2.6m・高さ 0.28m、すそは 3.4m)。踏切の前後は低く
+              const TA = topAt(cum[i]),
+                TB = topAt(cum[i + 1]),
+                RA = railAt(cum[i]),
+                RB = railAt(cum[i + 1]);
+              const A1 = off(a, ta4, -1.7, ya),
+                A2 = off(a, ta4, -1.3, ya + TA),
+                A3 = off(a, ta4, 1.3, ya + TA),
+                A4 = off(a, ta4, 1.7, ya);
+              const B1 = off(b, tb4, -1.7, yb),
+                B2 = off(b, tb4, -1.3, yb + TB),
+                B3 = off(b, tb4, 1.3, yb + TB),
+                B4 = off(b, tb4, 1.7, yb);
+              const v0 = cum[i] * 0.35,
+                v1 = cum[i + 1] * 0.35;
+              quad(bal, A1, A2, B2, B1, [0, v0], [0.15, v0], [0.15, v1], [0, v1], 0.8);
+              quad(bal, A2, A3, B3, B2, [0.15, v0], [0.85, v0], [0.85, v1], [0.15, v1], 1);
+              quad(bal, A3, A4, B4, B3, [0.85, v0], [1, v0], [1, v1], [0.85, v1], 0.8);
+              // レール2本(軌間 1.067m・高さ 0.15m)。まくら木の上に載せる
+              for (const g of [-0.5335, 0.5335]) bar(rl, off(a, ta4, g, ya + RA - 0.15), off(b, tb4, g, yb + RB - 0.15), 0.07, 0.15);
+              // まくら木(0.6m おき)。踏切のそばでは砂利に埋める
+              const L = cum[i + 1] - cum[i];
+              for (let d = (0.6 - (cum[i] % 0.6)) % 0.6; d < L; d += 0.6) {
+                const f = d / L,
+                  x = a[0] + (b[0] - a[0]) * f,
+                  z = a[1] + (b[1] - a[1]) * f,
+                  dd = cum[i] + d;
+                sleepers.push([x, ya + (yb - ya) * f + Math.min(topAt(dd) - 0.06, railAt(dd) - 0.26), z, Math.atan2(-ta4[1], ta4[0]), 1, 1, 1]);
+              }
             }
             if (T0.pres) continue;
-            // 架線(トロリー線 5.1m・ちょう架線 6.1m)
-            for (const [hgt, w2] of [[5.1, 0.014], [6.1, 0.018]]) bar(wire, off(a, ta4, 0, ya + TOP + hgt), off(b, tb4, 0, yb + TOP + hgt), w2, w2);
+            // 架線(トロリー線 5.1m・ちょう架線 6.1m)。踏切の上も渡す
+            for (const [hgt, w2] of [
+              [5.1, 0.014],
+              [6.1, 0.018],
+            ])
+              bar(wire, off(a, ta4, 0, ya + 0.28 + hgt), off(b, tb4, 0, yb + 0.28 + hgt), w2, w2);
             // 架線柱(50m おき)。となりの線路がない側に立てる
-            if (i % 25 === 0) {
+            if (i % 25 === 0 && !deck) {
               for (const sd of [1, -1]) {
                 const p = off(a, ta4, sd * 2.7, 0);
                 if (ridx.dist(p[0], p[2], null, T0.ri) < 2.2 || !free(p[0], p[2], 0.4, 6)) continue;
                 const yg = h0(p[0], p[2]);
                 masts.push([p[0], yg, p[2], Math.atan2(-ta4[1], ta4[0]), 1, 1, 1]);
                 const ang = Math.atan2(-ta4[1], ta4[0]) + (sd > 0 ? 0 : Math.PI);
-                arms.push([p[0], yg + TOP + 6.25, p[2], ang]);
+                arms.push([p[0], yg + 0.28 + 6.25, p[2], ang]);
                 break;
               }
             }
+          }
+          // 踏切ごとに、まん中の位置と線路の向き(警報機・遮断機を置くため)
+          for (const [a0, b0] of X) {
+            const dm = (a0 + b0) / 2;
+            let i = 0;
+            while (i + 2 < s.length && cum[i + 1] < dm) i++;
+            const f = (dm - cum[i]) / (cum[i + 1] - cum[i] || 1),
+              p = lerp2(s[i], s[i + 1], f),
+              t = tanAt(s, i);
+            xs.push({ x: p[0], z: p[1], tx: t[0], tz: t[1] });
           }
           // 線路わきの柵(外側の線路から 3.4m。駅のまわりは省く)
           for (const sd of [1, -1]) {
             let prev = null;
             for (let i = 0; i < s.length; i++) {
-              const t = tanAt(s, i), p = [s[i][0] - t[1] * sd * 3.4, s[i][1] + t[0] * sd * 3.4];
+              const t = tanAt(s, i),
+                p = [s[i][0] - t[1] * sd * 3.4, s[i][1] + t[0] * sd * 3.4];
               const ok = inTile(p[0], p[1]) && near(p[0], p[1]) && ridx.dist(p[0], p[1], null, T0.ri) > 3.0 && free(p[0], p[1], 0.5, 6) && !nearSt(p[0], p[1]) && !waters.hit(p[0], p[1]);
               if (ok && prev) {
-                const ya = h0(prev[0], prev[1]), yb = h0(p[0], p[1]), L = Math.hypot(p[0] - prev[0], p[1] - prev[1]);
+                const ya = h0(prev[0], prev[1]),
+                  yb = h0(p[0], p[1]),
+                  L = Math.hypot(p[0] - prev[0], p[1] - prev[1]);
                 if (L < 3) {
-                  const A = [prev[0], ya, prev[1]], B = [p[0], yb, p[1]];
+                  const A = [prev[0], ya, prev[1]],
+                    B = [p[0], yb, p[1]];
                   quad(fen, A, B, [B[0], yb + 1.8, B[2]], [A[0], ya + 1.8, A[2]], [0, 0], [L / 0.9, 0], [L / 0.9, 2], [0, 2], 1);
                   bar(rl, [A[0], ya + 1.78, A[2]], [B[0], yb + 1.78, B[2]], 0.04, 0.04);
                   fposts2.push([p[0], yb, p[1], 0]);
@@ -7195,7 +7467,13 @@ const City = (() => {
             }
           }
         }
-        for (const [b, mat, sh] of [[bal, m.ballast, false], [rl, m.rail, true], [wire, m.wire, false], [fen, m.chain, false]]) {
+        for (const [b, mat, sh] of [
+          [bal, m.ballast, false],
+          [rl, m.rail, true],
+          [wire, m.wire, false],
+          [fen, m.chain, false],
+          [deckB, m.deck, false],
+        ]) {
           const q = toMesh(b, mat, sh);
           if (q) group.add(q);
         }
@@ -7205,6 +7483,158 @@ const City = (() => {
         inst(group, new THREE.BoxGeometry(0.3, 7.0, 0.3).translate(0, 3.5, 0), m.mast, masts);
         inst(group, new THREE.BoxGeometry(0.12, 0.12, 3.2).translate(0, 0, -1.5), m.mast, arms);
         inst(group, new THREE.CylinderGeometry(0.04, 0.04, 1.85, 6).translate(0, 0.92, 0), m.mast, fposts2);
+
+        // ---- 踏切の警報機と遮断機: 線路の両側で、道の両はしに1本ずつ ----
+        // 複線は1つの踏切にまとめる(まん中が 14m 以内)
+        const groups = [];
+        for (const c of xs) {
+          const g = groups.find((G) => Math.hypot(G[0].x - c.x, G[0].z - c.z) < 14);
+          if (g) g.push(c);
+          else groups.push([c]);
+        }
+        const posts = [],
+          gates = [];
+        for (const G of groups) {
+          const cx = G.reduce((s0, c) => s0 + c.x, 0) / G.length,
+            cz = G.reduce((s0, c) => s0 + c.z, 0) / G.length;
+          if (!inTile(cx, cz)) continue;
+          // 道の向き: いちばん近い地上の道の線(走る道も見る)
+          let best = 1e9,
+            rx = 0,
+            rz = 0;
+          const look = (a, b) => {
+            const d = segD(cx, cz, a[0], a[1], b[0], b[1]),
+              L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+            if (d < best && L > 0.5) (best = d), (rx = (b[0] - a[0]) / L), (rz = (b[1] - a[1]) / L);
+          };
+          for (const [a, b] of gsegs) look(a, b);
+          {
+            const gx = Math.floor(cx / 50),
+              gz = Math.floor(cz / 50);
+            for (let i = gx - 1; i <= gx + 1; i++) for (let j = gz - 1; j <= gz + 1; j++) for (const k of route.grid.get(i + ":" + j) || []) look(route.xy[k], route.xy[k + 1]);
+          }
+          if (best > 6) continue;
+          // 線路の向き(そろえて平均)と、道の横向き
+          let tx = 0,
+            tz = 0;
+          for (const c of G) {
+            const sg = c.tx * G[0].tx + c.tz * G[0].tz < 0 ? -1 : 1;
+            (tx += c.tx * sg), (tz += c.tz * sg);
+          }
+          const tl = Math.hypot(tx, tz) || 1;
+          (tx /= tl), (tz /= tl);
+          const rn = Math.max(0.45, Math.abs(rx * -tz + rz * tx)),
+            qx = -rz,
+            qz = rx;
+          for (const sg of [1, -1]) {
+            // 線路から道にそって離れた所(いちばん外の線路の敷板から 1.9m)
+            let pr = sg > 0 ? -1e9 : 1e9;
+            for (const c of G) {
+              const v = (c.x - cx) * rx + (c.z - cz) * rz;
+              pr = sg > 0 ? Math.max(pr, v) : Math.min(pr, v);
+            }
+            for (const sd of [1, -1]) {
+              let D = pr + (sg * (1.35 + 1.9)) / rn,
+                got = null;
+              for (let tr = 0; tr < 8 && !got; tr++, D += sg * 0.5) {
+                const gx = cx + rx * D,
+                  gz = cz + rz * D;
+                if (!onRoad(gx, gz)) break;
+                let t = 0;
+                while (t < 15 && onRoad(gx + qx * sd * (t + 0.25), gz + qz * sd * (t + 0.25))) t += 0.25;
+                if (t >= 15) break;
+                const px = gx + qx * sd * (t + 0.55),
+                  pz = gz + qz * sd * (t + 0.55);
+                if (ridx.dist(px, pz) < 2.9) continue;
+                if (routeNear(px, pz, 2.2) || inBld(px, pz, 0.3) || waters.hit(px, pz) || zoneAt(px, pz)) break;
+                got = [px, pz];
+              }
+              if (!got) continue;
+              const [px, pz] = got,
+                fx = rx * sg,
+                fz = rz * sg,
+                ang = Math.atan2(fx, fz),
+                y = Terrain.h(px, pz) + 0.06;
+              posts.push([px, y, pz, ang]);
+              // 遮断かん: 機械の、道の側。上げた形(列車が来ないので)
+              gates.push([px + fx * 0.55 - qx * sd * 0.24, y, pz + fz * 0.55 - qz * sd * 0.24, ang]);
+            }
+          }
+        }
+        if (posts.length) {
+          const M4 = (x, y, z, ax = 0, ay = 0, az = 0) => new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(ax, ay, az)), new THREE.Vector3(1, 1, 1));
+          // 形をつないで1つにする(位置・向き・uv)
+          const join = (parts) => {
+            const P = [],
+              N = [],
+              Uv = [];
+            for (const [g0, mt] of parts) {
+              const g = (g0.index ? g0.toNonIndexed() : g0).applyMatrix4(mt);
+              for (const v of g.attributes.position.array) P.push(v);
+              for (const v of g.attributes.normal.array) N.push(v);
+              for (const v of g.attributes.uv.array) Uv.push(v);
+            }
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute("position", new THREE.Float32BufferAttribute(P, 3));
+            geo.setAttribute("normal", new THREE.Float32BufferAttribute(N, 3));
+            geo.setAttribute("uv", new THREE.Float32BufferAttribute(Uv, 2));
+            return geo;
+          };
+          const Cy = (r, h, n, open, t0, tl) => new THREE.CylinderGeometry(r, r, h, n, 1, !!open, t0 || 0, tl || Math.PI * 2);
+          const Bx = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+          const LY = 2.32,
+            LX = 0.42,
+            H2 = Math.PI / 2;
+          // 柱(高さ 3.4m)・×の板(1.15m を2枚)
+          inst(
+            group,
+            join([
+              [Cy(0.076, 3.4, 14), M4(0, 1.7, 0)],
+              [Cy(0.06, 0.04, 14), M4(0, 3.42, 0)],
+            ]),
+            m.xpole,
+            posts
+          );
+          inst(
+            group,
+            join([
+              [Bx(1.15, 0.17, 0.025), M4(0, 3.0, 0.1, 0, 0, 0.62)],
+              [Bx(1.15, 0.17, 0.025), M4(0, 3.0, 0.125, 0, 0, -0.62)],
+            ]),
+            m.xboard,
+            posts
+          );
+          // 黒い部品: 灯の腕・上の箱(警報の音)・方向の表示・遮断機の機械と軸・灯の背板(前後)・ひさし
+          const dk = [
+            [Bx(1.12, 0.08, 0.06), M4(0, LY, 0)],
+            [Bx(0.22, 0.28, 0.2), M4(0, 3.56, 0)],
+            [Bx(0.5, 0.17, 0.08), M4(0, 1.98, 0.07)],
+            [Bx(0.34, 1.0, 0.36), M4(0, 0.5, 0.55)],
+          ];
+          for (const sx of [-LX, LX])
+            for (const sz of [1, -1]) {
+              dk.push([Cy(0.24, 0.025, 20), M4(sx, LY, sz * 0.05, H2)]);
+              dk.push([Cy(0.145, 0.17, 16, true, H2, Math.PI), M4(sx, LY, sz * 0.15, sz * H2)]);
+            }
+          inst(group, join(dk), m.xdark, posts);
+          // 赤い灯(前後に2つずつ。列車が来ないので消えている)
+          const ln = [];
+          for (const sx of [-LX, LX]) for (const sz of [1, -1]) ln.push([Cy(0.115, 0.02, 18), M4(sx, LY, sz * 0.075, H2)]);
+          inst(group, join(ln), m.xlens, posts, false);
+          // 遮断かん(4.4m・上げた形)と、根元の軸・おもり
+          inst(group, join([[Bx(0.075, 4.4, 0.075), M4(0, 0.84 + 2.2, 0)]]), m.xarm, gates);
+          inst(
+            group,
+            join([
+              [Bx(0.14, 0.4, 0.16), M4(0, 0.84 - 0.25, 0)],
+              [Cy(0.07, 0.2, 10), M4(0, 0.84, 0, 0, 0, H2)],
+            ]),
+            m.xdark,
+            gates
+          );
+          touch();
+        }
+        land.stat.xings = posts.length;
       }
     }
     return { build, maskMat, update, touch };
@@ -11301,6 +11731,8 @@ const City = (() => {
     return {
       update,
       on: () => on,
+      // まわりを撮った絵を、映り込みに使い始めたか
+      used: () => used,
       set(v, keep) {
         on = v;
         if (!keep)
