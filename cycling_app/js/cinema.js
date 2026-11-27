@@ -365,16 +365,16 @@ const Cinema = (() => {
   const hSign = (P) => (P.reduce((s, p, i) => s + p[0] * P[(i + 1) % P.length][1] - P[(i + 1) % P.length][0] * p[1], 0) > 0 ? 1 : -1);
   const HERO_POSE = {
     base: { head: [211, 121, -4], lean: 0, sk: -3, dn: [0, 0], df: [0, 0], far: [[350, 404], [344, 262], "card", { a: -4 }], near: [[56, 424], [104, 506], "fist", {}], ex: "smile" },
-    draw: { head: [218, 123, 5], lean: 5, sk: -6, dn: [0, 2], df: [6, -8], far: [[410, 236], [476, 114], "card", { a: 6 }], near: [[66, 420], [166, 446], "deck", {}], ex: "shout" },
-    thrust: { head: [216, 122, 2], lean: 4, sk: -8, dn: [-6, 2], df: [14, 2], far: [[398, 292], [488, 258], "open", { pitch: -30 }], near: [[40, 392], [98, 456], "fist", {}], ex: "shout" },
+    draw: { head: [218, 123, 5], lean: 5, sk: -6, dn: [0, 2], df: [6, -8], far: [[444, 274], [436, 142], "card", { a: 8 }], near: [[66, 420], [166, 446], "deck", {}], ex: "shout" },
+    thrust: { head: [216, 122, 2], lean: 4, sk: -8, dn: [-6, 2], df: [14, 2], far: [[394, 302], [488, 260], "open", { pitch: -30 }], near: [[40, 392], [98, 456], "fist", {}], ex: "shout" },
     win: { head: [206, 123, -9], lean: -4, sk: 2, dn: [0, 2], df: [4, -10], far: [[376, 196], [368, 82], "fistUp", {}], near: [[52, 414], [112, 486], "fist", {}], ex: "grin" },
   };
   // 自分(主人公)のポーズ。口は閉じるか、小さく開けて言い放つ
   const HERO_POSE_YOU = {
-    base: { head: [214, 130, -5], lean: 0, sk: -3, dn: [0, 0], df: [0, 0], far: [[358, 414], [374, 266], "card", { a: -4 }], near: [[50, 432], [104, 512], "fist", {}], ex: "calm" },
-    draw: { head: [220, 132, 4], lean: 5, sk: -7, dn: [0, 2], df: [8, -8], far: [[424, 246], [494, 120], "card", { a: 8 }], near: [[62, 428], [168, 452], "deck", {}], ex: "say" },
+    base: { head: [214, 130, -5], lean: 0, sk: -3, dn: [0, 0], df: [0, 0], far: [[360, 414], [364, 266], "card", { a: -2 }], near: [[50, 432], [104, 512], "fist", {}], ex: "calm" },
+    draw: { head: [220, 132, 4], lean: 5, sk: -7, dn: [0, 2], df: [8, -8], far: [[456, 286], [446, 152], "card", { a: 10 }], near: [[62, 428], [168, 452], "deck", {}], ex: "say" },
     thrust: { head: [218, 131, 1], lean: 4, sk: -9, dn: [-6, 2], df: [16, 4], far: [[372, 338], [426, 290], "open", { fs: 1, ang: 14, hs: 1.55 }], near: [[34, 402], [94, 466], "fist", {}], ex: "say" },
-    win: { head: [210, 132, -8], lean: -3, sk: 1, dn: [0, 2], df: [6, -10], far: [[400, 330], [404, 194], "card", { a: 2 }], near: [[46, 432], [110, 500], "fist", {}], ex: "quiet" },
+    win: { head: [210, 132, -8], lean: -3, sk: 1, dn: [0, 2], df: [6, -10], far: [[402, 332], [394, 196], "card", { a: 4 }], near: [[46, 432], [110, 500], "fist", {}], ex: "quiet" },
   };
   const HERO_CACHE = {};
   function heroSvg(side, pose) {
@@ -384,7 +384,7 @@ const Cinema = (() => {
   function drawHero(o, pose, id) {
     const C = o
       ? { K: "#12060f", rim: "#ff9fd0", skin: ["#f4d6c6", "#d8a393", "#b07a7c"], hair: ["#e6e2f4", "#aaa2cf", "#6c6398"], hi: "#ffffff", hi2: "#ffffff", brow: "#4f477c", jk: ["#332c40", "#1e1928", "#0e0b14"], jhi: "#7d6f9c", ac: "#b03dff", ln: ["#b3143a", "#7d0d29", "#4d0719"], js: ["#362f43", "#231d2e", "#130f1a"], js2: "#4b1876", st: "#e0284f", st2: "#b03dff", gl: ["#b3172f", "#7c0d20", "#4d0713"], iris: ["#5c0716", "#e0203f", "#ff8a8a"], nail: "#f9e2d8" }
-      : { K: "#070d18", rim: "#9fe9e0", skin: ["#f6d3b6", "#dfa283", "#b97862"], hair: ["#1c3556", "#11223d", "#081224"], hi: "#6f9cc4", hi2: "#b8dcf6", brow: "#0b1830", jk: ["#323e55", "#1f2839", "#121825"], jhi: "#53648a", ac: "#ff8a1f", ln: ["#0f8f88", "#0a6468", "#07444e"], js: ["#14a99c", "#0c7c7a", "#08555a"], js2: "#0a4148", st: "#1fd0bb", st2: "#ff8a1f", gl: ["#3a4660", "#252e40", "#141a27"], iris: ["#053642", "#14b8a6", "#8dffe6"], nail: "#fae0cc" };
+      : { K: "#070d18", rim: "#9fe9e0", skin: ["#f6d3b6", "#dfa283", "#b97862"], hair: ["#21406a", "#132845", "#081428"], hairB: ["#152c4b", "#0d1d35", "#060d1c"], hi: "#6f9cc4", hi2: "#b8dcf6", hi3: "#eaf7ff", brow: "#0b1830", jk: ["#323e55", "#1f2839", "#121825"], jhi: "#53648a", ac: "#ff8a1f", ln: ["#0f8f88", "#0a6468", "#07444e"], js: ["#14a99c", "#0c7c7a", "#08555a"], js2: "#0a4148", st: "#1fd0bb", st2: "#ff8a1f", gl: ["#3a4660", "#252e40", "#141a27"], iris: ["#053642", "#14b8a6", "#8dffe6"], nail: "#fae0cc" };
     const K = C.K, S = C.skin, J = C.jk, DEG = Math.PI / 180, f = hf;
     let cn = 0;
     const ink = (pts, w, s = 0.3, e = 0.4, col = K, op = 1) => hInk(pts, w, s, e, col, op);
@@ -445,13 +445,17 @@ const Cinema = (() => {
 
     // ---------- 髪 ----------
     // 房: 根元 (rx,ry) 幅 w から先 (tx,ty) へ。b はしなり(S字)。根元が太く先がとがる
-    const lockGeo = ([rx, ry, tx, ty, w, b = 0.15]) => {
+    // sc は S字の強さ(大きいほど先が反り返る)
+    const lockGeo = ([rx, ry, tx, ty, w, b = 0.15, sc = 0.32]) => {
       const dx = tx - rx, dy = ty - ry, Ln = Math.hypot(dx, dy), nx = -dy / Ln, ny = dx / Ln;
       const cl = (t) => {
-        const s = b * Ln * (Math.sin(Math.PI * t) - 0.32 * Math.sin(2 * Math.PI * t));
+        const s = b * Ln * (Math.sin(Math.PI * t) - sc * Math.sin(2 * Math.PI * t));
         return [rx + dx * t + nx * s, ry + dy * t + ny * s];
       };
-      const hw = (t) => (w / 2) * (0.62 + 0.38 * Math.sin((Math.PI / 2) * Math.min(1, t / 0.22))) * Math.pow(Math.max(0, 1 - t), 0.8) * (1 + 0.16 * Math.sin(Math.PI * Math.min(1, t * 1.7)));
+      // 主人公の房は根元から太く、先へまっすぐ細る鋭い先(とがった三角に近い)
+      const hw = o
+        ? (t) => (w / 2) * (0.62 + 0.38 * Math.sin((Math.PI / 2) * Math.min(1, t / 0.22))) * Math.pow(Math.max(0, 1 - t), 0.8) * (1 + 0.16 * Math.sin(Math.PI * Math.min(1, t * 1.7)))
+        : (t) => (w / 2) * (0.8 + 0.2 * Math.sin((Math.PI / 2) * Math.min(1, t / 0.16))) * Math.pow(Math.max(0, 1 - t), 1.02) * (1 + 0.24 * Math.sin(Math.PI * Math.min(1, t * 2)));
       const at = (t, s) => {
         const p = cl(t), a = cl(Math.max(0, t - 0.01)), c = cl(Math.min(1, t + 0.01)), vx = c[0] - a[0], vy = c[1] - a[1], l = Math.hypot(vx, vy) || 1;
         return [p[0] - (vy / l) * s * hw(t), p[1] + (vx / l) * s * hw(t)];
@@ -462,8 +466,9 @@ const Cinema = (() => {
       return { pts, at, cl, g, Ln };
     };
     const HO = o ? [-6, -20] : [-4, -22], HR = o ? 70 : 74;
-    const lock = (spec, i, rim = 1) => {
-      const G = lockGeo(spec), g = G.g, M = C.hair, ph = i * 1.7;
+    // lay=1 は奥の層(暗い色)。主人公は毛束を太い主線と2段の天使の輪で描く
+    const lock = (spec, i, rim = 1, lay = 0) => {
+      const G = lockGeo(spec), g = G.g, M = lay && C.hairB ? C.hairB : C.hair, ph = i * 1.7;
       const band = (t0, t1, s0, s1, m = 6) => {
         const A = [], B = [];
         for (let j = 0; j <= m; j++) {
@@ -483,6 +488,15 @@ const Cinema = (() => {
       const inner = `${fill(band(-0.02, 1, g * 1.4, (t) => g * (0.02 + 0.22 * Math.sin(t * 8 + ph))), M[1])}${fill(band(-0.02, 0.96, g * 1.4, (t) => g * (0.6 + 0.12 * Math.sin(t * 10 + ph))), M[2])}
         ${fill(band(h0, h1, (t) => -g * (0.12 + 0.5 * hb(t)), (t) => -g * (0.12 - 0.12 * hb(t))), C.hi2, o ? 0.95 : 0.7)}${o ? fill(band(h0 + 0.03, h1 - 0.04, (t) => -g * (0.3 + 0.18 * hb(t)), (t) => -g * (0.3 - 0.04 * hb(t))), "#fff") : ""}
         ${ink([0.04, 0.2, 0.4, 0.6].map((t) => G.at(t, -g * 0.42)), 0.9, 0.2, 0.6, M[2], 0.9)}${ink([0.1, 0.3, 0.5, 0.72].map((t) => G.at(t, g * 0.1)), 0.8, 0.2, 0.6, M[2], 0.8)}${ink([0.3, 0.5, 0.7, 0.86].map((t) => G.at(t, -g * 0.6)), 0.7, 0.3, 0.6, C.hi, 0.7)}`;
+      if (!o) {
+        // 主人公: 根元は上の毛束の下に入る暗がり、天使の輪は芯の明るい帯を重ね、先へ向かう細い照りの線
+        const hp2 = bump(h0 + 0.03, h1 - 0.03, 1), g2 = lay ? 0.55 : 1;
+        const ex = `${fill(band(-0.04, 0.16, -1.4, 1.4), M[2], lay ? 0.75 : 0.55)}
+          ${fill(band(h0 + 0.02, h1 - 0.02, (t) => -g * (0.22 + 0.2 * hp2(t)), (t) => -g * (0.22 - 0.02 * hp2(t))), C.hi3 || "#fff", 0.8 * g2)}
+          ${ink([h1 + 0.02, h1 + 0.14, h1 + 0.28, Math.min(0.9, h1 + 0.4)].map((t) => G.at(t, -g * 0.36)), 1.4, 0.2, 0.7, C.hi2, 0.55 * g2)}
+          ${ink([h1 + 0.06, h1 + 0.16, Math.min(0.86, h1 + 0.3)].map((t) => G.at(t, -g * 0.62)), 0.9, 0.3, 0.7, C.hi2, 0.45 * g2)}`;
+        return part(G.pts, M, inner + ex, { k: 0.3, w: lay ? [1, 3.2] : [1.2, 3.8], rc: rim ? C.rim : M[2] });
+      }
       return part(G.pts, M, inner, { k: 0.3, w: [0.8, 2.6], rc: rim ? C.rim : M[2] });
     };
     const HAIR = o
@@ -493,10 +507,13 @@ const Cinema = (() => {
           bang: [[44, -32, 46, 16, 20, -0.08], [30, -40, 22, 8, 24, 0.1], [16, -44, -6, 6, 26, 0.14], [-4, -44, -27, 10, 24, 0.12], [-24, -40, -41, 16, 22, 0.1], [-40, -30, -50, 54, 18, 0.07], [6, -46, 10, -2, 14, -0.12]],
         }
       : {
-          back: [[-28, -62, -130, -92, 40, 0.12], [-40, -46, -142, -50, 40, 0.1], [-46, -26, -136, -8, 36, 0.1], [-48, -6, -118, 30, 30, 0.08], [-44, 10, -94, 56, 22, 0.06], [-16, -70, -120, -124, 38, 0.12]],
-          top: [[-4, -70, -110, -126, 38, 0.12], [12, -70, -80, -142, 36, 0.12], [28, -62, -42, -142, 32, 0.12], [40, -50, -8, -128, 26, 0.12], [46, -36, 44, -100, 18, -0.08]],
-          side: [[-36, -34, -64, 4, 16, 0.1], [-38, -22, -42, 20, 12, 0.06]],
-          bang: [[44, -32, 47, 6, 16, -0.08], [32, -40, 22, 4, 20, 0.1], [16, -44, -2, -2, 20, 0.12], [-4, -44, -26, -8, 20, 0.1], [-22, -40, -43, -4, 18, 0.08], [4, -44, 10, -12, 12, -0.1]],
+          // 主人公: 風を受けて後ろへ流れる太い毛束(奥は暗く、先が上へ反る)、上へ逆立つ3本の大きな房、前へ跳ねる1房。前髪は太い束をバイザーの上へ垂らし、眉間へ1本
+          back: [[-40, -36, -152, -54, 38, 0.08, 0.25], [-12, -70, -142, -126, 38, 0.1, 0.25], [-44, 6, -118, 60, 48, 0.06, 0.25], [-46, -20, -188, -14, 74, 0.07, 0.3], [-30, -52, -182, -88, 76, 0.1, 0.3]],
+          top: [[-2, -70, -150, -134, 70, 0.12, 0.3], [24, -66, -96, -150, 56, 0.14, 0.3], [-8, -60, -112, -98, 40, 0.08, 0.3], [44, -50, 70, -108, 30, -0.16, 0.3]],
+          side: [[-34, -38, -40, 40, 22, 0.08, 0.5], [-38, -30, -54, 22, 16, 0.1]],
+          bang: [[48, -46, 52, 4, 26, -0.08], [32, -50, 22, 2, 34, 0.1], [-4, -50, -22, -4, 36, 0.1], [-26, -46, -44, 0, 30, 0.08], [12, -50, 6, 14, 22, 0.1, 0.5]],
+          // 毛束の根元どうしのすき間を埋める奥の髪のかたまり
+          mass: [[-20, -80], [-56, -86], [-84, -66], [-98, -34], [-94, 0], [-80, 24], [-58, 32], [-46, 22], [-40, 0], [-36, -40]],
         };
 
     // ---------- 目 ----------
@@ -575,13 +592,13 @@ const Cinema = (() => {
       const shades = o ? "" : `${ink([[-40, -46], [-48, -38], [-56, -30]], 5.4, 0, 0.1)}${ink([[-41, -45.4], [-48, -38.6], [-54.6, -31.4]], 2.4, 0, 0.1, "#4a5870")}
         ${part([[-42, -50], [-22, -64], [2, -67.4], [26, -64], [47, -50], [46.4, -43], [40, -37.8], [32, -39.2], [20, -43.6], [6, -44], [-6, -45.6], [-20, -44.6], [-34, -36.6], [-40.6, -39.6]], ["#f0701a", "#c4500f", "#8a2c10"], `<rect x="-60" y="-80" width="120" height="50" fill="url(#${id}v)" opacity=".85"/>${fill([[-31, -53], [-19, -59], [-24, -43], [-33, -40]], "#fff", 0.55)}${fill([[-13, -60], [-6, -61], [-12, -45.6], [-17, -44.6]], "#fff", 0.45)}${ink([[-40, -49], [-20, -61.6], [4, -64.6], [28, -61], [45, -49]], 1.6, 0.2, 0.2, "#ffe2b0", 0.8)}`, { k: 0.2, rc: "#ffcf7a", w: [1, 2.6] })}
         ${ink([[-42, -50], [-22, -64], [2, -67.4], [26, -64], [47, -50]], 3.2, 0.1, 0.1, "#4a5870")}`;
-      return `${HAIR.back.map(lock).join("")}
+      return `${HAIR.mass ? part(HAIR.mass, C.hairB, "", { k: 0.3, w: [0.6, 1.6], rc: C.hairB[2] }) : ""}${HAIR.back.map((l, i) => lock(l, i, 1, 1)).join("")}
         ${part(ear, S, earIn, { k: 0.3, w: [0.9, 2.4] })}
         ${part(FACE, S, faceIn, { k: 0, w: [1.2, 3.4] })}
         ${nose}${mouth[o ? (ex === "smile" || ex === "grin" ? (ex === "grin" ? "grin" : "smirk") : ex) : ex] || mouth.calm}
         ${eyes}${brows}${sweat}
-        ${HAIR.bang.map((l, i) => lock(l, i + 30, 0)).join("")}
-        ${part(cap, C.hair, capIn, { k: 0.6, w: [1, 2.8], rc: C.hair[2] })}
+        ${o ? HAIR.bang.map((l, i) => lock(l, i + 30, 0)).join("") : ""}
+        ${part(cap, C.hair, capIn, { k: 0.6, w: [1, 2.8], rc: C.hair[2] })}${o ? "" : HAIR.bang.map((l, i) => lock(l, i + 30, 0)).join("")}
         ${HAIR.side.map((l, i) => lock(l, i + 20, 0)).join("")}${HAIR.top.map((l, i) => lock(l, i + 10)).join("")}${shades}`;
     };
     const defs = `<defs><linearGradient id="${id}i" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${C.iris[0]}"/><stop offset=".55" stop-color="${C.iris[1]}"/><stop offset="1" stop-color="${C.iris[2]}"/></linearGradient><linearGradient id="${id}v" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffc060"/><stop offset=".45" stop-color="#f0701a"/><stop offset="1" stop-color="#8a2c10"/></linearGradient><radialGradient id="${id}b"><stop offset="0" stop-color="#ff8a7a" stop-opacity=".22"/><stop offset="1" stop-color="#ff8a7a" stop-opacity="0"/></radialGradient></defs>`;
