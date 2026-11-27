@@ -4702,10 +4702,22 @@ const City = (() => {
   // ガレージと同じ Microsoft Rocketbox のモデル(MITライセンス)を使う。普段着の "Wood_Male_01"(整備士)と、サイクルウェアの "Sports_Male_01"(乗り手)。
   // 1人ずつ骨を動かすと重いので、歩く・こぐ動きを数十コマ、頂点の位置として焼き込んでおき、コマの形を差し替えるだけで動かす。
   // 服の色・帽子・ひげ・髪は、テクスチャを塗り分けた版を作って使い回す。焼き込みと塗り分けは、1コマに少しずつ進める
+  // 女の人・子ども・お年寄りも、同じ Rocketbox のモデル(MIT)を使う(assets/people/)。男の人の2体がそろってから、あとから読み込んで足していく
   const Crowd = (() => {
     const N_WALK = 24, N_PEDAL = 24, STRIDE = 1.22; // 1周期のコマ数・歩く1周期で進む距離(m)
-    let THREE = null, started = false, ready = false, srcM = null, srcR = null;
+    let THREE = null, started = false, ready = false, srcM = null, srcR = null, pumping = false;
     const anims = {}, mats = {}, jobs = [], allMats = [];
+    // 足すモデル: h 身長(m)、cm 元のモデルの身長(cm)。kinds: 焼き込む歩き方。mama: ママチャリに乗る
+    const EXTRA = {
+      f05: { h: 1.59, cm: 173.6, sex: "f", kinds: ["walk", "phone", "carry", "lead"], mama: true }, // ジャケットとジーンズ
+      f02: { h: 1.6, cm: 173.1, sex: "f", kinds: ["walk", "phone", "carry", "lead"], mama: true }, // ブラウスとスカート
+      bf3: { h: 1.6, cm: 174.3, sex: "f", kinds: ["walk", "phone", "carry"] }, // スカートのスーツ
+      bf2: { h: 1.52, cm: 172.9, sex: "f", old: true, kinds: ["old", "oldR"] }, // お年寄り(女・めがね)
+      m03: { h: 1.65, cm: 180.6, sex: "m", old: true, kinds: ["old", "oldR"] }, // お年寄り(男・白髪)
+      cm1: { h: 1.42, cm: 143.4, kid: true, kinds: ["walk", "held", "sit"] }, // 男の子
+      cf1: { h: 1.4, cm: 143.1, kid: true, kinds: ["walk", "held", "sit"] }, // 女の子
+    };
+    const X = {}; // key → { rg, tex, kit, anims, mats, ready }
     // 形をまとめる(頂点の色つき)。parts: [{ geo, m, c }]
     function merge(parts) {
       const pos = [], nor = [], col = [], cc = new THREE.Color();
@@ -4739,34 +4751,59 @@ const City = (() => {
           srcM.tex = { body: mb, head: mh, bodyN: mbn, headN: mhn };
           srcR.tex = { body: rb, head: rh, bodyN: rbn, headN: rhn };
           plan();
+          jobs.push(() => {
+            ready = true;
+            loadExtra(img, glb);
+          });
           pump();
         })
         .catch((e) => console.warn("crowd", e && e.message));
     }
+    // 女の人・子ども・お年寄りのモデルを、1体ずつ読み込んで焼き込む(届いた順)
+    function loadExtra(img, glb) {
+      for (const key of Object.keys(EXTRA)) {
+        const b = "assets/people/" + key + "/", e = EXTRA[key];
+        const opt = (u) => img(u).catch(() => null);
+        Promise.all([glb(b + "model.glb"), img(b + "body_color.jpg"), img(b + "head_color.jpg"), img(b + "body_normal.jpg"), img(b + "head_normal.jpg"), img(b + "mask.png"), e.kid ? null : opt(b + "opacity.webp"), key === "bf2" ? opt(b + "glasses.webp") : null])
+          .then(([g, bo, he, bn, hn, mk, op, gl]) => {
+            const rg = rigOf(g.scene, e.h, e.cm);
+            rg.tex = { body: bo, head: he, bodyN: bn, headN: hn, mask: mk, hair: op, glasses: gl };
+            X[key] = { key, e, rg, anims: {}, mats: {}, ready: false };
+            planExtra(X[key]);
+            jobs.push(() => (X[key].ready = true));
+            pump();
+          })
+          .catch((er) => console.warn("crowd", key, er && er.message));
+      }
+    }
     // 1コマに使う時間(ms)を決めて、仕事を少しずつ進める
     function pump() {
+      if (pumping) return;
+      pumping = true;
       const t0 = performance.now();
       try {
         while (jobs.length && performance.now() - t0 < 4) jobs.shift()();
       } catch (e) {
         // 作れなければ、いままでの簡単な形のまま
         console.warn("crowd", e && e.message);
-        return (jobs.length = 0);
+        jobs.length = 0;
       }
-      if (jobs.length) setTimeout(pump, 0);
-      else ready = true;
+      pumping = false;
+      if (jobs.length && !pumpT) pumpT = setTimeout(() => ((pumpT = 0), pump()), 0);
     }
+    let pumpT = 0;
     // ---- 骨組み ----
     // 前が +x・上が +y・右が +z、単位 m、足の裏が y=0 になるように置く(交通の車や人と同じ向き)
-    function rigOf(scene) {
+    // h: 身長(m)、cm: 元のモデルの身長(cm)
+    function rigOf(scene, h = 1.72, cm = 181) {
       const P = new THREE.Group();
       P.add(scene);
       P.rotation.y = Math.PI / 2; // モデルは +z が前
-      const s = 1.72 / 181;
+      const s = h / cm;
       P.scale.setScalar(s);
       P.updateMatrixWorld(true);
       const B = {};
-      scene.traverse((o) => o.isBone && (B[o.name.replace("Bip01_", "")] = o));
+      scene.traverse((o) => o.isBone && (B[o.name.replace(/^Bip0\d_/, "")] = o));
       const rest = {};
       for (const k of Object.keys(B)) rest[k] = { p: B[k].getWorldPosition(new THREE.Vector3()), q: B[k].getWorldQuaternion(new THREE.Quaternion()), lq: B[k].quaternion.clone(), lp: B[k].position.clone(), M: B[k].matrixWorld.clone() };
       const meshes = [];
@@ -5012,8 +5049,12 @@ const City = (() => {
     // ---- 動き ----
     // 歩く: 周期 ph(0〜1)の、片足の足首の位置と、つま先の上がり
     const FOOT = { toe: [0.127, -0.095], heel: [-0.05, -0.09] }; // 足首から見た、つま先の付け根とかかと(平らに立ったとき)
-    function stepFoot(ph, stance = 0.6, hs = 0.29) {
-      const travel = STRIDE * stance, to = hs - travel, ankY = 0.097;
+    // g: 歩き方 { stance 足が着いている割合, hs 着地点, stride 1周期の距離, lift 振り出す足の高さ, push けり出しのつま先の角度 }
+    const GAIT = { stance: 0.6, hs: 0.29, stride: STRIDE, lift: 0.065, push: 0.85 };
+    // お年寄り: 歩幅が狭く、すり足ぎみで、けり出しが弱い
+    const GAIT_OLD = { stance: 0.66, hs: 0.2, stride: 0.82, lift: 0.04, push: 0.4 };
+    function stepFoot(ph, g = GAIT) {
+      const stance = g.stance, hs = g.hs, travel = g.stride * stance, ankY = 0.097, push = g.push;
       let x, y, p;
       if (ph < stance) {
         const u = ph / stance;
@@ -5027,7 +5068,7 @@ const City = (() => {
         } else if (u < 0.55) (p = 0), (x = F), (y = ankY);
         else {
           // かかとを上げ、つま先で地面を押す
-          p = -0.85 * ((u - 0.55) / 0.45) ** 1.6;
+          p = -push * ((u - 0.55) / 0.45) ** 1.6;
           const tx = F + FOOT.toe[0], ty = ankY + FOOT.toe[1];
           x = tx + Math.cos(p) * -FOOT.toe[0] - Math.sin(p) * -FOOT.toe[1];
           y = ty + Math.sin(p) * -FOOT.toe[0] + Math.cos(p) * -FOOT.toe[1];
@@ -5035,45 +5076,76 @@ const City = (() => {
       } else {
         // 振り出す
         const v = (ph - stance) / (1 - stance), e = 0.5 - 0.5 * Math.cos(Math.PI * v);
-        const a0 = stepFoot(stance - 1e-6, stance, hs), a1 = stepFoot(0, stance, hs);
+        const a0 = stepFoot(stance - 1e-6, g), a1 = stepFoot(0, g);
         x = a0.x + (a1.x - a0.x) * e;
-        y = a0.y + (a1.y - a0.y) * e + Math.sin(Math.PI * Math.min(1, v * 1.25)) * 0.065;
-        p = v < 0.3 ? -0.85 + (v / 0.3) * 0.75 : -0.1 + ((v - 0.3) / 0.7) * 0.36;
+        y = a0.y + (a1.y - a0.y) * e + Math.sin(Math.PI * Math.min(1, v * 1.25)) * g.lift;
+        p = v < 0.3 ? -push + (v / 0.3) * (push - 0.1) : -0.1 + ((v - 0.3) / 0.7) * 0.36;
       }
       return { x, y, p };
     }
-    // 歩く姿勢。kind: "walk" | "phone" | "carry"。fi: コマ(N_WALK で立ち止まり)
-    function walkPose(kind) {
+    // 歩く姿勢。kind: "walk" | "phone" | "carry" | "lead"(右手で子どもの手を引く) | "held"(左手を親に引かれる) | "old" | "oldR"(お年寄り。oldR は右手で杖か袋を持つ) | "sit"(自転車の子ども用の座席)
+    // fi: コマ(N_WALK で立ち止まり)。opt: { k 脚の長さの比(男の人の基準 = 1), hold 手をつなぐ位置 }
+    function walkPose(kind, opt = {}) {
+      // ka: 足首の高さの比(足首から足の裏まで。モデルごとに違う)
+      const k = opt.k || 1, ka = opt.ka || k, old = kind === "old" || kind === "oldR", G = old ? GAIT_OLD : GAIT;
       return (rg, fi) => {
         const stand = fi >= N_WALK, ph = fi / N_WALK;
         const feet = {}, hands = {};
         let bob = 0;
+        if (kind === "sit") return pose(rg, sitPose(rg, k));
         for (const sd of ["R", "L"]) {
           const zs = rg.side[sd];
-          if (stand) feet[sd] = { A: V3(sd === "R" ? 0.02 : -0.03, 0.097, zs * 0.1), p: 0, yaw: -zs * 0.12 };
+          if (stand) feet[sd] = { A: V3((sd === "R" ? 0.02 : -0.03) * k, 0.097 * ka, zs * 0.1 * k), p: 0, yaw: -zs * 0.12 };
           else {
-            const f = stepFoot((ph + (sd === "R" ? 0 : 0.5)) % 1);
-            feet[sd] = { A: V3(f.x, f.y, zs * 0.078), p: f.p, yaw: -zs * 0.08 };
+            const f = stepFoot((ph + (sd === "R" ? 0 : 0.5)) % 1, G);
+            feet[sd] = { A: V3(f.x * k, f.y * ka, zs * (old ? 0.09 : 0.078) * k), p: f.p, yaw: -zs * (old ? 0.14 : 0.08) };
           }
         }
-        if (!stand) bob = -0.012 * Math.cos(ph * Math.PI * 4) - 0.022;
-        const hip = V3(stand ? 0 : 0.0, rg.rest.R_Thigh.p.y - 0.008 + bob, 0);
+        if (!stand) bob = (-0.012 * Math.cos(ph * Math.PI * 4) - 0.022) * (old ? 0.6 : 1);
+        // お年寄りは、ひざを少し曲げて腰が低い
+        const hip = V3(old ? -0.03 * k : 0, rg.rest.R_Thigh.p.y + (-0.008 + bob - (old ? 0.035 : 0)) * k, 0);
         const sw = stand ? 0 : Math.sin(ph * Math.PI * 2);
         for (const sd of ["R", "L"]) hands[sd] = { swing: stand ? 0.02 : (sd === "R" ? -1 : 1) * sw * 0.33, grip: 0.35 };
         const o = { hip, lean: 0.05, yaw: stand ? 0 : sw * 0.07, feet, hands, neck: 0.02, head: -0.04 };
         if (kind === "phone") {
           // 左手でスマホを胸の前に持ち、画面を見る
           const S = rg.rest.L_UpperArm.p;
-          o.hands.L = { W: V3(0.26, S.y - 0.34, rg.side.L * 0.06), pole: V3(-0.4, -1, rg.side.L * 0.5), hdir: V3(0.5, 0.75, -rg.side.L * 0.4), grip: 0.55 };
+          o.hands.L = { W: V3(0.26 * k, S.y - 0.34 * k, rg.side.L * 0.06 * k), pole: V3(-0.4, -1, rg.side.L * 0.5), hdir: V3(0.5, 0.75, -rg.side.L * 0.4), grip: 0.55 };
           o.neck = 0.25;
           o.head = 0.42;
           o.hands.R.swing *= 0.8;
         } else if (kind === "carry") {
           // 右手で袋を提げる: 腕はあまり振らない
           o.hands.R = { swing: stand ? 0.04 : -sw * 0.1 + 0.03, bend: 0.12, grip: 0.95 };
+        } else if (kind === "lead" || kind === "held") {
+          // 手をつなぐ: つなぐ手は決まった位置(体の横)に置き、反対の手だけ振る
+          const sd = kind === "lead" ? "R" : "L", W = opt.hold;
+          o.hands[sd] = { W: V3(W[0], W[1], W[2]), pole: V3(-0.2, -0.6, rg.side[sd] * 0.8), hdir: V3(0.35, -1, rg.side[sd] * (kind === "lead" ? -0.25 : 0.5)).normalize(), grip: 0.85 };
+          if (kind === "held") (o.lean = 0.02), (o.head = -0.1), (o.look = rg.side.L * 0.12); // 少し親の方を見上げる
+        } else if (old) {
+          // 背中が丸く(腰から前へ)、首を前に出して前を見る。腕はあまり振らない
+          o.lean = 0.3;
+          o.neck = 0.18;
+          o.head = -0.12;
+          o.shrug = 0.05;
+          for (const sd of ["R", "L"]) o.hands[sd] = { swing: (stand ? 0.05 : (sd === "R" ? -1 : 1) * sw * 0.16) + 0.08, bend: 0.4, grip: 0.5 };
+          // 右手で杖(や袋)を持つ: 手は体の少し前に止める
+          if (kind === "oldR") o.hands.R = { swing: stand ? 0.2 : 0.2 - sw * 0.06, bend: 0.55, grip: 1.0 };
         }
         pose(rg, o);
       };
+    }
+    // 自転車の子ども用の座席に座る姿勢(後ろの荷台の上)。腰の位置は、立った時と同じ高さ(置く時に下げる)
+    function sitPose(rg, k) {
+      const hy = rg.rest.R_Thigh.p.y, feet = {}, hands = {};
+      for (const sd of ["R", "L"]) {
+        const zs = rg.side[sd];
+        // ひざは前へ、足は下へ(足のせに置く)
+        feet[sd] = { A: V3(rg.leg[0] * 0.85, hy - rg.leg[1] * 0.92, zs * 0.11 * k), p: 0.2, yaw: -zs * 0.1, pole: V3(1, 0.4, zs * 0.1) };
+        // 前の手すりを両手でにぎる
+        hands[sd] = { W: V3(0.2 * k, hy + 0.2 * k, zs * 0.12 * k), pole: V3(-0.3, -1, zs * 0.6), grip: 1.0, hdir: V3(0.6, -0.3, zs * 0.2).normalize() };
+      }
+      return { hip: V3(0, hy, 0), lean: 0.06, feet, hands, neck: 0.04, head: -0.06 };
     }
     // 自転車をこぐ姿勢。b: 自転車の寸法(bikeDims)
     function pedalPose(b) {
@@ -5199,7 +5271,7 @@ const City = (() => {
     }
     // 髪の頭(乗り手のモデルの頭): { hair 髪の色, neck 首の下の色 }
     function hairHead(o) {
-      const S = 512, cv = canvasOf(srcR.tex.head, S), D = cv.d, a = D.data;
+      const S = 512, cv = canvasOf(srcR.tex.head, S), D = cv.d, a = D.data, a0 = a.slice();
       const h = rgbOf(o.hair);
       for (let y = 0; y < S; y++)
         for (let x = 0; x < S; x++) {
@@ -5208,12 +5280,18 @@ const City = (() => {
           const face = u > 0.36 && u < 0.64 && v > 0.13 && v < 0.6;
           const wedge = o.neck != null && v > 0.405 && v < 0.5 && ((u > 0.17 && u < 0.36) || (u > 0.64 && u < 0.83)) && L < 160;
           if (wedge) {
-            // 耳の下の小さな切れ端(えり)は、ふちまで肌の色に
-            const t = rgbOf(o.neck), k = Math.max(0, 1 - L / 160);
-            for (let c = 0; c < 3; c++) a[i + c] = a[i + c] * (1 - k) + t[c] * 0.92 * k;
-          } else if ((v < 0.415 || (v < 0.52 && L > 55)) && !face && L < 150 && L > 8 && a[i] - a[i + 2] < 70) {
-            const f = Math.pow(L / 95, 1.2);
-            for (let c = 0; c < 3; c++) a[i + c] = Math.min(255, h[c] * f);
+            // 耳の下の小さな切れ端(えり)は、すぐ上(あご)とすぐ下(首)の肌の色を、上下でなめらかにつないで埋める
+            // (決まった色を混ぜると、まわりの肌と明るさが合わず、灰色の影のように見えていた)
+            const yt = Math.round(0.396 * S), yb = Math.round(0.508 * S), w = (y - yt) / (yb - yt);
+            const it = (yt * S + x) * 4, ib = (yb * S + x) * 4, k = Math.min(1, Math.max(0, (175 - L) / 45));
+            for (let c = 0; c < 3; c++) a[i + c] = a[i + c] * (1 - k) + (a0[it + c] * (1 - w) + a0[ib + c] * w) * k;
+          } else if ((v < 0.415 || (v < 0.52 && L > 55)) && L < 150 && L > 8 && a[i] - a[i + 2] < 70) {
+            // 顔の枠のふち(こめかみ・額の生えぎわ)は、内側へ向けて少しずつ弱める(枠の線で髪の色が切れないように)
+            const dist = face ? Math.min(u - 0.36, 0.64 - u, v - 0.13) : 0, wt = face ? Math.max(0, 1 - dist / 0.035) * Math.min(1, (150 - L) / 30) : 1;
+            if (wt > 0) {
+              const f = Math.pow(L / 95, 1.2);
+              for (let c = 0; c < 3; c++) a[i + c] = a[i + c] * (1 - wt) + Math.min(255, h[c] * f) * wt;
+            }
           } else if (o.neck != null && v > 0.38 && L < 45 && !(u < 0.37 && v > 0.6)) {
             // ジャージのえり(首の下)は肌の色に
             const t = rgbOf(o.neck);
@@ -5268,6 +5346,12 @@ const City = (() => {
       P.mask = () => ({ bone: "Head", geo: mk([{ geo: new THREE.SphereGeometry(0.1, 14, 8, -0.9, 1.8, 1.72, 0.9), m: M4(0.0, 1.61, 0, 0, Math.PI, 0, 1.02, 1.0, 0.86), c: 0xf2f3f4 }]) });
       // ヘルメット(頭)
       P.helmet = (c) => ({ bone: "Head", geo: mk([{ geo: new THREE.SphereGeometry(0.135, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.52), m: M4(-0.005, 1.612, 0, 0, 0, 0.12, 1.15, 0.95, 0.95), c }, { geo: new THREE.SphereGeometry(0.137, 16, 4, 0, Math.PI * 2, Math.PI * 0.48, Math.PI * 0.05), m: M4(-0.005, 1.612, 0, 0, 0, 0.12, 1.15, 0.95, 0.95), c: 0x15171a }]) });
+      // 杖(右手から地面まで。len: 手の高さ)
+      P.cane = (len, c) => ({ bone: "R_Grip", geo: mk([{ geo: new THREE.CylinderGeometry(0.011, 0.009, len, 8), m: M4(0.02, -len / 2 + 0.02, 0), c }, { geo: new THREE.TorusGeometry(0.04, 0.011, 6, 12, Math.PI), m: M4(-0.02, 0.02, 0), c }, { geo: new THREE.CylinderGeometry(0.013, 0.013, 0.03, 8), m: M4(0.02, -len + 0.035, 0), c: 0x1a1a1a }]) });
+      // ランドセル(背中。四角くて、ふたが丸い)
+      P.randoseru = (c) => ({ bone: "Spine2", geo: mk([{ geo: rb(0.19, 0.36, 0.3, 0.05), m: M4(-0.215, 1.2, 0), c }, { geo: rb(0.03, 0.3, 0.3, 0.02), m: M4(-0.12, 1.26, 0, 0, 0, -0.05), c }, ...[-1, 1].map((s) => ({ geo: rb(0.02, 0.36, 0.04, 0.008), m: M4(-0.105, 1.24, s * 0.1, 0, 0, -0.12), c }))]) });
+      // 通学の黄色い帽子(頭。つばつき)
+      P.kidhat = (c) => ({ bone: "Head", geo: mk([{ geo: new THREE.SphereGeometry(0.128, 16, 8, 0, Math.PI * 2, 0, Math.PI * 0.5), m: M4(-0.008, 1.63, 0, 0, 0, 0.08, 1.12, 0.9, 0.98), c }, { geo: new THREE.CylinderGeometry(0.2, 0.2, 0.008, 20, 1, false, Math.PI * 0.1, Math.PI * 0.8), m: M4(0.0, 1.63, 0, 0, 0, 0.12, 0.85, 1, 0.82), c }]) });
       P.mat = { cloth: cl(), shiny: cl(0, { roughness: 0.35 }) };
       return P;
     }
@@ -5474,10 +5558,250 @@ const City = (() => {
       for (const j of [0x1a1b1e, 0x1f4fa0, 0xb81c24, 0xf0f0f0, 0x1d7a4a, 0xe8a020]) jobs.push(() => mats.sport.push(material(sportBody({ jersey: j }), srcR.tex.bodyN, 0.6)));
       jobs.push(() => (P = props()));
     }
+    // ---- 女の人・子ども・お年寄り ----
+    // 服の組み合わせ(top 上着、bot ズボン・スカート、shoe 靴。null はもとのまま)。o: もとの服のまま
+    const LOOKS = {
+      f05: [
+        { o: 1, tag: "casual" },
+        { top: 0x26272c, bot: 0x202126, shoe: 0x141414, tag: "suit" }, // 黒のスーツ(パンツ)
+        { top: 0xc9b48e, bot: 0x2a3142, tag: "casual" }, // ベージュの上着と紺
+        { top: 0xe9e6df, bot: 0x8aa3c0, tag: "casual" }, // 白い上着と明るいジーンズ
+        { top: 0x2d3a55, bot: 0xb9ad94, tag: "casual" }, // 紺の上着とベージュ
+        { top: 0x6b7457, bot: 0x26282c, tag: "casual" }, // カーキ
+      ],
+      f02: [
+        { o: 1, tag: "casual" },
+        { top: 0xf3f2ee, bot: 0x252a3a, shoe: 0x1c1a18, tag: "suit" }, // 白いブラウスと紺のスカート
+        { top: 0xd6e2ef, bot: 0x1d1e22, tag: "suit" }, // 水色のブラウスと黒のスカート
+        { top: 0xd8c7a6, bot: 0x5b4636, tag: "casual" }, // ベージュのニットと茶色のスカート
+        { top: 0xe8c9c8, bot: 0x6f7279, tag: "casual" }, // 薄いピンクとグレー
+        { top: 0xf4f3ef, bot: 0x263048, shoe: 0x2a2018, tag: "student" }, // 制服(白いブラウスと紺のスカート)
+      ],
+      bf3: [
+        { o: 1, tag: "suit" },
+        { top: 0x25262b, bot: 0x25262b, shoe: 0x121212, tag: "suit" }, // 黒のスーツ
+        { top: 0x283147, bot: 0x283147, shoe: 0x15151a, tag: "suit" }, // 紺のスーツ
+        { top: 0x6e7076, bot: 0x6e7076, shoe: 0x1a1a1a, tag: "suit" }, // グレーのスーツ
+        { top: 0xcfc6b3, bot: 0xcfc6b3, shoe: 0x6a5240, tag: "suit" }, // ベージュ
+      ],
+      bf2: [
+        { o: 1, tag: "old" },
+        { top: 0x6a5470, bot: 0x5c5e63, tag: "old" }, // 紫のカーディガンとグレー
+        { top: 0xbfb08f, bot: 0x5a4a3c, tag: "old" }, // ベージュと茶色
+        { top: 0x56624e, bot: 0x3c3e44, tag: "old" }, // 深い緑
+        { top: 0x2f3a52, bot: 0x8c8a86, tag: "old" }, // 紺と明るいグレー
+      ],
+      m03: [
+        { o: 1, tag: "old" },
+        { top: 0x5e6268, bot: 0x3a3c40, tag: "old" }, // グレーの上着
+        { top: 0xb8ab88, bot: 0x6a6658, tag: "old" }, // ベージュのジャンパー
+        { top: 0x2b3446, bot: 0x8a8070, tag: "old" }, // 紺とカーキ
+        { top: 0x4f5843, bot: 0x2c2e33, tag: "old" }, // 深い緑
+      ],
+      cm1: [
+        { o: 1, tag: "kid" },
+        { top: 0xf2f2f0, bot: 0x1c1f2a, shoe: 0xe8e8e4, tag: "student" }, // 制服(白いシャツと黒のズボン)
+        { top: 0x1a1b20, bot: 0x1a1b20, shoe: 0x1c1a18, tag: "student" }, // 学生服(黒)
+        { top: 0xc8423a, bot: 0x2e3a55, tag: "kid" }, // 赤いトレーナーと紺
+        { top: 0x3f7a55, bot: 0x8c7f68, tag: "kid" }, // 緑とベージュ
+        { top: 0xe0b23a, bot: 0x3a4a6a, tag: "kid" }, // 黄色
+      ],
+      cf1: [
+        { o: 1, tag: "kid" },
+        { top: 0x22283a, bot: 0x22283a, shoe: 0x1c1a18, tag: "student" }, // 紺の制服
+        { top: 0xf2f1ed, bot: 0x2a3148, shoe: 0xeeeeea, tag: "student" }, // 白いシャツと紺
+        { top: 0x9ac0e0, bot: 0x3c4a6a, tag: "kid" }, // 水色
+        { top: 0xf0d27a, bot: 0x8aa0c0, tag: "kid" }, // 黄色
+        { top: 0xd98aa8, bot: 0x4a4e58, tag: "kid" }, // ピンク
+      ],
+    };
+    // 髪の色(null はもとのまま)。お年寄りは白髪・グレー、染めた茶色も
+    const HAIRS = {
+      f05: [null, 0x1a1411, 0x3a2a1e, 0x5a3e2a],
+      f02: [null, 0x15110f, 0x4a3324],
+      bf3: [null, 0x120f0d, 0x3d2b20],
+      bf2: [0xb8b6b2, 0x8e8c88, 0xd8d6d0, 0x4a3a2e],
+      m03: [null, 0xc8c6c0, 0x6e6c68],
+      cm1: [0x151210, 0x2a1f17],
+      cf1: [0x14110f, 0x2c2118, 0x3a2a1e],
+    };
+    // 手をつないで歩く親子: 子どもは親の右に dz、大きさ ks。つなぐ手の位置 P(親の体の座標)
+    const PAIR = { dz: 0.5, ks: 0.8, P: [0.06, 0.74, 0.28] };
+    // 大きな絵を何コマかに分けて塗る。row(d, size, y0, y1) で行ごとに塗り、done(texture) で受け取る
+    function paint(img, size, row, done) {
+      let cv = null;
+      jobs.push(() => (cv = canvasOf({ image: img }, size)));
+      for (let y0 = 0; y0 < size; y0 += 128) jobs.push(() => row(cv.d.data, size, y0, Math.min(size, y0 + 128)));
+      jobs.push(() => done(texOf(cv)));
+    }
+    const lumOf = (a, i) => (a[i] * 0.3 + a[i + 1] * 0.55 + a[i + 2] * 0.15) / 255;
+    function planExtra(x) {
+      const rg = x.rg, e = x.e, T = rg.tex, key = x.key;
+      for (const t of [T.body, T.head, T.hair, T.glasses]) if (t) (t.encoding = THREE.sRGBEncoding), (t.anisotropy = 4);
+      rg.P.updateMatrixWorld(true);
+      const K = kit([{ rg, mat: /body/, slot: 0 }, { rg, mat: /head/, slot: 1 }, { rg, mat: /opacity/, slot: 2 }, { rg, mat: /glasses/, slot: 3 }]);
+      // 脚の長さの比(歩幅・足の大きさを合わせる)
+      const k = (rg.leg[0] + rg.leg[1]) / (srcM.leg[0] + srcM.leg[1]);
+      x.k = k;
+      for (const kind of e.kinds) {
+        let hold = null;
+        if (kind === "lead") hold = [PAIR.P[0], PAIR.P[1], rg.side.R * PAIR.P[2]];
+        if (kind === "held") hold = [PAIR.P[0] / PAIR.ks, PAIR.P[1] / PAIR.ks, (rg.side.R * (PAIR.P[2] - PAIR.dz)) / PAIR.ks];
+        const fr = (x.anims[kind] = { frames: [], n: N_WALK, kit: K, stride: (kind === "old" || kind === "oldR" ? GAIT_OLD.stride : STRIDE) * k });
+        const fn = walkPose(kind, { k, ka: rg.rest.R_Foot.p.y / srcM.rest.R_Foot.p.y, hold });
+        const nf = kind === "sit" ? 1 : N_WALK + 1;
+        for (let i = 0; i < nf; i++) jobs.push(() => fr.frames.push(bakeFrame(K, [rg], fn, i)));
+        // 杖の長さ: 右手の高さ(コマの平均)
+        if (kind === "oldR") jobs.push(() => (fr.gripY = fr.frames.slice(0, N_WALK).reduce((s, f) => s + f.att.R_Grip.elements[13], 0) / N_WALK));
+      }
+      if (e.mama) {
+        const d = bikeDims("mama", rg);
+        const fr = (x.anims.mama = { frames: [], n: N_PEDAL, kit: K, dims: d });
+        const fn = pedalPose(d);
+        for (let i = 0; i < N_PEDAL; i++) jobs.push(() => fr.frames.push(bakeFrame(K, [rg], fn, i)));
+        jobs.push(() => {
+          fr.wheel = wheelGeo(d.R, 0.02, false);
+          fr.crankG = crankGeo(d);
+          fr.pedalG = pedalGeo();
+          fr.bikes = [];
+          fr.seatG = childSeatGeo(d);
+        });
+        for (const col of BIKE_COL.mama) jobs.push(() => fr.bikes.push({ col, geo: bikeGeo(d, col) }));
+      }
+      // 塗り分けの印(左: 体、右: 頭)と、もとの色の明るさ(印ごとの平均)
+      const mk = {};
+      jobs.push(() => {
+        const c = document.createElement("canvas");
+        c.width = 1024;
+        c.height = 512;
+        const cx = c.getContext("2d", { willReadFrequently: true });
+        cx.drawImage(T.mask.image, 0, 0, 1024, 512);
+        mk.d = cx.getImageData(0, 0, 1024, 512).data;
+        // 512 で見た平均の明るさ
+        const b = canvasOf(T.body, 512).d.data, h = canvasOf(T.head, 512).d.data;
+        const sum = [0, 0, 0, 0], w = [1e-6, 1e-6, 1e-6, 1e-6];
+        for (let y = 0; y < 512; y++)
+          for (let xx = 0; xx < 512; xx++) {
+            const i = (y * 512 + xx) * 4, j = (y * 1024 + xx) * 4, L = lumOf(b, i);
+            for (let c2 = 0; c2 < 3; c2++) {
+              const m = mk.d[j + c2] / 255;
+              if (m > 0.5) (sum[c2] += L), (w[c2] += 1);
+            }
+            const mh = mk.d[j + 2048] / 255;
+            if (mh > 0.5) (sum[3] += lumOf(h, i)), (w[3] += 1);
+          }
+        mk.Lm = sum.map((s, i) => Math.max(0.03, s / w[i]));
+      });
+      // 体(服の色)
+      x.mats.body = [];
+      const MS = 512;
+      for (const lk of LOOKS[key]) {
+        if (lk.o) {
+          jobs.push(() => x.mats.body.push({ tag: lk.tag, m: material(T.body, T.bodyN, 0.8) }));
+          continue;
+        }
+        const ops = [[0, lk.top], [1, lk.bot], [2, lk.shoe]].filter((q) => q[1] != null);
+        paint(T.body.image, MS, (a, S, y0, y1) => {
+            const sc = 512 / S;
+            for (let y = y0; y < y1; y++)
+              for (let xx = 0; xx < S; xx++) {
+                const i = (y * S + xx) * 4, j = (((y * sc) | 0) * 1024 + ((xx * sc) | 0)) * 4;
+                for (const [ch, col] of ops) {
+                  const kk = mk.d[j + ch] / 255;
+                  if (kk < 0.02) continue;
+                  const L = lumOf(a, i), f = Math.min(1.9, Math.pow(L / mk.Lm[ch], ch === 2 ? 1 : 1.15)), t = rgbOf(col);
+                  for (let c = 0; c < 3; c++) a[i + c] = Math.min(255, a[i + c] * (1 - kk) + t[c] * f * kk);
+                }
+              }
+          }, (tex) => x.mats.body.push({ tag: lk.tag, m: material(tex, T.bodyN, 0.82) }));
+      }
+      // 頭(髪の色)と、髪の房(透ける絵)。同じ番号で組にする
+      x.mats.hair = [];
+      let LmCard = 0.3;
+      if (T.hair)
+        jobs.push(() => {
+          const d = canvasOf(T.hair, 256).d.data;
+          let s = 0, n = 1e-6;
+          for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 128) (s += lumOf(d, i)), (n += 1);
+          LmCard = Math.max(0.03, s / n);
+        });
+      for (const hc of HAIRS[key]) {
+        const it = { head: null, card: null, glasses: null };
+        jobs.push(() => x.mats.hair.push(it));
+        if (hc == null) jobs.push(() => (it.head = material(T.head, T.headN, 0.55)));
+        else
+          paint(T.head.image, MS, (a, S, y0, y1) => {
+              const sc = 512 / S, t = rgbOf(hc);
+              for (let y = y0; y < y1; y++)
+                for (let xx = 0; xx < S; xx++) {
+                  const i = (y * S + xx) * 4, kk = mk.d[(((y * sc) | 0) * 1024 + 512 + ((xx * sc) | 0)) * 4] / 255;
+                  if (kk < 0.02) continue;
+                  const f = Math.min(1.8, Math.pow(lumOf(a, i) / mk.Lm[3], 1.1));
+                  for (let c = 0; c < 3; c++) a[i + c] = Math.min(255, a[i + c] * (1 - kk) + t[c] * f * kk);
+                }
+            }, (tex) => (it.head = material(tex, T.headN, 0.55)));
+        if (T.hair) {
+          if (hc == null) jobs.push(() => (it.card = cardMaterial(T.hair)));
+          else
+            paint(T.hair.image, 1024, (a, S, y0, y1) => {
+                const t = rgbOf(hc);
+                for (let i = y0 * S * 4; i < y1 * S * 4; i += 4) {
+                  if (!a[i + 3]) continue;
+                  const f = Math.min(1.8, Math.pow(lumOf(a, i) / LmCard, 1.1));
+                  for (let c = 0; c < 3; c++) a[i + c] = Math.min(255, t[c] * f);
+                }
+              }, (tex) => (it.card = cardMaterial(tex)));
+        }
+        if (T.glasses) jobs.push(() => (it.glasses = x.glassMat || (x.glassMat = glassMaterial(T.glasses))));
+      }
+    }
+    // 髪の房: 透ける所は描かない(影も同じ形になる)。表と裏の両方
+    function cardMaterial(map) {
+      const m = new THREE.MeshStandardMaterial({ map, alphaTest: 0.42, side: THREE.DoubleSide, roughness: 0.6, metalness: 0, envMapIntensity: 0.3, emissive: 0xffffff, emissiveMap: map, emissiveIntensity: nightK });
+      allMats.push(m);
+      return m;
+    }
+    // めがね(レンズは半分透ける)
+    function glassMaterial(map) {
+      const m = new THREE.MeshStandardMaterial({ map, transparent: true, depthWrite: false, side: THREE.DoubleSide, roughness: 0.25, metalness: 0.2 });
+      return m;
+    }
+    // 角の丸い箱(w, h, d: 大きさ、r: 角の丸み)
+    function rbox(w, h, d, r) {
+      const g = new THREE.BoxGeometry(w, h, d, 4, 4, 4), p = g.attributes.position, v = new THREE.Vector3();
+      for (let i = 0; i < p.count; i++) {
+        v.fromBufferAttribute(p, i);
+        const q = V3(Math.max(-w / 2 + r, Math.min(w / 2 - r, v.x)), Math.max(-h / 2 + r, Math.min(h / 2 - r, v.y)), Math.max(-d / 2 + r, Math.min(d / 2 - r, v.z)));
+        const dd = v.clone().sub(q);
+        if (dd.lengthSq() > 1e-9) v.copy(q.add(dd.normalize().multiplyScalar(r)));
+        p.setXYZ(i, v.x, v.y, v.z);
+      }
+      g.computeVertexNormals();
+      return g;
+    }
+    // 自転車の後ろの子ども用の座席(荷台の上): 丸いからの座面と背もたれ(頭の横まで)、横の囲い、足のせ、前の手すり
+    function childSeatGeo(d) {
+      const M4 = (x, y, z, rx, ry, rz) => new THREE.Matrix4().compose(V3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx || 0, ry || 0, rz || 0)), V3(1, 1, 1));
+      const R = d.R, x0 = d.rear - 0.07, y0 = R + 0.44, shell = 0x2c2e33, pad = 0x4a5a70, bar = 0x8a8c90;
+      const parts = [
+        { geo: rbox(0.3, 0.05, 0.3, 0.02), m: M4(x0, y0 + 0.035, 0), c: shell }, // 座面
+        { geo: rbox(0.24, 0.035, 0.24, 0.015), m: M4(x0 + 0.01, y0 + 0.07, 0), c: pad },
+        { geo: rbox(0.06, 0.56, 0.32, 0.025), m: M4(x0 - 0.15, y0 + 0.32, 0, 0, 0, 0.1), c: shell }, // 背もたれ
+        { geo: rbox(0.03, 0.4, 0.24, 0.012), m: M4(x0 - 0.115, y0 + 0.29, 0, 0, 0, 0.1), c: pad },
+        { geo: new THREE.CylinderGeometry(0.012, 0.012, 0.26, 8), m: M4(x0 + 0.16, y0 + 0.24, 0, Math.PI / 2, 0, 0), c: bar }, // 前の手すり
+      ];
+      for (const s of [-1, 1]) {
+        parts.push({ geo: rbox(0.26, 0.16, 0.03, 0.012), m: M4(x0 - 0.02, y0 + 0.15, s * 0.155), c: shell }); // 横の囲い
+        parts.push({ geo: rbox(0.08, 0.16, 0.05, 0.02), m: M4(x0 - 0.15, y0 + 0.52, s * 0.15, 0, 0, 0.1), c: shell }); // 頭の横
+        parts.push({ geo: new THREE.CylinderGeometry(0.01, 0.01, 0.2, 6), m: M4(x0 + 0.16, y0 + 0.14, s * 0.13), c: bar });
+        parts.push({ geo: rbox(0.1, 0.025, 0.08, 0.01), m: M4(x0 + 0.17, R + 0.1, s * 0.13), c: shell }); // 足のせ
+        parts.push({ geo: new THREE.CylinderGeometry(0.009, 0.009, 0.36, 6), m: M4(x0 + 0.12, R + 0.28, s * 0.13, 0, 0, -0.2), c: bar });
+      }
+      return merge(parts);
+    }
     // ---- 1人を出す ----
-    // 歩行者: { obj, step(dt, v) }。まだ用意できていなければ null
-    function ped(rnd, force) {
-      if (!ready) return null;
+    // 男の人の歩行者: { obj, step(dt, v) }
+    function pedMan(rnd, force) {
       const pick = (a) => a[Math.floor(rnd() * a.length) % a.length];
       const r = rnd();
       const kind = force || (r < 0.16 ? "phone" : r < 0.36 ? "carry" : "walk");
@@ -5495,6 +5819,7 @@ const City = (() => {
       const acc = [];
       const add = (pr, mat) => {
         const m = new THREE.Mesh(pr.geo, mat || P.mat.cloth);
+        m.userData.own = true; // その人だけの形(いなくなったら捨てる)
         m.matrixAutoUpdate = false;
         m.castShadow = true;
         g.add(m);
@@ -5533,13 +5858,154 @@ const City = (() => {
         },
       };
     }
+    // 女の人・子ども・お年寄りの1人分(形と材質と小物)。kind: 焼き込んだ歩き方。o: { tag 服の種類, look 服の番号, hair 髪の番号 }
+    function figure(x, kind, rnd, o = {}) {
+      const pick = (a) => a[Math.floor(rnd() * a.length) % a.length];
+      const A = x.anims[kind];
+      const bl = x.mats.body.filter((b) => !o.tag || o.tag.includes(b.tag));
+      const body = o.look != null ? x.mats.body[o.look % x.mats.body.length] : pick(bl.length ? bl : x.mats.body);
+      const hr = o.hair != null ? x.mats.hair[o.hair % x.mats.hair.length] : pick(x.mats.hair);
+      const ml = [body.m, hr.head, hr.card || body.m, hr.glasses || body.m];
+      const g = new THREE.Group();
+      const mesh = new THREE.Mesh(A.frames[0].geos["*"], ml);
+      mesh.castShadow = true;
+      g.add(mesh);
+      const acc = [];
+      // 小物は男の人の大きさで作ってあるので、この人の体に合わせる(頭の物は頭の位置へ)
+      const sp = x.e.h / 1.72, hk = x.e.kid ? 0.93 : x.e.sex === "f" ? 0.96 : 1;
+      const hp0 = srcM.rest.Head.p, hp1 = x.rg.rest.Head.p;
+      const add = (pr, mat) => {
+        const geo = pr.geo;
+        if (pr.bone === "Head") geo.applyMatrix4(new THREE.Matrix4().makeTranslation(hp1.x, hp1.y, hp1.z).multiply(new THREE.Matrix4().makeScale(hk, hk, hk)).multiply(new THREE.Matrix4().makeTranslation(-hp0.x, -hp0.y, -hp0.z)));
+        else if (!/Grip|Phone/.test(pr.bone)) geo.applyMatrix4(new THREE.Matrix4().makeScale(sp, sp, sp * (x.e.sex === "f" ? 0.92 : 1)));
+        const m = new THREE.Mesh(geo, mat || P.mat.cloth);
+        m.userData.own = true;
+        m.matrixAutoUpdate = false;
+        m.castShadow = true;
+        g.add(m);
+        acc.push({ m, bone: pr.bone });
+      };
+      const set = (fr) => {
+        mesh.geometry = fr.geos["*"];
+        for (const a of acc) a.m.matrix.copy(fr.att[a.bone]), (a.m.matrixWorldNeedsUpdate = true);
+      };
+      return { g, mesh, acc, A, body, add, set, pick };
+    }
+    // 歩く1人(または手をつないだ親子)を動かす。parts: [{ f: figure, tall }]
+    function walker(parts, vk, size) {
+      const G = new THREE.Group();
+      const ph = parts.map(() => 0);
+      parts.forEach((p, i) => {
+        G.add(p.f.g);
+        ph[i] = p.ph;
+        p.f.set(p.f.A.frames[Math.floor(ph[i] * p.f.A.n) % p.f.A.n]);
+      });
+      G.userData.size = size;
+      G.userData.crowd = true;
+      return {
+        obj: G,
+        vk,
+        step(dt, v) {
+          parts.forEach((p, i) => {
+            const A = p.f.A;
+            if (v < 0.15) return p.f.set(A.frames[A.n]); // 立ち止まる
+            ph[i] = (ph[i] + (v * dt) / (A.stride * p.tall)) % 1;
+            p.f.set(A.frames[Math.floor(ph[i] * A.n) % A.n]);
+          });
+        },
+      };
+    }
+    const xr = (...ks) => ks.map((k) => X[k]).filter((x) => x && x.ready);
+    // 歩行者: { obj, step(dt, v), vk 歩く速さの倍率 }。まだ用意できていなければ null
+    // 東京の街の人: 男の人(通勤・学生・買い物)、女の人、中高生、親子、小学生、お年寄り
+    // force: 男の人の歩き方("walk" など)、または "who/kind"(例 "f05/phone"、"pair/f02/cm1"、"m03/oldR")
+    function ped(rnd, force) {
+      if (!ready) return null;
+      const pick = (a) => a[Math.floor(rnd() * a.length) % a.length];
+      let who = null, kind = null, r = rnd();
+      if (force) {
+        if (!force.includes("/")) return pedMan(rnd, force);
+        [who, kind] = force.split("/");
+        r = who === "pair" ? 0.7 : 1;
+      }
+      const W = xr("f05", "f02", "bf3"), K = xr("cm1", "cf1"), O = xr("bf2", "m03");
+      const mom = xr("f05", "f02");
+      if (!force && (r < 0.3 || (!W.length && !O.length))) return pedMan(rnd);
+      // 手をつないだ親子
+      if (who === "pair" || (!force && r >= 0.66 && r < 0.73 && mom.length && K.length)) {
+        const mx = force ? X[kind] : pick(mom), kx = force ? X[force.split("/")[2]] : pick(K);
+        if (!mx || !kx || !mx.ready || !kx.ready) return pedMan(rnd);
+        const f1 = figure(mx, "lead", rnd, { tag: ["casual"] }), f2 = figure(kx, "held", rnd, { tag: ["kid"] });
+        f2.g.scale.setScalar(PAIR.ks);
+        f2.g.position.z = mx.rg.side.R * PAIR.dz;
+        if (rnd() < 0.4) f2.add(P.kidhat(0xf0d030));
+        if (rnd() < 0.5) f1.add(P.shoulder(pick([0x4a3424, 0x1c1c1e, 0x8a7a5a, 0xc8b8a0]))), f1.add(P.strap());
+        else if (rnd() < 0.5) f1.add(P.backpack(pick([0x1c1d20, 0x3a3a3a, 0x6a5a48])));
+        return walker([{ f: f1, tall: 1, ph: rnd() }, { f: f2, tall: PAIR.ks, ph: rnd() }], 0.82, [0.8, 1.4]);
+      }
+      let x, f, tall, vk = 1;
+      if (who ? EXTRA[who] && EXTRA[who].old : !force && r >= 0.77) {
+        // お年寄り: ゆっくり、背中を丸めて。半分は杖か買い物袋を右手に
+        x = who ? X[who] : O.length ? pick(O) : null;
+        if (!x || !x.ready) return pedMan(rnd);
+        kind = kind || (rnd() < 0.55 ? "oldR" : "old");
+        f = figure(x, kind, rnd);
+        if (kind === "oldR") {
+          if (rnd() < 0.6) f.add(P.cane(f.A.gripY + 0.01, pick([0x3a2a1e, 0x2a2a2c, 0x5a4a3a])), P.mat.shiny);
+          else f.add(P.bag(pick([0xf4f4f0, 0xe8e4dc, 0x4a5a6a, 0x6a5a48]), pick(["plastic", "tote"])));
+        } else if (rnd() < 0.35) f.add(P.backpack(pick([0x3a4a3a, 0x2a3550, 0x5a4a3a])));
+        else if (rnd() < 0.4) f.add(P.shoulder(pick([0x4a3424, 0x2c2c2e]))), f.add(P.strap());
+        if (rnd() < 0.25) f.add(P.mask());
+        tall = 0.96 + rnd() * 0.06;
+        vk = 0.62 + rnd() * 0.12;
+      } else if (who ? EXTRA[who] && EXTRA[who].kid : !force && r >= 0.58 && r < 0.77 && K.length) {
+        // 子ども: 中高生(制服・リュック)、小学生(ランドセル・黄色い帽子)
+        x = who ? X[who] : pick(K);
+        if (!x || !x.ready) return pedMan(rnd);
+        const teen = who ? kind !== "small" : r < 0.66 || rnd() < 0.3;
+        f = figure(x, "walk", rnd, { tag: teen ? ["student"] : ["kid", "student"] });
+        if (teen) {
+          tall = 1.05 + rnd() * 0.08; // 150〜160cm
+          if (rnd() < 0.75) f.add(P.backpack(pick([0x1c1d20, 0x2a3550, 0x3a3a3a, 0x24242a])));
+          else f.add(P.shoulder(pick([0x1c1d20, 0x2a3550]))), f.add(P.strap());
+        } else {
+          tall = 0.84 + rnd() * 0.08; // 120〜130cm
+          f.add(P.randoseru(pick([0x1a1a1c, 0x8a1c22, 0x5a2a22, 0x2a3a5a, 0xb05a7a])), P.mat.shiny);
+          if (rnd() < 0.5) f.add(P.kidhat(0xf0d030));
+        }
+      } else {
+        // 女の人: 通勤・買い物・普段
+        x = who ? X[who] : pick(W);
+        if (!x || !x.ready) return pedMan(rnd);
+        kind = kind || (r < 0.37 ? "phone" : r < 0.47 ? "carry" : "walk");
+        if (!x.anims[kind]) kind = "walk";
+        f = figure(x, kind, rnd, { tag: ["casual", "suit"] });
+        if (kind === "phone") f.add(P.phone(), P.mat.shiny);
+        if (kind === "carry") {
+          const q = rnd();
+          f.add(q < 0.35 ? P.bag(0xf4f4f0, "plastic") : q < 0.6 ? P.bag(pick([0xb08a5a, 0xe8e0d0]), "paper") : q < 0.85 ? P.bag(pick([0x2a2c30, 0x6a5a48, 0xc8c0b0, 0x8a2a30]), "tote") : P.umbrella(pick([0x1a1b1f, 0x7a1c22, 0xe0e0e0, 0x5a6a8a])));
+        }
+        const b2 = rnd();
+        if (b2 < 0.5) f.add(P.shoulder(pick([0x4a3424, 0x1c1c1e, 0x8a7a5a, 0xc8b8a0, 0x6a2a2a]))), f.add(P.strap());
+        else if (b2 < 0.62) f.add(P.backpack(pick([0x1c1d20, 0x3a3a3a, 0x6a5a48])));
+        if (rnd() < 0.15) f.add(P.mask());
+        tall = 0.95 + rnd() * 0.08;
+      }
+      f.g.scale.setScalar(tall);
+      return walker([{ f, tall, ph: rnd() }], vk, [0.75, 0.75]);
+    }
     // 自転車の人: { obj, step(dt, v) }
     function cyclist(rnd, force) {
       if (!ready) return null;
       const pick = (a) => a[Math.floor(rnd() * a.length) % a.length];
       const r = rnd();
-      const type = force || (r < 0.55 ? "mama" : r < 0.8 ? "cross" : "road");
-      const A = anims[type], d = A.dims;
+      // force: "mama" | "cross" | "road"、または "f05/mama"(女の人のママチャリ)・"f05/mama/seat"(子どもを後ろに乗せる)
+      const fs = force && force.includes("/") ? force.split("/") : null;
+      const type = fs ? "mama" : force || (r < 0.55 ? "mama" : r < 0.8 ? "cross" : "road");
+      // ママチャリの半分くらいは女の人(ときどき、後ろの座席に子ども)
+      const moms = xr("f05", "f02");
+      const fx = fs ? (X[fs[0]] && X[fs[0]].ready ? X[fs[0]] : null) : type === "mama" && moms.length && rnd() < 0.55 ? pick(moms) : null;
+      const A = fx ? fx.anims.mama : anims[type], d = A.dims;
       const g = new THREE.Group();
       // 自転車の形(色ごとに1つ作って使い回す)
       const bg = pick(A.bikes);
@@ -5558,6 +6024,7 @@ const City = (() => {
       const acc = [];
       const add = (pr, mat) => {
         const m = new THREE.Mesh(pr.geo, mat || P.mat.cloth);
+        m.userData.own = true; // その人だけの形(いなくなったら捨てる)
         m.matrixAutoUpdate = false;
         m.castShadow = true;
         g.add(m);
@@ -5568,22 +6035,44 @@ const City = (() => {
         const sm = pick(mats.sport), hm = pick(mats.roadHead);
         ml = [sm, sm, sm, hm];
         add(P.helmet(pick([0xf2f2f2, 0x1a1b1e, 0xb81c24, 0x1f4fa0])), P.mat.shiny);
-      } else {
+      } else if (!fx) {
         const body = pick(mats.body.filter((b) => (type === "cross" ? b.tag !== "student" : true)));
         st = rnd() < 0.65 ? "hair" : "cap";
         ml = [body.m, pick(mats.cap), body.m, pick(mats.hair)];
         if (body.tag === "student" || rnd() < 0.2) add(P.backpack(pick([0x1c1d20, 0x2a3550, 0x3a3a3a])));
         if (type === "cross" && rnd() < 0.3) add(P.helmet(pick([0xf2f2f2, 0x1a1b1e])), P.mat.shiny);
-        if (type === "mama" && rnd() < 0.6) {
-          // 前かごの荷物
-          const m = new THREE.Mesh(P.bag(pick([0xf4f4f0, 0xb08a5a, 0x2a2c30]), rnd() < 0.5 ? "plastic" : "paper").geo, P.mat.cloth);
-          m.position.set(d.front + 0.1, 0.78 + 0.26, 0);
-          m.rotation.y = rnd() * 3;
-          g.add(m);
-        }
       }
-      const mesh = new THREE.Mesh(A.frames[0].geos[st], ml);
-      g.add(mesh);
+      if (type === "mama" && rnd() < 0.6) {
+        // 前かごの荷物
+        const m = new THREE.Mesh(P.bag(pick([0xf4f4f0, 0xb08a5a, 0x2a2c30]), rnd() < 0.5 ? "plastic" : "paper").geo, P.mat.cloth);
+        m.userData.own = true;
+        m.position.set(d.front + 0.1, 0.78 + 0.26, 0);
+        m.rotation.y = rnd() * 3;
+        g.add(m);
+      }
+      let mesh;
+      if (fx) {
+        // 女の人の乗り手: 体の形も材質も、その人のもの
+        const fg = figure(fx, "mama", rnd, { tag: ["casual", "suit"] });
+        st = "*";
+        mesh = fg.mesh;
+        g.add(fg.g);
+        acc.push(...fg.acc);
+        const kids = xr("cm1", "cf1");
+        if (kids.length && (fs ? fs[2] === "seat" : rnd() < 0.4)) {
+          // 後ろの子ども用の座席と、座った子ども(ヘルメット)
+          g.add(new THREE.Mesh(A.seatG, bikeMat()));
+          const kx = pick(kids), kf = figure(kx, "sit", rnd, { tag: ["kid"] }), ks = 0.72;
+          kf.add(P.helmet(pick([0xf2f2f2, 0xe86a8a, 0x5a9ad8, 0xf0c020])), P.mat.shiny);
+          kf.set(kf.A.frames[0]);
+          kf.g.scale.setScalar(ks);
+          kf.g.position.set(d.rear - 0.1, d.R + 0.44 + 0.085 + 0.065 - kx.rg.rest.R_Thigh.p.y * ks, 0);
+          g.add(kf.g);
+        }
+      } else {
+        mesh = new THREE.Mesh(A.frames[0].geos[st], ml);
+        g.add(mesh);
+      }
       g.traverse((o) => o.isMesh && (o.castShadow = true));
       let th = rnd() * Math.PI * 2;
       const set = () => {
@@ -5618,7 +6107,7 @@ const City = (() => {
       nightK = k;
       for (const m of allMats) m.emissiveIntensity = k;
     }
-    return { load, ped, cyclist, setNight, ready: () => ready, _anims: anims, _jobs: () => jobs.length, _flush: () => { while (jobs.length) jobs.shift()(); ready = true; } };
+    return { load, ped, cyclist, setNight, ready: () => ready, _anims: anims, _X: X, _extra: () => Object.keys(X).filter((k) => X[k].ready), _jobs: () => jobs.length, _flush: () => { while (jobs.length) jobs.shift()(); ready = true; } };
   })();
 
   // ---------- 地面の形: 川・池(護岸と水面)・公園(芝生・柵・植え込み・園路・木)・駐車場・地上の線路・校庭 ----------
@@ -7096,12 +7585,13 @@ const City = (() => {
         w = 1.75;
       } else if (kind === "ped") {
         const cp = Crowd.ped(rnd);
-        if (cp) (obj = cp.obj), (obj.userData.step = cp.step);
+        let vk = 1;
+        if (cp) (obj = cp.obj), (obj.userData.step = cp.step), (vk = cp.vk || 1);
         else {
           const shirts = [0x2f5d9a, 0xe8e2d8, 0x3a3a3a, 0x9a3a3a, 0x6a7a4a, 0xd9c08a];
           obj = t.person(shirts[Math.floor(rnd() * shirts.length)], 0x2a2e36);
         }
-        v = (3.6 + rnd() * 1.6) * KM;
+        v = (3.6 + rnd() * 1.6) * KM * vk; // お年寄りや親子は、ゆっくり
         w = 0.5;
       } else {
         const cp = Crowd.cyclist(rnd);
@@ -7236,6 +7726,7 @@ const City = (() => {
         e.rel0 = rel;
         if (rel < -80 || rel > 300) {
           scene.remove(e.obj);
+          e.obj.traverse((o) => o.userData.own && o.geometry.dispose()); // 小物の形は、その人だけのもの
           list.splice(i, 1);
         }
       }
