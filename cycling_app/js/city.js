@@ -4673,6 +4673,929 @@ const City = (() => {
   // 地面の高さ(出発地点=0)
   const H = (x, z) => Terrain.h(x, z);
 
+  // ---------- 街の人(歩行者とほかの自転車の人): 本物の人体モデル ----------
+  // ガレージと同じ Microsoft Rocketbox のモデル(MITライセンス)を使う。普段着の "Wood_Male_01"(整備士)と、サイクルウェアの "Sports_Male_01"(乗り手)。
+  // 1人ずつ骨を動かすと重いので、歩く・こぐ動きを数十コマ、頂点の位置として焼き込んでおき、コマの形を差し替えるだけで動かす。
+  // 服の色・帽子・ひげ・髪は、テクスチャを塗り分けた版を作って使い回す。焼き込みと塗り分けは、1コマに少しずつ進める
+  const Crowd = (() => {
+    const N_WALK = 24, N_PEDAL = 24, STRIDE = 1.22; // 1周期のコマ数・歩く1周期で進む距離(m)
+    let THREE = null, started = false, ready = false, srcM = null, srcR = null;
+    const anims = {}, mats = {}, jobs = [], allMats = [];
+    // 形をまとめる(頂点の色つき)。parts: [{ geo, m, c }]
+    function merge(parts) {
+      const pos = [], nor = [], col = [], cc = new THREE.Color();
+      for (const pt of parts) {
+        const g = pt.geo.index ? pt.geo.toNonIndexed() : pt.geo.clone();
+        if (pt.m) g.applyMatrix4(pt.m);
+        const a = g.attributes.position, n = g.attributes.normal;
+        cc.set(pt.c == null ? 0xffffff : pt.c).convertSRGBToLinear();
+        for (let k = 0; k < a.count; k++) pos.push(a.getX(k), a.getY(k), a.getZ(k)), nor.push(n.getX(k), n.getY(k), n.getZ(k)), col.push(cc.r, cc.g, cc.b);
+        g.dispose();
+      }
+      const out = new THREE.BufferGeometry();
+      out.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+      out.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3));
+      out.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+      return out;
+    }
+    let nightK = 0;
+    // ---- 読み込み ----
+    function load() {
+      if (started || !window.GLTFLoader) return;
+      started = true;
+      THREE = T();
+      const tl = new THREE.TextureLoader();
+      const img = (u) => new Promise((ok, ng) => tl.load(u, (t) => ok(t), undefined, ng));
+      const glb = (u) => new Promise((ok, ng) => new window.GLTFLoader().load(u, ok, undefined, ng));
+      Promise.all([glb("assets/mechanic/mechanic.glb"), glb("assets/rider/rider.glb"), img("assets/mechanic/body_color.jpg"), img("assets/mechanic/head_color.jpg"), img("assets/mechanic/body_normal.jpg"), img("assets/mechanic/head_normal.jpg"), img("assets/rider/body_color.jpg"), img("assets/rider/head_color.jpg"), img("assets/rider/body_normal.jpg"), img("assets/rider/head_normal.jpg")])
+        .then(([gm, gr, mb, mh, mbn, mhn, rb, rh, rbn, rhn]) => {
+          srcM = rigOf(gm.scene);
+          srcR = rigOf(gr.scene);
+          srcM.tex = { body: mb, head: mh, bodyN: mbn, headN: mhn };
+          srcR.tex = { body: rb, head: rh, bodyN: rbn, headN: rhn };
+          plan();
+          pump();
+        })
+        .catch((e) => console.warn("crowd", e && e.message));
+    }
+    // 1コマに使う時間(ms)を決めて、仕事を少しずつ進める
+    function pump() {
+      const t0 = performance.now();
+      try {
+        while (jobs.length && performance.now() - t0 < 4) jobs.shift()();
+      } catch (e) {
+        // 作れなければ、いままでの簡単な形のまま
+        console.warn("crowd", e && e.message);
+        return (jobs.length = 0);
+      }
+      if (jobs.length) setTimeout(pump, 0);
+      else ready = true;
+    }
+    // ---- 骨組み ----
+    // 前が +x・上が +y・右が +z、単位 m、足の裏が y=0 になるように置く(交通の車や人と同じ向き)
+    function rigOf(scene) {
+      const P = new THREE.Group();
+      P.add(scene);
+      P.rotation.y = Math.PI / 2; // モデルは +z が前
+      const s = 1.72 / 181;
+      P.scale.setScalar(s);
+      P.updateMatrixWorld(true);
+      const B = {};
+      scene.traverse((o) => o.isBone && (B[o.name.replace("Bip01_", "")] = o));
+      const rest = {};
+      for (const k of Object.keys(B)) rest[k] = { p: B[k].getWorldPosition(new THREE.Vector3()), q: B[k].getWorldQuaternion(new THREE.Quaternion()), lq: B[k].quaternion.clone(), lp: B[k].position.clone(), M: B[k].matrixWorld.clone() };
+      const meshes = [];
+      scene.traverse((o) => o.isSkinnedMesh && meshes.push(o));
+      const len = (a, b) => rest[a].p.distanceTo(rest[b].p);
+      // 左右: z の符号(モデルの左は -z に来る)
+      const side = { R: Math.sign(rest.R_Thigh.p.z), L: Math.sign(rest.L_Thigh.p.z) };
+      return { P, B, rest, meshes, side, leg: [len("R_Thigh", "R_Calf"), len("R_Calf", "R_Foot")], arm: [len("R_UpperArm", "R_Forearm"), len("R_Forearm", "R_Hand")] };
+    }
+    const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+    const Z = () => V3(0, 0, 1);
+    // 主軸 a と目印 h から、向き(クォータニオン)を作る
+    function basis(a, h) {
+      const x = a.clone().normalize(), z = new THREE.Vector3().crossVectors(x, h);
+      if (z.lengthSq() < 1e-8) z.crossVectors(x, V3(0, 1, 0.01));
+      z.normalize();
+      const y = new THREE.Vector3().crossVectors(z, x);
+      return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z));
+    }
+    // 骨の世界での向きを Q にする(親はもう決まっている)
+    function setWQ(rg, name, Q) {
+      const b = rg.B[name];
+      const pq = b.parent.getWorldQuaternion(new THREE.Quaternion());
+      b.quaternion.copy(pq.invert().multiply(Q));
+      b.updateMatrixWorld(true);
+    }
+    // 基準の姿勢から、世界で R だけ回す
+    const rotW = (rg, name, R) => setWQ(rg, name, R.clone().multiply(rg.rest[name].q));
+    // 骨を、基準の向き(restDir, restHint)から(dir, hint)へ向ける
+    function aim(rg, name, restDir, restHint, dir, hint) {
+      const R = basis(dir, hint).multiply(basis(restDir, restHint).invert());
+      rotW(rg, name, R);
+    }
+    const wp = (rg, n) => rg.B[n].getWorldPosition(new THREE.Vector3());
+    const rdir = (rg, a, b) => rg.rest[b].p.clone().sub(rg.rest[a].p);
+    // 2本の骨の届く位置(ひざ・ひじ)。pole の向きへ曲げる
+    function ik(A, T0, L1, L2, pole) {
+      const d = T0.clone().sub(A), dist = Math.min(d.length(), L1 + L2 - 0.001), dn = d.normalize();
+      const al = (L1 * L1 - L2 * L2 + dist * dist) / (2 * dist), h = Math.sqrt(Math.max(0, L1 * L1 - al * al));
+      const n = pole.clone().addScaledVector(dn, -pole.dot(dn)).normalize();
+      return { K: A.clone().addScaledVector(dn, al).addScaledVector(n, h), E: A.clone().addScaledVector(dn, dist) };
+    }
+    const qAx = (ax, a) => new THREE.Quaternion().setFromAxisAngle(ax, a);
+    // 姿勢をつける。o: { hip: 腰の中心, lean: 前傾(rad), yaw: 腰のひねり, head: 頭の前傾, feet: {R,L: {A: 足首, p: つま先の上がり}}, hands: {R,L: {W: 手首の位置 | swing, pole}}, grip: 指の曲げ }
+    function pose(rg, o) {
+      const r = rg.rest;
+      for (const k of Object.keys(rg.B)) rg.B[k].quaternion.copy(r[k].lq), rg.B[k].position.copy(r[k].lp);
+      rg.P.updateMatrixWorld(true);
+      const yaw = o.yaw || 0, lean = o.lean || 0;
+      // 腰
+      const pel = rg.B.Pelvis;
+      const hip0 = r.R_Thigh.p.clone().add(r.L_Thigh.p).multiplyScalar(0.5);
+      const pw = o.hip.clone().add(r.Pelvis.p).sub(hip0);
+      pel.position.copy(pel.parent.worldToLocal(pw));
+      pel.updateMatrixWorld(true);
+      const Ry = (a) => qAx(V3(0, 1, 0), a), Rz = (a) => qAx(Z(), -a); // Rz: 前へ倒す
+      rotW(rg, "Pelvis", Ry(yaw).multiply(Rz(lean * 0.55)));
+      rotW(rg, "Spine", Ry(yaw * 0.6).multiply(Rz(lean * 0.8)));
+      rotW(rg, "Spine1", Ry(yaw * 0.1).multiply(Rz(lean * 0.95)));
+      rotW(rg, "Spine2", Ry(-yaw * 0.5).multiply(Rz(lean * 1.02)));
+      const Rs2 = Ry(-yaw * 0.5).multiply(Rz(lean * 1.02));
+      const nk = o.neck != null ? o.neck : lean * 0.7, hd = o.head != null ? o.head : 0;
+      rotW(rg, "Neck", Ry(-yaw * 0.6).multiply(Rz(nk)));
+      rotW(rg, "Head", Ry(-yaw * 0.6 + (o.look || 0)).multiply(Rz(hd)));
+      for (const sd of ["R", "L"]) rotW(rg, sd + "_Clavicle", Rs2.clone().multiply(Rz(o.shrug ? -o.shrug : 0)));
+      // 脚
+      for (const sd of ["R", "L"]) {
+        const f = o.feet[sd], H = wp(rg, sd + "_Thigh");
+        const { K, E } = ik(H, f.A, rg.leg[0], rg.leg[1], f.pole || V3(1, 0, 0));
+        aim(rg, sd + "_Thigh", rdir(rg, sd + "_Thigh", sd + "_Calf"), Z(), K.clone().sub(H), Z());
+        aim(rg, sd + "_Calf", rdir(rg, sd + "_Calf", sd + "_Foot"), Z(), E.clone().sub(K), Z());
+        const fd = rdir(rg, sd + "_Foot", sd + "_Toe0").applyAxisAngle(V3(0, 1, 0), (f.yaw || 0) + yaw * 0.3).applyAxisAngle(Z(), f.p || 0);
+        aim(rg, sd + "_Foot", rdir(rg, sd + "_Foot", sd + "_Toe0"), Z(), fd, Z());
+        rotW(rg, sd + "_Toe0", qAx(Z(), Math.max(f.toe != null ? f.toe : f.p || 0, 0)));
+      }
+      // 腕
+      for (const sd of ["R", "L"]) {
+        const h = o.hands[sd], S = wp(rg, sd + "_UpperArm");
+        let Wt = h.W;
+        if (!Wt) {
+          // 振る腕: 肩から下へ、前後に sw(rad) 振る。ひじは前へ曲げる
+          const zs = rg.side[sd];
+          const up = V3(Math.sin(h.swing) * 0.98, -Math.cos(h.swing), zs * 0.12).normalize();
+          const E0 = S.clone().addScaledVector(up, rg.arm[0]);
+          const fa = h.swing + (h.bend != null ? h.bend : 0.25 + Math.max(0, h.swing) * 0.6);
+          Wt = E0.clone().addScaledVector(V3(Math.sin(fa), -Math.cos(fa), zs * 0.06).normalize(), rg.arm[1]);
+        }
+        const { K: E, E: Hd } = ik(S, Wt, rg.arm[0], rg.arm[1], h.pole || V3(-0.3, -0.2, rg.side[sd] * 0.6));
+        const u = E.clone().sub(S).normalize(), f = Hd.clone().sub(E).normalize();
+        let hu = f.clone().addScaledVector(u, -u.dot(f)), hf = u.clone().addScaledVector(f, -f.dot(u)).negate();
+        if (hu.lengthSq() < 1e-4) (hu = V3(1, 0, 0)), (hf = hu.clone());
+        aim(rg, sd + "_UpperArm", rdir(rg, sd + "_UpperArm", sd + "_Forearm"), V3(1, 0, 0), u, hu);
+        aim(rg, sd + "_Forearm", rdir(rg, sd + "_Forearm", sd + "_Hand"), V3(1, 0, 0), f, hf);
+        const hdir = h.hdir || f;
+        aim(rg, sd + "_Hand", rdir(rg, sd + "_Forearm", sd + "_Hand"), V3(1, 0, 0), hdir, hf);
+        const g = h.grip != null ? h.grip : 0.3;
+        for (let i = 0; i <= 4; i++)
+          for (const j of ["", "1", "2"]) {
+            const fb = rg.B[`${sd}_Finger${i}${j}`];
+            if (!fb) continue;
+            fb.quaternion.copy(r[`${sd}_Finger${i}${j}`].lq).multiply(qAx(Z(), i === 0 ? g * 0.4 : g * (j === "" ? 0.9 : 1)));
+          }
+      }
+      rg.P.updateMatrixWorld(true);
+    }
+    // ---- 焼き込み: いまの姿勢の頂点(位置と法線)を、+x 前の座標で取り出す ----
+    // vsets: [{ mesh, verts: 使う頂点の番号 }]。返す配列は vsets の順に並べた頂点
+    function skin(vsets, outP, outN) {
+      const tmp = new THREE.Matrix4();
+      let o = 0;
+      for (const vs of vsets) {
+        const sm = vs.mesh;
+        sm.updateMatrixWorld(true);
+        sm.skeleton.update();
+        const bm = sm.skeleton.boneMatrices, nb = sm.skeleton.bones.length;
+        const pre = new THREE.Matrix4().multiplyMatrices(sm.matrixWorld, sm.bindMatrixInverse);
+        const E = new Float32Array(nb * 16);
+        for (let j = 0; j < nb; j++) {
+          tmp.fromArray(bm, j * 16);
+          const M = new THREE.Matrix4().multiplyMatrices(pre, tmp).multiply(sm.bindMatrix);
+          E.set(M.elements, j * 16);
+        }
+        const g = sm.geometry, P = g.attributes.position.array, N = g.attributes.normal.array, J = g.attributes.skinIndex.array, Wa = g.attributes.skinWeight;
+        const W = Wa.array, wk = Wa.normalized ? 1 / (W instanceof Uint8Array ? 255 : W instanceof Uint16Array ? 65535 : 1) : 1;
+        for (const i of vs.verts) {
+          const x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2], nx = N[i * 3], ny = N[i * 3 + 1], nz = N[i * 3 + 2];
+          let ax = 0, ay = 0, az = 0, bx = 0, by = 0, bz = 0;
+          for (let k = 0; k < 4; k++) {
+            const w = W[i * 4 + k] * wk;
+            if (!w) continue;
+            const e = J[i * 4 + k] * 16;
+            ax += w * (E[e] * x + E[e + 4] * y + E[e + 8] * z + E[e + 12]);
+            ay += w * (E[e + 1] * x + E[e + 5] * y + E[e + 9] * z + E[e + 13]);
+            az += w * (E[e + 2] * x + E[e + 6] * y + E[e + 10] * z + E[e + 14]);
+            bx += w * (E[e] * nx + E[e + 4] * ny + E[e + 8] * nz);
+            by += w * (E[e + 1] * nx + E[e + 5] * ny + E[e + 9] * nz);
+            bz += w * (E[e + 2] * nx + E[e + 6] * ny + E[e + 10] * nz);
+          }
+          const l = Math.hypot(bx, by, bz) || 1;
+          outP[o * 3] = ax;
+          outP[o * 3 + 1] = ay;
+          outP[o * 3 + 2] = az;
+          outN[o * 3] = bx / l;
+          outN[o * 3 + 1] = by / l;
+          outN[o * 3 + 2] = bz / l;
+          o++;
+        }
+      }
+    }
+    // 形の組(キット): 使う部品(材質の名前で選ぶ)から、頂点の組と、髪型ごとの三角形の並びを作る
+    // parts: [{ rg, mat: /正規表現/, slot: 材質の番号, style: 髪型の名前 | null(全部に入る) }]
+    function kit(parts) {
+      const vsets = new Map(); // mesh(位置を共有する最初のもの) → { mesh, verts: [], map: Map }
+      const byAttr = new Map();
+      const styles = {};
+      const seen = new Set();
+      for (const pt of parts)
+        for (const sm of pt.rg.meshes) {
+          if (!pt.mat.test(sm.material.name)) continue;
+          const pa = sm.geometry.attributes.position;
+          if (!byAttr.has(pa)) {
+            const vs = { mesh: sm, verts: [], map: new Map() };
+            byAttr.set(pa, vs);
+            vsets.set(sm, vs);
+          }
+          const vs = byAttr.get(pa), ix = sm.geometry.index.array;
+          // 同じ三角形の並びが2回入っているモデルがあるので、1回だけにする
+          const key = pa.count + ":" + ix.length + ":" + ix[0] + "," + ix[1] + "," + ix[ix.length - 1] + ":" + (pt.style || "");
+          if (seen.has(key)) continue;
+          seen.add(key);
+          const list = [];
+          for (let k = 0; k < ix.length; k += 3) {
+            if (pt.drop && pt.drop(sm, ix[k], ix[k + 1], ix[k + 2])) continue;
+            for (let q = 0; q < 3; q++) {
+              const i = ix[k + q];
+              if (!vs.map.has(i)) vs.map.set(i, -1), vs.verts.push(i);
+              list.push(i);
+            }
+          }
+          for (const st of pt.style ? [pt.style] : ["*"]) {
+            (styles[st] = styles[st] || []).push({ vs, list, slot: pt.slot, uvAttr: sm.geometry.attributes.uv });
+          }
+        }
+      // 頂点の通し番号
+      let o = 0;
+      const sets = [...vsets.values()];
+      const uv = [];
+      for (const vs of sets) {
+        const U = vs.mesh.geometry.attributes.uv;
+        for (const i of vs.verts) vs.map.set(i, o++), uv.push(U.getX(i), U.getY(i));
+      }
+      const count = o;
+      const uvA = new THREE.Float32BufferAttribute(uv, 2);
+      // 髪型ごとの三角形(材質の番号ごとにまとめる)
+      const idx = {};
+      const names = Object.keys(styles).filter((s) => s !== "*");
+      for (const st of names.length ? names : ["*"]) {
+        const ps = (styles["*"] || []).concat(st === "*" ? [] : styles[st]);
+        ps.sort((a, b) => a.slot - b.slot);
+        const arr = [], groups = [];
+        for (const p of ps) {
+          const g0 = arr.length;
+          for (const i of p.list) arr.push(p.vs.map.get(i));
+          const last = groups[groups.length - 1];
+          if (last && last.slot === p.slot) last.count += arr.length - g0;
+          else groups.push({ start: g0, count: arr.length - g0, slot: p.slot });
+        }
+        idx[st] = { index: new THREE.BufferAttribute(count > 65535 ? new Uint32Array(arr) : new Uint16Array(arr), 1), groups };
+      }
+      return { sets, count, uvA, idx, styles: names.length ? names : ["*"] };
+    }
+    // 1コマ分を焼き込む
+    function bakeFrame(K, rgs, poseFn, fi) {
+      for (const rg of rgs) poseFn(rg, fi);
+      const P = new Float32Array(K.count * 3), Nn = new Float32Array(K.count * 3);
+      skin(K.sets, P, Nn);
+      const pa = new THREE.BufferAttribute(P, 3), na = new THREE.BufferAttribute(Nn, 3);
+      const geos = {};
+      for (const st of K.styles) {
+        const g = new THREE.BufferGeometry();
+        g.setAttribute("position", pa);
+        g.setAttribute("normal", na);
+        g.setAttribute("uv", K.uvA);
+        g.setIndex(K.idx[st].index);
+        for (const gr of K.idx[st].groups) g.addGroup(gr.start, gr.count, gr.slot);
+        geos[st] = g;
+      }
+      // 小物を付ける骨の位置と向き(基準の姿勢から、いまの姿勢へ動かす行列)
+      const rg = rgs[0], att = {};
+      for (const n of ["Pelvis", "Spine2", "Head", "R_Hand", "L_Hand"]) {
+        att[n] = new THREE.Matrix4().multiplyMatrices(rg.B[n].matrixWorld, rg.rest[n].M.clone().invert());
+      }
+      // 手でぶら下げる物は、手の位置だけ(向きはまっすぐ下)
+      for (const sd of ["R", "L"]) att[sd + "_Grip"] = new THREE.Matrix4().makeTranslation(...wp(rg, sd + "_Hand").addScaledVector(wp(rg, sd + "_Hand").sub(wp(rg, sd + "_Forearm")).normalize(), 0.07).toArray());
+      // スマホ: 左手の先で、画面を顔へ向ける
+      {
+        const hp = wp(rg, "L_Hand"), f = hp.clone().sub(wp(rg, "L_Forearm")).normalize(), pp = hp.addScaledVector(f, 0.065).add(V3(0, 0.02, 0));
+        const n = wp(rg, "Head").add(V3(0.1, 0.08, 0)).sub(pp).normalize(), up = V3(0, 1, 0).addScaledVector(n, -n.y).normalize(), x = new THREE.Vector3().crossVectors(up, n);
+        att.L_Phone = new THREE.Matrix4().makeBasis(x, up, n).setPosition(pp);
+      }
+      return { geos, att };
+    }
+    // ---- 動き ----
+    // 歩く: 周期 ph(0〜1)の、片足の足首の位置と、つま先の上がり
+    const FOOT = { toe: [0.127, -0.095], heel: [-0.05, -0.09] }; // 足首から見た、つま先の付け根とかかと(平らに立ったとき)
+    function stepFoot(ph, stance = 0.6, hs = 0.29) {
+      const travel = STRIDE * stance, to = hs - travel, ankY = 0.097;
+      let x, y, p;
+      if (ph < stance) {
+        const u = ph / stance;
+        const F = hs - travel * u; // 平らに置いたときの足首
+        if (u < 0.15) {
+          // かかとから着く
+          p = 0.26 * (1 - u / 0.15) ** 1.5;
+          const hx = F + FOOT.heel[0], hy = ankY + FOOT.heel[1];
+          x = hx + Math.cos(p) * -FOOT.heel[0] - Math.sin(p) * -FOOT.heel[1];
+          y = hy + Math.sin(p) * -FOOT.heel[0] + Math.cos(p) * -FOOT.heel[1];
+        } else if (u < 0.55) (p = 0), (x = F), (y = ankY);
+        else {
+          // かかとを上げ、つま先で地面を押す
+          p = -0.85 * ((u - 0.55) / 0.45) ** 1.6;
+          const tx = F + FOOT.toe[0], ty = ankY + FOOT.toe[1];
+          x = tx + Math.cos(p) * -FOOT.toe[0] - Math.sin(p) * -FOOT.toe[1];
+          y = ty + Math.sin(p) * -FOOT.toe[0] + Math.cos(p) * -FOOT.toe[1];
+        }
+      } else {
+        // 振り出す
+        const v = (ph - stance) / (1 - stance), e = 0.5 - 0.5 * Math.cos(Math.PI * v);
+        const a0 = stepFoot(stance - 1e-6, stance, hs), a1 = stepFoot(0, stance, hs);
+        x = a0.x + (a1.x - a0.x) * e;
+        y = a0.y + (a1.y - a0.y) * e + Math.sin(Math.PI * Math.min(1, v * 1.25)) * 0.065;
+        p = v < 0.3 ? -0.85 + (v / 0.3) * 0.75 : -0.1 + ((v - 0.3) / 0.7) * 0.36;
+      }
+      return { x, y, p };
+    }
+    // 歩く姿勢。kind: "walk" | "phone" | "carry"。fi: コマ(N_WALK で立ち止まり)
+    function walkPose(kind) {
+      return (rg, fi) => {
+        const stand = fi >= N_WALK, ph = fi / N_WALK;
+        const feet = {}, hands = {};
+        let bob = 0;
+        for (const sd of ["R", "L"]) {
+          const zs = rg.side[sd];
+          if (stand) feet[sd] = { A: V3(sd === "R" ? 0.02 : -0.03, 0.097, zs * 0.1), p: 0, yaw: -zs * 0.12 };
+          else {
+            const f = stepFoot((ph + (sd === "R" ? 0 : 0.5)) % 1);
+            feet[sd] = { A: V3(f.x, f.y, zs * 0.078), p: f.p, yaw: -zs * 0.08 };
+          }
+        }
+        if (!stand) bob = -0.012 * Math.cos(ph * Math.PI * 4) - 0.022;
+        const hip = V3(stand ? 0 : 0.0, rg.rest.R_Thigh.p.y - 0.008 + bob, 0);
+        const sw = stand ? 0 : Math.sin(ph * Math.PI * 2);
+        for (const sd of ["R", "L"]) hands[sd] = { swing: stand ? 0.02 : (sd === "R" ? -1 : 1) * sw * 0.33, grip: 0.35 };
+        const o = { hip, lean: 0.05, yaw: stand ? 0 : sw * 0.07, feet, hands, neck: 0.02, head: -0.04 };
+        if (kind === "phone") {
+          // 左手でスマホを胸の前に持ち、画面を見る
+          const S = rg.rest.L_UpperArm.p;
+          o.hands.L = { W: V3(0.26, S.y - 0.34, rg.side.L * 0.06), pole: V3(-0.4, -1, rg.side.L * 0.5), hdir: V3(0.5, 0.75, -rg.side.L * 0.4), grip: 0.55 };
+          o.neck = 0.25;
+          o.head = 0.42;
+          o.hands.R.swing *= 0.8;
+        } else if (kind === "carry") {
+          // 右手で袋を提げる: 腕はあまり振らない
+          o.hands.R = { swing: stand ? 0.04 : -sw * 0.1 + 0.03, bend: 0.12, grip: 0.95 };
+        }
+        pose(rg, o);
+      };
+    }
+    // 自転車をこぐ姿勢。b: 自転車の寸法(bikeDims)
+    function pedalPose(b) {
+      return (rg, fi) => {
+        const th = (fi / N_PEDAL) * Math.PI * 2;
+        const feet = {};
+        for (const sd of ["R", "L"]) {
+          const zs = rg.side[sd];
+          const a = th + (sd === "R" ? 0 : Math.PI);
+          const px = Math.sin(a) * b.crank, py = b.bb[1] + Math.cos(a) * b.crank;
+          const p = -0.18 - 0.16 * Math.sin(a + 0.6); // つま先は少し下げ、踏み下ろすところで水平に近く
+          const A = V3(px - (Math.cos(p) * FOOT.toe[0] - Math.sin(p) * FOOT.toe[1]) + 0.02, py + 0.035 - (Math.sin(p) * FOOT.toe[0] + Math.cos(p) * FOOT.toe[1]), zs * b.q);
+          feet[sd] = { A, p, toe: p * 0.3, yaw: -zs * 0.05, pole: V3(1, 0.15, zs * 0.08) };
+        }
+        const hands = {};
+        for (const sd of ["R", "L"]) {
+          const zs = rg.side[sd];
+          hands[sd] = { W: V3(b.grip[0] - 0.06, b.grip[1] + 0.025, zs * b.gw), pole: V3(-0.2, -1, zs * 0.9), grip: 1.0, hdir: V3(0.85, -0.25, zs * 0.1).normalize() };
+        }
+        pose(rg, { hip: V3(b.hip[0], b.hip[1], 0), lean: b.lean, yaw: Math.sin(th) * 0.04, feet, hands, neck: b.lean * 0.72, head: b.lean * 0.32 - 0.05 });
+      };
+    }
+    // 自転車の寸法(+x 前、地面 y=0)。乗る人の体(脚の長さ)に合わせて、サドルの高さを決める
+    function bikeDims(type, rg) {
+      const L = rg.leg[0] + rg.leg[1];
+      const d = {
+        road: { R: 0.335, rear: -0.405, front: 0.58, bb: [0, 0.27], crank: 0.1725, seatA: 1.27, ext: 0.97, gripD: [0.6, -0.08], gw: 0.2, q: 0.085 },
+        cross: { R: 0.34, rear: -0.43, front: 0.62, bb: [0, 0.28], crank: 0.17, seatA: 1.25, ext: 0.94, gripD: [0.5, 0.03], gw: 0.29, q: 0.09 },
+        mama: { R: 0.33, rear: -0.48, front: 0.66, bb: [0, 0.265], crank: 0.165, seatA: 1.1, ext: 0.86, gripD: [0.36, 0.17], gw: 0.27, q: 0.095 },
+      }[type];
+      // サドル上の腰の位置: 一番下のペダルで、ひざが少し曲がる距離
+      const dist = L * d.ext + 0.13;
+      d.hip = [d.bb[0] - Math.cos(d.seatA) * (dist - d.crank * 0.3), d.bb[1] + Math.sin(d.seatA) * (dist - d.crank * 0.3)];
+      d.saddle = [d.hip[0] - 0.01, d.hip[1] - 0.105];
+      d.grip = [d.hip[0] + d.gripD[0], d.hip[1] + d.gripD[1]];
+      // 前傾: 肩から手までが、腕の長さの 9割ほどになる角度
+      const sh = rg.rest.R_UpperArm.p.y - rg.rest.R_Thigh.p.y, arm = rg.arm[0] + rg.arm[1];
+      let best = 0, err = 9;
+      for (let a = 0; a < 1.3; a += 0.01) {
+        const sx = d.hip[0] + Math.sin(a) * sh, sy = d.hip[1] + Math.cos(a) * sh;
+        const e = Math.abs(Math.hypot(d.grip[0] - 0.06 - sx, d.grip[1] - sy) - arm * 0.86);
+        if (e < err) (err = e), (best = a);
+      }
+      d.lean = best;
+      d.type = type;
+      return d;
+    }
+    // ---- 服の色(テクスチャを塗り分ける) ----
+    function canvasOf(tex, size = 512) {
+      const c = document.createElement("canvas");
+      c.width = c.height = size;
+      const x = c.getContext("2d", { willReadFrequently: true });
+      x.drawImage(tex.image, 0, 0, size, size);
+      return { c, x, d: x.getImageData(0, 0, size, size) };
+    }
+    const rgbOf = (hex) => [(hex >> 16) & 255, (hex >> 8) & 255, hex & 255];
+    // 領域の中を、明るさの濃淡を残して target の色に塗る(Lm: 元の平均の明るさ)
+    function recolor(D, size, inside, target, Lm, gamma = 1) {
+      const t = rgbOf(target), a = D.data;
+      for (let y = 0; y < size; y++)
+        for (let x = 0; x < size; x++) {
+          const k = inside(x / size, y / size);
+          if (!k) continue;
+          const i = (y * size + x) * 4, L = (a[i] * 0.3 + a[i + 1] * 0.55 + a[i + 2] * 0.15) / 255;
+          if (L < 0.02) continue;
+          const f = Math.pow(L / Lm, gamma);
+          for (let c = 0; c < 3; c++) a[i + c] = Math.min(255, a[i + c] * (1 - k) + t[c] * f * k);
+        }
+    }
+    function texOf(cv) {
+      cv.x.putImageData(cv.d, 0, 0);
+      const t = new THREE.CanvasTexture(cv.c);
+      t.encoding = THREE.sRGBEncoding;
+      t.anisotropy = 4;
+      return t;
+    }
+    // 普段着の体: { shirt, pants, shoes, short(半そで) }
+    function casualBody(o) {
+      const S = 512, cv = canvasOf(srcM.tex.body, S), D = cv.d;
+      // 胸のロゴは、下の生地で上書きする
+      cv.x.putImageData(D, 0, 0);
+      cv.x.drawImage(cv.c, 0.39 * S, 0.52 * S, 0.14 * S, 0.05 * S, 0.39 * S, 0.448 * S, 0.14 * S, 0.05 * S);
+      const D2 = cv.x.getImageData(0, 0, S, S);
+      cv.d = D2;
+      const pants = (u, v) => (u < 0.285 || u > 0.715) && v < 0.44 && v > 0.022;
+      const shirt = (u, v) => (u > 0.31 && u < 0.69 && v < 0.82) || ((u < 0.31 || u > 0.69) && v > 0.44 && v < 0.82);
+      const shoes = (u, v) => v > 0.8 && ((u > 0.22 && u < 0.43) || (u > 0.57 && u < 0.78));
+      recolor(D2, S, (u, v) => (pants(u, v) ? 1 : 0), o.pants, 0.36, 1.1);
+      recolor(D2, S, (u, v) => (shirt(u, v) ? 1 : 0), o.shirt, 0.62, 1.25);
+      recolor(D2, S, (u, v) => (shoes(u, v) ? 1 : 0), o.shoes, 0.35, 1);
+      if (o.short) recolor(D2, S, (u, v) => ((u < 0.31 || u > 0.69) && v > 0.64 && v < 0.82 ? 1 : 0), 0xc99474, 0.62, 0.55); // 半そで: ひじから先は肌
+      if (o.belt != null) recolor(D2, S, (u, v) => ((u < 0.285 || u > 0.715) && v <= 0.022 ? 1 : 0), o.belt, 0.3, 1);
+      return texOf(cv);
+    }
+    // 普段着の頭(帽子つき): { cap 帽子の色, shave ひげを剃る }
+    function capHead(o) {
+      const S = 512, cv = canvasOf(srcM.tex.head, S), D = cv.d;
+      const cap = (u, v) => v < 0.215 || (v > 0.72 && u > 0.28) || (v > 0.86 && u > 0.2);
+      recolor(D, S, (u, v) => (cap(u, v) ? 1 : 0), o.cap, 0.55, 1.1);
+      if (o.shave) {
+        // あごひげと口ひげを、まわりの肌の色で消す
+        const a = D.data, sk = [0, 0, 0];
+        let n = 0;
+        for (let y = 0.4 * S; y < 0.46 * S; y++)
+          for (let x = 0.32 * S; x < 0.37 * S; x++) {
+            const i = ((y | 0) * S + (x | 0)) * 4;
+            sk[0] += a[i];
+            sk[1] += a[i + 1];
+            sk[2] += a[i + 2];
+            n++;
+          }
+        for (let c = 0; c < 3; c++) sk[c] /= n;
+        for (let y = 0; y < S; y++)
+          for (let x = 0; x < S; x++) {
+            const u = x / S, v = y / S, e = ((u - 0.5) / 0.115) ** 2 + ((v - 0.445) / 0.12) ** 2;
+            if (e > 1) continue;
+            const i = (y * S + x) * 4, L = (a[i] + a[i + 1] + a[i + 2]) / 3;
+            const k = Math.min(1, Math.max(0, (sk[0] * 0.85 - L) / 60)) * Math.min(1, (1 - e) * 4);
+            for (let c = 0; c < 3; c++) a[i + c] = a[i + c] * (1 - k) + sk[c] * (0.92 + 0.08 * Math.random()) * k;
+          }
+      }
+      return texOf(cv);
+    }
+    // 髪の頭(乗り手のモデルの頭): { hair 髪の色, neck 首の下の色 }
+    function hairHead(o) {
+      const S = 512, cv = canvasOf(srcR.tex.head, S), D = cv.d, a = D.data;
+      const h = rgbOf(o.hair);
+      for (let y = 0; y < S; y++)
+        for (let x = 0; x < S; x++) {
+          const u = x / S, v = y / S, i = (y * S + x) * 4;
+          const L = (a[i] + a[i + 1] + a[i + 2]) / 3;
+          const face = u > 0.36 && u < 0.64 && v > 0.13 && v < 0.6;
+          const wedge = o.neck != null && v > 0.405 && v < 0.5 && ((u > 0.17 && u < 0.36) || (u > 0.64 && u < 0.83)) && L < 160;
+          if (wedge) {
+            // 耳の下の小さな切れ端(えり)は、ふちまで肌の色に
+            const t = rgbOf(o.neck), k = Math.max(0, 1 - L / 160);
+            for (let c = 0; c < 3; c++) a[i + c] = a[i + c] * (1 - k) + t[c] * 0.92 * k;
+          } else if ((v < 0.415 || (v < 0.52 && L > 55)) && !face && L < 150 && L > 8 && a[i] - a[i + 2] < 70) {
+            const f = Math.pow(L / 95, 1.2);
+            for (let c = 0; c < 3; c++) a[i + c] = Math.min(255, h[c] * f);
+          } else if (o.neck != null && v > 0.38 && L < 45 && !(u < 0.37 && v > 0.6)) {
+            // ジャージのえり(首の下)は肌の色に
+            const t = rgbOf(o.neck);
+            for (let c = 0; c < 3; c++) a[i + c] = t[c] * (0.85 + L / 300);
+          }
+        }
+      return texOf(cv);
+    }
+    // サイクルウェア: { jersey, accent }
+    function sportBody(o) {
+      const S = 512, cv = canvasOf(srcR.tex.body, S), D = cv.d;
+      const top = (u, v) => (u > 0.31 && u < 0.69 && v < 0.82) || ((u < 0.31 || u > 0.69) && v > 0.45 && v < 0.62);
+      recolor(D, S, (u, v) => (top(u, v) ? 1 : 0), o.jersey, 0.14, 0.8);
+      return texOf(cv);
+    }
+    function material(map, normal, rough) {
+      const m = new THREE.MeshStandardMaterial({ map, normalMap: normal, normalScale: new THREE.Vector2(0.6, 0.6), roughness: rough, metalness: 0, envMapIntensity: 0.4, emissive: 0xffffff, emissiveMap: map, emissiveIntensity: nightK });
+      allMats.push(m);
+      return m;
+    }
+    // ---- 小物(形は、基準の姿勢で立った人のまわりに作る) ----
+    function props() {
+      const M4 = (x, y, z, rx, ry, rz, sx, sy, sz) => new THREE.Matrix4().compose(V3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx || 0, ry || 0, rz || 0)), V3(sx || 1, sy || sx || 1, sz || sx || 1));
+      const rb = (w, h, d, r) => {
+        // 角の丸い箱
+        const g = new THREE.BoxGeometry(w, h, d, 3, 3, 3), p = g.attributes.position, v = new THREE.Vector3();
+        for (let i = 0; i < p.count; i++) {
+          v.fromBufferAttribute(p, i);
+          const q = V3(Math.max(-w / 2 + r, Math.min(w / 2 - r, v.x)), Math.max(-h / 2 + r, Math.min(h / 2 - r, v.y)), Math.max(-d / 2 + r, Math.min(d / 2 - r, v.z)));
+          const dd = v.clone().sub(q);
+          if (dd.lengthSq() > 1e-9) v.copy(q.add(dd.normalize().multiplyScalar(r)));
+          p.setXYZ(i, v.x, v.y, v.z);
+        }
+        g.computeVertexNormals();
+        return g;
+      };
+      const mk = (parts) => merge(parts);
+      const cl = (c, o) => new THREE.MeshStandardMaterial(Object.assign({ vertexColors: true, roughness: 0.7, metalness: 0 }, o || {}));
+      const P = {};
+      // リュック(背中)
+      P.backpack = (c) => ({ bone: "Spine2", geo: mk([{ geo: rb(0.15, 0.4, 0.3, 0.05), m: M4(-0.2, 1.19, 0), c }, { geo: rb(0.05, 0.16, 0.24, 0.03), m: M4(-0.29, 1.12, 0), c }, ...[-1, 1].map((s) => ({ geo: rb(0.02, 0.36, 0.035, 0.008), m: M4(-0.105, 1.24, s * 0.1, 0, 0, -0.12), c: 0x18191b }))]) });
+      // 肩かけかばん(腰の横) と ひも(胸)
+      P.shoulder = (c) => ({ bone: "Pelvis", geo: mk([{ geo: rb(0.26, 0.2, 0.07, 0.02), m: M4(0.02, 0.86, 0.19), c }]) });
+      P.strap = () => ({ bone: "Spine2", geo: mk([{ geo: new THREE.TubeGeometry(new THREE.CatmullRomCurve3([[0.02, 0.95, 0.17], [0.1, 1.1, 0.08], [0.125, 1.27, -0.04], [0.07, 1.42, -0.12], [-0.02, 1.47, -0.13], [-0.11, 1.4, -0.11], [-0.14, 1.25, -0.02], [-0.11, 1.08, 0.1], [-0.02, 0.95, 0.17]].map((q) => V3(...q))), 40, 0.007, 5, false), c: 0x1a1a1c }]) });
+      // 手提げ(買い物袋・紙袋・トート)。手の位置から下へ
+      P.bag = (c, kind) => ({ bone: "R_Grip", geo: mk(kind === "paper" ? [{ geo: rb(0.26, 0.3, 0.11, 0.004), m: M4(0, -0.2, 0), c }, { geo: new THREE.TorusGeometry(0.045, 0.004, 4, 10, Math.PI), m: M4(0, -0.05, 0), c: 0x6a5030 }] : kind === "tote" ? [{ geo: rb(0.32, 0.3, 0.05, 0.01), m: M4(0, -0.28, 0, 0, 0.3, 0), c }, { geo: new THREE.TorusGeometry(0.08, 0.008, 4, 10, Math.PI), m: M4(0, -0.13, 0, 0, 0.3, 0), c }] : [{ geo: new THREE.SphereGeometry(0.13, 10, 8), m: M4(0, -0.24, 0, 0, 0, 0, 0.95, 1.2, 0.6), c }, { geo: new THREE.SphereGeometry(0.06, 8, 6), m: M4(0.0, -0.06, 0, 0, 0, 0, 0.5, 1.2, 0.5), c }]) });
+      // 傘(閉じて、先を下に)
+      P.umbrella = (c) => ({ bone: "R_Grip", geo: mk([{ geo: new THREE.CylinderGeometry(0.012, 0.012, 0.75, 6), m: M4(0.05, -0.38, 0, 0, 0, 0.12), c: 0x2a2a2a }, { geo: new THREE.ConeGeometry(0.045, 0.55, 8), m: M4(0.07, -0.5, 0, Math.PI, 0, 0.12, 1, 1, 1), c }, { geo: new THREE.TorusGeometry(0.035, 0.009, 5, 10, Math.PI), m: M4(0.0, 0.02, 0, 0, 0, Math.PI), c: 0x5a3a22 }]) });
+      // スマホ(左手の中): 手の向きに付ける
+      P.phone = () => ({ bone: "L_Phone", geo: mk([{ geo: rb(0.072, 0.15, 0.009, 0.004), c: 0x101214 }, { geo: new THREE.PlaneGeometry(0.064, 0.138), m: M4(0, 0, 0.0047), c: 0x3a5470 }]) });
+      // マスク(顔)
+      P.mask = () => ({ bone: "Head", geo: mk([{ geo: new THREE.SphereGeometry(0.1, 14, 8, -0.9, 1.8, 1.72, 0.9), m: M4(0.0, 1.61, 0, 0, Math.PI, 0, 1.02, 1.0, 0.86), c: 0xf2f3f4 }]) });
+      // ヘルメット(頭)
+      P.helmet = (c) => ({ bone: "Head", geo: mk([{ geo: new THREE.SphereGeometry(0.135, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.52), m: M4(-0.005, 1.612, 0, 0, 0, 0.12, 1.15, 0.95, 0.95), c }, { geo: new THREE.SphereGeometry(0.137, 16, 4, 0, Math.PI * 2, Math.PI * 0.48, Math.PI * 0.05), m: M4(-0.005, 1.612, 0, 0, 0, 0.12, 1.15, 0.95, 0.95), c: 0x15171a }]) });
+      P.mat = { cloth: cl(), shiny: cl(0, { roughness: 0.35 }) };
+      return P;
+    }
+    // ---- 自転車(+x 前) ----
+    function bikeGeo(d, color) {
+      const parts = [], blk = 0x16171a, chrome = 0xc9ccd0, M4 = (x, y, z, rx, ry, rz) => new THREE.Matrix4().compose(V3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx || 0, ry || 0, rz || 0)), V3(1, 1, 1));
+      const tube = (a, b, r, c, r2) => {
+        const A = V3(...a), Bv = V3(...b), dv = Bv.clone().sub(A);
+        const g = new THREE.CylinderGeometry(r2 || r, r, dv.length(), 10, 1);
+        const m = new THREE.Matrix4().compose(A.clone().addScaledVector(dv, 0.5), new THREE.Quaternion().setFromUnitVectors(V3(0, 1, 0), dv.normalize()), V3(1, 1, 1));
+        parts.push({ geo: g, m, c });
+      };
+      const curve = (pts, r, c, seg = 24) => parts.push({ geo: new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map((p) => V3(...p))), seg, r, 8, false), c });
+      const { R, rear, front, bb, saddle, grip } = d;
+      const ra = [rear, R, 0], fa = [front, R, 0], B = [bb[0], bb[1], 0];
+      let ht0, ht1; // ヘッドチューブの下と上
+      const hx = (y) => front - (y - R) * 0.32; // フォークの傾き(約72°)
+      if (d.type === "mama") {
+        ht0 = [hx(0.6), 0.6, 0];
+        ht1 = [hx(0.82), 0.82, 0];
+        const st = [saddle[0] + 0.05, saddle[1] - 0.18, 0];
+        // 低いまたぎ(U字の下パイプ)
+        curve([ht1, [ht0[0] - 0.05, 0.66, 0], [0.32, 0.36, 0], [0.12, 0.27, 0], B], 0.022, color);
+        tube(B, st, 0.02, color);
+        tube(st, [saddle[0], saddle[1] - 0.04, 0], 0.013, chrome);
+        tube(B, ra, 0.011, color);
+        tube([st[0] + 0.01, st[1] - 0.02, 0], ra, 0.01, color);
+        // 泥よけ(前後)
+        parts.push({ geo: new THREE.TorusGeometry(R + 0.035, 0.022, 4, 24, Math.PI * 0.95), m: M4(rear, R, 0, 0, 0, 0.1), c: chrome });
+        parts.push({ geo: new THREE.TorusGeometry(R + 0.035, 0.022, 4, 24, Math.PI * 0.8), m: M4(front, R, 0, 0, 0, 0.35), c: chrome });
+        // チェーンケース(前は丸く大きく、後ろは小さく)
+        {
+          const sh = new THREE.Shape(), r0 = 0.115, r1 = 0.07, dx = rear - bb[0], dy = R - bb[1], L0 = Math.hypot(dx, dy), an = Math.atan2(dy, dx);
+          const k = Math.asin((r0 - r1) / L0);
+          sh.absarc(0, 0, r0, an + Math.PI / 2 + k, an - Math.PI / 2 - k + Math.PI * 2, false);
+          sh.absarc(dx, dy, r1, an - Math.PI / 2 - k, an + Math.PI / 2 + k, false);
+          const g = new THREE.ExtrudeGeometry(sh, { depth: 0.018, bevelEnabled: true, bevelSize: 0.008, bevelThickness: 0.008, bevelSegments: 2, curveSegments: 16 });
+          parts.push({ geo: g, m: M4(bb[0], bb[1], 0.055), c: color });
+        }
+        // 後ろの荷台
+        const rk = [rear - 0.08, R + 0.42, 0];
+        for (const s of [-1, 1]) {
+          tube([rear - 0.22, rk[1], s * 0.07], [rear + 0.12, rk[1], s * 0.07], 0.007, chrome);
+          tube([rear - 0.12, rk[1], s * 0.07], [rear, R, s * 0.06], 0.006, chrome);
+          tube([rear + 0.1, rk[1], s * 0.07], [st[0], st[1] + 0.02, s * 0.02], 0.005, chrome);
+        }
+        for (let i = 0; i < 4; i++) tube([rear - 0.2 + i * 0.1, rk[1], -0.07], [rear - 0.2 + i * 0.1, rk[1], 0.07], 0.005, chrome);
+        // スタンド
+        for (const s of [-1, 1]) tube([rear + 0.02, R - 0.02, s * 0.08], [rear - 0.18, 0.08, s * 0.12], 0.008, chrome);
+        // 前かご(針金のかご)
+        const bx = front + 0.1, by = 0.78, bw = 0.38, bd = 0.32, bh = 0.24;
+        for (let i = 0; i <= 6; i++) {
+          const t = i / 6;
+          tube([bx - bd / 2 + bd * t, by, -bw / 2], [bx - bd / 2 + bd * t, by + bh, -bw / 2], 0.0035, 0x2a2b2d);
+          tube([bx - bd / 2 + bd * t, by, bw / 2], [bx - bd / 2 + bd * t, by + bh, bw / 2], 0.0035, 0x2a2b2d);
+          tube([bx - bd / 2, by, -bw / 2 + bw * t], [bx - bd / 2, by + bh, -bw / 2 + bw * t], 0.0035, 0x2a2b2d);
+          tube([bx + bd / 2, by, -bw / 2 + bw * t], [bx + bd / 2, by + bh, -bw / 2 + bw * t], 0.0035, 0x2a2b2d);
+          tube([bx - bd / 2 + bd * t, by, -bw / 2], [bx - bd / 2 + bd * t, by, bw / 2], 0.0035, 0x2a2b2d);
+        }
+        for (const y of [by + bh, by + bh * 0.5, by])
+          for (const [p0, p1] of [[[bx - bd / 2, y, -bw / 2], [bx + bd / 2, y, -bw / 2]], [[bx - bd / 2, y, bw / 2], [bx + bd / 2, y, bw / 2]], [[bx - bd / 2, y, -bw / 2], [bx - bd / 2, y, bw / 2]], [[bx + bd / 2, y, -bw / 2], [bx + bd / 2, y, bw / 2]]]) tube(p0, p1, 0.005, 0x2a2b2d);
+        tube([bx + bd / 2 - 0.02, by, 0], fa, 0.007, chrome);
+        tube([bx - bd / 2, by + 0.05, 0], ht1, 0.007, chrome);
+        // ライト(前)とベル
+        parts.push({ geo: new THREE.CylinderGeometry(0.035, 0.03, 0.07, 10), m: M4(front + 0.03, R + 0.25, 0.05, 0, 0, -Math.PI / 2), c: 0xe8e8e8 });
+        parts.push({ geo: new THREE.SphereGeometry(0.022, 8, 6), m: M4(grip[0] + 0.07, grip[1] + 0.03, -0.17), c: chrome });
+        // ハンドル(手前に曲がった形)
+        const hs = [hx(0.82) + 0.02, ht1[1] + 0.12, 0];
+        tube(ht1, hs, 0.013, chrome);
+        for (const s of [-1, 1]) {
+          curve([[hs[0], hs[1], 0], [hs[0] + 0.03, hs[1] + 0.01, s * 0.12], [grip[0] + 0.12, grip[1] + 0.01, s * (d.gw - 0.02)], [grip[0] + 0.02, grip[1], s * d.gw]], 0.011, chrome, 12);
+          tube([grip[0] - 0.08, grip[1], s * d.gw], [grip[0] + 0.05, grip[1], s * d.gw], 0.016, 0x3a2a22);
+        }
+        // サドル(大きくてばねつき)
+        parts.push({ geo: new THREE.SphereGeometry(0.13, 14, 8), m: new THREE.Matrix4().compose(V3(saddle[0] - 0.01, saddle[1] - 0.025, 0), new THREE.Quaternion(), V3(1.05, 0.28, 0.85)), c: 0x2a201c });
+        for (const s of [-1, 1]) parts.push({ geo: new THREE.CylinderGeometry(0.014, 0.014, 0.06, 8), m: M4(saddle[0] - 0.1, saddle[1] - 0.07, s * 0.05), c: chrome });
+      } else {
+        const road = d.type === "road";
+        ht1 = [hx(grip[1] - (road ? 0.07 : 0.1)), grip[1] - (road ? 0.07 : 0.1), 0];
+        ht0 = [hx(ht1[1] - (road ? 0.14 : 0.15)), ht1[1] - (road ? 0.14 : 0.15), 0];
+        const st = [saddle[0] + 0.07, saddle[1] - 0.17, 0];
+        const r1 = road ? 0.019 : 0.021;
+        tube(B, ht0, r1 * 1.25, color);
+        tube(st, ht1, r1, color);
+        tube(B, st, r1 * 1.05, color);
+        tube(ht0, ht1, r1 * 1.2, color);
+        tube([st[0], st[1] + 0.005, 0], [saddle[0], saddle[1] - 0.03, 0], 0.0135, road ? blk : 0x2a2c30);
+        for (const s of [-1, 1]) {
+          tube([B[0], B[1], s * 0.03], [rear, R, s * 0.06], 0.009, color);
+          tube([st[0], st[1], s * 0.015], [rear, R, s * 0.06], 0.0075, color);
+          tube([ht0[0], ht0[1], s * 0.03], [front, R, s * 0.05], 0.011, color, 0.016); // フォーク
+        }
+        // サドル(細い)
+        parts.push({ geo: new THREE.SphereGeometry(0.1, 14, 8), m: new THREE.Matrix4().compose(V3(saddle[0] - 0.02, saddle[1] - 0.02, 0), new THREE.Quaternion(), V3(1.4, 0.22, 0.38)), c: 0x141516 });
+        // ステムとハンドル
+        const stemE = [grip[0] - (road ? 0.02 : 0.1), ht1[1] + 0.035, 0];
+        tube([ht1[0], ht1[1] + 0.03, 0], stemE, 0.016, blk);
+        if (road) {
+          // ドロップハンドル
+          for (const s of [-1, 1]) {
+            curve([[stemE[0], stemE[1], 0], [stemE[0], stemE[1], s * 0.15], [stemE[0] + 0.07, stemE[1] - 0.005, s * 0.2], [stemE[0] + 0.1, stemE[1] - 0.06, s * 0.2], [stemE[0] + 0.06, stemE[1] - 0.13, s * 0.2], [stemE[0] - 0.03, stemE[1] - 0.14, s * 0.2]], 0.0125, 0x111214, 16);
+            parts.push({ geo: new THREE.BoxGeometry(0.075, 0.045, 0.028), m: M4(stemE[0] + 0.09, stemE[1] + 0.01, s * 0.2, 0, 0, -0.3), c: 0x202124 }); // ブラケット
+          }
+        } else {
+          tube([stemE[0], stemE[1], -d.gw - 0.03], [stemE[0], stemE[1], d.gw + 0.03], 0.0125, blk);
+          for (const s of [-1, 1]) tube([stemE[0], stemE[1], s * (d.gw - 0.06)], [stemE[0], stemE[1], s * (d.gw + 0.05)], 0.017, 0x222326);
+        }
+        // ボトル(クロスとロード)
+        parts.push({ geo: new THREE.CylinderGeometry(0.035, 0.035, 0.2, 10), m: new THREE.Matrix4().compose(V3(B[0] + (ht0[0] - B[0]) * 0.42, B[1] + (ht0[1] - B[1]) * 0.42 + 0.045, 0), new THREE.Quaternion().setFromUnitVectors(V3(0, 1, 0), V3(ht0[0] - B[0], ht0[1] - B[1], 0).normalize()), V3(1, 1, 1)), c: road ? 0xf0f0f0 : 0x2a6ad0 });
+        if (!road) parts.push({ geo: new THREE.CylinderGeometry(0.02, 0.022, 0.05, 8), m: M4(ht1[0] + 0.04, ht1[1] - 0.04, 0, 0, 0, -Math.PI / 2), c: 0x222222 }); // ライト
+      }
+      // チェーン(上と下)
+      tube([B[0], B[1] + 0.1, 0.045], [rear, R + 0.04, 0.045], 0.004, 0x4a4c50);
+      tube([B[0], B[1] - 0.1, 0.045], [rear, R - 0.04, 0.045], 0.004, 0x4a4c50);
+      parts.push({ geo: new THREE.CylinderGeometry(0.035, 0.035, 0.07, 10), m: M4(B[0], B[1], 0, Math.PI / 2, 0, 0), c: 0x2a2b2e });
+      return merge(parts);
+    }
+    function wheelGeo(R, w, road) {
+      const parts = [], M4 = (x, y, z, rx, ry, rz) => new THREE.Matrix4().compose(V3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx || 0, ry || 0, rz || 0)), V3(1, 1, 1));
+      parts.push({ geo: new THREE.TorusGeometry(R - w, w, 8, 40), c: 0x151516 });
+      parts.push({ geo: new THREE.TorusGeometry(R - w * 2 - 0.006, road ? 0.012 : 0.008, 6, 40), m: new THREE.Matrix4().makeScale(1, 1, road ? 1.6 : 1.4), c: road ? 0x18191b : 0xb8bcc0 });
+      parts.push({ geo: new THREE.CylinderGeometry(0.022, 0.022, 0.1, 10), m: M4(0, 0, 0, Math.PI / 2, 0, 0), c: 0xa8acb0 });
+      const n = 32, rr = R - w * 2 - 0.01;
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2, s = i % 2 ? 1 : -1;
+        const A = V3(Math.cos(a + 0.12 * s) * 0.02, Math.sin(a + 0.12 * s) * 0.02, s * 0.035), Bv = V3(Math.cos(a) * rr, Math.sin(a) * rr, s * 0.004), dv = Bv.clone().sub(A);
+        parts.push({ geo: new THREE.CylinderGeometry(0.0012, 0.0012, dv.length(), 3, 1), m: new THREE.Matrix4().compose(A.clone().addScaledVector(dv, 0.5), new THREE.Quaternion().setFromUnitVectors(V3(0, 1, 0), dv.normalize()), V3(1, 1, 1)), c: 0xc8ccd0 });
+      }
+      return merge(parts);
+    }
+    function crankGeo(d) {
+      const parts = [], cr = d.crank;
+      parts.push({ geo: new THREE.CylinderGeometry(d.type === "road" ? 0.1 : 0.09, d.type === "road" ? 0.1 : 0.09, 0.006, 32), m: new THREE.Matrix4().compose(V3(0, 0, 0.05), new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0)), V3(1, 1, 1)), c: d.type === "mama" ? 0xb8bcc0 : 0x2a2b2e });
+      for (const s of [-1, 1]) parts.push({ geo: new THREE.BoxGeometry(0.026, cr + 0.03, 0.012), m: new THREE.Matrix4().makeTranslation(0, (s * cr) / 2, s * 0.068), c: 0x303236 });
+      return merge(parts);
+    }
+    function pedalGeo() {
+      return merge([{ geo: new THREE.BoxGeometry(0.09, 0.022, 0.1), c: 0x1a1b1d }]);
+    }
+    const BIKE_COL = { mama: [0xf2f2ee, 0x2a2c30, 0x8a9a7a, 0xc8b89a, 0x6a1c22, 0x3a5a8a], cross: [0x2a2c30, 0xd8d8d4, 0x2a4a6a, 0x4a5a3a], road: [0x16181b, 0xe8e8e8, 0xb81c24, 0x1f4fa0] };
+    // ---- 組み立ての計画(仕事を並べる) ----
+    let P = null;
+    function plan() {
+      const rgM = srcM, rgR = srcR;
+      // 頭の組み合わせ: cap(整備士の頭・帽子)と hair(乗り手の頭・髪)
+      // 乗り手の頭は、首の下(ジャージのえり)まで続いている。普段着の体に付けるときは、えりの三角形を除く(シャツから肌が透けないように)
+      const hc = canvasOf(srcR.tex.head, 256), hd = hc.d.data;
+      const dark = (uv, i) => {
+        const x = Math.min(255, Math.max(0, (uv.getX(i) * 256) | 0)), y = Math.min(255, Math.max(0, ((1 - uv.getY(i)) * 256) | 0)), j = (y * 256 + x) * 4;
+        return (hd[j] + hd[j + 1] + hd[j + 2]) / 3 < 55 && !(uv.getX(i) < 0.37 && 1 - uv.getY(i) > 0.6) && 1 - uv.getY(i) > 0.5;
+      };
+      const collar = (sm, a, b, c) => { const uv = sm.geometry.attributes.uv; return dark(uv, a) || dark(uv, b) || dark(uv, c); };
+      // 整備士の体の首の上の部分(帽子の頭の内側に隠れていた所)は、髪の頭のときは除く
+      const yW = (sm, i) => new THREE.Vector3().fromBufferAttribute(sm.geometry.attributes.position, i).applyMatrix4(sm.matrixWorld).y;
+      const neckTop = (sm, a, b, c) => Math.min(yW(sm, a), yW(sm, b), yW(sm, c)) > 1.49;
+      rgM.P.updateMatrixWorld(true);
+      const KA = kit([{ rg: rgM, mat: /body/, slot: 0, style: "cap" }, { rg: rgM, mat: /body/, slot: 0, style: "hair", drop: neckTop }, { rg: rgM, mat: /head/, slot: 1, style: "cap" }, { rg: rgR, mat: /head/, slot: 3, style: "hair", drop: collar }]);
+      const KB = kit([{ rg: rgR, mat: /body/, slot: 2 }, { rg: rgR, mat: /head/, slot: 3 }]);
+      // 骨組みは2体とも同じなので、両方に同じ姿勢をつけて焼く
+      const both = [rgM, rgR];
+      for (const kind of ["walk", "phone", "carry"]) {
+        const fr = (anims[kind] = { frames: [], n: N_WALK, kit: KA });
+        const fn = walkPose(kind);
+        for (let i = 0; i <= N_WALK; i++) jobs.push(() => fr.frames.push(bakeFrame(KA, both, fn, i)));
+      }
+      for (const type of ["mama", "cross", "road"]) {
+        const d = bikeDims(type, rgM);
+        const fr = (anims[type] = { frames: [], n: N_PEDAL, kit: type === "road" ? KB : KA, dims: d });
+        const fn = pedalPose(d);
+        for (let i = 0; i < N_PEDAL; i++) jobs.push(() => fr.frames.push(bakeFrame(fr.kit, both, fn, i)));
+        jobs.push(() => {
+          fr.wheel = wheelGeo(d.R, type === "road" ? 0.013 : type === "cross" ? 0.018 : 0.02, type === "road");
+          fr.crankG = crankGeo(d);
+          fr.pedalG = pedalGeo();
+          fr.bikes = [];
+        });
+        // 自転車の形は、色ごとに先に作っておく(走っている途中で作ると、その瞬間に引っかかる)
+        for (const col of BIKE_COL[type]) jobs.push(() => fr.bikes.push({ col, geo: bikeGeo(d, col) }));
+      }
+      // 服の組み合わせ(通勤・学生・買い物・普段)
+      const OUT = [
+        { shirt: 0xf2f2f0, pants: 0x22252b, shoes: 0x16140f, belt: 0x1a1612, tag: "suit" }, // 白いシャツと紺のスラックス
+        { shirt: 0xdfe8f2, pants: 0x2c2f36, shoes: 0x1c1a17, belt: 0x1a1612, tag: "suit" },
+        { shirt: 0x26282d, pants: 0x1d1f23, shoes: 0x121212, tag: "suit" }, // 黒っぽいスーツ
+        { shirt: 0xf4f4f2, pants: 0x1a1d26, shoes: 0x141414, short: true, tag: "student" }, // 学生(白い半そでと黒のズボン)
+        { shirt: 0xeef0f2, pants: 0x242838, shoes: 0xe8e8e4, tag: "student" },
+        { shirt: 0x8a6a4a, pants: 0xc8bba0, shoes: 0x5a4030, tag: "casual" }, // 茶色のシャツとベージュ
+        { shirt: 0x5a7a5a, pants: 0x3a4a6a, shoes: 0xe0e0dc, short: true, tag: "casual" },
+        { shirt: 0xb84a4a, pants: 0x2a3550, shoes: 0xf0f0ec, short: true, tag: "casual" },
+        { shirt: 0xe6dcc8, pants: 0x6a6e74, shoes: 0x2a2a2a, tag: "casual" },
+        { shirt: 0x3a4f7a, pants: 0x3c5674, shoes: 0x8a6a4a, tag: "casual" }, // ジーンズ
+        { shirt: 0xd9c08a, pants: 0x30343a, shoes: 0xf2f2f0, tag: "casual" },
+        { shirt: 0x7a8a9a, pants: 0x1e2024, shoes: 0x1a1a1a, tag: "casual" },
+      ];
+      mats.body = [];
+      for (const o of OUT) jobs.push(() => mats.body.push({ tag: o.tag, m: material(casualBody(o), srcM.tex.bodyN, 0.82) }));
+      mats.cap = [];
+      for (const [c, sh] of [[0x22252b, true], [0x2a3a5a, true], [0xe8e6e0, false], [0x6a5a40, true], [0x1a1a1a, false]]) jobs.push(() => mats.cap.push(material(capHead({ cap: c, shave: sh }), srcM.tex.headN, 0.6)));
+      mats.hair = [];
+      for (const [h, n] of [[0x16120f, 0xd9a58a], [0x231a14, 0xd29c80], [0x0e0c0b, 0xe0b096], [0x3a2a1e, 0xd09a7c]]) jobs.push(() => mats.hair.push(material(hairHead({ hair: h, neck: n }), srcR.tex.headN, 0.55)));
+      mats.roadHead = [];
+      for (const h of [0x16120f, 0x231a14, 0x0e0c0b]) jobs.push(() => mats.roadHead.push(material(hairHead({ hair: h }), srcR.tex.headN, 0.55)));
+      mats.sport = [];
+      for (const j of [0x1a1b1e, 0x1f4fa0, 0xb81c24, 0xf0f0f0, 0x1d7a4a, 0xe8a020]) jobs.push(() => mats.sport.push(material(sportBody({ jersey: j }), srcR.tex.bodyN, 0.6)));
+      jobs.push(() => (P = props()));
+    }
+    // ---- 1人を出す ----
+    // 歩行者: { obj, step(dt, v) }。まだ用意できていなければ null
+    function ped(rnd, force) {
+      if (!ready) return null;
+      const pick = (a) => a[Math.floor(rnd() * a.length) % a.length];
+      const r = rnd();
+      const kind = force || (r < 0.16 ? "phone" : r < 0.36 ? "carry" : "walk");
+      const A = anims[kind];
+      const hair = rnd() < 0.6;
+      const body = pick(mats.body);
+      const ml = [body.m, pick(mats.cap), null, pick(mats.hair)];
+      ml[2] = ml[0];
+      if (!ml[1]) ml[1] = ml[0];
+      const st = hair ? "hair" : "cap";
+      const g = new THREE.Group();
+      const mesh = new THREE.Mesh(A.frames[0].geos[st], ml);
+      mesh.castShadow = true;
+      g.add(mesh);
+      const acc = [];
+      const add = (pr, mat) => {
+        const m = new THREE.Mesh(pr.geo, mat || P.mat.cloth);
+        m.matrixAutoUpdate = false;
+        m.castShadow = true;
+        g.add(m);
+        acc.push({ m, bone: pr.bone });
+      };
+      if (kind === "phone") add(P.phone(), P.mat.shiny);
+      if (kind === "carry") {
+        const k = rnd();
+        add(k < 0.35 ? P.bag(0xf4f4f0, "plastic") : k < 0.65 ? P.bag(0xb08a5a, "paper") : k < 0.85 ? P.bag(pick([0x2a2c30, 0x6a5a48, 0xc8c0b0]), "tote") : P.umbrella(pick([0x1a1b1f, 0x2a3a5a, 0x7a1c22, 0xe0e0e0])));
+      }
+      const b2 = rnd();
+      if (b2 < (body.tag === "student" ? 0.7 : 0.25)) add(P.backpack(pick([0x1c1d20, 0x2a3550, 0x3a3a3a, 0x6a3a2a])));
+      else if (b2 < 0.45 && body.tag !== "student") (add(P.shoulder(pick([0x4a3424, 0x1c1c1e, 0x8a7a5a]))), add(P.strap()));
+      if (rnd() < 0.12) add(P.mask());
+      // 体つき(身長と、肩幅・胴の厚み)
+      const tall = 0.94 + rnd() * 0.1, wide = 0.95 + rnd() * 0.1;
+      g.scale.set(tall * wide, tall, tall * wide);
+      let ph = rnd();
+      const set = (fr) => {
+        mesh.geometry = fr.geos[st];
+        for (const a of acc) {
+          const M = fr.att[a.bone];
+          a.m.matrix.copy(M);
+          a.m.matrixWorldNeedsUpdate = true;
+        }
+      };
+      set(A.frames[Math.floor(ph * A.n)]);
+      g.userData.size = [0.75, 0.75];
+      g.userData.crowd = true;
+      return {
+        obj: g,
+        step(dt, v) {
+          if (v < 0.15) return set(A.frames[A.n]); // 立ち止まる
+          ph = (ph + (v * dt) / (STRIDE * tall)) % 1;
+          set(A.frames[Math.floor(ph * A.n) % A.n]);
+        },
+      };
+    }
+    // 自転車の人: { obj, step(dt, v) }
+    function cyclist(rnd, force) {
+      if (!ready) return null;
+      const pick = (a) => a[Math.floor(rnd() * a.length) % a.length];
+      const r = rnd();
+      const type = force || (r < 0.55 ? "mama" : r < 0.8 ? "cross" : "road");
+      const A = anims[type], d = A.dims;
+      const g = new THREE.Group();
+      // 自転車の形(色ごとに1つ作って使い回す)
+      const bg = pick(A.bikes);
+      const frame = new THREE.Mesh(bg.geo, bikeMat());
+      const wheels = [d.rear, d.front].map((x) => {
+        const w = new THREE.Mesh(A.wheel, bikeMat());
+        w.position.set(x, d.R, 0);
+        return w;
+      });
+      const crank = new THREE.Mesh(A.crankG, bikeMat());
+      crank.position.set(d.bb[0], d.bb[1], 0);
+      const pedals = [1, -1].map(() => new THREE.Mesh(A.pedalG, bikeMat()));
+      g.add(frame, ...wheels, crank, ...pedals);
+      // 乗る人
+      let st, ml;
+      const acc = [];
+      const add = (pr, mat) => {
+        const m = new THREE.Mesh(pr.geo, mat || P.mat.cloth);
+        m.matrixAutoUpdate = false;
+        m.castShadow = true;
+        g.add(m);
+        acc.push({ m, bone: pr.bone });
+      };
+      if (type === "road") {
+        st = "*";
+        const sm = pick(mats.sport), hm = pick(mats.roadHead);
+        ml = [sm, sm, sm, hm];
+        add(P.helmet(pick([0xf2f2f2, 0x1a1b1e, 0xb81c24, 0x1f4fa0])), P.mat.shiny);
+      } else {
+        const body = pick(mats.body.filter((b) => (type === "cross" ? b.tag !== "student" : true)));
+        st = rnd() < 0.65 ? "hair" : "cap";
+        ml = [body.m, pick(mats.cap), body.m, pick(mats.hair)];
+        if (body.tag === "student" || rnd() < 0.2) add(P.backpack(pick([0x1c1d20, 0x2a3550, 0x3a3a3a])));
+        if (type === "cross" && rnd() < 0.3) add(P.helmet(pick([0xf2f2f2, 0x1a1b1e])), P.mat.shiny);
+        if (type === "mama" && rnd() < 0.6) {
+          // 前かごの荷物
+          const m = new THREE.Mesh(P.bag(pick([0xf4f4f0, 0xb08a5a, 0x2a2c30]), rnd() < 0.5 ? "plastic" : "paper").geo, P.mat.cloth);
+          m.position.set(d.front + 0.1, 0.78 + 0.26, 0);
+          m.rotation.y = rnd() * 3;
+          g.add(m);
+        }
+      }
+      const mesh = new THREE.Mesh(A.frames[0].geos[st], ml);
+      g.add(mesh);
+      g.traverse((o) => o.isMesh && (o.castShadow = true));
+      let th = rnd() * Math.PI * 2;
+      const set = () => {
+        const k = Math.round((th / (Math.PI * 2)) * A.n) % A.n, fr = A.frames[k], a = (k / A.n) * Math.PI * 2;
+        mesh.geometry = fr.geos[st];
+        crank.rotation.z = -a;
+        pedals.forEach((p, i) => {
+          const aa = a + (i ? Math.PI : 0);
+          p.position.set(d.bb[0] + Math.sin(aa) * d.crank, d.bb[1] + Math.cos(aa) * d.crank, (i ? -1 : 1) * 0.1);
+        });
+        for (const x of acc) x.m.matrix.copy(fr.att[x.bone]), (x.m.matrixWorldNeedsUpdate = true);
+      };
+      set();
+      g.userData.size = [1.9, 0.8];
+      g.userData.crowd = true;
+      return {
+        obj: g,
+        type,
+        step(dt, v) {
+          for (const w of wheels) w.rotation.z -= (v * dt) / d.R;
+          // ケイデンス: 速さに合わせて(ギア比の代わり)
+          if (v > 0.5) th = (th + ((v * dt) / d.R) * (type === "mama" ? 0.42 : 0.33)) % (Math.PI * 2);
+          set();
+        },
+      };
+    }
+    let bm = null;
+    const bikeMat = () => bm || (bm = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0.35, envMapIntensity: 0.8 }));
+    // 夜: 暗くなりすぎないよう、服の色を少しだけ自分で光らせる(街の照明の照り返しの代わり)
+    function setNight(k) {
+      if (k === nightK) return;
+      nightK = k;
+      for (const m of allMats) m.emissiveIntensity = k;
+    }
+    return { load, ped, cyclist, setNight, ready: () => ready, _anims: anims, _jobs: () => jobs.length, _flush: () => { while (jobs.length) jobs.shift()(); ready = true; } };
+  })();
+
   // ---------- 道の上の人と車: 後ろから来る車・対向車・歩行者・ほかの自転車 ----------
   // 自分の前後(後ろ60m〜前250m)にだけ置く。道の幅(Roads で測った値)で、車が通れる道か・車線の位置を決める。
   // 車に近くで抜かれたら「ヒヤリ」、人や自転車を抜いたら「抜いた人」、近くをすり抜けたら「すり抜け」。
@@ -4707,6 +5630,7 @@ const City = (() => {
     function templates() {
       if (tpl) return tpl;
       const THREE = T();
+      Crowd.load(); // 本物の人体モデル(届くまでは、下の簡単な形を使う)
       const M4 = (x, y, z, rx, ry, rz, sx, sy, sz) => new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx || 0, ry || 0, rz || 0)), new THREE.Vector3(sx || 1, sy || sx || 1, sz || sx || 1));
       // 材質: 塗装(つやがあって空が映る)・ガラス(暗くてよく映る)・つやなし(タイヤ・ライトなど、そのままの色)
       const paint = new THREE.MeshPhysicalMaterial({ vertexColors: true, metalness: 0.45, roughness: 0.42, envMapIntensity: 0.9, clearcoat: 1, clearcoatRoughness: 0.06 }); // つやのある上塗り
@@ -5046,15 +5970,23 @@ const City = (() => {
         v = (dir > 0 ? 34 + rnd() * 12 : 30 + rnd() * 12) * KM;
         w = 1.75;
       } else if (kind === "ped") {
-        const shirts = [0x2f5d9a, 0xe8e2d8, 0x3a3a3a, 0x9a3a3a, 0x6a7a4a, 0xd9c08a];
-        obj = t.person(shirts[Math.floor(rnd() * shirts.length)], 0x2a2e36);
+        const cp = Crowd.ped(rnd);
+        if (cp) (obj = cp.obj), (obj.userData.step = cp.step);
+        else {
+          const shirts = [0x2f5d9a, 0xe8e2d8, 0x3a3a3a, 0x9a3a3a, 0x6a7a4a, 0xd9c08a];
+          obj = t.person(shirts[Math.floor(rnd() * shirts.length)], 0x2a2e36);
+        }
         v = (3.6 + rnd() * 1.6) * KM;
         w = 0.5;
       } else {
-        const b = makeBiker([0x2b6fd6, 0x3a3a3a, 0xe8e8e8, 0x1d8a5a][Math.floor(rnd() * 4)], [0x222222, 0x6a6a6a, 0x9a3a3a][Math.floor(rnd() * 3)]);
-        obj = b.g;
-        obj.userData.pose = b.pose;
-        v = (14 + rnd() * 6) * KM;
+        const cp = Crowd.cyclist(rnd);
+        if (cp) (obj = cp.obj), (obj.userData.step = cp.step), (v = (cp.type === "road" ? 20 + rnd() * 6 : cp.type === "cross" ? 15 + rnd() * 5 : 11 + rnd() * 4) * KM);
+        else {
+          const b = makeBiker([0x2b6fd6, 0x3a3a3a, 0xe8e8e8, 0x1d8a5a][Math.floor(rnd() * 4)], [0x222222, 0x6a6a6a, 0x9a3a3a][Math.floor(rnd() * 3)]);
+          obj = b.g;
+          obj.userData.pose = b.pose;
+          v = (14 + rnd() * 6) * KM;
+        }
         w = 0.6;
       }
       obj.traverse((o) => o.isMesh && (o.castShadow = true));
@@ -5077,7 +6009,8 @@ const City = (() => {
         const k = Math.floor(e.lane * lanes);
         return e.dir > 0 ? L - 1.95 - k * 3.1 : L - W + 1.9 + k * 3.1;
       }
-      if (e.kind === "ped") return W >= 5.5 ? L + 1.4 + e.lane * 1.2 : L - 0.2 - e.lane * 0.15; // 広い道は歩道、狭い道は道の端
+      // 広い道は歩道、狭い道は道の端。向こうから来る人は少し外側を歩く(すれ違う人が重ならないように)
+      if (e.kind === "ped") return W >= 5.5 ? L + (e.dir > 0 ? 1.25 : 1.95) + e.lane * 0.6 : L - 0.2 - e.lane * 0.15 - (e.dir > 0 ? 0 : 0.5);
       return (r ? r.off : 0) + (e.lane - 0.5) * 0.4; // ほかの自転車も左端
     }
     function update(dt) {
@@ -5142,6 +6075,7 @@ const City = (() => {
         // 向こうから来る車どうしも、前の車との間をあける
         if (e.kind === "car" && e.dir < 0) for (const o of list) if (o !== e && o.kind === "car" && o.dir < 0 && o.along < e.along && e.along - o.along < 7) v = 0;
         e.cv = v;
+        if (e.kind !== "car") Crowd.setNight(timeMode === "night" ? 0.14 : timeMode === "dusk" ? 0.06 : 0);
         if (e.kind === "car") {
           if (e.lamps === undefined) e.lamps = e.obj.children.filter((o) => o.userData.brake || o.userData.beam);
           const night = timeMode !== "day";
@@ -5153,7 +6087,8 @@ const City = (() => {
         const x = p.x + p.tz * off, z = p.z - p.tx * off;
         e.obj.position.set(x, H(x, z) + (e.kind === "ped" && W5(r) ? 0.17 : 0), z);
         e.obj.rotation.y = -Math.atan2(p.tz, p.tx) + (e.dir < 0 ? Math.PI : 0);
-        if (e.kind === "ped") {
+        if (e.obj.userData.step) e.obj.userData.step(dt, v);
+        else if (e.kind === "ped") {
           const ph = (s.t * 6 + e.lane * 10) % (Math.PI * 2);
           // 止まっているとき(信号待ち)は動かさない
           const k = Math.min(1, v / 0.6), ud = e.obj.userData;
@@ -10479,5 +11414,5 @@ const City = (() => {
   }
 
   if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", bind), Rate.measure();
-  return { at, turnAhead, readTile, _H: (x, z) => H(x, z), _state: () => ({ Xing, Terrain, PV, Shops, Mons, G3, popU, clipU, sim, route, tiles, failed, camera, Plateau, Roads, scene, me, Traffic, Signals, renderer, Perf, Saved, Rate }), ride: (a) => Roads.ride(a) };
+  return { at, turnAhead, readTile, _H: (x, z) => H(x, z), _state: () => ({ Crowd, Xing, Terrain, PV, Shops, Mons, G3, popU, clipU, sim, route, tiles, failed, camera, Plateau, Roads, scene, me, Traffic, Signals, renderer, Perf, Saved, Rate }), ride: (a) => Roads.ride(a) };
 })();
