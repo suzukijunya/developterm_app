@@ -73,6 +73,8 @@ const DuelLines = (() => {
     const oppSyn = B.SYNCHROS.opp;
     for (const m of youMons.concat(youSyn)) for (const d of [true, false]) add(L.attack(m.name, "you", d));
     for (const m of oppMons.concat(oppSyn)) add(L.attack(m.name, "opp", true));
+    // 口上のある通常モンスター(スプロケット・パラディンなど)
+    if (typeof Board !== "undefined" && Board.hasChant) for (const m of youMons) if (Board.hasChant(m.name)) add(L.chant(Board.chant(m, "you"), "you"));
     for (const m of youSyn) {
       add(L.synchroCall(m.name, "you"));
       add(L.summonCry(m.name, "you"));

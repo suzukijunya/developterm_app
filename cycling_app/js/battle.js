@@ -23,6 +23,8 @@ const Battle = (() => {
   const POOL = {
     // --- 自分のデッキ「スピード・ロード」 ---
     sprocket: C({ kind: "monster", name: "スプロケット・ナイト", icon: "⚙️", lv: 3, atk: 1300, text: "歯車の騎士" }),
+    // スプロケット・ナイトの上位。重い鎧と歯車の盾で、守るときに強い
+    paladin: C({ kind: "monster", name: "スプロケット・パラディン", icon: "🔩", lv: 5, atk: 2100, need: 3, e: [{ on: "cont", do: "wall", n: 500 }], text: "SPCが3以上なら召喚できる。攻撃されたとき、攻撃力+500" }),
     chainwolf: C({ kind: "monster", name: "チェーン・ウルフ", icon: "🐺", lv: 2, atk: 800, tuner: true, fx: "spc1", text: "チューナー。召喚するとSPC+1" }),
     spoke: C({ kind: "monster", name: "スポーク・ガーディアン", icon: "🛡️", lv: 4, atk: 1600, fx: "guard", text: "1ターンに1度、戦闘では破壊されない" }),
     falcon: C({ kind: "monster", name: "エアロ・ファルコン", icon: "🦅", lv: 4, atk: 1800, text: "空気を切り裂く翼" }),
@@ -64,6 +66,8 @@ const Battle = (() => {
   // シンクロモンスター(エクストラデッキ。チューナー+チューナー以外で、レベルの合計がぴったりのとき)
   const SYNCHROS = {
     you: [
+      // 歯車の皇帝(スプロケット系の最上級)。チューナー+Lv3×2(ケイデンス・シンクロン+スプロケット・ナイト2体など)でLv9
+      { name: "スプロケット・エンペラー", icon: "👑", lv: 9, atk: 3200, synchro: true, e: [{ on: "summon", do: "destroy" }, { on: "cont", do: "guard" }], text: "シンクロ召喚すると、相手のいちばん強いモンスターを破壊。1ターンに1度、戦闘では破壊されない" },
       { name: "ストリーム・ドラゴン", icon: "🐲", lv: 8, atk: 3000, synchro: true, fx: "pierce", text: "攻撃した後、相手に500ダメージ" },
       { name: "ホライズン・ウォリアー", icon: "⚔️", lv: 7, atk: 2700, synchro: true },
       { name: "シンクロ・スプリンター", icon: "💫", lv: 5, atk: 2300, synchro: true, fx: "draw1" },
@@ -77,7 +81,7 @@ const Battle = (() => {
   };
   const ACE = { name: "ソニック・ストリーム・ドラゴン", icon: "🐲", lv: 10, atk: 3500, synchro: true, ace: true, fx: "pierce", text: "運命が呼ぶエース。攻撃した後、相手に500ダメージ" };
   const list = (o) => Object.entries(o).flatMap(([k, n]) => Array(n).fill(k));
-  const YOU_DECK = list({ sprocket: 4, chainwolf: 3, spoke: 2, falcon: 4, cadence: 2, carbon: 2, rabbit: 2, slip: 2, boost: 3, puncture: 2, downhill: 2, rerun: 2, reflect: 3, counter: 2, discbrake: 2, chainreact: 2, tailwind: 1 });
+  const YOU_DECK = list({ sprocket: 4, paladin: 2, chainwolf: 3, spoke: 2, falcon: 3, cadence: 2, carbon: 2, rabbit: 2, slip: 2, boost: 3, puncture: 2, downhill: 1, rerun: 2, reflect: 3, counter: 2, discbrake: 2, chainreact: 2, tailwind: 1 });
   // ライバル(デッキの特徴ごと)。どのデッキも40枚
   const FOES = [
     { id: "sprint", name: "疾風のアキラ", deckName: "ゼロヨン・スプリント", style: "攻撃力の高いモンスターで押し切る", icon: "🏎️",
@@ -89,7 +93,7 @@ const Battle = (() => {
     { id: "burn", name: "爆走のリョウ", deckName: "バーン・エキゾースト", style: "ダメージを与えるカードで直接LPを削る", icon: "🔥",
       deck: list({ flame: 4, lead: 3, sprocket: 3, rabbit: 3, falcon: 2, exhaust: 4, overheat: 3, downhill: 3, slip: 3, nitro: 2, chainreact: 3, pothole: 2, jammer: 2, caution: 3 }) },
     { id: "sync", name: "同調のカイ", deckName: "シンクロン・ストリーム", style: "チューナーを並べて次々にシンクロ召喚する", icon: "🎼",
-      deck: list({ sync1: 4, lead: 3, cadence: 2, gear: 4, sprocket: 3, falcon: 3, slip: 3, rerun: 3, nitro: 2, puncture: 2, caution: 2, jammer: 3, reflect: 3, mirror: 3 }) },
+      deck: list({ sync1: 4, lead: 3, cadence: 2, gear: 3, sprocket: 3, paladin: 2, falcon: 3, slip: 3, rerun: 3, nitro: 2, puncture: 2, caution: 2, jammer: 3, reflect: 3, mirror: 2 }) },
   ];
 
   // ---------- 10,000枚のカード(CardGen)を、同じ仕組みで使う ----------

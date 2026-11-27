@@ -7,14 +7,16 @@ const MonsterArt = (() => {
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   // モデルを割り当てられるモンスター(自分のデッキ・シンクロ・エース・共通)。prompt は meshy.ai などで作るときの例
   const SLOTS = [
+    { id: "スプロケット・エンペラー", icon: "👑", note: "シンクロ Lv9", prompt: "a majestic emperor knight in gold gear-plated armor, giant rotating cogwheel halo behind the back, crown of sprocket teeth, long red cape, greatsword, game monster, full body" },
     { id: "ソニック・ストリーム・ドラゴン", icon: "🐲", note: "エース(運命のドロー)", prompt: "a sleek white and gold mechanical dragon with glowing blue wings, made of carbon fiber bicycle parts, heroic pose, game monster, full body" },
     { id: "ストリーム・ドラゴン", icon: "🐲", note: "シンクロ Lv8", prompt: "a streamlined silver mechanical dragon with wind-shaped wings, bicycle chain details, game monster, full body" },
     { id: "ホライズン・ウォリアー", icon: "⚔️", note: "シンクロ Lv7", prompt: "an armored knight warrior with a long lance, cycling-themed armor, game monster, full body" },
-    { id: "ケイデンス・ナイト", icon: "🛡️", note: "シンクロ Lv6", prompt: "a knight with a round shield shaped like a bicycle wheel, game monster, full body" },
+    { id: "ケイデンス・ナイト", icon: "🛡️", note: "シンクロ Lv6", prompt: "a hooded magic knight with a long cape, a huge glowing rune greatsword as tall as the body, floating magic circles, game monster, full body" },
     { id: "シンクロ・スプリンター", icon: "💫", note: "シンクロ Lv5", prompt: "a fast humanoid robot sprinter with glowing green lines, game monster, full body" },
     { id: "カーボン・ドラゴン", icon: "🐉", note: "Lv6", prompt: "a black carbon fiber dragon, matte with blue highlights, game monster, full body" },
     { id: "エアロ・ファルコン", icon: "🦅", note: "Lv4", prompt: "a mechanical falcon with aerodynamic metal wings, game monster" },
     { id: "スポーク・ガーディアン", icon: "🛡️", note: "Lv4", prompt: "a guardian golem holding a large spoked wheel as a shield, game monster, full body" },
+    { id: "スプロケット・パラディン", icon: "🔩", note: "Lv5", prompt: "a heavily armored paladin made of bronze gears and chainrings, large cogwheel shield, crank-arm war hammer, game monster, full body" },
     { id: "スプロケット・ナイト", icon: "⚙️", note: "Lv3", prompt: "a small knight made of gears and sprockets, game monster, full body" },
     { id: "ケイデンス・シンクロン", icon: "🎵", note: "チューナー Lv3", prompt: "a small cute robot with a metronome head, glowing green, game monster" },
     { id: "チェーン・ウルフ", icon: "🐺", note: "チューナー Lv2", prompt: "a wolf made of bicycle chains and metal plates, game monster, full body" },
@@ -24,14 +26,16 @@ const MonsterArt = (() => {
   ];
   // カードに出す数字とテキスト(バトルのカードと同じ値)
   const CARD = {
+    "スプロケット・エンペラー": { lv: 9, atk: 3200, kind: "synchro", attr: "地", type: "機械族/シンクロ", text: "チューナー+チューナー以外のモンスター。シンクロ召喚すると、相手のいちばん強いモンスターを破壊する。1ターンに1度、戦闘では破壊されない。" },
     "ソニック・ストリーム・ドラゴン": { lv: 10, atk: 3500, kind: "ace", attr: "光", type: "ドラゴン族/エース", text: "運命のドローで呼ばれる。相手のいちばん強いモンスターを破壊して現れる。攻撃した後、相手に500ダメージ。" },
     "ストリーム・ドラゴン": { lv: 8, atk: 3000, kind: "synchro", attr: "風", type: "ドラゴン族/シンクロ", text: "チューナー+チューナー以外のモンスター。攻撃した後、相手に500ダメージ。" },
     "ホライズン・ウォリアー": { lv: 7, atk: 2700, kind: "synchro", attr: "風", type: "戦士族/シンクロ", text: "チューナー+チューナー以外のモンスター。地平の彼方から駆けつける戦士。" },
-    "ケイデンス・ナイト": { lv: 6, atk: 2500, kind: "synchro", attr: "風", type: "戦士族/シンクロ", text: "チューナー+チューナー以外のモンスター。1ターンに1度、戦闘では破壊されない。" },
+    "ケイデンス・ナイト": { lv: 6, atk: 2500, kind: "synchro", attr: "風", type: "戦士族/シンクロ", text: "チューナー+チューナー以外のモンスター。回転のリズムを剣に宿す魔法騎士。1ターンに1度、戦闘では破壊されない。" },
     "シンクロ・スプリンター": { lv: 5, atk: 2300, kind: "synchro", attr: "風", type: "機械族/シンクロ", text: "チューナー+チューナー以外のモンスター。シンクロ召喚すると1枚ドロー。" },
     "カーボン・ドラゴン": { lv: 6, atk: 2400, kind: "effect", attr: "風", type: "ドラゴン族/効果", text: "スピードカウンターが5以上なら召喚できる。" },
     "エアロ・ファルコン": { lv: 4, atk: 1800, kind: "normal", attr: "風", type: "鳥獣族", text: "空気を切り裂く翼。向かい風の中でも速度を落とさない。" },
     "スポーク・ガーディアン": { lv: 4, atk: 1600, kind: "effect", attr: "地", type: "岩石族/効果", text: "1ターンに1度、戦闘では破壊されない。" },
+    "スプロケット・パラディン": { lv: 5, atk: 2100, kind: "effect", attr: "地", type: "機械族/効果", text: "スピードカウンターが3以上なら召喚できる。歯車の盾で守り、攻撃されたとき攻撃力が500上がる。" },
     "スプロケット・ナイト": { lv: 3, atk: 1300, kind: "normal", attr: "地", type: "機械族", text: "歯車の騎士。チューナーと組んでシンクロ召喚につなげる。" },
     "ケイデンス・シンクロン": { lv: 3, atk: 1000, kind: "tuner", attr: "光", type: "機械族/チューナー", text: "召喚すると、手札のレベル3以下のモンスター1体を特殊召喚する。" },
     "チェーン・ウルフ": { lv: 2, atk: 800, kind: "tuner", attr: "地", type: "獣族/チューナー", text: "召喚すると、スピードカウンターが1つ増える。" },

@@ -6424,7 +6424,9 @@ const City = (() => {
     const cache = new Map();
     let loader = null;
     // 大きさ: レベルが高いほど大きい(Lv4で約1.2m・Lv8で約1.9m・Lv10で約2.2m)。エースはさらに一回り大きく
-    const size = (m) => (0.6 + 0.16 * Math.max(1, Math.min(12, m.lv || 4))) * (m.ace ? 1.15 : 1);
+    // 名前で一回り大きくするモンスター(ケイデンス・ナイトは大剣を構える魔法騎士、スプロケット・エンペラーは歯車の皇帝)
+    const BIG = { "ケイデンス・ナイト": 1.18, "スプロケット・エンペラー": 1.1, "スプロケット・パラディン": 1.05 };
+    const size = (m) => (0.6 + 0.16 * Math.max(1, Math.min(12, m.lv || 4))) * (m.ace ? 1.15 : 1) * (BIG[m.name] || 1);
     // ガレージで登録した3Dモデル(なければ null)。高さ1・足もとが原点・前が +x
     function template(m, side) {
       const key = side + "|" + m.name;
@@ -6494,6 +6496,7 @@ const City = (() => {
     const ATTR_COL = { 風: [0x1f9e7a, 0x7dffd0], 炎: [0xb5341c, 0xffa040], 水: [0x1d5fb4, 0x70d0ff], 地: [0x7a5a2c, 0xf0d070], 光: [0xd8c070, 0xfff6c0], 闇: [0x3a2360, 0xc070ff] };
     const ICON_KIND = { "🐉": "dragon", "🐲": "dragon", "🐍": "serpent", "🦅": "bird", "🦉": "bird", "🐦": "bird", "🐧": "bird", "🦢": "bird", "🔥": "bird", "🐺": "beast", "🐯": "beast", "🦁": "beast", "🐻": "beast", "🦊": "beast", "🐇": "beast", "🐎": "beast", "🐃": "beast", "🐆": "beast", "🐗": "beast", "🦌": "beast", "🐕": "beast", "🐢": "beast", "⚙️": "machine", "🤖": "machine", "🛸": "machine", "🌀": "machine", "🏎️": "machine", "🚀": "machine", "🎵": "mage", "🎼": "mage", "🧙": "mage", "🔮": "mage", "🛡️": "knight", "⚔️": "knight", "🗡️": "knight", "🏃": "knight", "🗿": "golem", "💀": "spirit", "👻": "spirit", "🌑": "spirit", "💫": "spirit", "😈": "spirit", "👼": "spirit" };
     const RACE_KIND = { 戦士: "knight", 獣: "beast", 鳥獣: "bird", ドラゴン: "dragon", 機械: "machine", 魔法使い: "mage", 魚: "serpent", 水: "serpent", 昆虫: "insect", 岩石: "golem", 植物: "mage", アンデット: "spirit", 悪魔: "spirit", 天使: "spirit", 雷: "crystal", シンクロ: "dragon" };
+    const SPECIAL = { "スプロケット・パラディン": "gearPaladin", "スプロケット・エンペラー": "gearEmperor", "ケイデンス・ナイト": "runeKnight" };
     // 形と模様は種類ごとに1回だけ作って、同じ種類のモンスターで使い回す
     const GEO = new Map(), TEXC = new Map();
     const G = (key, f) => {
@@ -6920,13 +6923,17 @@ const City = (() => {
       const rnd = (n) => hash(hsh + n * 97);
       // 種族: カードの種族(「機械族/シンクロ」なら機械)を先に見る。わからないシンクロ・エースは竜
       const cardRace = typeof MonsterArt !== "undefined" && MonsterArt.CARD && MonsterArt.CARD[m.name] ? String(MonsterArt.CARD[m.name].type || "").split("族")[0] : "";
-      const kind = RACE_KIND[m.race] || RACE_KIND[cardRace] || (m.ace || m.synchro ? "dragon" : null) || ICON_KIND[m.icon] || ["knight", "beast", "dragon", "bird", "machine", "mage", "spirit"][hsh % 7];
-      const pal = ATTR_COL[m.attr] || (side === "opp" ? ATTR_COL.闇 : [[0x1f9e7a, 0x7dffd0], [0x1d5fb4, 0x70d0ff], [0xb5341c, 0xffa040], [0xd8c070, 0xfff6c0]][hsh % 4]);
+      // 名前で決まる専用の姿(騎士の形に、専用の部品を足す)
+      const sp = SPECIAL[m.name] || null;
+      const kind = sp ? "knight" : RACE_KIND[m.race] || RACE_KIND[cardRace] || (m.ace || m.synchro ? "dragon" : null) || ICON_KIND[m.icon] || ["knight", "beast", "dragon", "bird", "machine", "mage", "spirit"][hsh % 7];
+      // 専用の姿は、自分の側ならカードの属性の色にする
+      const mattr = m.attr || (sp && side === "you" && typeof MonsterArt !== "undefined" && MonsterArt.CARD[m.name] ? MonsterArt.CARD[m.name].attr : undefined);
+      const pal = ATTR_COL[mattr] || (side === "opp" ? ATTR_COL.闇 : [[0x1f9e7a, 0x7dffd0], [0x1d5fb4, 0x70d0ff], [0xb5341c, 0xffa040], [0xd8c070, 0xfff6c0]][hsh % 4]);
       // 色は画面用の値なので、光の計算用に直す(直さないと白っぽくなる)
       const lin = (h) => new THREE.Color(h).convertSRGBToLinear();
       const base = new THREE.Color(pal[0]).offsetHSL((rnd(1) - 0.5) * 0.06, 0.1, (rnd(2) - 0.5) * 0.06).convertSRGBToLinear();
       const glow = new THREE.Color(pal[1]).offsetHSL(0, 0.2, -0.12).convertSRGBToLinear();
-      const gold = m.ace || m.synchro, dark = m.attr === "闇" || (!ATTR_COL[m.attr] && side === "opp");
+      const gold = m.ace || m.synchro, dark = mattr === "闇" || (!ATTR_COL[mattr] && side === "opp");
       const metal = kind === "knight" || kind === "machine";
       // ---- 材質 ----
       const PM = (o) => new THREE.MeshPhysicalMaterial(Object.assign({ envMapIntensity: 0.9 }, o));
@@ -7304,6 +7311,71 @@ const City = (() => {
         anim.push(() => sh.upd(S.t));
         return me;
       };
+      // ---- 歯車・チェーン・クランク(スプロケット系の部品) ----
+      // 歯車の板: 外の半径1・厚み dp(z)。spokes 本の腕のあいだを抜く(チェーンリング)。0 なら真ん中に軸の穴
+      const gearG = (n, dp, spokes = 0) =>
+        G(`gear:${n}:${dp}:${spokes}`, () => {
+          const sh = new THREE.Shape(), st = 6.2832 / n, ri = 0.86;
+          for (let i = 0; i < n; i++) {
+            const a = i * st, P = [[a, ri], [a + st * 0.22, ri], [a + st * 0.34, 1], [a + st * 0.66, 1], [a + st * 0.78, ri]];
+            P.forEach(([b, r], k) => (i || k ? sh.lineTo(Math.cos(b) * r, Math.sin(b) * r) : sh.moveTo(Math.cos(b) * r, Math.sin(b) * r)));
+          }
+          if (spokes)
+            for (let k = 0; k < spokes; k++) {
+              const a0 = (k / spokes) * 6.2832 + 0.16, a1 = ((k + 1) / spokes) * 6.2832 - 0.16, h = new THREE.Path();
+              h.absarc(0, 0, ri - 0.13, a0, a1, false);
+              h.absarc(0, 0, 0.3, a1 - 0.12, a0 + 0.12, true);
+              sh.holes.push(h);
+            }
+          else {
+            const h = new THREE.Path();
+            h.absarc(0, 0, 0.2, 0, 6.2832, true);
+            sh.holes.push(h);
+          }
+          const g = new THREE.ExtrudeGeometry(sh, { depth: dp, bevelEnabled: true, bevelThickness: dp * 0.35, bevelSize: 0.02, bevelSegments: 2, curveSegments: 10 });
+          g.translate(0, 0, -dp / 2);
+          return g;
+        });
+      // 面の向き n(歯車の軸)で置く入れ物。中の歯車は spd の速さで回る
+      const spins = [];
+      const gearAt = (par, p, n, r, geo, mat, spd = 0, th = 1) => {
+        const N = V(n[0], n[1], n[2]).normalize(), D = V().crossVectors(Math.abs(N.y) < 0.9 ? V(0, 1, 0) : V(1, 0, 0), N).normalize(), U = V().crossVectors(N, D);
+        const g = gput(par, p, D.toArray(), U.toArray(), r);
+        const me = add(geo, mat, 0, 0, 0, 0, 0, 0, 1, 1, th, g);
+        if (spd) spins.push([me, spd]);
+        return g;
+      };
+      anim.push(() => {
+        for (const [o, w] of spins) o.rotation.z = S.t * w;
+      });
+      // チェーン: 点の列にそって輪をならべる(となりの輪は90度ねじる)。r は輪の太さの目安
+      const chainG = (key, P, r, closed) =>
+        G("chain:" + key, () => {
+          const cur = new THREE.CatmullRomCurve3(P.map((p) => V(p[0], p[1], p[2])), !!closed), link = tor(0.3), parts = [];
+          const n = Math.max(2, Math.round(cur.getLength() / (r * 2.4)));
+          for (let i = 0; i < n; i++) {
+            const u = closed ? i / n : i / (n - 1), p = cur.getPoint(u), t = cur.getTangent(u);
+            const sd = V().crossVectors(t, Math.abs(t.y) < 0.9 ? V(0, 1, 0) : V(1, 0, 0)).normalize();
+            parts.push([link, bas(p.toArray(), t.toArray(), (i % 2 ? sd : V().crossVectors(sd, t)).toArray(), r * 1.6, r, r)]);
+          }
+          return merge(parts);
+        });
+      // クランクの腕(根元が原点・長さ1で +x へ。先にペダルの軸の穴)
+      const crankG = G("crank", () => {
+        const sh = new THREE.Shape();
+        sh.moveTo(0, -0.17);
+        sh.quadraticCurveTo(0.5, -0.1, 0.96, -0.09);
+        sh.absarc(1, 0, 0.09, -Math.PI / 2, Math.PI / 2, false);
+        sh.quadraticCurveTo(0.5, 0.1, 0, 0.17);
+        sh.absarc(0, 0, 0.17, Math.PI / 2, Math.PI * 1.5, false);
+        const h = new THREE.Path();
+        h.absarc(1, 0, 0.04, 0, 6.2832, true);
+        sh.holes.push(h);
+        const g = new THREE.ExtrudeGeometry(sh, { depth: 0.08, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.025, bevelSegments: 2, curveSegments: 10 });
+        g.translate(0, 0, -0.04);
+        return g;
+      });
+      const planeG = G("plane", () => new THREE.PlaneGeometry(1, 1));
       const CL = () => PM({ color: bright, map: tex("cloth", 4, 1), bumpMap: tex("cloth", 4, 1), bumpScale: 0.004, side: THREE.DoubleSide, roughness: 0.7, metalness: 0.05, sheen: 1, sheenColor: glow, emissive: glow, emissiveIntensity: 1.6, emissiveMap: tex("clothE", 4, 1) });
 
       const BUILD = {
@@ -7635,7 +7707,8 @@ const City = (() => {
           });
           anim.push(() => (hd.rotation.z = Math.sin(S.t * 2) * 0.06));
         },
-        knight() {
+        // o: { noSword, noShield, noPlume(羽かざりなし), capeLen・capeW(マントの長さ・幅の倍率), capeMat } 返り値は部品(専用の姿が使う)
+        knight(o = {}) {
           S.w = 2.2;
           S.lift = 0.035;
           const fig = grp(root);
@@ -7662,10 +7735,12 @@ const City = (() => {
           halo(hd, 0.09, 0.012, 0, 0.2, 0.5);
           add(ext("kcrest", [[0.07, 0.03], [0.04, 0.1], [-0.04, 0.125], [-0.11, 0.09], [-0.14, 0.02], [-0.07, 0.06], [0, 0.07]], 0.006, 0.006, 40), M2, 0, 0, 0, 0, 0, 0, 1, 1, 1, hd);
           mirror(hd, (g) => put(ext("kwing", [[0, 0], [0.02, 0.05], [-0.06, 0.13], [-0.03, 0.06], [-0.1, 0.07], [-0.04, 0.02], [-0.07, -0.01]], 0.003, 0.004), gold ? M2 : GE, [0, 0.02, 0.07], [1, 0.2, -0.25], [0, 1, 0], 1, 1, 1, g)); // 耳の羽かざり
-          const pl = grp(hd, -0.1, 0.09, 0);
-          pl.userData.nb = true;
-          add(G("kplume", () => merge([0, 1, 2, 3, 4].map((k) => [featherG, bas([0, 0, 0], [-1, 0.5 - k * 0.22, 0], [0.3, 1, 0], 0.3 - k * 0.02, 0.3, 0.3)]))), FT2, 0, 0, 0, 0, 0, 0, 1, 1, 1, pl);
-          anim.push(() => (pl.rotation.z = Math.sin(S.t * 5) * 0.08 - 0.1));
+          if (!o.noPlume) {
+            const pl = grp(hd, -0.1, 0.09, 0);
+            pl.userData.nb = true;
+            add(G("kplume", () => merge([0, 1, 2, 3, 4].map((k) => [featherG, bas([0, 0, 0], [-1, 0.5 - k * 0.22, 0], [0.3, 1, 0], 0.3 - k * 0.02, 0.3, 0.3)]))), FT2, 0, 0, 0, 0, 0, 0, 1, 1, 1, pl);
+            anim.push(() => (pl.rotation.z = Math.sin(S.t * 5) * 0.08 - 0.1));
+          }
           // 肩当て(3段)・腕・こて
           const arm = (sg) => {
             const g = grp(fig);
@@ -7683,6 +7758,7 @@ const City = (() => {
           };
           const ar = arm(1), al = arm(-1);
           // 大剣: 光るみぞ・つば・柄頭
+          if (!o.noSword) {
           const sword = grp(ar.el, 0.18, -0.01, 0);
           sword.rotation.set(0, 0, 0.9);
           add(ext("kblade", [[0, -0.032], [0.5, -0.026], [0.66, 0], [0.5, 0.026], [0, 0.032]], 0.002, 0.008), SW, 0.04, 0, 0, 0, 0, 0, 1, 1, 1, sword);
@@ -7692,7 +7768,9 @@ const City = (() => {
           add(cylG, BK, -0.04, 0, 0, 0, 0, Math.PI / 2, 0.014, 0.14, 0.014, sword);
           add(sph, M2, -0.12, 0, 0, 0, 0, 0, 0.024, 0.024, 0.024, sword);
           halo(sword, 0.68, 0, 0, 0.25, 0.5);
+          }
           // 盾: ふちどり・中央の紋
+          if (!o.noShield) {
           const shd = grp(al.el, 0.1, -0.02, 0.07);
           shd.rotation.set(0.15, 0, 1.2);
           add(ext("kshield", [[0, 0.17], [0.11, 0.15], [0.13, 0.02], [0.08, -0.12], [0, -0.21], [-0.08, -0.12], [-0.13, 0.02], [-0.11, 0.15]], 0.012, 0.01, 48), M1, 0, 0, 0, 0, 0, 0, 1, 1, 1, shd);
@@ -7700,6 +7778,7 @@ const City = (() => {
           add(sph, M2, 0, 0.0, 0.02, 0, 0, 0, 0.04, 0.04, 0.025, shd);
           add(sph, GL, 0, 0.0, 0.04, 0, 0, 0, 0.018, 0.018, 0.012, shd);
           add(tor(0.1), GL, 0, 0, 0.026, 0, 0, 0, 0.062, 0.062, 0.062, shd);
+          }
           // 脚: もも当て・ひざ当て・すね当て・とがった鉄ぐつ。足の裏から光を噴く
           const legs = [];
           for (const sg of [1, -1]) {
@@ -7717,13 +7796,14 @@ const City = (() => {
             legs.push([hip, kn, jet, sg]);
           }
           // マント(風になびく)
+          const cL = o.capeLen || 1, cW = o.capeW || 1;
           const cape = sheet(12, 14, (u, v, t, out) => {
-            const w = Math.sin(t * 5 - v * 6 + u * 2.5) * 0.04 * v + Math.sin(t * 3.1 - v * 3.5 - u * 3) * 0.03 * v;
-            out[0] = -0.075 - v * 0.42 - Math.sin(u * Math.PI) * 0.03 * (1 - v);
-            out[1] = 0.845 - v * 0.33 - v * v * 0.12 + w + S.climb * -0.1 * v * v;
-            out[2] = (u - 0.5) * (0.27 + v * 0.3) + Math.sin(t * 4 - v * 5) * 0.02 * v;
+            const w = (Math.sin(t * 5 - v * 6 + u * 2.5) * 0.04 * v + Math.sin(t * 3.1 - v * 3.5 - u * 3) * 0.03 * v) * cL;
+            out[0] = -0.075 - v * 0.42 * cL - Math.sin(u * Math.PI) * 0.03 * (1 - v);
+            out[1] = 0.845 - v * 0.33 * cL - v * v * 0.12 * cL + w + S.climb * -0.1 * v * v;
+            out[2] = (u - 0.5) * (0.27 + v * 0.3) * cW + Math.sin(t * 4 - v * 5) * 0.02 * v;
           });
-          add(cape.g, CP, 0, 0, 0, 0, 0, 0, 1, 1, 1, fig).userData.nb = true;
+          add(cape.g, o.capeMat || CP, 0, 0, 0, 0, 0, 0, 1, 1, 1, fig).userData.nb = true;
           anim.push(() => {
             cape.upd(S.t);
             for (const [hip, kn, jet, sg] of legs) {
@@ -7738,6 +7818,193 @@ const City = (() => {
             ar.el.rotation.z = 0.35 + Math.sin(S.t * 1.8 + 0.6) * 0.12;
             al.sh.rotation.set(0.2, 0, 0.3 + Math.sin(S.t * 1.5 + 2) * 0.06);
             al.el.rotation.z = 0.5;
+          });
+          return { fig, hd, ar, al, legs, SW, CP };
+        },
+        // スプロケット・パラディン: 歯車を重ねた重い鎧・大きな歯車の盾・クランクの戦鎚
+        gearPaladin() {
+          const { fig, hd, ar, al, legs } = BUILD.knight({ noSword: true, noShield: true, noPlume: true, capeLen: 0.85, capeW: 1.25 });
+          S.w = 1.9;
+          const BR = PM({ color: lin(0x9a6a2a), map: pt, bumpMap: pt, bumpScale: 0.004, metalness: 0.95, roughness: 0.28, clearcoat: 0.6, clearcoatRoughness: 0.2 }); // 真ちゅうの歯車
+          // 胸の歯車(回る)と、たすきがけのチェーン・腰のチェーン
+          gearAt(fig, [0.1, 0.735, 0], [1, 0, 0], 0.085, gearG(14, 0.16, 5), BR, 0.8);
+          add(sph, GL, 0.11, 0.735, 0, 0, 0, 0, 0.022, 0.022, 0.022, fig);
+          add(chainG("psash", [[0.02, 0.86, 0.13], [0.095, 0.79, 0.06], [0.11, 0.69, -0.03], [0.085, 0.58, -0.1], [0.02, 0.52, -0.12]], 0.01), M2, 0, 0, 0, 0, 0, 0, 1, 1, 1, fig);
+          add(chainG("pbelt", Array.from({ length: 12 }, (_, k) => [Math.cos((k / 12) * 6.2832) * 0.094, 0.53, Math.sin((k / 12) * 6.2832) * 0.122]), 0.009, true), M2, 0, 0, 0, 0, 0, 0, 1, 1, 1, fig);
+          // 肩: 大きな歯車の肩当てと、とげ
+          mirror(fig, (g) => {
+            gearAt(g, [0, 0.875, 0.19], [0, 0.75, 0.66], 0.115, gearG(12, 0.2, 0), BR, 0.5);
+            add(sph, M2, 0, 0.88, 0.2, 0, 0, 0, 0.04, 0.03, 0.04, g);
+            put(hornG(0.25, 0.3), GE, [-0.02, 0.88, 0.25], [-0.2, 0.6, 0.75], [0, 1, 0], 0.09, 0.09, 0.09, g);
+            add(hemi, GE, 0.0, 0.62, 0.105, 0, 0, 0.4, 0.06, 0.03, 0.05, g); // 腰の横の厚い板
+          });
+          // かぶとの上の歯車のとさか(回る)
+          gearAt(hd, [-0.015, 0.06, 0], [0, 0, 1], 0.085, gearG(16, 0.12, 4), BR, -0.7);
+          add(boxG, GE, 0.035, -0.02, 0, 0, 0, 0, 0.05, 0.05, 0.13, hd); // 厚いあご当て
+          // ひざとすねの歯車
+          for (const [hip, kn] of legs) {
+            add(hemi, BR, 0.03, -0.1, 0, 0, 0, -Math.PI / 2, 0.075, 0.035, 0.07, hip);
+            gearAt(kn, [0.05, 0, 0], [1, 0, 0], 0.045, gearG(10, 0.25, 0), BR, 1.2);
+            add(hemi, M2, 0.02, -0.12, 0, 0, 0, -Math.PI / 2, 0.065, 0.03, 0.055, kn);
+          }
+          // 盾: 大きなチェーンリング(外の歯がゆっくり回る)・中の板・光る軸
+          const shd = grp(al.el, 0.1, -0.02, 0.085);
+          shd.rotation.set(0.15, 0, 1.2);
+          const sg1 = add(gearG(36, 0.1, 5), BR, 0, 0, 0, 0, 0, 0, 0.24, 0.24, 0.24, shd);
+          spins.push([sg1, 0.35]);
+          add(gearG(18, 0.14, 0), GE, 0, 0, 0.018, 0, 0, 0, 0.12, 0.12, 0.12, shd);
+          add(tor(0.12), GL, 0, 0, 0.02, 0, 0, 0, 0.19, 0.19, 0.19, shd);
+          add(sph, M2, 0, 0, 0.03, 0, 0, 0, 0.045, 0.045, 0.03, shd);
+          add(sph, GL, 0, 0, 0.05, 0, 0, 0, 0.02, 0.02, 0.014, shd);
+          halo(shd, 0, 0, 0.06, 0.3, 0.5);
+          // 戦鎚: 柄・ハブの頭・両側の歯車・前へのびるクランクの腕
+          const hm = grp(ar.el, 0.18, -0.01, 0);
+          hm.rotation.set(0, 0, 0.05);
+          add(cylG, BK, 0.17, 0, 0, 0, 0, Math.PI / 2, 0.014, 0.5, 0.014, hm);
+          add(sph, M2, -0.08, 0, 0, 0, 0, 0, 0.025, 0.025, 0.025, hm);
+          add(cylG, M1, 0.43, 0, 0, Math.PI / 2, 0, 0, 0.055, 0.17, 0.055, hm);
+          add(tor(0.2), GL, 0.43, 0, 0, 0, 0, 0, 0.058, 0.058, 0.058, hm);
+          for (const sz of [-1, 1]) gearAt(hm, [0.43, 0, sz * 0.085], [0, 0, 1], 0.065, gearG(10, 0.25, 0), BR, sz * 2);
+          put(crankG, M2, [0.43, 0, 0], [1, 0.25, 0], [0, 1, 0], 0.15, 0.15, 0.3, hm);
+          put(crankG, M2, [0.43, 0, 0], [-0.3, -1, 0], [1, 0, 0], 0.09, 0.09, 0.3, hm);
+          halo(hm, 0.43, 0, 0, 0.25, 0.5);
+          anim.push(() => {
+            hm.rotation.z = 0.05 + Math.sin(S.t * 1.8 + 0.6) * 0.08;
+          });
+        },
+        // スプロケット・エンペラー: 背中に回る巨大な歯車の光輪・歯車の王冠・長いマント・チェーンリングの大剣
+        gearEmperor() {
+          const { fig, hd, ar, SW } = BUILD.knight({ noSword: true, noShield: true, noPlume: true, capeLen: 1.5, capeW: 1.4 });
+          S.w = 1.5;
+          const AU = PM({ color: lin(0xe8b440), map: pt, bumpMap: pt, bumpScale: 0.003, metalness: 1, roughness: 0.2, clearcoat: 0.8, clearcoatRoughness: 0.12, emissive: glow, emissiveIntensity: 0.08 }); // 金
+          // 光輪: 大歯車(回る)・逆に回る内の歯車・魔法陣・光
+          const hl = grp(fig, -0.25, 0.93, 0);
+          hl.rotation.y = Math.PI / 2;
+          hl.userData.nb = true;
+          const g1 = add(gearG(40, 0.08, 8), AU, 0, 0, 0, 0, 0, 0, 0.36, 0.36, 0.36, hl);
+          const g2 = add(gearG(24, 0.12, 6), GE, 0, 0, -0.02, 0, 0, 0, 0.22, 0.22, 0.22, hl);
+          add(tor(0.05), GL, 0, 0, 0, 0, 0, 0, 0.325, 0.325, 0.325, hl);
+          add(tor(0.06), GL, 0, 0, 0, 0, 0, 0, 0.18, 0.18, 0.18, hl);
+          const rn = add(annulus(0.8), RN, 0, 0, 0.012, Math.PI / 2, 0, 0, 0.29, 0.29, 0.29, hl);
+          halo(hl, 0, 0, 0, 1.1, 0.35);
+          // 王冠: 金の輪に、歯車の歯が上を向いて並ぶ。前に光る石
+          add(tor(0.22), AU, 0, 0.07, 0, Math.PI / 2, 0, 0, 0.078, 0.078, 0.078, hd);
+          add(G("crownT", () => merge(Array.from({ length: 10 }, (_, k) => {
+            const a = (k / 10) * 6.2832;
+            return [tooth, bas([Math.cos(a) * 0.078, 0.075, Math.sin(a) * 0.078], [0, 1, 0], [Math.cos(a), 0, Math.sin(a)], k % 2 ? 0.05 : 0.08, 0.016, 0.016)];
+          }))), AU, 0, 0, 0, 0, 0, 0, 1, 1, 1, hd);
+          xt(hd, GL, [0.085, 0.085, 0], [0.2, 1, 0], 0.05, 0.012);
+          halo(hd, 0.09, 0.09, 0, 0.18, 0.6);
+          // 肩の金の歯車・胸の紋章の歯車・金のチェーン
+          mirror(fig, (g) => {
+            gearAt(g, [0, 0.885, 0.19], [0, 0.75, 0.66], 0.13, gearG(14, 0.18, 6), AU, 0.6);
+            put(hornG(0.25, 0.4), AU, [-0.03, 0.89, 0.26], [-0.4, 0.75, 0.6], [0, 1, 0], 0.13, 0.13, 0.13, g);
+          });
+          gearAt(fig, [0.1, 0.735, 0], [1, 0, 0], 0.09, gearG(20, 0.14, 6), AU, 0.5);
+          add(sph, GL, 0.115, 0.735, 0, 0, 0, 0, 0.026, 0.026, 0.026, fig);
+          add(chainG("esash", [[0.02, 0.86, -0.13], [0.095, 0.79, -0.06], [0.11, 0.69, 0.03], [0.085, 0.58, 0.1], [0.02, 0.52, 0.12]], 0.009), AU, 0, 0, 0, 0, 0, 0, 1, 1, 1, fig);
+          // 大剣: 長い刃・光るみぞ・チェーンリングのつば・クランクの十字つば
+          const sw2 = grp(ar.el, 0.18, -0.01, 0);
+          sw2.rotation.set(0, 0, 0.95);
+          sw2.userData.nb = true;
+          add(ext("eblade", [[0, -0.042], [0.68, -0.034], [0.84, 0], [0.68, 0.034], [0, 0.042]], 0.004, 0.009), SW, 0.05, 0, 0, 0, 0, 0, 1, 1, 1, sw2);
+          add(boxG, GL, 0.4, 0, 0, 0, 0, 0, 0.66, 0.01, 0.022, sw2);
+          gearAt(sw2, [0.05, 0, 0], [1, 0, 0], 0.075, gearG(16, 0.2, 5), AU, 1.5);
+          for (const sy of [-1, 1]) put(crankG, AU, [0.045, 0, 0], [0, sy, 0], [1, 0, 0], 0.13, 0.13, 0.25, sw2);
+          add(cylG, BK, -0.05, 0, 0, 0, 0, Math.PI / 2, 0.014, 0.16, 0.014, sw2);
+          gearAt(sw2, [-0.135, 0, 0], [1, 0, 0], 0.03, gearG(8, 0.4, 0), AU, -2);
+          halo(sw2, 0.86, 0, 0, 0.3, 0.5);
+          // まわりを回る小さな歯車
+          const orb = [0, 1, 2, 3].map((k) => {
+            const g = grp(fig);
+            g.userData.nb = true;
+            gearAt(g, [0, 0, 0], [0.3, 1, 0.2], 0.045, gearG(10, 0.25, 0), k % 2 ? AU : GE, 2.5);
+            return g;
+          });
+          anim.push(() => {
+            const t = S.t;
+            g1.rotation.z = t * 0.25;
+            g2.rotation.z = -t * 0.45;
+            rn.rotation.y = t * 0.6;
+            hl.position.y = 0.93 + Math.sin(t * 1.2) * 0.008;
+            orb.forEach((g, k) => {
+              const a = t * 0.9 + k * 1.5708;
+              g.position.set(Math.cos(a) * 0.3, 0.55 + Math.sin(t * 1.3 + k) * 0.06, Math.sin(a) * 0.3);
+            });
+            sw2.rotation.z = 0.95 + Math.sin(S.t * 1.8 + 0.6) * 0.06;
+          });
+        },
+        // ケイデンス・ナイト: フードとマントの魔法騎士。体ほどの長さの光る大剣を前へ構えて滑空する
+        runeKnight() {
+          const CM = PM({ color: base.clone().multiplyScalar(0.4).lerp(lin(0x14203a), 0.45), map: tex("cloth", 3, 1), bumpMap: tex("cloth", 3, 1), bumpScale: 0.004, side: THREE.DoubleSide, roughness: 0.72, metalness: 0.05, sheen: 0.35, sheenColor: glow, emissive: glow, emissiveIntensity: 1.1, emissiveMap: tex("clothE", 3, 1) });
+          const { fig, hd, ar, al, legs } = BUILD.knight({ noSword: true, noShield: true, noPlume: true, capeLen: 1.35, capeW: 1.15, capeMat: CM });
+          S.w = 1.4;
+          S.lift = 0.012;
+          M1.color.copy(lin(0xaebdd0)); // 鎧は青みの銀(緑の光と金の縁どり)
+          // フード(顔の前はあく)と、うしろへたれる先
+          add(G("hood", () => new THREE.SphereGeometry(1, 28, 16, Math.PI + 0.95, Math.PI * 2 - 1.9, 0, Math.PI * 0.62)), CM, -0.012, 0.0, 0, 0, 0, 0, 0.1, 0.108, 0.098, hd);
+          add(sw([[-0.04, 0.05, 0], [-0.12, 0.06, 0], [-0.2, 0.0, 0], [-0.24, -0.08, 0]], [0.07, 0.05, 0.025, 0.004], { nv: 14 }, "hoodtip"), CM, 0, 0, 0, 0, 0, 0, 1, 1, 1, hd);
+          add(tor(0.08), GL, 0.045, 0.0, 0, 0, Math.PI / 2, 0, 0.088, 0.096, 0.09, hd); // フードのふちの光
+          // ローブのすそ(腰からなびく)
+          robe(fig, CM, 0.56, 0.36, 0.105, 0.2, 0.14, 6);
+          // 光る紋様: 胸の魔法陣
+          add(annulus(0.8), RN, 0.1, 0.735, 0, 0, 0, Math.PI / 2, 0.075, 0.075, 0.075, fig);
+          // 大剣: 体ほどの長さの光る刃・ルーンの帯・三日月のつば・宝玉(杖の飾り)・柄頭の結晶
+          const RN2 = new THREE.MeshBasicMaterial({ color: glow.clone().multiplyScalar(1.6), map: tex("rune", 6, 1), transparent: true, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false });
+          const BL = PM({ color: lin(0xd8f4ff), metalness: 0.9, roughness: 0.12, clearcoat: 1, emissive: glow, emissiveIntensity: 0.35 });
+          const sw2 = grp(ar.el, 0.18, -0.01, 0);
+          sw2.userData.nb = true;
+          add(ext("rblade", [[0, -0.05], [0.78, -0.04], [0.98, 0], [0.78, 0.04], [0, 0.05]], 0.004, 0.009), BL, 0.06, 0, 0, 0, 0, 0, 1, 1, 1, sw2);
+          const core = add(boxG, GL, 0.47, 0, 0, 0, 0, 0, 0.82, 0.014, 0.024, sw2);
+          for (const sz of [-1, 1]) add(planeG, RN2, 0.47, 0, sz * 0.016, 0, 0, 0, 0.8, 0.06, 1, sw2);
+          add(tor(0.13, 3.3), M2, 0.05, 0, 0, 0, 0, Math.PI / 2 - 0.08, 0.1, 0.1, 0.1, sw2);
+          add(sph, GL, 0.05, 0, 0, 0, 0, 0, 0.034, 0.034, 0.034, sw2);
+          add(tor(0.2), M2, 0.05, 0, 0, 0, Math.PI / 2, 0, 0.04, 0.04, 0.04, sw2);
+          const oh = halo(sw2, 0.05, 0, 0, 0.32, 0.6);
+          add(cylG, BK, -0.05, 0, 0, 0, 0, Math.PI / 2, 0.014, 0.16, 0.014, sw2);
+          add(tor(0.3), M2, -0.08, 0, 0, 0, Math.PI / 2, 0, 0.018, 0.018, 0.018, sw2);
+          xt(sw2, GL, [-0.16, 0, 0], [-1, 0, 0], 0.07, 0.016);
+          halo(sw2, 1.04, 0, 0, 0.35, 0.55);
+          // 刃のまわりを回る魔法の輪
+          const rr = [0.4, 0.72].map((x, k) => add(annulus(0.8), RN, x, 0, 0, 0, 0, Math.PI / 2, 0.085 - k * 0.02, 0.085 - k * 0.02, 0.085 - k * 0.02, sw2));
+          // 左手の前に浮かぶ魔法陣(2重)
+          const mc = grp(al.el, 0.27, -0.01, 0);
+          mc.userData.nb = true;
+          const mc1 = add(annulus(0.82), RN, 0, 0, 0, 0, 0, Math.PI / 2, 0.14, 0.14, 0.14, mc);
+          const mc2 = add(annulus(0.7), RN, 0.01, 0, 0, 0, 0, Math.PI / 2, 0.085, 0.085, 0.085, mc);
+          halo(mc, 0, 0, 0, 0.35, 0.4);
+          // 体のまわりを回るルーンの石
+          const runes = [0, 1, 2, 3, 4].map(() => {
+            const g = grp(root);
+            g.userData.nb = true;
+            xt(g, GL, [0, 0, 0], [0, 1, 0], 0.05, 0.012);
+            return g;
+          });
+          anim.push(() => {
+            const t = S.t;
+            // 滑空: 体を前へ倒し、剣を前へ構える。脚はうしろへ流す
+            fig.rotation.z = -0.62 - S.climb * 0.18 + Math.sin(t * 0.8) * 0.03;
+            fig.rotation.x = S.turn * 0.25;
+            hd.rotation.z = 0.5 + Math.sin(t * 0.9) * 0.03;
+            ar.sh.rotation.set(0.1, 0, 1.2 + Math.sin(t * 1.1) * 0.04);
+            ar.el.rotation.z = -0.85;
+            sw2.rotation.set(0.12, 0, 0.75 + Math.sin(t * 1.1 + 0.5) * 0.03);
+            al.sh.rotation.set(-0.15, 0, 1.0 + Math.sin(t * 1.3 + 1) * 0.05);
+            al.el.rotation.z = -0.45;
+            for (const [hip, kn, , sg] of legs) {
+              hip.rotation.z = -0.1 + sg * 0.1 + Math.sin(t * 1.2 + sg) * 0.04;
+              kn.rotation.z = -0.35 - sg * 0.1;
+            }
+            core.scale.y = 0.014 + Math.sin(t * 5) * 0.003;
+            oh.scale.setScalar(0.32 + Math.sin(t * 4) * 0.06);
+            rr.forEach((o, k) => (o.rotation.x = t * (k ? -2.2 : 1.6)));
+            mc1.rotation.x = t * 0.9;
+            mc2.rotation.x = -t * 1.4;
+            runes.forEach((g, k) => {
+              const a = t * 1.1 + k * 1.2566;
+              g.position.set(-0.05 + Math.cos(a) * 0.28, 0.62 + Math.sin(t * 1.7 + k) * 0.08, Math.sin(a) * 0.3);
+              g.rotation.y = t * 2 + k;
+            });
           });
         },
         golem() {
@@ -8138,7 +8405,7 @@ const City = (() => {
           });
         },
       };
-      BUILD[kind]();
+      BUILD[sp || kind]();
       // 高さ1ほどにそろえて、足もとを原点へ(翼・マントなど、はみ出してよい部品は測らない)
       const wrap = new THREE.Group();
       wrap.add(root);

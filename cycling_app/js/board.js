@@ -17,7 +17,11 @@ const Board = (() => {
     "ストリーム・ドラゴン": "風を束ね、道を切り裂け! シンクロ召喚! 走れ、レベル8! ストリーム・ドラゴン!",
     "ソニック・ストリーム・ドラゴン": "限界の先へ、光の速さで駆け抜けろ! 現れろ、レベル10! ソニック・ストリーム・ドラゴン!",
     "ホライズン・ウォリアー": "地平の彼方から、来い! シンクロ召喚! レベル7! ホライズン・ウォリアー!",
+    "ケイデンス・ナイト": "回転のリズムよ、剣に宿れ! シンクロ召喚! 舞え、レベル6! ケイデンス・ナイト!",
+    "スプロケット・エンペラー": "千の歯車よ、ひとつの王冠となれ! シンクロ召喚! 君臨せよ、レベル9! スプロケット・エンペラー!",
+    "スプロケット・パラディン": "歯車の盾よ、道を守れ! 来い、スプロケット・パラディン!",
   };
+  const hasChant = (name) => !!CHANT[name];
   function chant(m, side) {
     if (CHANT[m.name] && side === "you") return CHANT[m.name];
     return side === "you" ? `現れろ! レベル${m.lv}! ${m.name}!` : `闇よりいでよ…レベル${m.lv}、${m.name}!`;
@@ -282,7 +286,7 @@ const Board = (() => {
           } else {
             const from = takeHand(s, m.key) || handEl(s);
             await fly(from, z, s === "you" ? faceHtml(cardOf(m.key)) : backHtml(), T(500), { s1: 0.7 });
-            say(s, `${m.name}を${st.how === "special" ? "特殊" : ""}召喚!`, T(1000));
+            say(s, CHANT[m.name] && s === "you" ? CHANT[m.name] : `${m.name}を${st.how === "special" ? "特殊" : ""}召喚!`, T(1000));
           }
           placeMon(s, m);
           burst(z, st.how === "synchro" || st.how === "ace" ? "syn" : "");
@@ -432,7 +436,7 @@ const Board = (() => {
     if (onDone) onDone();
   }
 
-  return { play, stop, busy, chant };
+  return { play, stop, busy, chant, hasChant };
 })();
 
 if (typeof module !== "undefined") module.exports = Board;
