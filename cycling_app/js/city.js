@@ -3340,6 +3340,8 @@ const City = (() => {
         rail: new THREE.MeshLambertMaterial({ color: 0xf4f4f0, side: THREE.DoubleSide }),
         stripe: new THREE.MeshBasicMaterial({ color: 0x35d6ff, transparent: true, opacity: 0.42, depthWrite: false, side: THREE.DoubleSide }),
       };
+      // ガードパイプは細いので、写真の街の写真は貼らない(写真では後ろの景色が写っていて、宙に浮いた帯に見える)
+      M.rail.userData.noPv = true;
       for (const k in M) clipMat(M[k]);
       return M;
     }
@@ -6558,6 +6560,8 @@ const City = (() => {
       };
       // 夜の明るさを足すための光(色は update() が時間帯で決める)は、模様の絵に掛ける
       for (const k of ["lawn", "dirt", "path", "asph", "ballast", "deck"]) M[k].emissiveMap = M[k].map;
+      // 細い物・小さい物(柵・レール・架線・柱・標識・踏切の警報機)には、写真の街の写真を貼らない
+      for (const k of ["fence", "brown", "white", "chain", "rail", "mast", "wire", "stop", "sign", "xpole", "xboard", "xarm", "xdark", "xlens"]) M[k].userData.noPv = true;
       for (const k in M) clipMat(M[k]);
       return M;
     }
@@ -11869,11 +11873,14 @@ const City = (() => {
             // 面を斜めから見る所は、写真が引きのばされて崩れる。面の向きを調べて、斜めすぎる所はもとの絵に戻す
             vec3 nn = normalize(cross(dFdx(vW), dFdy(vW)));
             float gz = abs(dot(nn, d));
+            // いま見ている向きと、写真を撮った向きの近さ(cos)。向きが近いほど、形が実物と少しずれていても崩れが目立たない。
+            // 向きが大きく違う所では、形に無い物(止まっている車・人・植え込み・柱)が地面や壁に長く引きのばされて見えるので、もとの絵に戻す
+            float par = dot(normalize(vW - cameraPosition), d);
             if (abs(nn.y) > 0.7) {
-              // 地面: 撮った場所の近く(約28mまで)だけ
-              vis *= clamp((gz - 0.07) / 0.08, 0.0, 1.0) * clamp((34.0 - dist) / 10.0, 0.0, 1.0);
+              // 地面: 撮った場所の近く(約16mまで)だけ。遠い所・浅い角度の所は、写真の1点が地面の長い帯になって流れて見える
+              vis *= smoothstep(0.10, 0.18, gz) * (1.0 - smoothstep(13.0, 21.0, dist)) * smoothstep(0.70, 0.90, par);
             } else {
-              vis *= clamp((gz - 0.22) / 0.22, 0.0, 1.0) * clamp((60.0 - dist) / 22.0, 0.0, 1.0);
+              vis *= clamp((gz - 0.22) / 0.22, 0.0, 1.0) * clamp((60.0 - dist) / 22.0, 0.0, 1.0) * smoothstep(-0.1, 0.35, par);
               // 壁なのに写真では空が写っている所(実物より形が高い・ずれている)は貼らない
               float lum = dot(col, vec3(0.3, 0.59, 0.11));
               float sky = step(0.03, d.y) * smoothstep(0.62, 0.8, lum) * step(col.r, col.b + 0.03);
@@ -11934,6 +11941,23 @@ const City = (() => {
       scene.fog = fog;
       P.depthAt = performance.now();
     }
+    // 細い物・小さい物か(信号機の柱・腕・灯器、標識、柵など)。写真では、その物の後ろの景色(木・空・建物)が
+    // 写っていることが多く、貼ると宙に浮いた写真の切れはしに見える。形の大きさ(世界での箱)で決めて、覚えておく
+    const thinMemo = new WeakMap();
+    function thin(o) {
+      let r = thinMemo.get(o);
+      if (r !== undefined) return r;
+      const THREE = T(), g = o.geometry;
+      if (!g.boundingBox) g.computeBoundingBox();
+      o.updateWorldMatrix(true, false);
+      const s = g.boundingBox.clone().applyMatrix4(o.matrixWorld).getSize(new THREE.Vector3()), d = [s.x, s.y, s.z].sort((a, b) => a - b);
+      // いちばん長い辺が3m未満(小物)か、2番目に長い辺が0.8m未満(棒・帯)
+      r = !(d[2] >= 3 && d[1] >= 0.8);
+      thinMemo.set(o, r);
+      return r;
+    }
+    // 材質に「写真を貼らない」印があるか(材質が組のときは、全部に印があるときだけ)
+    const noPv = (m) => (Array.isArray(m) ? m.length > 0 && m.every((x) => x && x.userData && x.userData.noPv) : !!(m.userData && m.userData.noPv));
     // 写真を貼る物(動かない建物・道・地面)に2番の印を付ける
     function mark() {
       const dyn = new Set([me.g, rival.g, ...Traffic.objs(), ...Mons.objs()]);
@@ -11943,7 +11967,7 @@ const City = (() => {
           // アンダーパスの近くでは、穴をあけた地面には写真を貼らない(穴をふさいでしまう)
           // 材質が組(配列)のメッシュもある。userData の無い材質で止まらないように調べる
           const holed = Array.isArray(o.material) ? o.material.some((x) => x && x.userData && x.userData.holed) : o.material.userData && o.material.userData.holed;
-          if (holed && Xing.near(sim.along)) o.layers.disable(2);
+          if ((holed && Xing.near(sim.along)) || noPv(o.material) || thin(o)) o.layers.disable(2);
           else o.layers.enable(2);
         }
         for (const ch of o.children) walk(ch);
