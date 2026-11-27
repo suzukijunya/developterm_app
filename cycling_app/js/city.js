@@ -1156,6 +1156,7 @@ const City = (() => {
     const THREE = T();
     const group = new THREE.Group();
     const rest = slicer(5);
+    Curb.addOsm(ix + ":" + iy, data); // 道ばたの物を置くときの「車道の上か」の判定に、この区画の道の線も使う
     // 高架(橋の線)は、桁や橋脚のある形にする。地面の道としては描かない
     let xp = null;
     try {
@@ -1500,6 +1501,9 @@ const City = (() => {
         poleA: sign("#1c2c58", "#d8b040", "A", "#fff", 128, 128), poleCc: sign("#1f5a3c", "#ffffff", "C", "#fff", 128, 128), poleD: sign("#6a4a30", "#f0e0c0", "24", "#fff", 128, 128), wood: L(0x7a5a3a), sup: sign("#c8362c", "#ffffff", "スーパーマーケット"), gas: sign("#1c8c8a", "#ffffff", "GS  セルフ"), koban: sign("#f4f4f0", "#2c4a8c", "交番  KOBAN", "#1c2c58"), post: sign("#d8402c", "#ffffff", "〒  郵便局"), bank: sign("#1f5f9e", "#d8c070", "銀行  ATM"),
         poleC: sign("#5b3fa8", "#f2c230", "24", "#fff", 128, 128), poleG: sign("#1c8c8a", "#ffffff", "GS", "#fff", 128, 128), poleS: sign("#c8362c", "#ffffff", "P", "#fff", 128, 128),
       };
+      // 店は地図の点から作った形で、写真(写真の街)には同じ形が写っていない。写真を貼ると、道ばたに浮いた板に
+      // まわりの景色が貼りついて見えるので、店には写真を貼らない(作った形のまま見せる)
+      for (const k in M) M[k].userData.noPv = true;
       return M;
     }
     // 道のどちら側か・道のふちまでの距離から、建てる場所と向きを決める
@@ -1601,15 +1605,45 @@ const City = (() => {
         } else add(B(2.2, 2.3, 0.1), m.dark, -3.8, 1.5, 0.06); // ATMコーナー
         depth = 8;
       }
+      // 正面(道の側のふちと、その前に置いた物)が車道にかかるなら、かからない所まで下げる
+      // (道幅の見積もりより広い道・曲がり角・横切る道の上に建てないように)
       // 置く: 正面(+z)を道へ向ける。道のふちから少し下げて、地面の高さに
-      const x = p.x + nx * edge, z = p.z + nz * edge;
-      g.position.set(x, H(x, z) + 0.05, z);
       g.rotation.y = Math.atan2(-nx, -nz);
       g.userData.shop = kind;
-      all.push([x + nx * depth * 0.5, z + nz * depth * 0.5, depth * 0.5 + 3]);
+      const site = [0, 0, depth * 0.5 + 3];
+      all.push(site);
+      const fit = { g, site, p, nx, nz, edge, depth, fw: { conv: 14, super: 24, gas: 22, koban: 5.6, post: 9, bank: 11 }[kind] || 10, cov: false };
+      refit(fit);
+      if (!fit.cov) fits.push(fit);
       return g;
     }
-    return { kindOf, place, seen, update };
+    // 正面(道の側のふちと、その前に置いた物)が車道にかかるなら、かからない所まで下げる
+    // (道幅の見積もりより広い道・曲がり角・横切る道の上に建てないように)。道の形が届いたら、もう一度調べる
+    const fits = [];
+    function refit(f) {
+      const { g, site, p, nx, nz, edge, depth, fw } = f;
+      f.cov = Roads.covered(p.x + nx * edge, p.z + nz * edge);
+      const hits = (b) => {
+        const fx = p.x + nx * (edge + b - 0.6), fz = p.z + nz * (edge + b - 0.6);
+        for (let u = -fw / 2; u <= fw / 2 + 1e-6; u += fw / 4) if (Curb.onCar(fx - nz * u, fz + nx * u, 0.5)) return true;
+        return false;
+      };
+      let back = 0;
+      while (back < 6 && hits(back)) back += 0.5;
+      if (back >= 6) back = 0; // 下げても車道にかかる(横切る道など)ときは、もとの場所のまま
+      const x = p.x + nx * (edge + back), z = p.z + nz * (edge + back);
+      g.position.set(x, H(x, z) + 0.05, z);
+      site[0] = x + nx * depth * 0.5;
+      site[1] = z + nz * depth * 0.5;
+    }
+    function refitAll() {
+      for (let i = fits.length - 1; i >= 0; i--) {
+        const f = fits[i];
+        if (!f.g.parent) fits.splice(i, 1);
+        else if (Roads.covered(f.p.x + f.nx * f.edge, f.p.z + f.nz * f.edge)) (refit(f), fits.splice(i, 1));
+      }
+    }
+    return { kindOf, place, seen, update: (px, pz) => (refitAll(), update(px, pz)) };
   })();
 
   // 施設の名前の看板(空に浮かべる。建物の向こうでも見える)
@@ -1716,6 +1750,7 @@ const City = (() => {
         scene.remove(t.group);
         t.group.traverse((o) => o.geometry && o.geometry.dispose());
         tiles.delete(key);
+        Curb.dropOsm(key);
         Land.touch();
       }
     }
@@ -2977,6 +3012,19 @@ const City = (() => {
     const grid = new Map(); // 20m のマス → 多角形の一覧
     const raw = []; // ルートの STEP m ごとの { L, R, cross } (測れたところだけ)
     let queue = [], busy = 0, worker = null, fails = 0, visible = true, stripDirty = false, stripT = 0;
+    const refurn = new Set(); // 道ばたの物を置き直す区画
+    function refurnish(key) {
+      const t = tl.get(key);
+      if (!t || t.state !== "ok" || !t.group || !t.polys) return;
+      const t0 = performance.now(), old = t.group.userData.furn, ng = buildTile(t.polys, t.rect, true), fg = ng.userData.furn;
+      if (old) {
+        t.group.remove(old);
+        old.traverse((o) => (o.geometry && o.geometry.dispose(), o.isInstancedMesh && o.dispose())); // 並べた物の位置の表も、GPU から消す
+      }
+      t.group.add(fg);
+      t.group.userData.furn = fg;
+      Perf.span("道ばたの物を置き直す", performance.now() - t0);
+    }
     const waiting = new Map();
     const lonOf = (v) => (v / NT) * 360 - 180, latOf = (v) => (Math.atan(Math.sinh(Math.PI * (1 - (2 * v) / NT))) * 180) / Math.PI;
     const tileRect = (x, y) => {
@@ -3238,21 +3286,126 @@ const City = (() => {
         c.fillStyle = "rgba(25,25,25,0.4)";
         c.fillRect(0, 236, 256, 20);
       });
-      const walk = tex((c) => {
-        c.fillStyle = "#b9b3a8";
-        c.fillRect(0, 0, 256, 256);
-        for (let y = 0; y < 256; y += 32)
-          for (let x = 0; x < 256; x += 64) {
-            const o = (y / 32) % 2 ? 32 : 0, v = 168 + Math.floor(hash(x * 7 + y) * 30);
-            c.fillStyle = `rgb(${v},${v - 6},${v - 14})`;
-            c.fillRect(x + o + 1, y + 1, 62, 30);
+      // 歩道: インターロッキングブロック(20×10cm、半分ずらし)。1枚の絵 = 1.2m 四方 = 6×12個。
+      // ブロックごとに色と高さを少し変え、角の面取りと目地(すき間の砂)を描く。でこぼこは法線の絵にして、光で目地が見えるようにする
+      const WS = 512, wh = new Float32Array(WS * WS), wcv = document.createElement("canvas");
+      wcv.width = wcv.height = WS;
+      {
+        const c = wcv.getContext("2d"), im = c.createImageData(WS, WS), bw = WS / 6, bh = WS / 12;
+        // 色の組(グレー系とベージュ系の2種類を、場所でまぜる)
+        const tones = [[176, 172, 164], [160, 157, 150], [190, 184, 172], [146, 142, 136], [182, 170, 152], [168, 160, 146]];
+        for (let y = 0; y < WS; y++)
+          for (let x = 0; x < WS; x++) {
+            const row = Math.floor(y / bh), xo = row % 2 ? bw / 2 : 0, col = Math.floor((x + xo) / bw) % 6;
+            const id = row * 7 + col, fx = ((x + xo) % bw) / bw, fy = (y % bh) / bh;
+            // ふちからの距離(ブロックの大きさに対する割合を cm に直す)
+            const ex = Math.min(fx, 1 - fx) * 20, ey = Math.min(fy, 1 - fy) * 10, e = Math.min(ex, ey);
+            const t = tones[Math.floor(hash(id * 13 + 5) * tones.length)], k = 0.92 + hash(id * 3 + 1) * 0.14;
+            const n = hash(x * 31 + y * 17 + 3) * 22 - 11, sp = hash(x * 7 + y * 29) < 0.012 ? -30 : 0;
+            let r = t[0] * k + n + sp, g = t[1] * k + n + sp, b = t[2] * k + n + sp;
+            let h = 1 + (hash(id * 5 + 2) - 0.5) * 0.25;
+            if (e < 0.5) ((r = 92 + n * 0.5), (g = 88 + n * 0.5), (b = 80 + n * 0.5), (h = 0)); // 目地
+            else if (e < 1.3) {
+              const f = (e - 0.5) / 0.8; // 面取り
+              h *= f;
+              r *= 0.8 + f * 0.2;
+              g *= 0.8 + f * 0.2;
+              b *= 0.8 + f * 0.2;
+            }
+            const o = (y * WS + x) * 4;
+            im.data[o] = Math.max(0, Math.min(255, r));
+            im.data[o + 1] = Math.max(0, Math.min(255, g));
+            im.data[o + 2] = Math.max(0, Math.min(255, b));
+            im.data[o + 3] = 255;
+            wh[y * WS + x] = h;
           }
-      });
+        c.putImageData(im, 0, 0);
+      }
+      const walk = new THREE.CanvasTexture(wcv);
+      walk.wrapS = walk.wrapT = THREE.RepeatWrapping;
+      walk.encoding = THREE.sRGBEncoding;
+      walk.anisotropy = 16;
+      const wncv = document.createElement("canvas");
+      wncv.width = wncv.height = WS;
+      {
+        const c = wncv.getContext("2d"), im = c.createImageData(WS, WS);
+        const hA = (x, y) => wh[((y + WS) % WS) * WS + ((x + WS) % WS)];
+        for (let y = 0; y < WS; y++)
+          for (let x = 0; x < WS; x++) {
+            const dx = (hA(x + 1, y) - hA(x - 1, y)) * 1.6, dy = (hA(x, y + 1) - hA(x, y - 1)) * 1.6, l = Math.hypot(dx, dy, 1), o = (y * WS + x) * 4;
+            im.data[o] = 128 - (dx / l) * 127;
+            im.data[o + 1] = 128 + (dy / l) * 127;
+            im.data[o + 2] = 128 + (1 / l) * 127;
+            im.data[o + 3] = 255;
+          }
+        c.putImageData(im, 0, 0);
+      }
+      const walkN = new THREE.CanvasTexture(wncv);
+      walkN.wrapS = walkN.wrapT = THREE.RepeatWrapping;
+      walkN.anisotropy = 8;
+      // 歩道の材質: 広い範囲のよごれ・色あせ・雨のしみを、場所(世界の x,z)から決める(アスファルトと同じ雲もよう)
+      const walkMat = new THREE.MeshStandardMaterial({ map: walk, normalMap: walkN, normalScale: new THREE.Vector2(0.8, 0.8), roughness: 0.86, metalness: 0, envMapIntensity: 0.45 });
+      walkMat.onBeforeCompile = (sh) => {
+        sh.uniforms.uClip = clipU.uClip;
+        sh.uniforms.uMacro = { value: macro };
+        sh.fragmentShader = "uniform float uClip;\nuniform sampler2D uMacro;\n" + sh.fragmentShader
+          .replace("#include <clipping_planes_fragment>", "if (length(vViewPosition) > uClip) discard;\n#include <clipping_planes_fragment>")
+          .replace("#include <map_fragment>", `
+            vec2 wkW = vUv * 1.2; // 世界の x,z(m)
+            vec3 wkA = texture2D(uMacro, wkW * 0.021 + 0.53).rgb;
+            vec3 wkB = texture2D(uMacro, wkW.yx * 0.11 + 0.21).rgb;
+            vec4 sampledDiffuseColor = texture2D(map, vUv);
+            sampledDiffuseColor.rgb *= 0.78 + 0.34 * wkA.r + 0.16 * (wkB.g - 0.5);
+            // ところどころ、ベージュがかった古いブロック・黒いしみ
+            sampledDiffuseColor.rgb = mix(sampledDiffuseColor.rgb, sampledDiffuseColor.rgb * vec3(1.08, 1.0, 0.86), smoothstep(0.45, 0.75, wkA.g));
+            sampledDiffuseColor.rgb *= 1.0 - 0.28 * smoothstep(0.68, 0.82, wkB.r) * smoothstep(0.4, 0.6, wkA.b);
+            diffuseColor *= sampledDiffuseColor;`)
+          .replace("#include <roughnessmap_fragment>", "#include <roughnessmap_fragment>\n roughnessFactor = clamp(roughnessFactor - 0.18 * smoothstep(0.68, 0.82, wkB.r), 0.4, 1.0);");
+      };
+      walkMat.customProgramCacheKey = () => "walk2";
       M = {
         asph: asphMat,
-        walk: new THREE.MeshLambertMaterial({ map: walk }),
+        walk: walkMat,
         curb: new THREE.MeshLambertMaterial({ map: curbT, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 }),
-        isl: new THREE.MeshLambertMaterial({ color: 0x6f8a5a }),
+        // 道の外側の土間コンクリート(1枚の絵 = 2.4m 四方。目地と、よごれ・こけ)。ほかの地面より奥に置き、重なったらほかを見せる
+        front: new THREE.MeshLambertMaterial({
+          polygonOffset: true,
+          polygonOffsetFactor: 2,
+          polygonOffsetUnits: 4,
+          map: tex((c) => {
+            c.fillStyle = "#8e8c86";
+            c.fillRect(0, 0, 256, 256);
+            for (let i = 0; i < 9000; i++) {
+              const v = 105 + Math.floor(hash(i * 3 + 41) * 70);
+              c.fillStyle = `rgba(${v},${v - 2},${v - 6},0.4)`;
+              c.fillRect(hash(i * 5 + 43) * 256, hash(i * 7 + 47) * 256, 2, 2);
+            }
+            for (let i = 0; i < 18; i++) {
+              const x = hash(i * 11 + 53) * 256, y = hash(i * 13 + 59) * 256, r = 14 + hash(i * 17) * 40, g = c.createRadialGradient(x, y, 0, x, y, r);
+              g.addColorStop(0, i % 3 ? "rgba(52,50,44,0.3)" : "rgba(70,84,52,0.3)");
+              g.addColorStop(1, "rgba(52,50,44,0)");
+              c.fillStyle = g;
+              c.fillRect(x - r, y - r, r * 2, r * 2);
+            }
+            c.fillStyle = "rgba(40,40,38,0.55)";
+            c.fillRect(0, 0, 256, 2);
+            c.fillRect(0, 0, 2, 256);
+          }),
+        }),
+        // 島・植樹帯の上: 土と、すき間なく生えた低い下草(1枚の絵 = 2m 四方)
+        isl: new THREE.MeshLambertMaterial({
+          map: tex((c) => {
+            c.fillStyle = "#4a3f31";
+            c.fillRect(0, 0, 256, 256);
+            for (let i = 0; i < 2600; i++) {
+              const x = hash(i * 3 + 11) * 256, y = hash(i * 5 + 13) * 256, l = 40 + hash(i * 7 + 17) * 70, r = 2 + hash(i * 11 + 19) * 5;
+              c.fillStyle = `rgb(${Math.floor(l * 0.55)},${Math.floor(l)},${Math.floor(l * 0.4)})`;
+              c.beginPath();
+              c.ellipse(x, y, r, r * 0.6, hash(i * 13) * 3.14, 0, 6.29);
+              c.fill();
+            }
+          }),
+        }),
         // 路面に貼る薄い絵(標示・ふた・補修跡)。路面とちらつかないよう、奥行きを少し手前に寄せる
         decal: new THREE.MeshStandardMaterial({ map: markAtlas(), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -6, roughness: 0.72, metalness: 0, envMapIntensity: 0.5, vertexColors: true }),
         pole: new THREE.MeshLambertMaterial({ color: 0x9d9c97 }),
@@ -4026,15 +4179,18 @@ const City = (() => {
       trunk.castShadow = card.castShadow = core.castShadow = true;
       g.add(trunk, card, core, bush);
     }
-    function buildTile(polys, rect) {
+    // furnOnly: 道ばたの物(電柱・街灯・標識・自販機・木・柵など)だけを作り直す(路面は作らない)。
+    // 道ばたの物は g.userData.furn の組に入れる(あとから届いたとなりの区画の道の形で、置き場所を調べ直すため)
+    function buildTile(polys, rect, furnOnly) {
       const THREE = T();
       const m = mats();
-      const g = new THREE.Group();
+      const g = new THREE.Group(), fg = new THREE.Group();
+      g.userData.furn = fg;
       const near = (p) => {
         const b = p.box;
         return isNear([b[0], b[1]]) || isNear([b[2], b[3]]) || isNear([(b[0] + b[2]) / 2, (b[1] + b[3]) / 2]) || isNear([b[0], b[3]]) || isNear([b[2], b[1]]);
       };
-      const A = { asph: [[], []], walk: [[], []], curb: [[], []], isl: [[], []] }; // [位置, uv]
+      const A = { asph: [[], []], walk: [[], []], curb: [[], []], isl: [[], []], front: [[], []] }; // [位置, uv]
       // 路面に貼る薄い絵は、路面ができてから置く(高さを路面から引くため)。下から順に: 補修跡・帯 / ひび・ふた / 塗料
       const B = batch(), dP = [], dC = [], dL = [];
       const hs = (x, z, n) => hash(Math.round(x * 7) * 13 + Math.round(z * 5) * 29 + n * 101);
@@ -4078,8 +4234,9 @@ const City = (() => {
         }
         grRun = (grRun + L) % per;
       };
-      const q = (key, pts, uvs) => (A[key][0].push(...pts), A[key][1].push(...uvs));
+      const q = (key, pts, uvs) => furnOnly || (A[key][0].push(...pts), A[key][1].push(...uvs));
       const flat = (p, y, key, sc) => {
+        if (furnOnly) return;
         const V = (r) => {
           const a = [];
           for (let i = 0; i < r.length; i += 2) a.push(new THREE.Vector2(r[i], r[i + 1]));
@@ -4126,6 +4283,7 @@ const City = (() => {
       };
       // 縁石: 多角形のふちに、低い壁
       const walls = (p, y0, y1) => {
+        if (furnOnly) return;
         for (const r of p.rings)
           for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) {
             const ax = r[j], az = r[j + 1], bx = r[i], bz = r[i + 1];
@@ -4143,7 +4301,25 @@ const City = (() => {
             }
           }
       };
-      const poles = [], trees = [], posts = [], rails = [[], []], props = [], slamps = [];
+      const poles = [], trees = [], posts = [], rails = [[], []], props = [], slamps = [], shrubs = [];
+      // 道の外側のふち(建物の側)に、幅1.4mの土間コンクリートの帯。道と建物のあいだの、何もない平らな地面を埋める
+      // (帯の先が道や区画の外・掘り下げた所にかかる所は作らない。建物の下に入った分は見えない)
+      const front = (ax, az, ex, ez, ox, oz, L) => {
+        const nS = Math.max(1, Math.ceil(L / 3));
+        for (let k = 0; k < nS; k++) {
+          const s0 = (L * k) / nS, s1 = (L * (k + 1)) / nS;
+          const P = (s, d) => [ax + ex * s + ox * d, az + ez * s + oz * d];
+          const pts = [P(s0, 0.03), P(s1, 0.03), P(s1, 1.4), P(s0, 1.4)];
+          if ([P((s0 + s1) / 2, 0.7), pts[2], pts[3]].some(([x, z]) => !inR(x, z) || kindAt(x, z) !== -1 || Curb.onCar(x, z, 0) || (Xing.any() && Xing.zone(x, z)))) continue;
+          const v = pts.map(([x, z]) => [x, H(x, z) + 0.03, z]);
+          const tri = (a, b, c) => {
+            const cy = (b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]);
+            for (const w of cy > 0 ? [a, b, c] : [a, c, b]) q("front", w, [w[0] / 2.4, w[2] / 2.4]);
+          };
+          tri(v[0], v[1], v[2]);
+          tri(v[0], v[2], v[3]);
+        }
+      };
       let slampRun = 0;
       let propRun = 0;
       const edges = (p, fn) => {
@@ -4162,6 +4338,11 @@ const City = (() => {
       };
       const hasL2 = polys.some((p) => p.f !== 4);
       let poleRun = 0, treeRun = 0, postRun = 0, lastPole = null;
+      // 道ばたの物は、この区画の四角の中だけに置く。区画のふちで切られた形の辺(道を横切る線)に置いてしまわないように。
+      // となりの区画の物は、となりの区画を作るときに置く(二重にもならない)
+      const inR = (x, z) => !rect || (x > rect[0] + 0.3 && x < rect[2] - 0.3 && z > rect[1] + 0.3 && z < rect[3] - 0.3);
+      // 置ける所を探す(車道にかかるなら、外へ押し出すか道に沿ってずらす。見つからなければ null)
+      const spot = (x, z, ox, oz, ex, ez, r, out) => (inR(x, z) ? Curb.spot(x, z, ox, oz, ex, ez, r, out) : null);
       for (const p of polys) {
         if (!near(p)) continue;
         if (p.f === 4) {
@@ -4176,9 +4357,13 @@ const City = (() => {
             grates(ax, az, ex, ez, ox, oz, L, 12, 0.2, 0.36);
             along(dL, hs(mx, mz, 7) < 0.5 ? "line0" : "line1", ax, az, bx, bz, ox, oz, 0.55, 0.15, 3.6, 3);
             litter(ax, az, ex, ez, ox, oz, L);
+            if (out === -1) front(ax, az, ex, ez, ox, oz, L);
             for (let t = (32 - poleRun) % 32; t < L; t += 32) {
-              const x = ax + ex * t + ox * 0.35, z = az + ez * t + oz * 0.35;
-              if (hash(Math.round(x) * 73 + Math.round(z) * 31) < 0.45) continue;
+              const x0 = ax + ex * t + ox * 0.35, z0 = az + ez * t + oz * 0.35;
+              if (hash(Math.round(x0) * 73 + Math.round(z0) * 31) < 0.45) continue;
+              const sp = spot(x0, z0, ox, oz, ex, ez, 0.25, 1.5);
+              if (!sp) continue;
+              const [x, z] = sp;
               poles.push({ x, z, rx: -ox, rz: -oz, ang: Math.atan2(ez, ex), prev: lastPole && Math.hypot(lastPole.x - x, lastPole.z - z) < 48 ? lastPole : null, tr: hash(Math.round(x * 3) + Math.round(z)) < 0.3 });
               lastPole = poles[poles.length - 1];
             }
@@ -4187,7 +4372,10 @@ const City = (() => {
             for (let t = (19 - propRun) % 19; t < L; t += 19) {
               const px = ax + ex * t, pz = az + ez * t, hx = hash(Math.round(px * 7) * 13 + Math.round(pz * 5) * 29);
               const kind = hx < 0.1 ? "vend" : hx < 0.16 ? "mirror" : hx < 0.21 ? "stop" : hx < 0.27 ? "s30" : hx < 0.31 ? "oneway" : hx < 0.45 ? "plant" : null;
-              if (kind) props.push({ kind, x: px + ox * 0.18, z: pz + oz * 0.18, ox, oz, ex, ez, r: hash(Math.round(px * 3) + Math.round(pz * 11)) });
+              if (!kind) continue;
+              // 自販機は奥行きがあるので、箱の真ん中で調べる
+              const c = kind === "vend" ? 0.38 : 0.26, sp = spot(px + ox * c, pz + oz * c, ox, oz, ex, ez, 0.3, 1.5);
+              if (sp) props.push({ kind, x: sp[0] - ox * (c - 0.18), z: sp[1] - oz * (c - 0.18), ox, oz, ex, ez, r: hash(Math.round(px * 3) + Math.round(pz * 11)) });
             }
             propRun = (propRun + L) % 19;
           });
@@ -4228,6 +4416,7 @@ const City = (() => {
                 for (const v of up ? [a, b, c, a, c, d] : [a, c, b, a, d, c]) q("curb", [v[0], v[1], v[2]], [v[3], v[4]]);
               }
             }
+            if (out === -1) front(ax, az, ex, ez, ox, oz, L);
             if (out !== 0) return;
             // 車道に面したふち: ガードパイプ(2.4mごとの柱と2本の横棒)と、街路樹(11mごと)
             const ix = -ox, iz = -oz;
@@ -4236,21 +4425,37 @@ const City = (() => {
             postRun = (postRun + L) % 2.4;
             for (const [k, yy] of [[0, 0.78], [1, 0.45]]) rails[k].push([ax + ix * 0.3, az + iz * 0.3, bx + ix * 0.3, bz + iz * 0.3, yy]);
             // 歩道の街灯(26mごと。車道のふちから55cm内側に立て、腕を車道へ張り出す)
-            for (let t = (26 - slampRun) % 26; t < L; t += 26) slamps.push({ x: ax + ex * t + ix * 0.55, z: az + ez * t + iz * 0.55, rx: ox, rz: oz, own: true });
+            for (let t = (26 - slampRun) % 26; t < L; t += 26) {
+              const sp = spot(ax + ex * t + ix * 0.55, az + ez * t + iz * 0.55, ix, iz, ex, ez, 0.2, 1.2);
+              if (sp) slamps.push({ x: sp[0], z: sp[1], rx: ox, rz: oz, own: true });
+            }
             slampRun = (slampRun + L) % 26;
             if (wide) {
-              for (let t = (11 - treeRun) % 11; t < L; t += 11) trees.push([ax + ex * t + ix * 1.0, az + ez * t + iz * 1.0]);
+              for (let t = (11 - treeRun) % 11; t < L; t += 11) {
+                const sp = spot(ax + ex * t + ix * 1.0, az + ez * t + iz * 1.0, ix, iz, ex, ez, 0.45, 1.0);
+                if (sp) trees.push([sp[0], sp[1]]);
+              }
               treeRun = (treeRun + L) % 11;
             }
           });
         } else if (p.f === 3) {
           flat(p, 0.2, "isl", 2);
           walls(p, 0.0, 0.2);
+          // 島・植樹帯には、低い植え込みを植える(1.5mおき。ふちから0.45m内側まで。走る所と区画の外には植えない)
+          const b = p.box;
+          if ((b[2] - b[0]) * (b[3] - b[1]) < 6000)
+            for (let x = Math.ceil(b[0] / 1.5) * 1.5; x < b[2]; x += 1.5)
+              for (let z = Math.ceil(b[1] / 1.5) * 1.5; z < b[3]; z += 1.5) {
+                const jx = x + (hash(Math.round(x * 3) * 7 + Math.round(z * 5)) - 0.5) * 0.6, jz = z + (hash(Math.round(x * 5) + Math.round(z * 3) * 11) - 0.5) * 0.6;
+                if (!inR(jx, jz) || !inPoly(p, jx, jz) || [[0.45, 0], [-0.45, 0], [0, 0.45], [0, -0.45]].some(([dx, dz]) => !inPoly(p, jx + dx, jz + dz))) continue;
+                if ((Xing.any() && Xing.zone(jx, jz)) || Curb.routeCar(jx, jz, 0.8)) continue;
+                shrubs.push([jx, jz]);
+              }
         }
       }
-      for (const [key, mat] of [["asph", m.asph], ["walk", m.walk], ["curb", m.curb], ["isl", m.isl]]) {
+      for (const [key, mat] of [["asph", m.asph], ["walk", m.walk], ["curb", m.curb], ["isl", m.isl], ["front", m.front]]) {
         const [pos, uv] = A[key];
-        if (!pos.length) continue;
+        if (furnOnly || !pos.length) continue;
         const geo = new THREE.BufferGeometry();
         geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
         geo.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
@@ -4262,9 +4467,12 @@ const City = (() => {
         if (key === "asph") g.userData.surf = { arr: geo.attributes.position.array, keys: surfAdd(geo.attributes.position.array) };
       }
       // 路面に貼る薄い絵(区画ごとに1つのメッシュ)
-      for (const list of [dP, dC, dL]) for (const f of list) f();
-      const dm = B.mesh(1);
-      if (dm) g.add(dm);
+      if (!furnOnly) {
+        for (const list of [dP, dC, dL]) for (const f of list) f();
+        const dm = B.mesh(1);
+        if (dm) g.add(dm);
+      }
+      g.add(fg);
       // 掘り下げた所(アンダーパス)には、地上の柵・木・電柱を置かない
       if (Xing.any()) {
         const keep = (a) => {
@@ -4281,7 +4489,7 @@ const City = (() => {
         const im = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.03, 0.03, 0.85, 6), m.rail, posts.length);
         const mt = new THREE.Matrix4();
         posts.forEach(([x, z], i) => im.setMatrixAt(i, mt.makeTranslation(x, 0.17 + 0.42 + H(x, z), z)));
-        g.add(im);
+        fg.add(im);
         const rp = [];
         for (const list of rails)
           for (const [ax, az, bx, bz, y] of list) {
@@ -4291,12 +4499,25 @@ const City = (() => {
         const rg = new THREE.BufferGeometry();
         rg.setAttribute("position", new THREE.Float32BufferAttribute(rp, 3));
         rg.computeVertexNormals();
-        g.add(new THREE.Mesh(rg, m.rail));
+        fg.add(new THREE.Mesh(rg, m.rail));
       }
       // 街路樹: 幹と、葉のかたまり(大きさ・位置・色を少しずつ変えて、こんもりした形にする)と、根もとの植え込み
-      if (trees.length) plantTrees(g, trees, true);
+      if (trees.length) plantTrees(fg, trees, true);
+      // 島の植え込み: 葉むらの板を3枚ずつ十字に(大きさ・色を少しずつ変える)
+      if (shrubs.length) {
+        const bush = new THREE.InstancedMesh(new THREE.PlaneGeometry(1.5, 0.75), m.leafCard, shrubs.length * 3);
+        const mt = new THREE.Matrix4(), ro = new THREE.Matrix4(), sc = new THREE.Matrix4(), c = new THREE.Color();
+        shrubs.forEach(([x, z], i) => {
+          const hs = (n) => hash(Math.round(x * 7) * 5 + Math.round(z * 3) * 13 + n * 71), k = 0.75 + hs(1) * 0.5, h = H(x, z) + 0.2;
+          for (let j = 0; j < 3; j++) {
+            bush.setMatrixAt(i * 3 + j, mt.makeTranslation(x, h + 0.3 * k, z).multiply(ro.makeRotationY(hs(2) * 3 + (j * Math.PI) / 3)).multiply(sc.makeScale(k, k, k)));
+            bush.setColorAt(i * 3 + j, c.setHSL(0.24 + hs(3) * 0.06, 0.32, 0.15 + hs(4 + j) * 0.07));
+          }
+        });
+        fg.add(bush);
+      }
       // 道ばたの物
-      if (props.length) streetProps(g, props, poles);
+      if (props.length) streetProps(fg, props, poles);
       // 歩道の街灯の柱(細い鋼管)
       if (slamps.length) {
         const mt0 = new THREE.Matrix4();
@@ -4306,7 +4527,7 @@ const City = (() => {
           sh.setMatrixAt(i, mt0.makeTranslation(p.x, p.h + 3.8, p.z));
         });
         sh.castShadow = true;
-        g.add(sh);
+        fg.add(sh);
       }
       // 電柱と電線
       if (poles.length || slamps.length) {
@@ -4369,15 +4590,15 @@ const City = (() => {
           gg.setAttribute("position", new THREE.Float32BufferAttribute(gp, 3));
           const halo = new THREE.Points(gg, LM.halo);
           halo.renderOrder = 3;
-          g.add(bk, hd, ld, pl, halo);
+          fg.add(bk, hd, ld, pl, halo);
         }
         shaft.castShadow = arm.castShadow = true;
-        g.add(shaft, arm);
-        if (tr) g.add(tr);
+        fg.add(shaft, arm);
+        if (tr) fg.add(tr);
         if (wires.length) {
           const wg = new THREE.BufferGeometry();
           wg.setAttribute("position", new THREE.Float32BufferAttribute(wires, 3));
-          g.add(new THREE.LineSegments(wg, m.wire));
+          fg.add(new THREE.LineSegments(wg, m.wire));
         }
       }
       return g;
@@ -4590,7 +4811,7 @@ const City = (() => {
         if (Math.hypot(Math.max(r[0] - p0.x, 0, p0.x - r[2]), Math.max(r[1] - p0.z, 0, p0.z - r[3])) > 700) {
           scene.remove(t.group);
           if (t.group.userData.surf) surfDrop(t.group.userData.surf.arr, t.group.userData.surf.keys);
-          t.group.traverse((o) => o.geometry && o.geometry.dispose());
+          t.group.traverse((o) => (o.geometry && o.geometry.dispose(), o.isInstancedMesh && o.dispose()));
           t.group = null;
         }
       }
@@ -4648,6 +4869,13 @@ const City = (() => {
         t.group.visible = visible;
         scene.add(t.group);
         t.state = "ok";
+        // となりの区画の道ばたの物は、この区画の道の形を知らずに置かれている(区画のふちの交差点・横切る道の上に
+        // 立っていることがある)。この区画にかかる所の物を、あとで1区画ずつ置き直す
+        for (const [k2, t2] of tl) {
+          const r2 = t2.rect, r = t.rect;
+          if (t2 === t || t2.state !== "ok" || !t2.group || !r2 || r2[0] > r[2] + 40 || r2[2] < r[0] - 40 || r2[1] > r[3] + 40 || r2[3] < r[1] - 40) continue;
+          refurn.add(k2);
+        }
       } catch (e) {
         console.error("道を作れませんでした", e);
         fails++;
@@ -4657,6 +4885,12 @@ const City = (() => {
       pump();
     }
     function update(along, dt) {
+      // 置き直しは1コマに1区画まで
+      if (refurn.size) {
+        const k = refurn.values().next().value;
+        refurn.delete(k);
+        refurnish(k);
+      }
       if ((stripT += dt) > 1.2) {
         stripT = 0;
         paintRoute(along);
@@ -4673,13 +4907,114 @@ const City = (() => {
       // ルート上の交差点の区間 [始まり, 終わり](m)
       crossings,
       left: () => queue.length + busy,
+      refurnLeft: () => refurn.size,
       fails: () => fails,
       setVisible(v) {
         visible = v;
         for (const t of tl.values()) if (t.group) t.group.visible = v;
         for (const ch of chunks.values()) if (ch.mesh) ch.mesh.visible = v;
       },
+      // (x, z) を含む区画の、道の形が読めているか(形が1つでもある区画だけ)
+      covered(x, z) {
+        for (const t of tl.values()) if (t.state === "ok" && t.polys && t.polys.length && t.rect && x >= t.rect[0] && x <= t.rect[2] && z >= t.rect[1] && z <= t.rect[3]) return true;
+        return false;
+      },
     };
+  })();
+
+  // ---------- 道ばたの物を置ける所か(電柱・街灯・標識・自販機・植木・木・店・信号の柱など、すべてこの判定を使う) ----------
+  // 「車道の上か」を、手に入るすべての道の形で調べる:
+  //   1) PLATEAU の道路の面(車道・交差点・歩道と区別のない道路の面。ルートに無い道も、交差点も)
+  //   2) 地図タイルの道の線(すべての車の通る道。PLATEAU に無い道や、まだ読めていない所のため)
+  //   3) 走っているルートの車道(測った本当の幅で)
+  // 置く物の半径 r だけ余裕をみて、まわり8方向の点も調べる。車道の上なら、道の外へ押し出すか、道に沿って少しずらし、
+  // それでも置けなければ置かない(数はなるべく減らさない)
+  const Curb = (() => {
+    const osm = new Map(); // 地図タイルの区画 → 車の通る道の線のマス目(16m)
+    const C = 16;
+    function addOsm(key, data) {
+      const g = new Map();
+      for (const e of (data && data.r) || []) {
+        const [, kind, ll, tunnel, lv] = e;
+        const w = ROAD_W[kind];
+        if (tunnel || lv > 0 || kind === "rail" || !w || w <= 3 || kind === "pedestrian" || kind === "track") continue;
+        const pts = [];
+        for (let i = 0; i < ll.length; i += 2) pts.push(project(ll[i], ll[i + 1]));
+        for (let i = 0; i + 1 < pts.length; i++) {
+          const a = pts[i], b = pts[i + 1], s = [a[0], a[1], b[0], b[1], w / 2], m = w / 2 + 3;
+          for (let x = Math.floor((Math.min(a[0], b[0]) - m) / C); x <= Math.floor((Math.max(a[0], b[0]) + m) / C); x++)
+            for (let z = Math.floor((Math.min(a[1], b[1]) - m) / C); z <= Math.floor((Math.max(a[1], b[1]) + m) / C); z++) {
+              const k = x + ":" + z;
+              let l = g.get(k);
+              if (!l) g.set(k, (l = []));
+              l.push(s);
+            }
+        }
+      }
+      osm.set(key, g);
+    }
+    const dropOsm = (key) => osm.delete(key);
+    const segD = (x, z, ax, az, bx, bz) => {
+      const vx = bx - ax, vz = bz - az, L = vx * vx + vz * vz, t = L ? Math.max(0, Math.min(1, ((x - ax) * vx + (z - az) * vz) / L)) : 0;
+      return Math.hypot(x - ax - vx * t, z - az - vz * t);
+    };
+    // 地図タイルの道の線から: 車道の半分の幅 × k + r より近いか
+    function osmCar(x, z, r, k) {
+      const ck = Math.floor(x / C) + ":" + Math.floor(z / C);
+      for (const g of osm.values()) {
+        const l = g.get(ck);
+        if (l) for (const s of l) if (segD(x, z, s[0], s[1], s[2], s[3]) < s[4] * k + r) return true;
+      }
+      return false;
+    }
+    // ルートの車道(測った幅。左が+)の上か
+    function routeCar(x, z, r) {
+      if (!route || !route.grid) return false;
+      const cx = Math.floor(x / 50), cz = Math.floor(z / 50);
+      let best = null;
+      for (let i = cx - 1; i <= cx + 1; i++)
+        for (let j = cz - 1; j <= cz + 1; j++)
+          for (const s of route.grid.get(i + ":" + j) || []) {
+            const a = route.xy[s], b = route.xy[s + 1], ex = b[0] - a[0], ez = b[1] - a[1], L = Math.hypot(ex, ez) || 1;
+            const t = Math.max(0, Math.min(L, ((x - a[0]) * ex + (z - a[1]) * ez) / L)), d = Math.hypot(x - a[0] - (ex * t) / L, z - a[1] - (ez * t) / L);
+            if (!best || d < best.d) best = { d, al: route.cum[s] + t, lat: ((x - a[0]) * ez - (z - a[1]) * ex) / L };
+          }
+      if (!best || best.d > 25) return false;
+      const w = Roads.ride(best.al);
+      const lo = w ? w.off + 0.9 - Math.min(w.W, 14) : -3, hi = w ? w.off + 0.9 : 3; // (交差点で測った幅が広すぎる所は、14mまで)
+      return best.lat > lo - r && best.lat < hi + r;
+    }
+    const isCarK = (k) => k === 0 || k === 1 || k === 4;
+    const DIR = [[1, 0], [-1, 0], [0, 1], [0, -1], [0.707, 0.707], [-0.707, 0.707], [0.707, -0.707], [-0.707, -0.707]];
+    // (x, z) に半径 r の物を置くと、車道にかかるか
+    function onCar(x, z, r = 0.3) {
+      const pl = Roads.covered(x, z), k0 = Roads.kindAt(x, z);
+      if (isCarK(k0)) return true;
+      for (const [dx, dz] of DIR) if (isCarK(Roads.kindAt(x + dx * r, z + dz * r))) return true;
+      // 道の形どうしのすき間(交差点のつなぎ目など): 反対どうしの両側に、すぐ車道がある
+      if (k0 === -1)
+        for (let i = 0; i < 8; i += 2) {
+          const [dx, dz] = DIR[i], hit = (s) => isCarK(Roads.kindAt(x + dx * s * (r + 0.6), z + dz * s * (r + 0.6))) || isCarK(Roads.kindAt(x + dx * s * (r + 1.3), z + dz * s * (r + 1.3)));
+          if (hit(1) && hit(-1)) return true;
+        }
+      // PLATEAU の形がある所では、それを正しいとする。地図の線(位置は数mずれることがあり、幅は道の種類からの見積もり)は、
+      // PLATEAU に無い道を見つけるためだけに、線のすぐ近くだけを使う(歩道や道ばたの物まで動かさないように)
+      if (k0 !== 2 && k0 !== 3 && osmCar(x, z, r, pl ? 0.2 : 1)) return true;
+      // ルートの幅は PLATEAU の形から測った値(交差点や駅前では、横の道や広場まで入って広すぎることがある)。
+      // 形がある所では上の判定で足りるので、形がまだ無い所だけ使う
+      return !pl && routeCar(x, z, r);
+    }
+    // (x, z) の近くで置ける所を探す。まず外向き(ox, oz)へ out m まで押し出し、だめなら道の向き(ex, ez)に前後へずらす。
+    // 見つからなければ null
+    function spot(x, z, ox, oz, ex, ez, r = 0.3, out = 1.5) {
+      for (const s of [0, 1.2, -1.2, 2.4, -2.4, 3.6, -3.6])
+        for (let d = 0; d <= out + 1e-6; d += 0.3) {
+          const px = x + ox * d + ex * s, pz = z + oz * d + ez * s;
+          if (!onCar(px, pz, r)) return [px, pz, d, s];
+        }
+      return null;
+    }
+    return { addOsm, dropOsm, onCar, spot, osmCar, routeCar };
   })();
   // ルートの帯(走る位置にそって細く)
   function rebuildStrip() {
@@ -6821,7 +7156,8 @@ const City = (() => {
       const inBld = (x, z, r = 0) => !!blds.hit(x, z) || (r > 0 && (!!blds.hit(x + r, z) || !!blds.hit(x - r, z) || !!blds.hit(x, z + r) || !!blds.hit(x, z - r)));
       const zoneAt = (x, z) => (Xing.any() ? Xing.zone(x, z) : 0);
       // 置いてよい所(道・建物・掘り下げた所・ルートの上ではない)
-      const free = (x, z, rr = 1, rt = 7) => !routeNear(x, z, rt) && roads.dist(x, z) > rr && !inBld(x, z, rr * 0.7) && !zoneAt(x, z) && !(Roads.kindAt(x, z) >= 0);
+      // (道ばたの物と同じ「車道の上か」の判定 Curb.onCar も使う: となりの区画の道・ルートの本当の幅も見る)
+      const free = (x, z, rr = 1, rt = 7) => !routeNear(x, z, rt) && roads.dist(x, z) > rr && !inBld(x, z, rr * 0.7) && !zoneAt(x, z) && !(Roads.kindAt(x, z) >= 0) && !Curb.onCar(x, z, rr * 0.5);
       await rest();
 
       // ===== 川・池 =====
@@ -7144,7 +7480,7 @@ const City = (() => {
               for (let u = -W / 2; u <= W / 2 + 0.01 && ok; u += W / 6)
                 for (let v = 0.3; v <= D + 0.01 && ok; v += D / 5) {
                   const p = P(u, v);
-                  if (inBld(p[0], p[1]) || roads.dist(p[0], p[1], car) < 0.2 || waters.hit(p[0], p[1]) || routeNear(p[0], p[1], 7) || zoneAt(p[0], p[1]) || lots.some((l) => inPoly(l, p[0], p[1]))) ok = false;
+                  if (inBld(p[0], p[1]) || roads.dist(p[0], p[1], car) < 0.2 || Curb.onCar(p[0], p[1], 0.2) || waters.hit(p[0], p[1]) || routeNear(p[0], p[1], 7) || zoneAt(p[0], p[1]) || lots.some((l) => inPoly(l, p[0], p[1]))) ok = false;
                 }
               if (!ok) continue;
               // 建物の角が敷地の中に入っていないか
@@ -7275,7 +7611,7 @@ const City = (() => {
           return d < 2.5 && (d < 0 || isCarK(Roads.kindAt(x, z)) || routeNear(x, z, 3.2));
         };
         const bal = mk(), rl = mk(), wire = mk(), fen = mk(), deckB = mk(), sleepers = [], masts = [], arms = [], fposts2 = [], xs = [];
-        const okAt = (x, z) => inTile(x, z) && near(x, z) && Xing.zone(x, z) !== 1 && !routeNear(x, z, 6) && roads.dist(x, z, car) > 0.4 && !waters.hit(x, z) && !(Roads.kindAt(x, z) >= 0);
+        const okAt = (x, z) => inTile(x, z) && near(x, z) && Xing.zone(x, z) !== 1 && !routeNear(x, z, 6) && roads.dist(x, z, car) > 0.4 && !waters.hit(x, z) && !(Roads.kindAt(x, z) >= 0) && !Curb.onCar(x, z, 0.2);
         // 踏切に近づく所: 道や走る道のそばでも描く(道の上は除く)
         const okNear = (x, z) => inTile(x, z) && near(x, z) && Xing.zone(x, z) !== 1 && !waters.hit(x, z) && !onRoad(x, z);
         const cumOf = (s) => {
@@ -8338,11 +8674,18 @@ const City = (() => {
       const g = new THREE.Group();
       const p = at(sg.along + 4), r = Roads.ride(sg.along + 4) || Roads.ride(sg.along - 12);
       const Lft = r ? r.off + 1.6 : 4; // 道の左端の外
-      const x = p.x + p.tz * Lft, z = p.z - p.tx * Lft, y = H(x, z);
+      let x = p.x + p.tz * Lft, z = p.z - p.tx * Lft, out = 0;
+      // 柱は、横切る道の車道の上には立てない(道の外へ押し出すか、前後にずらす。押し出した分だけ腕を長くする)
+      sg.cov = Roads.covered(x, z);
+      sg.cx = x;
+      sg.cz = z;
+      const sp = Curb.spot(x, z, p.tz, -p.tx, p.tx, p.tz, 0.2, 3);
+      if (sp) [x, z, out] = sp;
+      const y = H(x, z);
       const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.13, 6.2, 8), M.pole);
       pole.position.set(0, 3.1, 0);
       g.add(pole);
-      const reach = Math.min(6, (r ? r.W : 5) * 0.55); // 腕が道の上へ伸びる
+      const reach = Math.min(6, (r ? r.W : 5) * 0.55) + Math.min(2.5, out); // 腕が道の上へ伸びる
       const arm = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, reach), M.pole);
       arm.position.set(0, 5.9, reach / 2);
       g.add(arm);
@@ -8373,6 +8716,8 @@ const City = (() => {
       for (const sg of list) {
         const d = sg.along - along;
         if (d > -60 && d < 450) {
+          // 道の形が届く前に立てた柱は、届いたら立て直す(車道の上に立たないように)
+          if (sg.mesh && !sg.cov && Roads.covered(sg.cx, sg.cz)) (scene.remove(sg.mesh), (sg.mesh = null));
           if (!sg.mesh) build(sg);
           const st = stateAt(sg, t);
           for (const k of ["g", "y", "r"]) sg.lamps[k].material = k === st ? M[k] : M.off;
@@ -13713,5 +14058,5 @@ const City = (() => {
   }
 
   if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", bind), Rate.measure();
-  return { at, turnAhead, readTile, _H: (x, z) => H(x, z), _state: () => ({ Crowd, Xing, Terrain, PV, Shops, Mons, G3, popU, clipU, sim, route, tiles, failed, camera, Plateau, Roads, scene, me, Traffic, Signals, renderer, Perf, Saved, Rate }), ride: (a) => Roads.ride(a) };
+  return { at, turnAhead, readTile, _H: (x, z) => H(x, z), _state: () => ({ Curb, Crowd, Xing, Terrain, PV, Shops, Mons, G3, popU, clipU, sim, route, tiles, failed, camera, Plateau, Roads, scene, me, Traffic, Signals, renderer, Perf, Saved, Rate }), ride: (a) => Roads.ride(a) };
 })();
