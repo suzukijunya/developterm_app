@@ -4011,7 +4011,8 @@ const City = (() => {
             }
           }
       };
-      const poles = [], trees = [], posts = [], rails = [[], []], props = [];
+      const poles = [], trees = [], posts = [], rails = [[], []], props = [], slamps = [];
+      let slampRun = 0;
       let propRun = 0;
       const edges = (p, fn) => {
         for (const r of p.rings)
@@ -4102,6 +4103,9 @@ const City = (() => {
             for (let t = (2.4 - postRun) % 2.4; t < L; t += 2.4) posts.push([ax + ex * t + ix * 0.3, az + ez * t + iz * 0.3]);
             postRun = (postRun + L) % 2.4;
             for (const [k, yy] of [[0, 0.78], [1, 0.45]]) rails[k].push([ax + ix * 0.3, az + iz * 0.3, bx + ix * 0.3, bz + iz * 0.3, yy]);
+            // 歩道の街灯(26mごと。車道のふちから55cm内側に立て、腕を車道へ張り出す)
+            for (let t = (26 - slampRun) % 26; t < L; t += 26) slamps.push({ x: ax + ex * t + ix * 0.55, z: az + ez * t + iz * 0.55, rx: ox, rz: oz, own: true });
+            slampRun = (slampRun + L) % 26;
             if (wide) {
               for (let t = (11 - treeRun) % 11; t < L; t += 11) trees.push([ax + ex * t + ix * 1.0, az + ez * t + iz * 1.0]);
               treeRun = (treeRun + L) % 11;
@@ -4220,8 +4224,19 @@ const City = (() => {
       }
       // 道ばたの物
       if (props.length) streetProps(g, props, poles);
+      // 歩道の街灯の柱(細い鋼管)
+      if (slamps.length) {
+        const mt0 = new THREE.Matrix4();
+        const sh = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.06, 0.09, 7.6, 8), m.dark, slamps.length);
+        slamps.forEach((p, i) => {
+          p.h = H(p.x, p.z) + 0.18;
+          sh.setMatrixAt(i, mt0.makeTranslation(p.x, p.h + 3.8, p.z));
+        });
+        sh.castShadow = true;
+        g.add(sh);
+      }
       // 電柱と電線
-      if (poles.length) {
+      if (poles.length || slamps.length) {
         const n = poles.length;
         const shaft = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.13, 0.18, 10.5, 8), m.pole, n);
         const arm = new THREE.InstancedMesh(new THREE.BoxGeometry(0.1, 0.1, 1.5), m.dark, n);
@@ -4253,7 +4268,7 @@ const City = (() => {
           }
         }
         // 街灯: 電柱の半分ほどに、道の上へ張り出した腕とLEDの灯具。夕方・夜は灯具が光り、足もとの道を丸く照らす
-        const lit = poles.filter((p) => p.rx != null && hash(Math.round(p.x * 7) * 13 + Math.round(p.z * 5)) < 0.55);
+        const lit = poles.filter((p) => p.rx != null && hash(Math.round(p.x * 7) * 13 + Math.round(p.z * 5)) < 0.55).concat(slamps);
         if (lit.length) {
           const LM = lampMats();
           const bk = new THREE.InstancedMesh(new THREE.BoxGeometry(0.06, 0.06, 1.3), m.dark, lit.length);
