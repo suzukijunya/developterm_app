@@ -2804,8 +2804,9 @@ const City = (() => {
     const dispose = (m) => (m.parent && m.parent.remove(m), m.traverse((o) => o.geometry && o.geometry.dispose()));
     // アンダーパスの形: 底の面・両脇の擁壁・壁の上のふち・上を渡るふた
     function buildDip(d) {
-      const B = buf(), SH = shader(), a0 = Math.max(0, d.s0), a1 = Math.min(route.length, d.s1);
+      const B = buf(), SH = shader(), LT = buf(), a0 = Math.max(0, d.s0), a1 = Math.min(route.length, d.s1);
       const wl = d.hi - INSET, wr = d.lo + INSET;
+      const SEAM = [0.42, 0.41, 0.39], BEAM = [0.13, 0.13, 0.14], FENCE = [0.55, 0.62, 0.58], LAMP_ON = [1.0, 0.93, 0.78];
       const lidAt = (al) => d.lids.some(([a, b]) => al >= a && al <= b);
       let prev = null;
       for (let al = a0; al <= a1 + 0.01; al += 2) {
@@ -2831,7 +2832,33 @@ const City = (() => {
             B.quad(a.o, b.o, b.t2, a.t2, CONC2);
             B.quad(a.o, b.o, b.e, a.e, CONC2);
           }
+          // 擁壁の継ぎ目(4mごとの縦の目地)と、地上のふちの転落防止柵(柱2mおき・上と中の横棒)
+          const step = Math.round(al / 2);
+          for (let k = 0; k < 2; k++) {
+            const a = prev.sides[k], b = S.sides[k], sd = k ? -1 : 1;
+            if (step % 2 === 0 && Math.max(prev.dep, S.dep) > 0.6) {
+              const inw = (q, o) => [q[0] - p.tz * sd * o, q[1], q[2] + p.tx * sd * o];
+              B.quad(inw(b.b, 0.01), inw([b.b[0] + p.tx * 0.12, b.b[1], b.b[2] + p.tz * 0.12], 0.01), inw([b.t[0] + p.tx * 0.12, b.t[1], b.t[2] + p.tz * 0.12], 0.01), inw(b.t, 0.01), SEAM);
+            }
+            if (!(prev.lid && S.lid) && Math.max(prev.dep, S.dep) > 1.2) {
+              const ft = (q, y) => [q[0], q[1] + y, q[2]];
+              B.box(b.t2[0], b.t2[2], p.tx, p.tz, 0.04, 0.04, b.t2[1], b.t2[1] + 1.2, FENCE);
+              for (const y of [1.15, 0.6]) B.quad(ft(a.t2, y - 0.04), ft(b.t2, y - 0.04), ft(b.t2, y + 0.04), ft(a.t2, y + 0.04), FENCE);
+              // 金網(うすい面)
+              B.quad(ft(a.t2, 0.05), ft(b.t2, 0.05), ft(b.t2, 1.15), ft(a.t2, 1.15), [0.36, 0.42, 0.4]);
+            }
+          }
           // ふた(上を渡る道や線路の地面): 上の面と、暗い天井
+          if (prev.lid && S.lid) {
+            // 天井の横の梁(3mおき)と、照明(6mおき。壁ぎわに2列、夜も昼も光る)
+            const l = S.sides[0], r = S.sides[1], yC = (l.t[1] + r.t[1]) / 2 - 0.9;
+            if (step % 3 === 0) B.box((l.t[0] + r.t[0]) / 2, (l.t[2] + r.t[2]) / 2, p.tx, p.tz, 0.3, (wl - wr) / 2, yC - 0.7, yC, BEAM);
+            if (step % 3 === 1)
+              for (const [q, sd] of [[l, 1], [r, -1]]) {
+                const x = q.t[0] - p.tz * sd * 0.6, z = q.t[2] + p.tx * sd * 0.6;
+                LT.box(x, z, p.tx, p.tz, 0.6, 0.09, yC - 0.18, yC - 0.06, LAMP_ON);
+              }
+          }
           if (prev.lid && S.lid) {
             const [l0, r0, l1, r1] = [prev.sides[0], prev.sides[1], S.sides[0], S.sides[1]];
             const dn = (q, h) => [q[0], q[1] - h, q[2]];
@@ -2850,7 +2877,13 @@ const City = (() => {
         }
         prev = S;
       }
-      return withShade(B.mesh(), SH.mesh());
+      const m = withShade(B.mesh(), SH.mesh()), lm = LT.mesh();
+      if (m && lm) {
+        lm.material = new (T().MeshBasicMaterial)({ vertexColors: true });
+        lm.castShadow = lm.receiveShadow = false;
+        m.add(lm);
+      }
+      return m;
     }
     // 走っている間: 近くのアンダーパスの形を用意し、地面にあける穴(掘り下げた所)をシェーダーへ渡す
     function sync(along) {
@@ -2970,13 +3003,26 @@ const City = (() => {
       while (t < 16 && isCar(kindAt(x + dx * (t + 0.25), z + dz * (t + 0.25)))) t += 0.25;
       return t;
     }
+    // (x, z) から (dx, dz) の向きに t m の間、詳しい形(車道・歩道など)が1つも無く、道路全体の形だけか
+    function only4(x, z, dx, dz, t) {
+      for (let u = 0.5; u < t; u += 1) if (kindAt(x + dx * u, z + dz * u) !== 4) return false;
+      return true;
+    }
     // ---- ルートの道幅を測る ----
     function measure(i) {
       const p = at(i * STEP);
       const k = kindAt(p.x, p.z);
       if (!isCar(k)) return (raw[i] = raw[i] || null);
       const lx = p.tz, lz = -p.tx; // 左
-      raw[i] = { L: reach(p.x, p.z, lx, lz), R: reach(p.x, p.z, -lx, -lz), cross: k === 1 };
+      let L = reach(p.x, p.z, lx, lz), R = reach(p.x, p.z, -lx, -lz);
+      // 歩道と車道を分けた詳しい形が無い所は、道路全体(歩道こみ)の形しかない。広い道ならふつう両側に歩道があるので、
+      // その分(約3m)を引いて車道の端にする(引かないと、左端から0.9mの走る位置が歩道の上になる)
+      if (k === 4 && L + R >= 11 && only4(p.x, p.z, lx, lz, L) && only4(p.x, p.z, -lx, -lz, R)) {
+        const sw = Math.min(3.5, (L + R) * 0.14);
+        L = Math.max(1.5, L - sw);
+        R = Math.max(1.5, R - sw);
+      }
+      raw[i] = { L, R, cross: k === 1 };
       stripDirty = true;
     }
     function measureRect(r) {
@@ -8677,7 +8723,10 @@ const City = (() => {
           panos.delete(i);
         }
       const A = panos.get(i0), B = panos.get(i0 + 1), okA = A && A.state === "ok", okB = B && B.state === "ok";
-      if (!okA && !okB) return false; // まだ1枚もない間は、ふつうの3Dの街
+      if (!okA && !okB) return false;
+      // 掘り下げた道(アンダーパス)では写真を貼らない。写真は地上の高さで撮られていることが多く、
+      // 壁や天井に地上の景色が引き伸ばされて、別の世界のように見えてしまう
+      if (Xing.list().some((d) => s.along > d.s0 - 40 && s.along < d.s1 + 40)) return false; // まだ1枚もない間は、ふつうの3Dの街
       const m = material(), u = m.uniforms;
       if ((walkT -= real) <= 0) (walkT = 0.7), mark();
       // 距離の絵は、街が読み込まれるたびに変わるので、2秒おきに撮り直す(1コマに1枚ずつ)
@@ -8912,8 +8961,9 @@ const City = (() => {
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       const sh = lights.sun.shadow;
       lights.sun.castShadow = true;
-      sh.mapSize.set(2048, 2048);
-      Object.assign(sh.camera, { left: -48, right: 48, top: 48, bottom: -48, near: 1, far: 400 }); // 近くの影をくっきり(1点 約5cm)
+      // 4096点で160m四方(1点 約4cm)。前方を広く取るよう、中心は乗り手の少し先に置く(下の光の追従で)
+      sh.mapSize.set(4096, 4096);
+      Object.assign(sh.camera, { left: -80, right: 80, top: 80, bottom: -80, near: 1, far: 500 });
       sh.bias = -0.0008;
       sh.normalBias = 0.04;
     }
@@ -9722,8 +9772,24 @@ const City = (() => {
     const shadowNow = s.frameN % Rate.every() === 0;
     if (lights.sun.castShadow && shadowNow) {
       const d = lights.sun.userData.dir || [0, 1, 0];
-      lights.sun.position.set(p.x + d[0] * 150, p.y + d[1] * 150, p.z + d[2] * 150);
-      lights.sun.target.position.set(p.x, p.y, p.z);
+      // 影の範囲の中心: 進む向きへ35m先(カメラに映る所を広く覆う)。光から見た面の上で、影の地図の1点ずつに合わせて動かす
+      // (半端に動くと、影のふちがちらちら揺れる)
+      let cx = p.x + p.tx * 35, cy = p.y, cz = p.z + p.tz * 35;
+      {
+        const dl = Math.hypot(d[0], d[1], d[2]) || 1, lx = d[0] / dl, ly = d[1] / dl, lz = d[2] / dl;
+        let rx = lz, rz = -lx; // 横の軸 = 上(0,1,0) × 光の向き
+        const rl = Math.hypot(rx, rz) || 1;
+        (rx /= rl), (rz /= rl);
+        const ux = ly * rz, uy = lz * rx - lx * rz, uz = -ly * rx; // 縦の軸 = 光の向き × 横
+        const sc = lights.sun.shadow.camera, tex = (sc.right - sc.left) / lights.sun.shadow.mapSize.x;
+        const a = cx * rx + cz * rz, b = cx * ux + cy * uy + cz * uz, c = cx * lx + cy * ly + cz * lz;
+        const a2 = Math.round(a / tex) * tex, b2 = Math.round(b / tex) * tex;
+        cx = rx * a2 + ux * b2 + lx * c;
+        cy = uy * b2 + ly * c;
+        cz = rz * a2 + uz * b2 + lz * c;
+      }
+      lights.sun.position.set(cx + d[0] * 200, cy + d[1] * 200, cz + d[2] * 200);
+      lights.sun.target.position.set(cx, cy, cz);
       lights.sun.target.updateMatrixWorld();
     }
     Perf.lap("カメラ・地面");
