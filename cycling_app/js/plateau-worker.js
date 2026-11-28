@@ -3,6 +3,7 @@
 // 入力: { type: "init", route: { xy, lat0, lon0, kx, kz }, clear }  /  { type: "tile", id, buf, key }  /  { type: "load", id, key, kind }
 //   key つきの結果は端末に保存し、次からは load で読むだけにする(下の SHAPE_VER を参照)
 // 出力: { id, groups: [{ kind: "t"(写真)/"c"(色つき)/"p"(色なし), img(写真の番号), pos, nor, uv, col }], images: [{ bitmap | bytes, mime }], names, n, skipped }
+//   inst: 建物の細部(窓枠・ベランダ・室外機など)の部品の置き方。1つぶん15個の数(下の KIT_* を参照)
 //   壁の写真つきの版(LOD2/3/4)は、写真をそのまま貼る(大きすぎる写真は texMax の幅に縮める)
 
 importScripts("vendor/draco/draco_wasm_wrapper.js");
@@ -21,7 +22,7 @@ let TERRAIN = false;
 // 2回目からは、ここで保存した形を読むだけにして、展開と組み立てを飛ばす。読み書きはワーカーの中でやる(画面を止めない)。
 // 保存するのは PLATEAU から自前で組み立てた結果だけ。
 // ★ 出力の形式や作り方(建物・道の形に関わる所)を変えたら、SHAPE_VER を上げる。古い版の保存は使われず、消される。
-const SHAPE_VER = 1;
+const SHAPE_VER = 2;
 const SHAPE_MAX = 600 * 1048576; // 上限(約600MB)。超えたら、使っていない古い順に消す
 const Shapes = (() => {
   const PRE = "s" + SHAPE_VER + ":";
@@ -137,6 +138,7 @@ self.onmessage = async (e) => {
       out.id = d.id;
       out.saved = true;
       for (const g of out.groups) tr.push(g.pos.buffer, g.nor.buffer, g.uv.buffer, g.col.buffer, g.anc.buffer);
+      if (out.inst) tr.push(out.inst.buffer);
       for (const im of out.images) tr.push(im.bitmap || im.bytes);
       self.postMessage(out, tr);
     } catch (err) {
@@ -165,6 +167,7 @@ self.onmessage = async (e) => {
       const tr = [];
       let size = 0;
       for (const g of out.groups) tr.push(g.pos.buffer, g.nor.buffer, g.uv.buffer, g.col.buffer, g.anc.buffer), (size += g.pos.byteLength + g.nor.byteLength + g.uv.byteLength + g.col.byteLength + g.anc.byteLength);
+      if (out.inst) tr.push(out.inst.buffer), (size += out.inst.byteLength);
       // 保存: 形と、写真のもとの画像(縮める前のバイト列)。配列を画面側へ渡す前に写し取らせる
       const raws = out.raws;
       delete out.raws;
@@ -415,14 +418,15 @@ function build(parts, center, bt) {
     else {
       pt.g = null;
       // (屋根を足すぶん、少し多めに場所を取る)
-      for (let k = 0; k < 6; k++) (PG[k] = G("p" + k, "p", null, pt.idx.length * 3)), (PG[k].style = k);
+      for (let k = 0; k < 6; k++) (PG[k] = G("p" + k, "p", null, pt.idx.length * 8)), (PG[k].style = k);
     }
   // anc: その頂点が属する建物の「中心x・足もとy・中心z」。近づくと建物ごとに立ち上がる動きに使う
   for (const g of groups.values()) Object.assign(g, { pos: new Float32Array(g.cap * 3), nor: new Int8Array(g.cap * 3), uv: new Float32Array(g.cap * 2), col: new Uint8Array(g.cap * 3), anc: new Float32Array(g.cap * 3) });
   // 戸建ての屋根: 箱のまま(屋根が平ら)の小さな家には、寄棟(よせむね)の屋根をのせる
-  const house = new Uint8Array(NB), hx = new Float32Array(NB * 7); // 軸x, 軸z, 中心x, 中心z, 棟の半分の長さ, 屋根の高さ, 壁の高さ
+  const house = new Uint8Array(NB), hx = new Float32Array(NB * 8); // 軸x, 軸z, 中心x, 中心z, 棟の半分の長さ, 屋根の高さ, 壁の高さ, 家の幅の半分
+  const slopeB = new Uint8Array(NB); // 傾いた屋根がある建物(屋上の物は置かない)
   {
-    const slope = new Uint8Array(NB), other = new Uint8Array(NB), top = Array.from({ length: NB }, () => null);
+    const slope = slopeB, other = new Uint8Array(NB), top = Array.from({ length: NB }, () => null);
     let b0 = 0;
     for (const pt of parts) {
       const ix = pt.idx, plain = pt.img == null && !pt.color;
@@ -470,83 +474,247 @@ function build(parts, center, bt) {
       if (hw > hl) [ax, az, hl, hw] = [-az, ax, hw, hl];
       if (hw < 1.2) continue;
       house[b] = 1;
-      hx.set([ax, az, cxb, czb, Math.max(0, hl - hw), Math.min(2.6, Math.max(0.9, hw * 0.55)), h], b * 7);
+      hx.set([ax, az, cxb, czb, Math.max(0, hl - hw), Math.min(2.6, Math.max(0.9, hw * 0.55)), h, hw], b * 8);
     }
   }
-  // ---- 出っ張り(本当の形として足す): ベランダの床と手すり、店の庇、そで看板、屋上の機械室と室外機 ----
-  // 壁の三角形のうち、下の2点が地面にあるものから「建物の足もとの辺」と外向きがわかる。その辺にそって箱を足す。
-  // uv の x を -1 にした面は、外壁の絵を貼らずに色だけで描く(-2 はガラス)
-  const EX = Array.from({ length: 6 }, () => ({ pos: [], nor: [], uv: [], col: [], anc: [] }));
+  // ---- 細部(本当の形として足す): 窓枠・水切り・面格子・玄関の庇・室外機・ベランダ・外廊下と鉄骨階段・店の看板とテント・屋上の機械 ----
+  // 壁の三角形のうち、下の2点が地面にあるものから「建物の足もとの辺」と外向きがわかる。その辺にそって部品を置く。
+  // 形そのものは画面側の部品(KIT_*)を使い回す(インスタンス描画)。ここでは「どの部品を・どこに・どの向き・大きさ・色で」だけを書き出す。
+  // 窓枠は、外壁の絵の窓の位置(u = 壁にそった距離 / FW, v = 高さ / FH)から計算して、絵の窓にぴったり重ねる
+  const INST = [];
   const roofDone = new Uint8Array(NB);
   let exA = [0, 0, 0];
-  const quad = (E, p0, p1, p2, p3, n, c, flag) => {
-    for (const q of [p0, p1, p2, p0, p2, p3]) {
-      E.pos.push(q[0], q[1], q[2]);
-      E.nor.push(Math.round(n[0] * 127), Math.round(n[1] * 127), Math.round(n[2] * 127));
-      E.uv.push(flag, flag);
-      E.col.push(c[0], c[1], c[2]);
-      E.anc.push(exA[0], exA[1], exA[2]);
+  // 置く: 部品・場所(x, y, z。y は本当の高さ)・外向き(nx, nz)・大きさ・色(0〜255)・fl(1=写真の街でも消さない)
+  const put = (kit, x, y, z, nx, nz, sx, sy, sz, c, fl = 0) => INST.push(kit, x, y, z, Math.atan2(nx, nz), sx, sy, sz, c[0] / 255, c[1] / 255, c[2] / 255, exA[0], exA[1], exA[2], fl);
+  // 絵の模様(1枚の幅 W m)の中の横の位置 off(m)が、この辺のどこ(辺の中心からの距離 t)に来るか。辺の中に収まるものを全部
+  const along = (E, W, off, half, fn) => {
+    const sm = -E.mx * E.nz + E.mz * E.nx, sg = -E.ex * E.nz + E.ez * E.nx, hl = E.L / 2 - half - 0.1;
+    if (hl <= 0 || Math.abs(sg) < 0.5) return;
+    const k0 = Math.floor((sm - E.L / 2) / W) - 1, k1 = Math.ceil((sm + E.L / 2) / W) + 1;
+    for (let k = k0; k <= k1; k++) {
+      const t = (k * W + off - sm) / sg;
+      if (t >= -hl && t <= hl) fn(t, k);
     }
   };
-  // 箱: 中心(cx, cz)・辺の向き(ex, ez)・外向き(nx, nz)。長さ len、外へ d0〜d1、高さ y0〜y1
-  const exBox = (st, cx, cz, ex, ez, nx, nz, len, d0, d1, y0, y1, c, flag = -1) => {
-    const E = EX[st], h = len / 2;
-    const P = (a, d, y) => [cx + ex * a + nx * d, y, cz + ez * a + nz * d];
-    const dk = [c[0] * 0.72, c[1] * 0.72, c[2] * 0.72], lt = [Math.min(255, c[0] * 1.06), Math.min(255, c[1] * 1.06), Math.min(255, c[2] * 1.06)];
-    quad(E, P(-h, d1, y0), P(h, d1, y0), P(h, d1, y1), P(-h, d1, y1), [nx, 0, nz], c, flag); // 外の面
-    quad(E, P(h, d0, y0), P(-h, d0, y0), P(-h, d0, y1), P(h, d0, y1), [-nx, 0, -nz], dk, flag); // 内の面
-    quad(E, P(-h, d0, y0), P(-h, d1, y0), P(-h, d1, y1), P(-h, d0, y1), [-ex, 0, -ez], dk, flag);
-    quad(E, P(h, d1, y0), P(h, d0, y0), P(h, d0, y1), P(h, d1, y1), [ex, 0, ez], dk, flag);
-    quad(E, P(-h, d0, y1), P(-h, d1, y1), P(h, d1, y1), P(h, d0, y1), [0, 1, 0], lt, flag); // 上
-    quad(E, P(-h, d1, y0), P(-h, d0, y0), P(h, d0, y0), P(h, d1, y0), [0, -1, 0], dk, flag); // 下
+  // 絵の窓(1枚に2階ぶん。上の階が y=0〜128px)の高さ。1階(3.2mまで)は別の絵なので除く
+  const rows = (st, y0p, y1p, hB, fn) => {
+    const F = FH[st];
+    for (let j = 0; j * F < hB; j++)
+      for (const fy of [128, 0]) {
+        const yb = j * F + F * (1 - (fy + y1p) / 256), yt = j * F + F * (1 - (fy + y0p) / 256);
+        if (yb >= 3.3 && yt <= hB - 0.35) fn(yb, yt, j * 2 + (fy ? 0 : 1));
+      }
   };
+  // 外壁の絵の窓: [左px, 右px, 上px, 下px, 部品]
+  const WINS = { 0: [[34, 108, 38, 92, KIT_WIN2], [150, 206, 38, 92, KIT_WIN2]], 5: [[30, 56, 30, 100, KIT_WIN1], [110, 206, 44, 78, KIT_WIN3]], 1: [[14, 114, 20, 90, KIT_WIN2], [142, 242, 20, 90, KIT_WIN2]], 4: [[14, 72, 34, 84, KIT_WIN2], [90, 148, 34, 84, KIT_WIN2], [166, 224, 34, 84, KIT_WIN2]] };
+  const FRAME = [[238, 238, 234], [178, 182, 186], [82, 68, 58], [46, 46, 48]];
   const SIGNC = [[200, 54, 44], [31, 95, 158], [47, 138, 78], [232, 160, 32], [58, 58, 58], [122, 58, 160], [240, 240, 236]];
-  function extras(b, st, ax, az, bx, bz, nx, nz, y0, hB, ei) {
-    const L = Math.hypot(bx - ax, bz - az);
-    if (L < 2.5) return;
+  // hB: 建物の高さ、hE: この壁の高さ(傾いた屋根の建物では、軒の高さまでの壁がある。窓などは壁の高さまで)
+  function extras(b, st, ax, az, bx, bz, nx, nz, y0, hR, ei, hs, hE) {
+    const L = Math.hypot(bx - ax, bz - az), hB = Math.min(hR, hE);
+    if (L < 1.2) return;
     const ex = (bx - ax) / L, ez = (bz - az) / L, nl = Math.hypot(nx, nz) || 1;
     nx /= nl;
     nz /= nl;
     const mx = (ax + bx) / 2, mz = (az + bz) / 2, hk = hash(b * 131 + ei * 17 + Math.round(ax));
+    const bk = hash(b * 977 + Math.round(bx0[b] * 7)), bk2 = hash(b * 389 + 11); // 建物ごとの選び(どの辺でも同じ)
+    const E = { mx, mz, ex, ez, nx, nz, L };
     exA = [(bx0[b] + bx1[b]) / 2, y0, (bz0[b] + bz1[b]) / 2];
+    // P: 辺の中心から t・壁から外へ d・高さ y(足もとから)に置く。B: 壁から d0〜d1、高さ ya〜yb の箱(長さ len)
+    const P = (kit, t, d, y, sx, sy, sz, c, fl) => put(kit, mx + ex * t + nx * d, y0 + y, mz + ez * t + nz * d, nx, nz, sx, sy, sz, c, fl);
+    const B = (kit, t, len, d0, d1, ya, yb, c, fl) => P(kit, t, d0, ya, len, yb - ya, d1 - d0, c, fl);
+    const house = st === 0 || st === 5;
+    const fc = st === 5 ? [34, 34, 36] : st === 1 ? (bk < 0.6 ? [178, 182, 186] : [112, 96, 80]) : st === 4 ? [186, 188, 190] : FRAME[Math.floor(bk * 4)];
+    // 上の階の窓: 枠・水切り・中桟。戸建ては、シャッターボックスや戸袋、小さな窓の面格子
+    const W = WINS[st];
+    if (W && L >= 1.6) {
+      const shut = house && bk2 > 0.5, tob = st === 0 && bk2 > 0.25 && bk2 <= 0.5;
+      for (const [x0p, x1p, y0p, y1p, kit] of W) {
+        const w = ((x1p - x0p) / 256) * FW[st];
+        along(E, FW[st], ((x0p + x1p) / 512) * FW[st], w / 2 + 0.08, (t) =>
+          rows(st, y0p, y1p, hB, (yb, yt) => {
+            const h = yt - yb;
+            P(kit, t, 0, (yb + yt) / 2, w, h, 1, fc);
+            if (shut && w > 1) B(KIT_BOX, t, w + 0.16, 0, 0.2, yt + 0.06, yt + 0.32, fc);
+            else if (tob && w > 1.2) {
+              const off = w * 0.75 + 0.08;
+              for (const sgn of [1, -1]) if (Math.abs(t + sgn * off) + w * 0.25 < L / 2 - 0.1) { B(KIT_BOX, t + sgn * off, w * 0.5, 0, 0.13, yb - 0.06, yt + 0.06, [216, 208, 192]); break; }
+            }
+            if (st === 0 && x0p === 150 && hk < 0.6) B(KIT_BARS, t, w + 0.06, 0.07, 0.1, yb - 0.03, yt + 0.03, [206, 206, 202]);
+          })
+        );
+      }
+    }
+    // 1階(外壁の1階の絵と同じ並び)
+    if (house) {
+      const cc = bk < 0.5 ? [86, 88, 92] : [226, 224, 218], dc = FRAME[Math.floor(bk2 * 4)];
+      for (let n = 0; n < 3; n++) {
+        const x0 = n * 7;
+        along(E, 21, x0 + [1.0, 4.6, 2.9][n] + 0.45, 0.7, (t) => {
+          P(KIT_DOOR, t, 0, 0, 0.9, 2.1, 1, dc);
+          B(KIT_BOX, t, 1.4, 0, 0.66, 2.24, 2.32, cc); // 玄関の庇
+          B(KIT_EBOX, t + 0.55, 0.12, 0.06, 0.16, 1.72, 1.92, [255, 232, 184]); // 玄関の灯り
+        });
+        along(E, 21, x0 + [3.4, 1.0, 5.0][n] + 0.8, 0.9, (t) => {
+          P(KIT_WIN2, t, 0, 1.55, 1.6, 1.1, 1, fc);
+          if (n !== 1) B(KIT_BARS, t, 1.66, 0.07, 0.1, 0.97, 2.13, [214, 214, 210]); // 面格子
+        });
+        along(E, 21, x0 + [5.6, 3.0, 0.6][n] + 0.4, 0.45, (t) => {
+          P(KIT_AC, t, 0, 0, 1, 1, 1, [238, 238, 234]);
+          B(KIT_BOX, t + 0.31, 0.08, 0, 0.08, 0.5, 2.6, [232, 232, 228]); // 配管の化粧カバー
+        });
+        if (n === 0) {
+          along(E, 21, x0 + 0.45 + 0.16, 0.2, (t) => B(KIT_BOX, t, 0.34, 0, 0.12, 0.98, 1.44, [156, 47, 42])); // 郵便受け
+          along(E, 21, x0 + 6.6 + 0.12, 0.15, (t) => B(KIT_BOX, t, 0.26, 0, 0.1, 0.5, 1.4, [204, 204, 200])); // メーター
+        }
+      }
+      // 雨どい(たて): 辺の端に
+      if (hk < 0.55 && hB > 3) {
+        const pc = bk2 < 0.5 ? [226, 226, 222] : [74, 64, 56], tp = L / 2 - 0.22;
+        B(KIT_BOX, tp, 0.08, 0.03, 0.11, 0, hB - 0.22, pc);
+        if (hs) B(KIT_BOX, tp, 0.08, 0.03, 0.56, hB - 0.3, hB - 0.22, pc);
+      }
+    } else if (st === 1) {
+      for (let n = 0; n < 3; n++) {
+        const x0 = n * 7.2;
+        if (n === 1)
+          along(E, 21.6, x0 + 2.6, 1.75, (t) => {
+            B(KIT_BOX6, t, 3.5, 0, 1.5, 2.72, 2.9, [92, 94, 98]); // 入口の庇
+            for (const o of [-0.9, 0.9]) B(KIT_EBOX, t + o, 0.32, 0.6, 0.92, 2.69, 2.72, [255, 236, 204]);
+            B(KIT_BOX, t, 0.06, 0, 0.05, 0, 2.4, [58, 61, 64]);
+            B(KIT_EBOX, t + 2.0, 1.3, 0, 0.06, 2.08, 2.18, [214, 196, 150]); // 館名板(文字なし)
+          });
+        else
+          for (const dx of [0.8, 4.4]) {
+            along(E, 21.6, x0 + dx + 0.425, 0.6, (t) => {
+              P(KIT_DOOR, t, 0, 0, 0.85, 2.0, 1, [150, 150, 146]);
+              B(KIT_BOX, t, 1.1, 0, 0.55, 2.12, 2.2, [204, 204, 200]);
+            });
+            along(E, 21.6, x0 + dx + 1.85, 0.65, (t) => {
+              P(KIT_WIN2, t, 0, 1.5, 1.16, 0.88, 1, fc);
+              B(KIT_BARS, t, 1.2, 0.07, 0.1, 1.04, 1.96, [214, 214, 210]);
+            });
+          }
+      }
+    } else if (st === 3) {
+      along(E, 21.6, 7.2 + 3.6, 3.45, (t) => {
+        B(KIT_BOX6, t, 6.8, 0, 3.2, 2.9, 3.18, [52, 54, 58]); // 車寄せの庇
+        for (const o of [-2.9, 2.9]) B(KIT_BOX, t + o, 0.24, 2.8, 3.04, 0, 2.9, [74, 76, 80]);
+        for (const o of [-2.2, 0, 2.2]) B(KIT_EBOX, t + o, 0.6, 1.2, 1.8, 2.86, 2.9, [255, 232, 190]);
+        for (const m of [1.8, 3.0, 4.2, 5.4]) B(KIT_BOX, t + m + 0.025 - 3.6, 0.06, 0, 0.07, 0, 2.9, [42, 45, 48]);
+      });
+    } else if (st === 4) {
+      for (let n = 0; n < 4; n++)
+        along(E, 24, n * 6 + 3.11, 3.0, (t) => {
+          const T = (x) => t + x - 3.11;
+          B(KIT_BOX, t, 5.8, 0, 0.16, 2.49, 2.55, [56, 58, 62]); // 看板の枠
+          B(KIT_BOX, t, 5.8, 0, 0.16, 3.06, 3.12, [56, 58, 62]);
+          B(KIT_BOX, T(0.11), 0.22, 0, 0.1, 0, 3.2, [150, 146, 140]);
+          if (n === 0) B(KIT_EBOX, T(0.95), 0.46, 0.16, 0.62, 1.32, 2.08, [216, 54, 44]); // 提灯
+          if (n === 1) for (const m of [1.6, 3.1, 4.6]) B(KIT_BOX, T(m + 0.025), 0.06, 0, 0.06, 0.2, 2.55, [40, 44, 48]);
+          if (n === 2) P(KIT_AWN, T(3.1), 0, 2.28, 5.6, 0.46, 1.0, [47, 106, 60]);
+          if (n === 3) for (const m of [2, 4]) B(KIT_BOX, T(m + 0.025), 0.06, 0, 0.06, 0.3, 2.55, [90, 93, 96]);
+        });
+    } else if (st === 2) {
+      for (let n = 0; n < 4; n++)
+        along(E, 24, n * 6 + 3, 3.0, (t) => {
+          for (const x of [0.125, 5.875]) B(KIT_BOX, t + x - 3, 0.25, 0, 0.12, 0, 2.55, [172, 172, 168]);
+          B(KIT_BOX, t, 6, 0, 0.18, 3.14, 3.2, [70, 72, 76]);
+          B(KIT_BOX, t, 6, 0, 0.18, 2.5, 2.55, [70, 72, 76]);
+          if (n !== 2) for (const m of [1.6, 3.4, 4.6]) B(KIT_BOX, t + m + 0.03 - 3, 0.06, 0, 0.06, 0, 2.55, [52, 55, 58]);
+          if (n === 1 || n === 3) P(KIT_AWN, t, 0, 2.18, 5.8, 0.42, 0.9, n === 1 ? [179, 38, 30] : [47, 106, 60]);
+        });
+      // カーテンウォールの方立て(1.5mごと)と、階ごとの帯の出っ張り
+      if (hB > 4.5) {
+        for (let q = 0; q < 4; q++) along(E, 6, ((32 + 64 * q) / 256) * 6, 0.06, (t) => B(KIT_BOX, t, 0.1, 0, 0.16, 3.2, hB - 0.12, [78, 86, 95]));
+        for (let f = 1; f * 4 + 1 < hB; f++) B(KIT_BOX, 0, L - 0.04, 0, 0.1, f * 4 + 0.86, f * 4 + 0.96, [204, 207, 212]);
+      }
+    }
     if (st === 1 || st === 3) {
       // マンション: 南向きの長い辺と、ほかの辺の一部にベランダ。タワーマンションは長い辺ぜんぶ
       const fh = FH[st] / 2, on = st === 3 ? L >= 6 : L >= 5 && (nz > 0.35 || hk < 0.3);
-      if (!on) return;
-      const len = L - 0.8, slab = st === 3 ? [226, 226, 222] : [220, 218, 212], rail = st === 3 ? [150, 190, 214] : [176, 182, 188];
-      for (let f = 1; f * fh < hB - 1.2; f++) {
-        const y = y0 + f * fh;
-        exBox(st, mx, mz, ex, ez, nx, nz, len, 0, 1.15, y - 0.16, y, slab);
-        exBox(st, mx, mz, ex, ez, nx, nz, len, 1.08, 1.15, y, y + 1.05, rail, st === 3 ? -2 : -1);
-        // となりの家とのしきり板
-        if (st === 1) for (let t = -len / 2 + 7.2; t < len / 2 - 2; t += 7.2) exBox(st, mx + ex * t, mz + ez * t, ex, ez, nx, nz, 0.06, 0, 1.1, y, y + 1.9, [236, 236, 232]);
+      // 低いアパートの北側は、外廊下と鉄骨の階段
+      const corr = st === 1 && !on && nz < -0.35 && L >= 7 && hB <= 12.5;
+      if (on) {
+        const len = L - 0.8, slab = st === 3 ? [226, 226, 222] : [220, 218, 212];
+        const rk = st === 3 ? 3 : bk < 0.45 ? 0 : bk < 0.75 ? 1 : 2; // 0=アルミの縦格子 1=パネル 2=くもりガラス 3=ガラス
+        const rc = rk === 0 ? (bk2 < 0.5 ? [176, 180, 184] : [96, 86, 76]) : rk === 1 ? [188, 192, 196] : rk === 2 ? [200, 214, 222] : [150, 190, 214];
+        for (let f = 1; f * fh < hB - 1.2; f++) {
+          const y = f * fh;
+          B(KIT_BOX6, 0, len, 0, 1.15, y - 0.16, y, slab);
+          if (rk === 0) B(KIT_BARS, 0, len, 1.1, 1.14, y, y + 1.0, rc);
+          else B(rk === 1 ? KIT_BOX : KIT_GBOX, 0, len, 1.09, 1.14, y + 0.08, y + 1.0, rc);
+          B(KIT_BOX, 0, len + 0.02, 1.06, 1.18, y + 1.0, y + 1.07, st === 3 ? [70, 74, 80] : [214, 214, 210]); // 笠木
+          if (st === 1) {
+            // となりの家とのしきり板(外壁の絵の住戸の境目に)と、ベランダの室外機
+            for (const px of [4, 129]) along(E, 7.2, (px / 256) * 7.2, 0.05, (t) => B(KIT_BOX, t, 0.05, 0, 1.08, y, y + 1.9, [236, 236, 232]));
+            for (const px of [108, 236]) along(E, 7.2, (px / 256) * 7.2, 0.45, (t) => P(KIT_AC, t, 0.02, y, 1, 1, 1, [232, 232, 228]));
+          }
+        }
+        if (st === 3) along(E, 7.2, 0.11, 0.15, (t) => B(KIT_BOX, t, 0.24, 0, 1.2, 3.2, hB - 0.2, [112, 116, 122])); // 柱(ベランダの仕切り)
+      } else if (corr) {
+        const sg = nz * ex - nx * ez > 0 ? 1 : -1, tS = -sg * (L / 2 - 1.6);
+        const c0 = sg > 0 ? -L / 2 + 3.2 : -L / 2 + 0.3, c1 = sg > 0 ? L / 2 - 0.3 : L / 2 - 3.2, tc = (c0 + c1) / 2, lc = c1 - c0;
+        const wallC = colors[b] || pal(b), sc = [[64, 66, 70], [120, 84, 64], [214, 208, 196]][Math.floor(bk2 * 3)];
+        for (let f = 1; f * fh < hB - 1.2; f++) {
+          const y = f * fh;
+          B(KIT_BOX6, tc, lc, 0, 1.25, y - 0.18, y, [212, 210, 204]);
+          B(KIT_BOX, tc, lc, 1.1, 1.25, y, y + 1.1, wallC); // 腰壁
+          B(KIT_BOX, tc, lc + 0.02, 1.08, 1.27, y + 1.1, y + 1.16, [196, 196, 192]);
+          for (let t = c0 + 0.9; t < c1 - 0.6; t += 3.6) {
+            P(KIT_DOOR, t, 0, y, 0.85, 2.0, 1, [150, 152, 156]);
+            B(KIT_BOX, t, 0.85, 0, 0.035, y, y + 2.0, [118, 124, 132]); // 玄関のドア
+            B(KIT_EBOX, t + 1.0, 0.24, 0.45, 0.7, y + fh - 0.22, y + fh - 0.18, [255, 240, 214]); // 廊下の灯り
+          }
+          P(KIT_STAIR, tS, 0, y - fh, 1, fh / 2.9, 1, sc);
+        }
       }
     } else if (st === 4) {
-      // 商業ビル: 1階の上に庇、壁からつき出たそで看板
-      if (L >= 4) exBox(st, mx, mz, ex, ez, nx, nz, L - 0.4, 0, 0.95, y0 + 3.22, y0 + 3.4, SIGNC[Math.floor(hk * 7)]);
+      // 商業ビル: 1階の上に庇、壁からつき出たそで看板(夜は光る)
+      if (L >= 4) B(KIT_BOX6, 0, L - 0.4, 0, 0.95, 3.22, 3.4, SIGNC[Math.floor(hk * 7)]);
       if (L >= 5 && hB > 7 && hk < 0.75) {
         const t = (hash(b * 7 + ei) - 0.5) * (L - 2), top = Math.min(hB - 0.5, 4 + hash(b + ei * 3) * 9);
-        exBox(st, mx + ex * t, mz + ez * t, ex, ez, nx, nz, 0.22, 0.05, 1.0, y0 + 3.9, y0 + Math.max(5.6, top), SIGNC[Math.floor(hash(b * 3 + ei * 5) * 7)]);
+        B(KIT_EBOX, t, 0.22, 0.05, 1.0, 3.9, Math.max(5.6, top), SIGNC[Math.floor(hash(b * 3 + ei * 5) * 7)]);
+        B(KIT_BOX, t, 0.06, 0, 0.06, 3.8, Math.max(5.7, top + 0.1), [70, 72, 76]);
       }
       // 壁の看板(少し浮いた板)
-      if (L >= 6 && hB > 9 && hk > 0.4) exBox(st, mx, mz, ex, ez, nx, nz, Math.min(L - 1.5, 6), 0, 0.14, y0 + 7.3, y0 + 8.6, SIGNC[Math.floor(hash(b * 11 + ei) * 7)]);
+      if (L >= 6 && hB > 9 && hk > 0.4) B(KIT_EBOX, 0, Math.min(L - 1.5, 6), 0, 0.14, 7.3, 8.6, SIGNC[Math.floor(hash(b * 11 + ei) * 7)]);
     } else if (st === 2) {
       // オフィス: 入口の庇(長い辺の一部)
-      if (L >= 10 && hk < 0.5) exBox(st, mx, mz, ex, ez, nx, nz, Math.min(8, L * 0.4), 0, 1.6, y0 + 3.3, y0 + 3.5, [70, 74, 80]);
+      if (L >= 10 && hk < 0.5) B(KIT_BOX6, 0, Math.min(8, L * 0.4), 0, 1.6, 3.3, 3.5, [70, 74, 80]);
     } else if (hB >= 5 && L >= 5 && hk < 0.3) {
-      // 戸建て: 2階の小さなベランダ
+      // 戸建て: 2階の小さなベランダ(アルミの手すり か 壁)
       const t = (hash(b * 5 + ei) - 0.5) * (L - 3.6), c = st === 5 ? [58, 60, 64] : [238, 236, 230];
-      exBox(st, mx + ex * t, mz + ez * t, ex, ez, nx, nz, 3.0, 0, 0.95, y0 + 2.75, y0 + 2.88, c);
-      exBox(st, mx + ex * t, mz + ez * t, ex, ez, nx, nz, 3.0, 0.9, 0.95, y0 + 2.88, y0 + 3.95, c);
+      B(KIT_BOX6, t, 3.0, 0, 0.95, 2.75, 2.88, c);
+      if (bk2 < 0.5) {
+        B(KIT_BARS, t, 3.0, 0.9, 0.94, 2.88, 3.9, st === 5 ? [40, 40, 42] : [186, 190, 194]);
+        B(KIT_BOX, t, 3.04, 0.88, 0.97, 3.9, 3.96, st === 5 ? [40, 40, 42] : [186, 190, 194]);
+      } else B(KIT_BOX, t, 3.0, 0.88, 0.95, 2.88, 3.95, c);
     }
-    // 屋上(平らな屋根の建物に1回だけ): 機械室と、室外機のならび、手すり
-    if (!roofDone[b] && st >= 1 && st <= 4 && hB >= 9) {
+    // 屋上のふち(笠木)。平らな屋根の建物だけ
+    if (!hs && !slopeB[b] && hB >= 2.6) B(KIT_BOX, 0, L + 0.04, -0.22, 0.03, hB - 0.04, hB + (house ? 0.1 : 0.16), house ? [200, 198, 194] : [188, 188, 184], 1);
+    // 屋上(平らな屋根の建物に1回だけ): 機械室と、室外機のならび、給水タンク、屋上の看板
+    if (!roofDone[b] && st >= 1 && st <= 4 && hR >= 9 && !slopeB[b] && hE >= hR - 0.3) {
       roofDone[b] = 1;
       const cx = exA[0], cz = exA[2], top = y0 + hB, w = Math.min(bx1[b] - bx0[b], bz1[b] - bz0[b]);
+      const R = (kit, a, d, y, sx, sy, sz, c) => put(kit, cx + ex * a + nx * d, top + y, cz + ez * a + nz * d, nx, nz, sx, sy, sz, c, 1);
       if (w > 7) {
-        exBox(st, cx, cz, ex, ez, nx, nz, 3.4, -1.6, 1.6, top, top + 2.7, [206, 204, 198]);
-        for (let k = 0; k < Math.min(5, Math.floor(w / 3)); k++) exBox(st, cx + ex * (-3.4 - k * 1.1), cz + ez * (-3.4 - k * 1.1), ex, ez, nx, nz, 0.9, -0.4, 0.4, top, top + 0.85, [214, 216, 218]);
-        if (st !== 3 && hash(b * 19) < 0.5) exBox(st, cx + ex * 3.2, cz + ez * 3.2, ex, ez, nx, nz, 1.8, -0.9, 0.9, top + 0.8, top + 2.6, [226, 226, 222]); // 給水タンク
+        R(KIT_BOX6, 0, -1.6, 0, 3.4, 2.7, 3.2, [206, 204, 198]);
+        R(KIT_BOX6, 0, -1.7, 2.7, 3.6, 0.1, 3.4, [180, 178, 172]);
+        R(KIT_DOOR, 0.6, 1.6, 0, 0.8, 1.9, 1, [150, 152, 156]);
+        R(KIT_BOX, 0.6, 1.6, 0, 0.8, 1.9, 0.03, [128, 132, 138]);
+        for (let k = 0; k < Math.min(5, Math.floor(w / 3)); k++) put(KIT_AC, cx + ex * (-3.4 - k * 1.1) - nx * 0.15, top, cz + ez * (-3.4 - k * 1.1) - nz * 0.15, nx, nz, 1, 1, 1, [214, 216, 218], 1);
+        if (st !== 3 && hash(b * 19) < 0.5) {
+          for (const [a, d] of [[2.5, -0.7], [3.9, -0.7], [2.5, 0.7], [3.9, 0.7]]) R(KIT_BOX6, a, d - 0.05, 0, 0.1, 0.8, 0.1, [120, 120, 118]);
+          R(KIT_BOX6, 3.2, -0.9, 0.8, 1.8, 1.8, 1.8, [226, 226, 222]); // 給水タンク
+          R(KIT_BOX6, 3.2, -0.95, 2.6, 1.9, 0.08, 1.9, [206, 206, 202]);
+        }
+        if (st === 4 && bk < 0.4 && L >= 6) {
+          // 屋上の看板(文字なしの光る板と、鉄骨の脚)
+          const sw = Math.min(L - 1.5, 6);
+          for (const o of [-sw / 2 + 0.3, sw / 2 - 0.3]) B(KIT_BOX, o, 0.12, -0.9, -0.78, hB, hB + 1.0, [90, 92, 96], 1);
+          B(KIT_EBOX, 0, sw, -0.9, -0.75, hB + 1.0, hB + 2.8, SIGNC[Math.floor(bk2 * 7)], 1);
+        }
       }
     }
   }
@@ -589,7 +757,7 @@ function build(parts, center, bt) {
       nz /= L;
       const c = g.kind === "p" ? colors[b] || (colors[b] = pal(b)) : null;
       const roof = Math.abs(ny) > 0.55;
-      const hs = house[b] && g.kind === "p", wallH = hx[b * 7 + 6];
+      const hs = house[b] && g.kind === "p", wallH = hx[b * 8 + 6];
       // 屋根をのせる家: もとの平らな屋根は出さない
       if (hs && roof && ay >= wallH - 0.05 && by >= wallH - 0.05 && qy >= wallH - 0.05) continue;
       // 屋根: 傾いた屋根は瓦・金属の色、平らな屋根はコンクリートの色
@@ -617,7 +785,10 @@ function build(parts, center, bt) {
           for (let q = 0; q < 3; q++) col[w * 3 + q] = Math.max(0, Math.min(255, Math.round(pt.color[v * cn + q] * f[q] * 255)));
         } else {
           const st = style[b];
-          if (roof) (uv[w * 2] = RUV[st][0]), (uv[w * 2 + 1] = RUV[st][1]);
+          // 傾いた屋根は、瓦・スレート・金属の模様(画面側で描く。uv.y=-105 が印、uv.x=種類)
+          // ※ 壁の uv.x は街の座標から出すので負にもなる。印は、壁では負にならない uv.y の方に付ける
+          if (roof && ny < 0.97) (uv[w * 2] = roofKind(b)), (uv[w * 2 + 1] = -105);
+          else if (roof) (uv[w * 2] = RUV[st][0]), (uv[w * 2 + 1] = RUV[st][1]);
           else {
             // 壁にそって横に進む距離で、外壁の模様(窓・ベランダ)を貼る
             uv[w * 2] = (-X * nz + Z * nx) / FW[st];
@@ -637,51 +808,76 @@ function build(parts, center, bt) {
         const T = [];
         for (let j = 0; j < 3; j++) if (V[j * 3 + 1] >= wallH - 0.05) T.push(j);
         if (T.length === 2) {
-          const o7 = b * 7, rx = hx[o7], rz = hx[o7 + 1], ccx = hx[o7 + 2], ccz = hx[o7 + 3], rl = hx[o7 + 4], rh = hx[o7 + 5];
-          const yA = wallH + (TERRAIN ? minY[b] : 0), yR = yA + rh;
+          const o8 = b * 8, rx = hx[o8], rz = hx[o8 + 1], ccx = hx[o8 + 2], ccz = hx[o8 + 3], rl = hx[o8 + 4], rh = hx[o8 + 5], hw = hx[o8 + 7];
+          // 軒の出(OV): 屋根を壁の外へのばす。同じ傾きのまま、軒先は壁の上より少し低い
+          const OV = 0.5, yW = wallH + (TERRAIN ? minY[b] : 0), yA = yW - (OV * rh) / Math.max(1, hw), yR = yW + rh;
           const ridge = (X, Z) => {
             const sg = Math.max(-rl, Math.min(rl, (X - ccx) * rx + (Z - ccz) * rz));
             return [ccx + rx * sg, ccz + rz * sg];
           };
-          const A = [V[T[0] * 3], V[T[0] * 3 + 2]], Bq = [V[T[1] * 3], V[T[1] * 3 + 2]];
-          const ra = ridge(A[0], A[1]), rb = ridge(Bq[0], Bq[1]);
-          const rcol = ROOF[Math.floor(hash(b * 31 + 7) * ROOF.length)];
-          const tri = (p1, y1, p2, y2, p3, y3) => {
-            let ex = p2[0] - p1[0], ey = y2 - y1, ez = p2[1] - p1[1], fx = p3[0] - p1[0], fy = y3 - y1, fz = p3[1] - p1[1];
+          // 角の点を、棟の向きとその直角の向きに、それぞれ外へ OV ずらす(となりの辺と同じ点になるので、すき間ができない)
+          const ext = (X, Z) => {
+            const dx = X - ccx, dz = Z - ccz;
+            let a = dx * rx + dz * rz, q = -dx * rz + dz * rx;
+            a += Math.sign(a) * OV;
+            q += Math.sign(q) * OV;
+            return [ccx + rx * a - rz * q, ccz + rz * a + rx * q];
+          };
+          const A0 = [V[T[0] * 3], V[T[0] * 3 + 2]], B0 = [V[T[1] * 3], V[T[1] * 3 + 2]];
+          const A = ext(A0[0], A0[1]), Bq = ext(B0[0], B0[1]);
+          const ra = ridge(A0[0], A0[1]), rb = ridge(B0[0], B0[1]);
+          const rcol = ROOF[Math.floor(hash(b * 31 + 7) * ROOF.length)], rk = roofKind(b);
+          // 1枚の三角形を書く。want: 面を向けたい向き(逆なら点の順を入れかえる)
+          const face = (P1, P2, P3, want, c, u0, u1, shade) => {
+            const ex = P2[0] - P1[0], ey = P2[1] - P1[1], ez = P2[2] - P1[2], fx = P3[0] - P1[0], fy = P3[1] - P1[1], fz = P3[2] - P1[2];
             let mx = ey * fz - ez * fy, my = ez * fx - ex * fz, mz = ex * fy - ey * fx;
             const ml = Math.hypot(mx, my, mz);
             if (ml < 1e-4) return;
-            let pp = [p1, p2, p3], yy = [y1, y2, y3];
-            if (my < 0) (pp = [p1, p3, p2]), (yy = [y1, y3, y2]), (mx = -mx), (my = -my), (mz = -mz);
+            let pp = [P1, P2, P3];
+            if (mx * want[0] + my * want[1] + mz * want[2] < 0) (pp = [P1, P3, P2]), (mx = -mx), (my = -my), (mz = -mz);
             for (let j = 0; j < 3; j++) {
               pos[w * 3] = pp[j][0];
-              pos[w * 3 + 1] = yy[j];
-              pos[w * 3 + 2] = pp[j][1];
+              pos[w * 3 + 1] = pp[j][1];
+              pos[w * 3 + 2] = pp[j][2];
               anc[w * 3] = ancX;
               anc[w * 3 + 1] = ancY;
               anc[w * 3 + 2] = ancZ;
               nor[w * 3] = Math.round((mx / ml) * 127);
               nor[w * 3 + 1] = Math.round((my / ml) * 127);
               nor[w * 3 + 2] = Math.round((mz / ml) * 127);
-              uv[w * 2] = RUV[0][0];
-              uv[w * 2 + 1] = RUV[0][1];
-              // 棟に近いほど少し明るく(面の向きが見えるように)
-              const sh = yy[j] > yA + 0.01 ? 1.08 : 0.9;
-              col[w * 3] = Math.min(255, rcol[0] * sh);
-              col[w * 3 + 1] = Math.min(255, rcol[1] * sh);
-              col[w * 3 + 2] = Math.min(255, rcol[2] * sh);
+              uv[w * 2] = u0;
+              uv[w * 2 + 1] = u1;
+              const sh = shade ? (pp[j][1] > yA + 0.01 ? 1.08 : 0.9) : 1;
+              col[w * 3] = Math.min(255, c[0] * sh);
+              col[w * 3 + 1] = Math.min(255, c[1] * sh);
+              col[w * 3 + 2] = Math.min(255, c[2] * sh);
               w++;
             }
           };
-          tri(A, yA, Bq, yA, ra, yR);
-          tri(Bq, yA, rb, yR, ra, yR);
+          const P3 = (p, y) => [p[0], y, p[1]];
+          const UP = [0, 1, 0], DN = [0, -1, 0], OUT = [nx, 0, nz];
+          // 屋根の面(瓦などの模様は画面側で描く)。棟に近いほど少し明るく
+          face(P3(A, yA), P3(Bq, yA), P3(ra, yR), UP, rcol, rk, -105, true);
+          face(P3(Bq, yA), P3(rb, yR), P3(ra, yR), UP, rcol, rk, -105, true);
+          // 軒裏(下から見える面)と、鼻隠し(軒先のたての板)
+          const so = bk3(b) < 0.5 ? [228, 226, 220] : [150, 128, 104], fa = bk3(b) < 0.7 ? [236, 234, 230] : [60, 58, 56];
+          face(P3(A0, yW), P3(B0, yW), P3(Bq, yA), DN, so, 0, -101, false);
+          face(P3(A0, yW), P3(Bq, yA), P3(A, yA), DN, so, 0, -101, false);
+          face(P3(A, yA), P3(Bq, yA), P3(Bq, yA - 0.16), OUT, fa, 0, -101, false);
+          face(P3(A, yA), P3(Bq, yA - 0.16), P3(A, yA - 0.16), OUT, fa, 0, -101, false);
+          // 軒どい(軒先にそった、横の雨どい)
+          const gl = Math.hypot(Bq[0] - A[0], Bq[1] - A[1]);
+          if (gl > 1) {
+            exA = [ancX, ancY, ancZ];
+            put(KIT_BOX, (A[0] + Bq[0]) / 2, yA - 0.24, (A[1] + Bq[1]) / 2, nx, nz, gl + 0.04, 0.13, 0.12, bk3(b) < 0.6 ? [226, 226, 222] : [76, 66, 58]);
+          }
         }
       }
       // 足もとの辺(下の2点が地面にある壁の三角形)から、出っ張りを足す
       if (g.kind === "p" && !roof) {
         const lo = [];
         for (let j = 0; j < 3; j++) if (V[j * 3 + 1] < 0.35) lo.push(j);
-        if (lo.length === 2) extras(b, style[b], V[lo[0] * 3], V[lo[0] * 3 + 2], V[lo[1] * 3], V[lo[1] * 3 + 2], nx, nz, ancY, hs ? wallH : maxY[b] - minY[b], t);
+        if (lo.length === 2) extras(b, style[b], V[lo[0] * 3], V[lo[0] * 3 + 2], V[lo[1] * 3], V[lo[1] * 3 + 2], nx, nz, ancY, hs ? wallH : maxY[b] - minY[b], t, hs, Math.max(V[1], V[4], V[7]));
       }
       g.w = w;
     }
@@ -691,8 +887,8 @@ function build(parts, center, bt) {
   for (let b = 0; b < NB; b++) if (names[b] && !skip[b] && pts[b].length) lm.push({ name: String(names[b]), x: (bx0[b] + bx1[b]) / 2, z: (bz0[b] + bz1[b]) / 2, h: maxY[b] - minY[b] });
   const out = [];
   for (const g of groups.values()) {
-    const E = g.kind === "p" && g.style != null ? EX[g.style] : null;
-    if (!g.w && !(E && E.pos.length)) continue;
+    const E = null;
+    if (!g.w) continue;
     // 出っ張りのぶんを、後ろにつなげる
     const cat = (T, a, n, extra) => {
       const o = new T(n + (extra ? extra.length : 0));
@@ -701,14 +897,18 @@ function build(parts, center, bt) {
       return o;
     };
     out.push({ kind: g.kind, img: g.img, style: g.style, pos: cat(Float32Array, g.pos, g.w * 3, E && E.pos), nor: cat(Int8Array, g.nor, g.w * 3, E && E.nor), uv: cat(Float32Array, g.uv, g.w * 2, E && E.uv), col: cat(Uint8Array, g.col, g.w * 3, E && E.col), anc: cat(Float32Array, g.anc, g.w * 3, E && E.anc) });
-    if (E) E.pos = [];
   }
   // 地面の高さ合わせ用: 建物の足もと(楕円体高 = hc + minY)と場所を、いくつか返す
   const feet = [];
   for (let b = 0; b < NB && feet.length < 80; b += Math.max(1, Math.floor(NB / 80))) if (pts[b].length && !skip[b]) feet.push([(bx0[b] + bx1[b]) / 2, (bz0[b] + bz1[b]) / 2, hc + minY[b]]);
-  return { groups: out, names: lm, n: NB - skipped, skipped, hc, feet, terrain: TERRAIN };
+  return { groups: out, inst: new Float32Array(INST), names: lm, n: NB - skipped, skipped, hc, feet, terrain: TERRAIN };
 }
 
+// 細部の部品の番号(city.js の KIT と同じ並び)。1つぶんの書き出し: [部品, x, y, z, 向き, 大きさx, y, z, 色r, g, b, 建物の中心x, 足もとy, 中心z, fl]
+const KIT_BOX = 0, KIT_GBOX = 1, KIT_EBOX = 2, KIT_BARS = 3, KIT_AWN = 4, KIT_WIN1 = 5, KIT_WIN2 = 6, KIT_WIN3 = 7, KIT_DOOR = 8, KIT_AC = 9, KIT_STAIR = 10, KIT_BOX6 = 11;
+// 傾いた屋根の種類(0=瓦 1=スレート 2=金属のたてはぜ)と、建物ごとの色の選び
+const roofKind = (b) => { const h = hash(b * 57 + 3); return h < 0.4 ? 0 : h < 0.8 ? 1 : 2; };
+const bk3 = (b) => hash(b * 613 + 5);
 // 外壁の模様1枚ぶんの大きさ(m)と、屋根に使う模様の中の無地の場所
 const FW = [7, 7.2, 6, 7.2, 6, 7], FH = [6.4, 5.8, 8, 6, 7, 6.4];
 const RUV = [[0.02, 0.98], [0.015, 0.5], [0.5, 0.07], [0.015, 0.5], [0.02, 0.98], [0.02, 0.98]];
